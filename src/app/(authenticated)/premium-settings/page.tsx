@@ -36,6 +36,7 @@ import {
 import type { SubscriptionPlan } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion } from "framer-motion";
+import Head from "next/head";
 
 function formatTimeRemaining(boostedUntil: number): string {
   const now = Date.now();
@@ -290,7 +291,15 @@ export default function PremiumSettingsPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-white overflow-hidden">
+    <>
+      <Head>
+        <title>Premium Settings | Aroosi</title>
+        <meta
+          name="description"
+          content="Manage your premium features and privacy settings on Aroosi."
+        />
+      </Head>
+      <div className="relative min-h-screen bg-white overflow-hidden">
       {/* Decorative pink SVG-like blobs */}
       <div className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full bg-pink-200/40 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 w-[30rem] h-[30rem] rounded-full bg-rose-200/30 blur-3xl" />
@@ -742,5 +751,6 @@ export default function PremiumSettingsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

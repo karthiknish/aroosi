@@ -31,13 +31,13 @@ const UsageItem: React.FC<UsageItemProps> = ({
           {isUnlimited ? (
             <Badge
               variant="outline"
-              className="text-green-600 border-green-600"
+              className="text-success border-success"
             >
               Unlimited
             </Badge>
           ) : (
             <span
-              className={`text-sm ${isAtLimit ? "text-red-600" : isNearLimit ? "text-yellow-600" : "text-gray-600"}`}
+              className={`text-sm ${isAtLimit ? "text-danger" : isNearLimit ? "text-accent-dark" : "text-neutral-light"}`}
             >
               {current}/{limit}
             </span>
@@ -48,18 +48,18 @@ const UsageItem: React.FC<UsageItemProps> = ({
       {!isUnlimited && (
         <Progress
           value={percentage}
-          className={`h-2 ${isAtLimit ? "bg-red-100" : isNearLimit ? "bg-yellow-100" : ""}`}
+          className={`h-2 ${isAtLimit ? "bg-danger/10" : isNearLimit ? "bg-accent/10" : ""}`}
         />
       )}
 
       {!isUnlimited && (isNearLimit || isAtLimit) && (
         <div className="flex items-center justify-between text-xs mt-1">
-          <p className={isAtLimit ? "text-red-600" : "text-yellow-700"}>
+          <p className={isAtLimit ? "text-danger" : "text-accent-dark"}>
             {isAtLimit ? "Limit reached" : "Approaching limit"}
           </p>
           <button
             type="button"
-            className="h-6 px-2 rounded bg-pink-600 hover:bg-pink-700 text-white"
+            className="h-6 px-2 rounded bg-primary hover:bg-primary-dark text-white"
             onClick={() => (window.location.href = "/subscription")}
           >
             Upgrade for higher limits
@@ -81,11 +81,11 @@ export const UsageCard: React.FC<UsageCardProps> = ({ className }) => {
     return (
       <Card className={`p-6 ${className}`}>
         <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-4 bg-neutral-light/20 rounded w-1/3"></div>
           {[1, 2, 3].map((i) => (
             <div key={i} className="space-y-2">
-              <div className="h-3 bg-gray-200 rounded"></div>
-              <div className="h-2 bg-gray-200 rounded"></div>
+              <div className="h-3 bg-neutral-light/20 rounded"></div>
+              <div className="h-2 bg-neutral-light/20 rounded"></div>
             </div>
           ))}
         </div>
@@ -96,7 +96,7 @@ export const UsageCard: React.FC<UsageCardProps> = ({ className }) => {
   if (error) {
     return (
       <Card className={`p-6 ${className}`}>
-        <div className="text-center text-red-600">
+        <div className="text-center text-danger">
           <p>Failed to load usage statistics</p>
         </div>
       </Card>

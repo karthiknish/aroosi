@@ -434,7 +434,7 @@ export default function MessagesList(props: MessagesListProps) {
       </AnimatePresence>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 bg-[radial-gradient(circle_at_20%_0%,rgba(0,0,0,0.02),transparent_60%)] focus:outline-none"
+        className="h-full overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 focus:outline-none"
         role="region"
         aria-label="Messages scroll area"
       >
@@ -464,8 +464,8 @@ export default function MessagesList(props: MessagesListProps) {
             {empty ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center space-y-3">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary-light/30 to-secondary-light/30 rounded-full flex items-center justify-center mx-auto">
-                    <Smile className="w-8 h-8 text-primary" />
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+                    <Smile className="w-8 h-8 text-slate-400" />
                   </div>
                   <div>
                     <h3 className="font-medium text-neutral mb-1">
@@ -538,9 +538,9 @@ export default function MessagesList(props: MessagesListProps) {
                         className="space-y-1"
                       >
                         {isNewDay && (
-                          <div className="flex items-center gap-3 my-2">
-                            <div className="flex-1 h-px bg-gray-200" />
-                            <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                          <div className="flex items-center gap-3 my-4">
+                            <div className="flex-1 h-px bg-slate-200" />
+                            <span className="text-[11px] font-medium text-slate-400">
                               {new Date(msg.createdAt).toLocaleDateString(
                                 undefined,
                                 {
@@ -550,30 +550,30 @@ export default function MessagesList(props: MessagesListProps) {
                                 }
                               )}
                             </span>
-                            <div className="flex-1 h-px bg-gray-200" />
+                            <div className="flex-1 h-px bg-slate-200" />
                           </div>
                         )}
                         {index === firstUnreadIndex && (
-                          <div className="flex items-center gap-3 my-2">
-                            <div className="flex-1 h-px bg-gray-200" />
-                            <span className="text-[10px] uppercase tracking-wide text-gray-500">
-                              Unread
+                          <div className="flex items-center gap-3 my-4">
+                            <div className="flex-1 h-px bg-primary/20" />
+                            <span className="text-[11px] font-medium text-primary">
+                              Unread Messages
                             </span>
-                            <div className="flex-1 h-px bg-gray-200" />
+                            <div className="flex-1 h-px bg-primary/20" />
                           </div>
                         )}
                         {index === lastSeenSeparatorIndex && (
-                          <div className="flex items-center gap-3 my-1">
-                            <div className="flex-1 h-px bg-blue-200" />
-                            <span className="text-[10px] uppercase tracking-wide text-blue-500">
+                          <div className="flex items-center gap-3 my-2">
+                            <div className="flex-1 h-px bg-blue-100" />
+                            <span className="text-[10px] font-medium text-blue-400">
                               Seen
                             </span>
-                            <div className="flex-1 h-px bg-blue-200" />
+                            <div className="flex-1 h-px bg-blue-100" />
                           </div>
                         )}
                         {showTime && (
                           <div className="text-center py-1">
-                            <span className="text-[10px] text-gray-600 bg-gray-200/60 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm border border-gray-300/40 font-medium">
+                            <span className="text-[10px] text-slate-400 font-medium">
                               {formatMessageTime(msg.createdAt)}
                             </span>
                           </div>
@@ -581,35 +581,34 @@ export default function MessagesList(props: MessagesListProps) {
                         <div
                           className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
                         >
-                          <div className="relative group inline-block pt-8">
+                          <div className="relative group inline-block pt-1">
                             <div
                               className={cn(
-                                "relative max-w-[85%] sm:max-w-[320px] px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm break-words transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 hover:shadow-md touch-manipulation",
-                                "border border-gray-200/80 bg-gradient-to-br from-white to-gray-50/50 backdrop-blur-sm",
+                                "relative max-w-[85%] sm:max-w-[360px] px-4 py-2.5 shadow-sm text-[15px] leading-relaxed break-words transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 touch-manipulation",
                                 highlightedId === msg._id &&
-                                  "border-primary/70 bg-gradient-to-br from-primary/5 to-primary/10 ring-2 ring-primary/40 shadow-lg",
+                                  "ring-2 ring-primary/40 shadow-lg",
                                 isCurrentUser
-                                  ? "text-neutral-900 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/60"
-                                  : "text-gray-900 bg-white border-gray-200/60",
+                                  ? "text-white bg-primary border border-primary"
+                                  : "text-slate-800 bg-white border border-slate-200",
                                 // Enhanced rounded adjustments for grouping with better visual flow
                                 isCurrentUser
                                   ? cn(
-                                      "rounded-2xl rounded-br-sm",
-                                      !isFirstOfGroup && "rounded-tr-sm",
-                                      !isLastOfGroup && "rounded-br-2xl"
+                                      "rounded-[20px] rounded-br-[4px]",
+                                      !isFirstOfGroup && "rounded-tr-[4px]",
+                                      !isLastOfGroup && "rounded-br-[20px]"
                                     )
                                   : cn(
-                                      "rounded-2xl rounded-bl-sm",
-                                      !isFirstOfGroup && "rounded-tl-sm",
-                                      !isLastOfGroup && "rounded-bl-2xl"
+                                      "rounded-[20px] rounded-bl-[4px]",
+                                      !isFirstOfGroup && "rounded-tl-[4px]",
+                                      !isLastOfGroup && "rounded-bl-[20px]"
                                     ),
                                 // Enhanced background difference for grouped siblings
                                 !isFirstOfGroup &&
                                   isCurrentUser &&
-                                  "bg-gradient-to-br from-blue-50/80 to-indigo-50/80",
+                                  "mt-0.5",
                                 !isFirstOfGroup &&
                                   !isCurrentUser &&
-                                  "bg-white/80"
+                                  "mt-0.5"
                               )}
                               data-message-id={msg._id}
                               tabIndex={0}

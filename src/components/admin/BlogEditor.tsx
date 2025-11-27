@@ -41,9 +41,6 @@ import {
   Heading1 as HeadingIcon,
   Heading2 as Heading2Icon,
   Heading3 as Heading3Icon,
-  Heading4 as Heading4Icon,
-  Heading5 as Heading5Icon,
-  Heading6 as Heading6Icon,
   List as ListIcon,
   ListOrdered as ListOrderedIcon,
   Code as CodeIcon,
@@ -57,10 +54,14 @@ import {
   X,
   Underline as UnderlineIcon,
   Strikethrough as StrikeIcon,
-  Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon,
   Smile,
   PenTool as HighlightIcon,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Eraser,
+  Type,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
@@ -74,8 +75,41 @@ type MenuBarProps = {
   editor: EditorType;
 };
 
+// Toolbar button component for consistency
+const ToolbarButton = ({
+  onClick,
+  active,
+  disabled,
+  label,
+  icon: Icon,
+}: {
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  label: string;
+  icon: React.ElementType;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`p-2 rounded-md transition-all duration-150 ${
+      active
+        ? "bg-primary text-white shadow-sm"
+        : "text-neutral-dark hover:bg-neutral-100"
+    } ${disabled ? "opacity-40 cursor-not-allowed" : "hover:shadow-sm"}`}
+    title={label}
+  >
+    <Icon className="w-4 h-4" />
+  </button>
+);
+
+// Toolbar divider
+const ToolbarDivider = () => (
+  <div className="w-px h-6 bg-neutral-200 mx-1" />
+);
+
 const MenuBar = ({ editor }: MenuBarProps) => {
-  const [hovered, setHovered] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [linkSelection, setLinkSelection] = useState<{
@@ -108,222 +142,246 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   }, [emojiPickerOpen]);
 
   if (!editor) return null;
-  const buttons = [
-    {
-      key: "bold",
-      icon: BoldIcon,
-      label: "Bold",
-      onClick: () => editor.chain().focus().toggleBold().run(),
-      active: editor.isActive("bold"),
-    },
-    {
-      key: "italic",
-      icon: ItalicIcon,
-      label: "Italic",
-      onClick: () => editor.chain().focus().toggleItalic().run(),
-      active: editor.isActive("italic"),
-    },
-    {
-      key: "underline",
-      icon: UnderlineIcon,
-      label: "Underline",
-      onClick: () => editor.chain().focus().toggleUnderline().run(),
-      active: editor.isActive("underline"),
-    },
-    {
-      key: "strike",
-      icon: StrikeIcon,
-      label: "Strikethrough",
-      onClick: () => editor.chain().focus().toggleStrike().run(),
-      active: editor.isActive("strike"),
-    },
-    {
-      key: "subscript",
-      icon: SubscriptIcon,
-      label: "Subscript",
-      onClick: () => editor.chain().focus().toggleSubscript().run(),
-      active: editor.isActive("subscript"),
-    },
-    {
-      key: "superscript",
-      icon: SuperscriptIcon,
-      label: "Superscript",
-      onClick: () => editor.chain().focus().toggleSuperscript().run(),
-      active: editor.isActive("superscript"),
-    },
-    {
-      key: "h1",
-      icon: HeadingIcon,
-      label: "H1",
-      onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-      active: editor.isActive("heading", { level: 1 }),
-    },
-    {
-      key: "h2",
-      icon: Heading2Icon,
-      label: "H2",
-      onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      active: editor.isActive("heading", { level: 2 }),
-    },
-    {
-      key: "h3",
-      icon: Heading3Icon,
-      label: "H3",
-      onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-      active: editor.isActive("heading", { level: 3 }),
-    },
-    {
-      key: "h4",
-      icon: Heading4Icon,
-      label: "H4",
-      onClick: () => editor.chain().focus().toggleHeading({ level: 4 }).run(),
-      active: editor.isActive("heading", { level: 4 }),
-    },
-    {
-      key: "h5",
-      icon: Heading5Icon,
-      label: "H5",
-      onClick: () => editor.chain().focus().toggleHeading({ level: 5 }).run(),
-      active: editor.isActive("heading", { level: 5 }),
-    },
-    {
-      key: "h6",
-      icon: Heading6Icon,
-      label: "H6",
-      onClick: () => editor.chain().focus().toggleHeading({ level: 6 }).run(),
-      active: editor.isActive("heading", { level: 6 }),
-    },
-    {
-      key: "bulletList",
-      icon: ListIcon,
-      label: "List",
-      onClick: () => editor.chain().focus().toggleBulletList().run(),
-      active: editor.isActive("bulletList"),
-    },
-    {
-      key: "orderedList",
-      icon: ListOrderedIcon,
-      label: "1. List",
-      onClick: () => editor.chain().focus().toggleOrderedList().run(),
-      active: editor.isActive("orderedList"),
-    },
-    {
-      key: "codeBlock",
-      icon: CodeIcon,
-      label: "Code",
-      onClick: () => editor.chain().focus().toggleCodeBlock().run(),
-      active: editor.isActive("codeBlock"),
-    },
-    {
-      key: "blockquote",
-      icon: QuoteIcon,
-      label: "Quote",
-      onClick: () => editor.chain().focus().toggleBlockquote().run(),
-      active: editor.isActive("blockquote"),
-    },
-    {
-      key: "hr",
-      icon: MinusIcon,
-      label: "HR",
-      onClick: () => editor.chain().focus().setHorizontalRule().run(),
-      active: false,
-    },
-    {
-      key: "link",
-      icon: LinkIcon,
-      label: "Link",
-      onClick: () => {
-        setLinkSelection({
-          from: editor.state.selection.from,
-          to: editor.state.selection.to,
-        });
-        setLinkValue((editor.getAttributes("link").href as string) || "");
-        setLinkModalOpen(true);
-      },
-      active: editor.isActive("link"),
-    },
-    {
-      key: "image",
-      icon: ImageIcon,
-      label: "Image",
-      onClick: () => setImageModalOpen(true),
-      active: false,
-    },
-    {
-      key: "table",
-      icon: TableIcon,
-      label: "Table",
-      onClick: () => setTableModalOpen(true),
-      active: false,
-    },
-    {
-      key: "undo",
-      icon: UndoIcon,
-      label: "Undo",
-      onClick: () => editor.chain().focus().undo().run(),
-      active: false,
-    },
-    {
-      key: "redo",
-      icon: RedoIcon,
-      label: "Redo",
-      onClick: () => editor.chain().focus().redo().run(),
-      active: false,
-    },
-    {
-      key: "highlight",
-      icon: HighlightIcon,
-      label: "Highlight",
-      onClick: () => editor.chain().focus().toggleHighlight().run(),
-      active: editor.isActive("highlight"),
-    },
-    {
-      key: "emoji",
-      icon: Smile,
-      label: "Emoji",
-      onClick: () => setEmojiPickerOpen((v) => !v),
-      active: false,
-      ref: emojiButtonRef,
-    },
-  ];
+
+  const characterCount = editor.storage.characterCount;
+
   return (
-    <div className="flex flex-wrap gap-2 mb-2 sticky top-0 z-20 bg-white/95 backdrop-blur p-2 rounded-t-lg border-b border-gray-200 shadow-sm">
-      {buttons.map((btn) => (
-        <div key={btn.key} className="relative">
+    <div className="sticky top-0 z-20 bg-white border-b border-neutral-200">
+      {/* Main Toolbar */}
+      <div className="flex flex-wrap items-center gap-1 p-2">
+        {/* History */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            label="Undo (Ctrl+Z)"
+            icon={UndoIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            label="Redo (Ctrl+Y)"
+            icon={RedoIcon}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Text Formatting */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive("bold")}
+            label="Bold (Ctrl+B)"
+            icon={BoldIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            active={editor.isActive("italic")}
+            label="Italic (Ctrl+I)"
+            icon={ItalicIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            active={editor.isActive("underline")}
+            label="Underline (Ctrl+U)"
+            icon={UnderlineIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            active={editor.isActive("strike")}
+            label="Strikethrough"
+            icon={StrikeIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHighlight().run()}
+            active={editor.isActive("highlight")}
+            label="Highlight"
+            icon={HighlightIcon}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Headings */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            active={editor.isActive("heading", { level: 1 })}
+            label="Heading 1"
+            icon={HeadingIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={editor.isActive("heading", { level: 2 })}
+            label="Heading 2"
+            icon={Heading2Icon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            active={editor.isActive("heading", { level: 3 })}
+            label="Heading 3"
+            icon={Heading3Icon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setParagraph().run()}
+            active={editor.isActive("paragraph")}
+            label="Paragraph"
+            icon={Type}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Text Alignment */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("left").run()}
+            active={editor.isActive({ textAlign: "left" })}
+            label="Align Left"
+            icon={AlignLeft}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("center").run()}
+            active={editor.isActive({ textAlign: "center" })}
+            label="Align Center"
+            icon={AlignCenter}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("right").run()}
+            active={editor.isActive({ textAlign: "right" })}
+            label="Align Right"
+            icon={AlignRight}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign("justify").run()}
+            active={editor.isActive({ textAlign: "justify" })}
+            label="Justify"
+            icon={AlignJustify}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Lists */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            active={editor.isActive("bulletList")}
+            label="Bullet List"
+            icon={ListIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            active={editor.isActive("orderedList")}
+            label="Numbered List"
+            icon={ListOrderedIcon}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Block Elements */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            active={editor.isActive("blockquote")}
+            label="Quote"
+            icon={QuoteIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            active={editor.isActive("codeBlock")}
+            label="Code Block"
+            icon={CodeIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            label="Horizontal Rule"
+            icon={MinusIcon}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Insert */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => {
+              setLinkSelection({
+                from: editor.state.selection.from,
+                to: editor.state.selection.to,
+              });
+              setLinkValue((editor.getAttributes("link").href as string) || "");
+              setLinkModalOpen(true);
+            }}
+            active={editor.isActive("link")}
+            label="Insert Link"
+            icon={LinkIcon}
+          />
+          <ToolbarButton
+            onClick={() => setImageModalOpen(true)}
+            label="Insert Image"
+            icon={ImageIcon}
+          />
+          <ToolbarButton
+            onClick={() => setTableModalOpen(true)}
+            label="Insert Table"
+            icon={TableIcon}
+          />
           <button
+            ref={emojiButtonRef}
             type="button"
-            onClick={btn.onClick}
-            className={`px-2 py-1 rounded transition font-semibold border border-transparent hover:bg-pink-50 focus:bg-pink-100 flex items-center gap-1 ${btn.active ? "bg-pink-100 text-pink-600 border-pink-200" : "text-gray-700"}`}
-            onMouseEnter={() => setHovered(btn.key)}
-            onMouseLeave={() => setHovered(null)}
-            aria-label={btn.label}
+            onClick={() => setEmojiPickerOpen((v) => !v)}
+            className="p-2 rounded-md transition-all duration-150 text-neutral-dark hover:bg-neutral-100 hover:shadow-sm"
+            title="Insert Emoji"
           >
-            <btn.icon className="w-4 h-4" />
+            <Smile className="w-4 h-4" />
           </button>
-          {hovered === btn.key && (
-            <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
-              {btn.label}
-            </div>
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Clear Formatting */}
+        <ToolbarButton
+          onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+          label="Clear Formatting"
+          icon={Eraser}
+        />
+      </div>
+
+      {/* Status Bar */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-neutral-50 border-t border-neutral-100 text-xs text-neutral-500">
+        <div className="flex items-center gap-4">
+          <span>{characterCount?.characters?.() ?? 0} characters</span>
+          <span>{characterCount?.words?.() ?? 0} words</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {editor.isActive("link") && (
+            <span className="text-primary">Link selected</span>
           )}
         </div>
-      ))}
+      </div>
+
       {/* Table Modal */}
       {tableModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
               onClick={() => setTableModalOpen(false)}
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold mb-4">Insert Table</h2>
-            <div className="flex gap-4 mb-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <TableIcon className="w-5 h-5 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold text-neutral-dark">Insert Table</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <label
-                  htmlFor="tableRows"
-                  className="block text-xs font-medium text-gray-600 mb-1"
-                >
+                <label className="block text-sm font-medium text-neutral-600 mb-1.5">
                   Rows
                 </label>
                 <input
@@ -332,14 +390,11 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                   max={10}
                   value={tableRows}
                   onChange={(e) => setTableRows(Number(e.target.value))}
-                  className="w-16 border rounded px-2 py-1"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
               <div>
-                <label
-                  htmlFor="tableCols"
-                  className="block text-xs font-medium text-gray-600 mb-1"
-                >
+                <label className="block text-sm font-medium text-neutral-600 mb-1.5">
                   Columns
                 </label>
                 <input
@@ -348,19 +403,19 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                   max={10}
                   value={tableCols}
                   onChange={(e) => setTableCols(Number(e.target.value))}
-                  className="w-16 border rounded px-2 py-1"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
                 onClick={() => setTableModalOpen(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-1 rounded bg-pink-600 hover:bg-pink-700 text-white font-semibold"
+                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white font-medium transition-colors"
                 onClick={() => {
                   editor
                     .chain()
@@ -376,40 +431,74 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                   setTableCols(3);
                 }}
               >
-                Insert
+                Insert Table
               </button>
             </div>
           </div>
         </div>
       )}
+
       {/* Link Modal */}
       {linkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
               onClick={() => setLinkModalOpen(false)}
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold mb-4">Insert Link</h2>
-            <input
-              type="url"
-              className="w-full border rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-pink-400"
-              placeholder="https://example.com"
-              value={linkValue}
-              onChange={(e) => setLinkValue(e.target.value)}
-              autoFocus
-            />
-            <div className="flex gap-2 justify-end">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <LinkIcon className="w-5 h-5 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold text-neutral-dark">
+                {editor.isActive("link") ? "Edit Link" : "Insert Link"}
+              </h2>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+                URL
+              </label>
+              <input
+                type="url"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                placeholder="https://example.com"
+                value={linkValue}
+                onChange={(e) => setLinkValue(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
                 onClick={() => setLinkModalOpen(false)}
               >
                 Cancel
               </button>
+              {editor.isActive("link") && (
+                <button
+                  className="px-4 py-2 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger font-medium transition-colors"
+                  onClick={() => {
+                    if (linkSelection && editor) {
+                      editor
+                        .chain()
+                        .focus()
+                        .setTextSelection({
+                          from: linkSelection.from,
+                          to: linkSelection.to,
+                        })
+                        .unsetLink()
+                        .run();
+                    }
+                    setLinkModalOpen(false);
+                  }}
+                >
+                  Remove
+                </button>
+              )}
               <button
-                className="px-4 py-1 rounded bg-pink-600 hover:bg-pink-700 text-white font-semibold"
+                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white font-medium transition-colors disabled:opacity-50"
                 onClick={() => {
                   if (linkSelection && editor) {
                     editor
@@ -426,74 +515,88 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                 }}
                 disabled={!linkValue}
               >
-                Insert
+                {editor.isActive("link") ? "Update" : "Insert"}
               </button>
-              {editor && editor.isActive("link") && (
-                <button
-                  className="px-4 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700 font-semibold"
-                  onClick={() => {
-                    if (linkSelection && editor) {
-                      editor
-                        .chain()
-                        .focus()
-                        .setTextSelection({
-                          from: linkSelection.from,
-                          to: linkSelection.to,
-                        })
-                        .unsetLink()
-                        .run();
-                    }
-                    setLinkModalOpen(false);
-                  }}
-                >
-                  Remove Link
-                </button>
-              )}
             </div>
           </div>
         </div>
       )}
+
       {/* Image Upload Modal */}
       {imageModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
-              onClick={() => setImageModalOpen(false)}
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+              onClick={() => {
+                setImageModalOpen(false);
+                setUploadedUrl("");
+              }}
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold mb-4">Insert Image</h2>
-            <input
-              type="url"
-              className="w-full border rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-pink-400"
-              placeholder="Paste image URL (https://...)"
-              value={uploadedUrl}
-              onChange={(e) => setUploadedUrl(e.target.value)}
-              onBlur={() => {
-                if (uploadedUrl) {
-                  editor.chain().focus().setImage({ src: uploadedUrl }).run();
-                  setImageModalOpen(false);
-                  // If uploadedUrl is an object URL, revoke it
-                  if (uploadedUrl.startsWith("blob:")) {
-                    URL.revokeObjectURL(uploadedUrl);
-                  }
-                }
-              }}
-            />
-            <div className="flex gap-2 justify-end mt-2">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ImageIcon className="w-5 h-5 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold text-neutral-dark">Insert Image</h2>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+                Image URL
+              </label>
+              <input
+                type="url"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                placeholder="https://example.com/image.jpg"
+                value={uploadedUrl}
+                onChange={(e) => setUploadedUrl(e.target.value)}
+                autoFocus
+              />
+              {uploadedUrl && (
+                <div className="mt-3 p-2 bg-neutral-50 rounded-lg">
+                  <img
+                    src={uploadedUrl}
+                    alt="Preview"
+                    className="max-h-32 mx-auto rounded object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
-                onClick={() => setImageModalOpen(false)}
+                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
+                onClick={() => {
+                  setImageModalOpen(false);
+                  setUploadedUrl("");
+                }}
               >
                 Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white font-medium transition-colors disabled:opacity-50"
+                onClick={() => {
+                  if (uploadedUrl) {
+                    editor.chain().focus().setImage({ src: uploadedUrl }).run();
+                    setImageModalOpen(false);
+                    setUploadedUrl("");
+                  }
+                }}
+                disabled={!uploadedUrl}
+              >
+                Insert Image
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Emoji Picker */}
       {emojiPickerOpen && (
-        <div ref={emojiPopoverRef} className="absolute z-50 mt-2 left-0">
+        <div ref={emojiPopoverRef} className="absolute z-50 mt-2 right-4 shadow-xl rounded-xl overflow-hidden">
           <EmojiPicker
             onEmojiClick={({ emoji }) => {
               editor.chain().focus().insertContent(emoji).run();
@@ -565,7 +668,7 @@ export default function BlogEditor({
     editorProps: {
       attributes: {
         class:
-          "prose max-w-none min-h-[300px] p-6 bg-gray-50 rounded-b-lg border border-gray-200 focus:outline-none shadow-md",
+          "prose max-w-none min-h-[300px] p-6 bg-base-light rounded-b-lg border border-neutral-light/20 focus:outline-none shadow-sm",
       },
       handleDOMEvents: {},
     },
@@ -587,12 +690,12 @@ export default function BlogEditor({
     style.id = "tiptap-link-style";
     style.innerHTML = `
       .tiptap-editor-content a {
-        color: #FDA4AF;
+        color: var(--color-primary);
         text-decoration: underline;
         transition: color 0.2s;
       }
       .tiptap-editor-content a:hover {
-        color: #BFA67A;
+        color: var(--color-accent);
       }
       .tiptap-editor-content table {
         border-collapse: collapse;
@@ -600,34 +703,34 @@ export default function BlogEditor({
         margin: 1em 0;
       }
       .tiptap-editor-content th {
-        border: 1.5px solid #FDA4AF;
-        background: #fff7f9;
-        color: #BFA67A;
+        border: 1.5px solid var(--color-primary);
+        background: var(--color-base);
+        color: var(--color-accent);
         font-weight: 700;
         padding: 0.6em 0.9em;
         text-align: left;
       }
       .tiptap-editor-content td {
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--color-neutral-light);
         padding: 0.5em 0.75em;
         text-align: left;
-        background: #fff;
+        background: var(--color-base-light);
       }
       .tiptap-editor-content tr:nth-child(even) td {
-        background: #f3f4f6;
+        background: var(--color-base);
       }
       .tiptap-editor-content blockquote {
-        border-left: 4px solid #FDA4AF;
-        background: #fff7f9;
-        color: #BFA67A;
+        border-left: 4px solid var(--color-primary);
+        background: var(--color-base);
+        color: var(--color-accent);
         margin: 1em 0;
         padding: 0.75em 1.25em;
         font-style: italic;
         border-radius: 0.375em;
       }
       .tiptap-editor-content pre {
-        background: #f3f4f6;
-        color: #BFA67A;
+        background: var(--color-base);
+        color: var(--color-accent);
         font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
         padding: 1em;
         border-radius: 0.375em;
@@ -636,8 +739,8 @@ export default function BlogEditor({
         font-size: 0.97em;
       }
       .tiptap-editor-content code {
-        background: #faf5ef;
-        color: #BFA67A;
+        background: var(--color-base-dark);
+        color: var(--color-accent);
         font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
         padding: 0.15em 0.4em;
         border-radius: 0.3em;
@@ -677,7 +780,7 @@ export default function BlogEditor({
       }
       .tiptap-editor-content hr {
         border: none;
-        border-top: 2px solid #FDA4AF;
+        border-top: 2px solid var(--color-primary);
         margin: 2em 0;
         height: 0;
         background: none;
@@ -734,19 +837,19 @@ export default function BlogEditor({
         display: block;
         margin: 1.5em auto;
         border-radius: 0.5em;
-        box-shadow: 0 2px 8px 0 rgba(219,39,119,0.08);
+        box-shadow: 0 2px 8px 0 rgba(var(--color-primary),0.08);
         resize: both;
         overflow: auto;
         min-width: 80px;
         min-height: 40px;
-        background: #fff;
+        background: var(--color-base-light);
       }
     `;
     document.head.appendChild(style);
   }
 
   return (
-    <div className="max-w-2xl mx-auto my-8 rounded-lg shadow-lg border border-gray-200 bg-white">
+    <div className="max-w-2xl mx-auto my-8 rounded-lg shadow-lg border border-neutral-light/20 bg-base-light">
       <MenuBar editor={editor} />
       <div className="tiptap-editor-content">
         <EditorContent editor={editor} />

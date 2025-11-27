@@ -2,24 +2,40 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
   images: {
-    domains: [
-      "images.pexels.com",
-      "images.squarespace-cdn.com",
-
-      // Firebase Storage signed URLs and direct media endpoints
-      "firebasestorage.googleapis.com",
-      "storage.googleapis.com",
-      // Custom bucket domain variant (if using CNAME / alternate)
-      "aroosi-project.firebasestorage.app",
-      // App hostname if serving absolute image URLs from same origin/CDN
-      "www.aroosi.app",
-      "aroosi.app",
-      // Added for Afghan Community Values homepage image
-      "i.pinimg.com",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.pexels.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.squarespace-cdn.com",
+      },
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "aroosi-project.firebasestorage.app",
+      },
+      {
+        protocol: "https",
+        hostname: "www.aroosi.app",
+      },
+      {
+        protocol: "https",
+        hostname: "aroosi.app",
+      },
+      {
+        protocol: "https",
+        hostname: "i.pinimg.com",
+      },
     ],
   },
   // Ensure proper transpilation for Safari compatibility

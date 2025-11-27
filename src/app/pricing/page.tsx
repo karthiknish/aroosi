@@ -255,12 +255,12 @@ export default function PricingPage() {
           }}
         />
       </Head>
-      <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      <div className="relative min-h-screen bg-base-light">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gradient-to-tr from-blue-300 to-indigo-300 rounded-full opacity-15 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-secondary/15 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/10 rounded-full blur-2xl" />
         </div>
 
         <div className="relative pt-32">
@@ -467,10 +467,10 @@ export default function PricingPage() {
             className="mb-20"
           >
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4 text-neutral-800 font-serif">
+              <h2 className="text-3xl font-bold mb-4 text-neutral-dark font-serif">
                 Compare All Features
               </h2>
-              <p className="text-neutral-600 max-w-2xl mx-auto">
+              <p className="text-neutral-light max-w-2xl mx-auto">
                 See exactly what&apos;s included in each plan to find the
                 perfect fit for your needs.
               </p>
@@ -480,62 +480,62 @@ export default function PricingPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gradient-to-r from-pink-50 to-rose-50">
-                      <th className="py-6 px-6 text-left font-semibold text-neutral-800 border-b border-gray-200">
+                    <tr className="bg-base-light">
+                      <th className="py-6 px-6 text-left font-semibold text-neutral-dark border-b border-neutral-200">
                         Features
                       </th>
-                      <th className="py-6 px-6 font-serif text-center font-semibold text-green-600 border-b border-gray-200 min-w-[120px] bg-green-50">
+                      <th className="py-6 px-6 font-serif text-center font-semibold text-success border-b border-neutral-200 min-w-[120px] bg-success/10">
                         Free
                       </th>
-                      <th className="py-6 px-6 font-serif text-center font-semibold text-pink-600 border-b border-gray-200 min-w-[120px] bg-pink-50">
+                      <th className="py-6 px-6 font-serif text-center font-semibold text-primary border-b border-neutral-200 min-w-[120px] bg-primary/10">
                         Premium
                       </th>
-                      <th className="py-6 px-6 font-serif text-center font-semibold text-amber-600 border-b border-gray-200 min-w-[120px]">
+                      <th className="py-6 px-6 font-serif text-center font-semibold text-accent-dark border-b border-neutral-200 min-w-[120px]">
                         Premium Plus
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-neutral-100">
                     {comparison.map((row, index) => (
                       <tr
                         key={row.feature}
-                        className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
+                        className={`hover:bg-neutral-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-neutral-50/50"}`}
                       >
-                        <td className="py-4 px-6 font-medium text-gray-800">
+                        <td className="py-4 px-6 font-medium text-neutral-dark">
                           <div className="flex items-center gap-3">
-                            <div className="text-gray-400">{row.icon}</div>
+                            <div className="text-neutral-400">{row.icon}</div>
                             {row.feature}
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-center bg-green-50/50">
+                        <td className="py-4 px-6 text-center bg-success/5">
                           {row.free === true ? (
-                            <Check className="w-5 h-5 text-green-500 mx-auto" />
+                            <Check className="w-5 h-5 text-success mx-auto" />
                           ) : row.free === false ? (
-                            <X className="w-5 h-5 text-gray-300 mx-auto" />
+                            <X className="w-5 h-5 text-neutral-300 mx-auto" />
                           ) : (
-                            <span className="text-sm text-neutral-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-sm text-neutral-light bg-neutral-100 px-2 py-1 rounded-full">
                               {row.free}
                             </span>
                           )}
                         </td>
-                        <td className="py-4 px-6 text-center bg-pink-50/50">
+                        <td className="py-4 px-6 text-center bg-primary/5">
                           {row.premium === true ? (
-                            <Check className="w-5 h-5 text-green-500 mx-auto" />
+                            <Check className="w-5 h-5 text-primary mx-auto" />
                           ) : row.premium === false ? (
-                            <X className="w-5 h-5 text-gray-300 mx-auto" />
+                            <X className="w-5 h-5 text-neutral-300 mx-auto" />
                           ) : (
-                            <span className="text-sm text-neutral-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-sm text-neutral-light bg-neutral-100 px-2 py-1 rounded-full">
                               {row.premium}
                             </span>
                           )}
                         </td>
                         <td className="py-4 px-6 text-center">
                           {row.plus === true ? (
-                            <Check className="w-5 h-5 text-green-500 mx-auto" />
+                            <Check className="w-5 h-5 text-success mx-auto" />
                           ) : row.plus === false ? (
-                            <X className="w-5 h-5 text-gray-300 mx-auto" />
+                            <X className="w-5 h-5 text-neutral-300 mx-auto" />
                           ) : (
-                            <span className="text-sm text-neutral-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-sm text-neutral-light bg-neutral-100 px-2 py-1 rounded-full">
                               {row.plus}
                             </span>
                           )}
@@ -552,48 +552,70 @@ export default function PricingPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="max-w-4xl mx-auto mb-20"
-          >
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4 text-neutral-800 font-serif">
+              transition={{ duration: 0.6, delay: 0.8 }}
+              className="mt-20"
+            >
+              <h2 className="text-3xl font-bold text-center text-neutral-dark mb-12">
                 Frequently Asked Questions
               </h2>
-              <p className="text-neutral-600">
-                Have questions? We&apos;ve got answers to help you choose the
-                right plan.
+              <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                {[
+                  {
+                    q: "Can I cancel anytime?",
+                    a: "Yes, absolutely. There are no long-term commitments. You can cancel your subscription at any time from your account settings.",
+                  },
+                  {
+                    q: "Is my payment secure?",
+                    a: "We use bank-level encryption and secure payment processors (Stripe) to ensure your financial information is always protected.",
+                  },
+                  {
+                    q: "What happens when my trial ends?",
+                    a: "If you don't cancel before the trial ends, you'll be automatically upgraded to the Premium plan so you don't lose access to features.",
+                  },
+                  {
+                    q: "Can I upgrade later?",
+                    a: "Yes! You can start with the Free plan and upgrade to Premium or Premium Plus whenever you're ready to unlock more features.",
+                  },
+                ].map((faq, i) => (
+                  <div
+                    key={i}
+                    className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <h3 className="text-lg font-bold text-neutral-dark mb-2">
+                      {faq.q}
+                    </h3>
+                    <p className="text-neutral-light">{faq.a}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Trust Badges */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1 }}
+              className="mt-20 text-center"
+            >
+              <p className="text-neutral-light mb-6 uppercase tracking-widest text-sm font-semibold">
+                Trusted Payment Methods
               </p>
-            </div>
+              <div className="flex justify-center gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                {/* Add payment icons here if available, or use text/placeholders */}
+                <div className="flex items-center gap-2">
+                  <Shield className="w-6 h-6 text-neutral-400" />
+                  <span className="font-bold text-neutral-500">
+                    Secure SSL Payment
+                  </span>
+                </div>
+              </div>
+            </motion.div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {faqs.map((faq, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.7 + i * 0.1 }}
-                  className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow"
-                >
-                  <div className="font-semibold text-neutral-800 mb-3 flex items-start gap-2">
-                    <div className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-pink-600 text-sm font-bold">?</span>
-                    </div>
-                    {faq.q}
-                  </div>
-                  <div className="text-neutral-600 leading-relaxed pl-8">
-                    {faq.a}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* CTA Section */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="py-16 md:py-20 relative overflow-hidden bg-gradient-to-r from-[#5F92AC] to-[#3E647A]"
+            className="py-16 md:py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark"
           >
             {/* Floating hearts (background) */}
             <motion.div
@@ -665,7 +687,7 @@ export default function PricingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Link href="/">
-                  <Button className="bg-white text-[#3E647A] hover:bg-blue-50 text-lg px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
+                  <Button className="bg-white text-secondary-dark hover:bg-secondary/10 text-lg px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
                     <div className="flex items-center gap-2">
                       <Heart className="w-5 h-5" />
                       Start Free Today

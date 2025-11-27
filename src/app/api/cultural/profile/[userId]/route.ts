@@ -62,17 +62,22 @@ async function createOrUpdateCulturalProfile(
 }
 
 // GET /api/cultural/profile/:userId
-export const GET = withFirebaseAuth(async (req: NextRequest, context: any) => {
-  const { params } = context;
-  const userId = params.userId;
+export async function GET(req: NextRequest, context: { params: Promise<{ userId: string }> }) {
+  return withFirebaseAuth(async (user, request) => {
+    const { userId } = await context.params;
 
-  // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
+    // Rate limiting
+    const rateLimitResult = checkApiRateLimit(`cultural_profile_get_${user.id}`, 100, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Rate limit exceeded" },
+        { status: 429 }
+      );
+    }
 
-  // Users can only access their own profiles or admins can access any
-  const authUserId = req.headers.get("x-user-id");
-  const isAdmin = req.headers.get("x-user-role") === "admin";
+    // Users can only access their own profiles or admins can access any
+    const authUserId = user.id;
+    const isAdmin = user.role === "admin";
 
   if (!isAdmin && authUserId !== userId) {
     return NextResponse.json(
@@ -88,20 +93,26 @@ export const GET = withFirebaseAuth(async (req: NextRequest, context: any) => {
   }
 
   return NextResponse.json(result);
-});
+  })(req);
+}
 
 // POST /api/cultural/profile/:userId
-export const POST = withFirebaseAuth(async (req: NextRequest, context: any) => {
-  const { params } = context;
-  const userId = params.userId;
+export async function POST(req: NextRequest, context: { params: Promise<{ userId: string }> }) {
+  return withFirebaseAuth(async (user, request) => {
+    const { userId } = await context.params;
 
-  // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
+    // Rate limiting
+    const rateLimitResult = checkApiRateLimit(`cultural_profile_post_${user.id}`, 50, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Rate limit exceeded" },
+        { status: 429 }
+      );
+    }
 
-  // Users can only update their own profiles or admins can update any
-  const authUserId = req.headers.get("x-user-id");
-  const isAdmin = req.headers.get("x-user-role") === "admin";
+    // Users can only update their own profiles or admins can update any
+    const authUserId = user.id;
+    const isAdmin = user.role === "admin";
 
   if (!isAdmin && authUserId !== userId) {
     return NextResponse.json(
@@ -111,7 +122,7 @@ export const POST = withFirebaseAuth(async (req: NextRequest, context: any) => {
   }
 
   try {
-    const body = await req.json();
+    const body = await request.json();
 
     // Validate required fields
     const requiredFields = [
@@ -164,4 +175,5 @@ export const POST = withFirebaseAuth(async (req: NextRequest, context: any) => {
       { status: 400 }
     );
   }
-});
+  })(req);
+}

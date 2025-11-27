@@ -15,7 +15,7 @@ export default function VerifyEmailBanner() {
   const recentlySent = !!(sentAt && Date.now() - sentAt < 60_000); // 60s cooldown
 
   return (
-    <div className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm relative z-40">
+    <div className="bg-accent/10 border-b border-accent/20 text-accent-dark text-sm relative z-40">
       <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center gap-2">
         <div className="flex-1">
           <strong className="font-medium">Verify your email.</strong> Please

@@ -229,7 +229,7 @@ const ProfileView: FC<ProfileViewProps> = ({
     >
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/20 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
       {/* Subtle SVG background pattern */}
       <div
         className="absolute inset-0 opacity-[0.04] z-0 pointer-events-none"
@@ -238,13 +238,13 @@ const ProfileView: FC<ProfileViewProps> = ({
         }}
       ></div>
       <div className="max-w-4xl mx-auto relative z-10">
-        <Card className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+        <Card className="bg-base-light rounded-2xl shadow-sm border overflow-hidden">
           <CardHeader className="border-b pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex-1 min-w-[200px]">
-              <h1 className="text-2xl text-neutral font-semibold tracking-tight mb-1 flex items-center gap-2">
+              <h1 className="text-2xl text-neutral-dark font-semibold tracking-tight mb-1 flex items-center gap-2">
                 My profile
                 {isPremium(plan) && (
-                  <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
+                  <BadgeCheck className="w-5 h-5 text-accent" />
                 )}
               </h1>
               <CardDescription className="text-neutral-light text-sm">
@@ -258,7 +258,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-amber-700 border-amber-400"
+                    className="text-accent-dark border-accent"
                     onClick={async () => {
                       try {
                         const boosted =
@@ -303,7 +303,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-amber-700 border-amber-400"
+                    className="text-accent-dark border-accent"
                     onClick={() => router.push("/subscription")}
                     title="Upgrade to Premium Plus to boost your profile"
                   >
@@ -317,7 +317,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   }}
                   variant="outline"
                   size="sm"
-                  className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700 flex items-center gap-1.5 rounded-full px-4"
+                  className="border-primary text-primary hover:bg-primary/10 hover:text-primary-dark flex items-center gap-1.5 rounded-full px-4"
                   title="Edit Profile Details"
                 >
                   <Edit3 className="h-4 w-4" />
@@ -327,7 +327,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   onClick={() => router.push("/profile/edit/images")}
                   variant="outline"
                   size="sm"
-                  className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-1.5 rounded-full px-4"
+                  className="border-secondary text-secondary hover:bg-secondary/10 hover:text-secondary-dark flex items-center gap-1.5 rounded-full px-4"
                   title="Manage Photos"
                 >
                   <Camera className="h-4 w-4" />
@@ -337,7 +337,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   onClick={() => router.push("/usage")}
                   variant="outline"
                   size="sm"
-                  className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700 flex items-center gap-1.5 rounded-full px-4"
+                  className="border-success text-success hover:bg-success/10 hover:text-success flex items-center gap-1.5 rounded-full px-4"
                   title="Usage Analytics"
                 >
                   <BarChart className="h-4 w-4" />
@@ -349,7 +349,7 @@ const ProfileView: FC<ProfileViewProps> = ({
           </CardHeader>
           <CardContent className="p-6 sm:p-8">
             {deleteError && (
-              <div className="mb-4 text-red-600 text-sm">{deleteError}</div>
+              <div className="mb-4 text-danger text-sm">{deleteError}</div>
             )}
             {profileData ? (
               <>
@@ -382,15 +382,15 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </div>
                     ) : (
                       <div className="w-full">
-                        <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center bg-white/60">
+                        <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center bg-base-light/60">
                           <div className="flex flex-col items-center gap-2">
                             <div className="h-12 w-12 rounded-full bg-neutral-100 flex items-center justify-center">
-                              <Camera className="h-6 w-6 text-neutral-400" />
+                              <Camera className="h-6 w-6 text-neutral-light" />
                             </div>
-                            <p className="text-sm text-neutral-600">
+                            <p className="text-sm text-neutral-light">
                               You haven’t added any photos yet
                             </p>
-                            <p className="text-xs text-neutral-500">
+                            <p className="text-xs text-neutral-light">
                               Add 2–6 clear photos to get more matches
                             </p>
                             <div className="flex gap-2 mt-2">
@@ -398,7 +398,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                                 onClick={() =>
                                   router.push("/profile/edit/images")
                                 }
-                                className="bg-pink-600 hover:bg-pink-700 text-white"
+                                className="bg-primary hover:bg-primary-dark text-white"
                                 size="sm"
                               >
                                 Add Photos
@@ -428,14 +428,14 @@ const ProfileView: FC<ProfileViewProps> = ({
                   }
                 >
                   {/* Full Name with spotlight tick for premium users */}
-                  <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-gray-100">
-                    <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral-100">
+                    <dt className="text-sm font-medium text-neutral-light flex items-center gap-2">
                       Full Name
                     </dt>
-                    <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800 flex items-center gap-1">
+                    <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-neutral-dark flex items-center gap-1">
                       {profileData.fullName}
                       {isPremium(plan) && (
-                        <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
+                        <BadgeCheck className="w-4 h-4 text-accent" />
                       )}
                       {isPremium(plan) && activeSpotlight && (
                         <SpotlightIcon className="w-4 h-4" />
@@ -451,7 +451,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                       {!activeSpotlight && isPremiumPlus(plan) && (
                         <button
                           type="button"
-                          className="ml-2 text-[11px] text-amber-700 underline"
+                          className="ml-2 text-[11px] text-accent-dark underline"
                           onClick={async () => {
                             try {
                               const { showSuccessToast, showErrorToast } =
@@ -480,7 +480,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                       {!isPremiumPlus(plan) && (
                         <button
                           type="button"
-                          className="ml-2 text-[11px] text-amber-700 underline"
+                          className="ml-2 text-[11px] text-accent-dark underline"
                           onClick={() =>
                             (window.location.href = "/subscription")
                           }
@@ -669,7 +669,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                 <DisplaySection
                   title={
                     <span className="flex items-center gap-2">
-                      <Heart className="w-5 h-5 text-pink-600" /> Subscription
+                      <Heart className="w-5 h-5 text-primary" /> Subscription
                     </span>
                   }
                 >
@@ -678,7 +678,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                       {planDisplayName(plan)}
                     </span>
                     {isPremium(plan) && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-200 flex items-center gap-1">
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary-dark border border-primary/30 flex items-center gap-1">
                         {profileData.subscriptionExpiresAt &&
                         profileData.subscriptionExpiresAt > Date.now() ? (
                           <>
@@ -701,7 +701,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                     {!isPremium(plan) && (
                       <Button
                         size="sm"
-                        className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
+                        className="bg-primary hover:bg-primary-dark text-white rounded-lg"
                         onClick={() => router.push("/plans")}
                       >
                         Upgrade
@@ -713,7 +713,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-pink-600 border-pink-600"
+                          className="text-primary border-primary"
                           onClick={() => router.push("/plans")}
                         >
                           Upgrade to Plus
@@ -743,7 +743,7 @@ const ProfileView: FC<ProfileViewProps> = ({
 
                   {/* Spotlight upsell hint for non-Plus plans */}
                   {!isPremiumPlus(plan) && (
-                    <div className="mt-2 text-xs text-amber-700">
+                    <div className="mt-2 text-xs text-accent-dark">
                       Boost visibility & attract more matches with Spotlight.{" "}
                       <button
                         type="button"
@@ -756,7 +756,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                     </div>
                   )}
                   {isPremium(plan) && profileData.subscriptionExpiresAt && (
-                    <div className="mt-3 text-xs text-neutral-500 flex flex-wrap items-center gap-2">
+                    <div className="mt-3 text-xs text-neutral-light flex flex-wrap items-center gap-2">
                       <span>
                         {(() => {
                           const ms =
@@ -776,7 +776,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                       <button
                         type="button"
                         onClick={handleOpenBillingPortal}
-                        className="underline text-pink-600"
+                        className="underline text-primary"
                       >
                         Manage
                       </button>
@@ -787,19 +787,19 @@ const ProfileView: FC<ProfileViewProps> = ({
                 {/* Danger Zone */}
                 <DisplaySection
                   title={
-                    <span className="flex items-center gap-2 text-red-700">
+                    <span className="flex items-center gap-2 text-danger">
                       <AlertTriangle className="h-5 w-5" /> Danger zone
                     </span>
                   }
                   noBorder
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg bg-red-50 border border-red-200">
-                    <div className="text-sm text-red-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg bg-danger/10 border border-danger/30">
+                    <div className="text-sm text-danger">
                       Permanently delete your profile and all related data. This
                       action cannot be undone.
                     </div>
                     <Button
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      className="bg-danger hover:bg-danger text-white"
                       onClick={() => setShowDeleteDialog(true)}
                       variant="destructive"
                       size="sm"
@@ -839,17 +839,17 @@ const ProfileView: FC<ProfileViewProps> = ({
         </Card>
       </div>
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-white p-0 sm:max-w-md overflow-hidden rounded-xl border shadow-lg">
+        <DialogContent className="bg-base-light p-0 sm:max-w-md overflow-hidden rounded-xl border shadow-lg">
           <div className="p-6">
             <div className="flex items-start gap-4">
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+              <div className="h-12 w-12 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.6}
                   stroke="currentColor"
-                  className="h-7 w-7 text-red-600"
+                  className="h-7 w-7 text-danger"
                 >
                   <path
                     strokeLinecap="round"
@@ -859,15 +859,15 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </svg>
               </div>
               <div className="space-y-2">
-                <DialogTitle className="text-xl font-semibold text-red-700">
+                <DialogTitle className="text-xl font-semibold text-danger">
                   Delete your profile?
                 </DialogTitle>
-                <p className="text-sm text-neutral-600 leading-relaxed">
+                <p className="text-sm text-neutral-light leading-relaxed">
                   This will permanently remove your profile, photos, matches,
                   messages and preferences. You will not be able to recover this
                   data once deleted.
                 </p>
-                <ul className="mt-2 list-disc list-inside text-xs text-neutral-500 space-y-1">
+                <ul className="mt-2 list-disc list-inside text-xs text-neutral-light space-y-1">
                   <li>Photos & messages are permanently erased</li>
                   <li>Conversations & matches will be lost</li>
                   <li>
@@ -875,7 +875,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   </li>
                 </ul>
                 {deleteError && (
-                  <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1">
+                  <div className="text-xs text-danger bg-danger/10 border border-danger/30 rounded px-2 py-1">
                     {deleteError}
                   </div>
                 )}
@@ -887,7 +887,7 @@ const ProfileView: FC<ProfileViewProps> = ({
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
               disabled={deleteLoading}
-              className="bg-white"
+              className="bg-base-light"
             >
               Cancel
             </Button>

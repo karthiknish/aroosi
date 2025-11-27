@@ -292,8 +292,8 @@ export default function ProfileEditSimpleForm({
   if (!isDataReady) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[200px]">
-        <LoadingSpinner size={32} colorClassName="text-pink-600" />
-        <span className="mt-2 text-pink-700 font-medium">
+        <LoadingSpinner size={32} colorClassName="text-primary" />
+        <span className="mt-2 text-primary-dark font-medium">
           Loading profile...
         </span>
       </div>

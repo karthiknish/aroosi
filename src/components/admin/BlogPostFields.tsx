@@ -61,7 +61,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
         <div>
           <label
             htmlFor="blog-title"
-            className="text-sm font-medium text-gray-700"
+            className="text-sm font-medium text-neutral-dark"
           >
             Title
           </label>
@@ -83,7 +83,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             <Button
               type="button"
               variant="outline"
-              className="text-pink-600 border-pink-300"
+              className="text-primary border-primary/30"
               onClick={async () => {
                 const ai = await aiText(
                   `${content}\n\nCurrent slug: ${slug}\nCategories: ${categories.join(", ")}`,
@@ -106,7 +106,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
         <div>
           <label
             htmlFor="blog-slug"
-            className="text-sm font-medium text-gray-700"
+            className="text-sm font-medium text-neutral-dark"
           >
             Slug
           </label>
@@ -128,7 +128,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       <div>
         <label
           htmlFor="blog-excerpt"
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-neutral-dark"
         >
           Excerpt <span className="text-primary">*</span>
         </label>
@@ -144,7 +144,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           <Button
             type="button"
             variant="outline"
-            className="text-pink-600 border-pink-300"
+            className="text-primary border-primary/30"
             onClick={async () => {
               const ai = await aiText(content, "excerpt");
               if (ai) setExcerpt(ai);
@@ -155,14 +155,14 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           </Button>
         </div>
         {excerpt.trim() === "" && (
-          <div className="text-xs text-red-500 mb-2">Excerpt is required.</div>
+          <div className="text-xs text-danger mb-2">Excerpt is required.</div>
         )}
       </div>
 
       <div>
         <label
           htmlFor="blog-categories"
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-neutral-dark"
         >
           Categories <span className="text-primary">*</span>
         </label>
@@ -185,7 +185,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           <Button
             type="button"
             variant="outline"
-            className="text-pink-600 border-pink-300"
+            className="text-primary border-primary/30"
             onClick={async () => {
               const ai = await aiText(content, "category");
               if (ai)
@@ -202,7 +202,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           </Button>
         </div>
         {categories.length === 0 && (
-          <div className="text-xs text-red-500 mb-2">
+          <div className="text-xs text-danger mb-2">
             At least one category is required.
           </div>
         )}
@@ -211,7 +211,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       <div>
         <label
           htmlFor="blog-image-url"
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-neutral-dark"
         >
           Featured Image <span className="text-primary">*</span>
         </label>
@@ -236,12 +236,12 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           </Button>
         </div>
         {(!imageUrl || imageUrl.trim() === "") && (
-          <div className="text-xs text-red-500 mb-2">
+          <div className="text-xs text-danger mb-2">
             Image URL is required.
           </div>
         )}
         {imageUrl && !/^https?:\/\/(images\.)?pexels\.com\//.test(imageUrl) && (
-          <div className="text-xs text-red-500 mt-2">
+          <div className="text-xs text-danger mt-2">
             Only Pexels URLs are allowed (e.g., https://images.pexels.com/...).
           </div>
         )}

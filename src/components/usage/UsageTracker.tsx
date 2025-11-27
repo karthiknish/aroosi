@@ -88,13 +88,13 @@ export function UsageTracker() {
 
   if (isLoading) {
     return (
-      <Card className="bg-white shadow-lg border border-gray-100 z-10">
+      <Card className="bg-base-light shadow-lg border border-neutral-light/10 z-10">
         <CardContent className="p-6">
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                <div className="h-2 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-neutral-light/20 rounded w-1/4 mb-2"></div>
+                <div className="h-2 bg-neutral-light/20 rounded"></div>
               </div>
             ))}
           </div>
@@ -105,9 +105,9 @@ export function UsageTracker() {
 
   if (error || !usage) {
     return (
-      <Card className="bg-white shadow-lg border border-gray-100 z-10">
+      <Card className="bg-base-light shadow-lg border border-neutral-light/10 z-10">
         <CardContent className="p-6">
-          <div className="text-center text-gray-500">
+          <div className="text-center text-neutral-light">
             <AlertCircle className="h-8 w-8 mx-auto mb-2" />
             <p>Unable to load usage data</p>
           </div>
@@ -117,13 +117,13 @@ export function UsageTracker() {
   }
 
   const planColors = {
-    free: "bg-gray-100 text-gray-800",
-    premium: "bg-blue-100 text-blue-800",
-    premiumPlus: "bg-purple-100 text-purple-800",
+    free: "bg-neutral-light/10 text-neutral-dark",
+    premium: "bg-secondary/10 text-secondary-dark",
+    premiumPlus: "bg-primary/10 text-primary-dark",
   };
 
   return (
-    <Card className="bg-white shadow-lg border border-gray-100 z-10">
+    <Card className="bg-base-light shadow-lg border border-neutral-light/10 z-10">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Usage Tracker</CardTitle>
@@ -136,7 +136,7 @@ export function UsageTracker() {
             {usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1)} Plan
           </Badge>
         </div>
-        <p className="text-sm text-gray-500">Resets on {formattedResetDate}</p>
+        <p className="text-sm text-neutral-light">Resets on {formattedResetDate}</p>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
@@ -149,7 +149,7 @@ export function UsageTracker() {
                     {featureNames[feature.name] || feature.name}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-neutral-light">
                   {feature.unlimited ? (
                     <div className="flex items-center gap-1">
                       <Infinity className="h-4 w-4" />
@@ -168,15 +168,15 @@ export function UsageTracker() {
                   value={feature.percentageUsed}
                   className={`h-2 ${
                     feature.percentageUsed >= 90
-                      ? "bg-red-100"
+                      ? "bg-danger/10"
                       : feature.percentageUsed >= 70
-                        ? "bg-yellow-100"
-                        : "bg-gray-100"
+                        ? "bg-accent/10"
+                        : "bg-neutral-light/10"
                   }`}
                 />
               )}
               {feature.name === "spotlight_badge" && (
-                <div className="text-xs text-gray-500 italic">
+                <div className="text-xs text-neutral-light italic">
                   {feature.used > 0
                     ? "Spotlight active / claimed this period"
                     : "Activate Spotlight from your profile to stand out"}
@@ -184,14 +184,14 @@ export function UsageTracker() {
               )}
               {!feature.unlimited && feature.percentageUsed >= 90 && (
                 <div className="flex items-center justify-between text-xs mt-1">
-                  <p className="text-red-600">
+                  <p className="text-danger">
                     {feature.remaining === 0
                       ? "Limit reached"
                       : `Only ${feature.remaining} remaining`}
                   </p>
                   <Button
                     size="sm"
-                    className="h-6 px-2 bg-pink-600 hover:bg-pink-700 text-white"
+                    className="h-6 px-2 bg-primary hover:bg-primary-dark text-white"
                     onClick={() => (window.location.href = "/subscription")}
                   >
                     Upgrade for higher limits
@@ -203,12 +203,12 @@ export function UsageTracker() {
         </div>
 
         {usage.plan === "free" && (
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-            <p className="text-sm text-blue-800 mb-2 font-medium">
+          <div className="mt-6 p-4 bg-gradient-to-r from-secondary/5 to-primary/5 rounded-lg border border-secondary/20">
+            <p className="text-sm text-secondary-dark mb-2 font-medium">
               Upgrade to Premium to increase your daily limits and unlock
               advanced features like voice messages and profile boosts.
             </p>
-            <ul className="text-xs text-blue-700 list-disc ml-4 mb-3 space-y-1">
+            <ul className="text-xs text-secondary-dark list-disc ml-4 mb-3 space-y-1">
               <li>Free: 100 searches/day (current)</li>
               <li>Premium: 500 searches/day</li>
               <li>
@@ -218,7 +218,7 @@ export function UsageTracker() {
             <Link href="/pricing">
               <Button
                 size="sm"
-                className="w-full bg-pink-600 hover:bg-pink-700 text-white"
+                className="w-full bg-primary hover:bg-primary-dark text-white"
               >
                 View Premium Plans
               </Button>

@@ -95,7 +95,7 @@ function ResetPasswordInner() {
   return (
     <div className="w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/20 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
       <div className="relative z-10 w-full max-w-md mx-auto">
         <div className="text-center mb-8">
           <div className="inline-block relative mb-4">
@@ -103,7 +103,7 @@ function ResetPasswordInner() {
               Set New Password
             </h1>
             <svg
-              className="absolute -bottom-2 left-0 w-full"
+              className="absolute -bottom-2 left-0 w-full text-primary/30"
               height="6"
               viewBox="0 0 200 6"
               fill="none"
@@ -111,7 +111,7 @@ function ResetPasswordInner() {
             >
               <path
                 d="M0 3C50 0.5 150 0.5 200 3"
-                stroke="#FDA4AF"
+                stroke="currentColor"
                 strokeWidth="5"
                 strokeLinecap="round"
               />
@@ -126,7 +126,7 @@ function ResetPasswordInner() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <div className="mb-4 text-sm text-neutral-600">
+          <div className="mb-4 text-sm text-neutral-light">
             Enter the reset code from your email, then choose a new password.
           </div>
           {success && (
@@ -143,7 +143,7 @@ function ResetPasswordInner() {
           <div className="mb-4">
             <label
               htmlFor="code"
-              className="block text-sm font-medium text-neutral-700 mb-1"
+              className="block text-sm font-medium text-neutral-dark mb-1"
             >
               Reset Code
             </label>
@@ -159,7 +159,7 @@ function ResetPasswordInner() {
           <div className="mb-4">
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-neutral-700 mb-1"
+              className="block text-sm font-medium text-neutral-dark mb-1"
             >
               New Password
             </label>
@@ -176,7 +176,7 @@ function ResetPasswordInner() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-light hover:text-neutral-dark"
                 onClick={() => setShowPwd((v) => !v)}
                 aria-label={showPwd ? "Hide password" : "Show password"}
               >
@@ -192,7 +192,7 @@ function ResetPasswordInner() {
           <div className="mb-6">
             <label
               htmlFor="confirm"
-              className="block text-sm font-medium text-neutral-700 mb-1"
+              className="block text-sm font-medium text-neutral-dark mb-1"
             >
               Confirm New Password
             </label>
@@ -209,7 +209,7 @@ function ResetPasswordInner() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-light hover:text-neutral-dark"
                 onClick={() => setShowConf((v) => !v)}
                 aria-label={
                   showConf ? "Hide confirm password" : "Show confirm password"

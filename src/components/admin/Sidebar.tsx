@@ -51,10 +51,10 @@ export function Sidebar({
 
   return (
     <div
-      className={`bg-white border-r h-screen p-4 transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}
+      className={`bg-base-light border-r h-screen p-4 transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}
     >
       <button
-        className="mb-4 flex items-center justify-center w-8 h-8 rounded hover:bg-gray-100 transition"
+        className="mb-4 flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-100 transition"
         onClick={() => setCollapsed(!collapsed)}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
@@ -71,7 +71,7 @@ export function Sidebar({
               variant={activeTab === tab.id ? "secondary" : "ghost"}
               className={cn(
                 "w-full justify-start transition-all duration-300",
-                activeTab === tab.id && "bg-pink-50 text-pink-600",
+                activeTab === tab.id && "bg-primary/10 text-primary",
                 collapsed ? "px-2 justify-center" : "px-4"
               )}
               onClick={() => setActiveTab(tab.id)}
@@ -82,7 +82,7 @@ export function Sidebar({
               {!collapsed && tab.label}
             </Button>
             {collapsed && hoveredTab === tab.id && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-neutral-dark text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
                 {tab.label}
               </div>
             )}

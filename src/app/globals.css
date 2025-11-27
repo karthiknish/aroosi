@@ -465,26 +465,6 @@
   .border-danger {
     border-color: var(--color-danger) !important;
   }
-  
-  /* Hover states */
-  .hover\\:bg-primary:hover {
-    background-color: var(--color-primary) !important;
-  }
-  .hover\\:bg-primary-dark:hover {
-    background-color: var(--color-primary-dark) !important;
-  }
-  .hover\\:bg-secondary:hover {
-    background-color: var(--color-secondary) !important;
-  }
-  .hover\\:bg-secondary-dark:hover {
-    background-color: var(--color-secondary-dark) !important;
-  }
-  .hover\\:bg-accent:hover {
-    background-color: var(--color-accent) !important;
-  }
-  .hover\\:bg-accent-dark:hover {
-    background-color: var(--color-accent-dark) !important;
-  }
 }
   
   /* Accessibility: universal focus-visible outline */
@@ -520,8 +500,7 @@
   }
 
   /* Make sr-only visible when focused */
-  .sr-only:focus,
-  .focus\:not-sr-only:focus {
+  .sr-only:focus {
     position: static;
     width: auto;
     height: auto;

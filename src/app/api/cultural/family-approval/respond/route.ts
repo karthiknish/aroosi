@@ -9,18 +9,17 @@ import {
 } from "@/types/cultural";
 
 // POST /api/cultural/family-approval/respond - Respond to a family approval request
-export const POST = withFirebaseAuth(async (req: NextRequest) => {
+export const POST = withFirebaseAuth(async (user, req) => {
   // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
-
-  const userId = req.headers.get("x-user-id");
-  if (!userId) {
+  const rateLimitResult = checkApiRateLimit(`family_approval_respond_${user.id}`, 50, 60000);
+  if (!rateLimitResult.allowed) {
     return NextResponse.json(
-      { success: false, error: "User not authenticated" },
-      { status: 401 }
+      { success: false, error: "Rate limit exceeded" },
+      { status: 429 }
     );
   }
+
+  const userId = user.id;
 
   try {
     const body = await req.json();
@@ -55,10 +54,10 @@ export const POST = withFirebaseAuth(async (req: NextRequest) => {
       );
     }
 
-    const request = { _id: requestDoc.id, ...requestDoc.data() } as FamilyApprovalRequest;
+    const approvalRequest = { _id: requestDoc.id, ...requestDoc.data() } as FamilyApprovalRequest;
 
     // Check if user is the family member who can respond
-    if (request.familyMemberId !== userId) {
+    if (approvalRequest.familyMemberId !== userId) {
       return NextResponse.json(
         { success: false, error: "You can only respond to requests addressed to you" },
         { status: 403 }
@@ -66,7 +65,7 @@ export const POST = withFirebaseAuth(async (req: NextRequest) => {
     }
 
     // Check if request is still pending
-    if (request.status !== "pending") {
+    if (approvalRequest.status !== "pending") {
       return NextResponse.json(
         { success: false, error: "This request has already been responded to" },
         { status: 409 }
@@ -74,7 +73,7 @@ export const POST = withFirebaseAuth(async (req: NextRequest) => {
     }
 
     // Check if request hasn't expired
-    if (request.expiresAt < Date.now()) {
+    if (approvalRequest.expiresAt < Date.now()) {
       // Auto-expire the request
       await db.collection("familyApprovalRequests").doc(requestId).update({
         status: "expired",

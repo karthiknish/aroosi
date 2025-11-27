@@ -90,19 +90,12 @@ function ModernChat({
   return (
     <div
       className={cn(
-        "bg-gradient-to-br from-white via-slate-50/20 to-white text-neutral-900 rounded-3xl shadow-xl border border-slate-200/60 flex flex-col flex-1 overflow-hidden backdrop-blur-md transition-all duration-300 hover:shadow-2xl",
-        "relative before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-transparent before:via-slate-50/10 before:to-transparent before:pointer-events-none",
-        "min-h-[600px] max-h-[800px] sm:min-h-[700px] lg:min-h-[750px]", // Responsive height constraints
-        "w-full sm:max-w-4xl lg:max-w-5xl", // Responsive width constraints
+        "flex flex-col flex-1 w-full h-full overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200",
         className
       )}
-      style={{
-        backgroundImage:
-          "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.8) 25%, rgba(255,255,255,0.95) 50%, rgba(248,250,252,0.8) 75%, rgba(255,255,255,0.95) 100%)",
-      }}
     >
       {/* Enhanced Header Section */}
-      <div className="relative z-10 border-b border-slate-200/40 bg-gradient-to-r from-white/80 to-slate-50/60 backdrop-blur-sm">
+      <div className="relative z-10 border-b border-slate-100 bg-white/80 backdrop-blur-md">
         <ModernChatHeader
           matchUserName={matchUserName}
           matchUserAvatarUrl={matchUserAvatarUrl}
@@ -121,8 +114,7 @@ function ModernChat({
       </div>
 
       {/* Enhanced Messages Section */}
-      <div className="relative flex-1 bg-gradient-to-b from-slate-50/30 via-transparent to-slate-50/20">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-50/5 to-transparent pointer-events-none" />
+      <div className="relative flex-1 bg-slate-50/50">
         <MessagesList
           scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
           loading={loading}
@@ -163,7 +155,7 @@ function ModernChat({
       </div>
 
       {/* Enhanced Input Section */}
-      <div className="relative z-10 border-t border-slate-200/40 bg-gradient-to-r from-white/90 to-slate-50/80 backdrop-blur-sm">
+      <div className="relative z-10 bg-white border-t border-slate-100">
         <Composer
           inputRef={inputRef as any}
           text={text}

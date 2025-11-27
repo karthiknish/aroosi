@@ -5,10 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, AlertTriangle, Mail, Eye, Users, Flag } from "lucide-react";
 import Link from "next/link";
+import Head from "next/head";
 
 export default function SafetyGuidelinesPage() {
   return (
-    <div className="relative">
+    <>
+      <Head>
+        <title>Safety Guidelines | Aroosi</title>
+        <meta
+          name="description"
+          content="Read our safety guidelines to ensure a secure and respectful experience on Aroosi."
+        />
+      </Head>
+      <div className="relative">
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-pink-400 rounded-full blur-3xl opacity-20 z-0 pointer-events-none" />
       <div className="max-w-4xl mx-auto p-6 space-y-8 relative z-10">
         {/* Header */}
@@ -223,5 +232,6 @@ export default function SafetyGuidelinesPage() {
         </Card>
       </div>
     </div>
+    </>
   );
 }

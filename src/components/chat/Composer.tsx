@@ -433,7 +433,7 @@ export default function Composer(props: ComposerProps) {
 
   return (
     <div
-      className="border-t border-secondary-light/30 p-4 bg-white/70 backdrop-blur-sm rounded-b-2xl"
+      className="p-4 bg-white"
       aria-label="Message composer"
       role="group"
     >
@@ -481,7 +481,7 @@ export default function Composer(props: ComposerProps) {
       />
 
       <form
-        className="flex items-center gap-2 sm:gap-3 relative bg-gradient-to-r from-white to-gray-50/50 border-t border-gray-200/60 px-3 sm:px-4 py-3 sm:py-4 rounded-b-2xl backdrop-blur-sm"
+        className="flex items-end gap-2 relative"
         onSubmit={async (e) => {
           e.preventDefault();
           await onSend(text);
@@ -511,7 +511,7 @@ export default function Composer(props: ComposerProps) {
             </Button>
           </div>
         )}
-        <div className="flex-1 relative" aria-live="polite">
+        <div className="flex-1 relative bg-slate-100 rounded-[24px] border border-transparent focus-within:border-primary/30 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 transition-all duration-200" aria-live="polite">
           <textarea
             ref={inputRef as any}
             value={text}
@@ -521,7 +521,7 @@ export default function Composer(props: ComposerProps) {
             }}
             onKeyPress={onKeyPress}
             placeholder={
-              isBlocked ? "Cannot send messages" : "Type your message…"
+              isBlocked ? "Cannot send messages" : "Type a message..."
             }
             disabled={isSending || isBlocked}
             rows={1}
@@ -530,9 +530,9 @@ export default function Composer(props: ComposerProps) {
             aria-multiline="true"
             maxLength={maxChars}
             className={cn(
-              "w-full border border-gray-200/80 rounded-xl px-3 sm:px-4 py-2 sm:py-3 pr-10 sm:pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/40 bg-white/90 backdrop-blur-sm text-gray-900 placeholder-gray-500 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-gray-300 shadow-sm transition-all duration-200 hover:shadow-md text-sm sm:text-base",
+              "w-full bg-transparent border-none px-4 py-3 pr-10 focus:ring-0 text-slate-900 placeholder-slate-500 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-gray-300 text-[15px]",
               (isSending || isBlocked) &&
-                "opacity-50 cursor-not-allowed bg-gray-50"
+                "opacity-50 cursor-not-allowed"
             )}
           />
           {/* Character counter */}
@@ -554,25 +554,25 @@ export default function Composer(props: ComposerProps) {
             size="sm"
             onClick={() => setShowPicker(!showPicker)}
             ref={toggleBtnRef}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-secondary hover:text-primary transition-colors p-2 h-8 w-8"
+            className="absolute right-2 bottom-1.5 text-slate-400 hover:text-primary hover:bg-transparent transition-colors p-2 h-8 w-8 rounded-full"
             aria-label={showPicker ? "Close emoji picker" : "Open emoji picker"}
           >
-            <Smile className="w-4 h-4" />
+            <Smile className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1 items-center pb-1">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-secondary hover:text-primary transition-colors p-2 h-10 w-10 flex-shrink-0"
+            className="text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors p-2 h-10 w-10 rounded-full flex-shrink-0"
             title={canUseVoice ? "Record voice" : "Voice not available"}
             disabled={!canUseVoice || isSending || isBlocked || isRecording}
             onClick={startRecording}
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="w-5 h-5" />
           </Button>
 
           {/* Hidden file input for image uploads */}
@@ -740,7 +740,7 @@ export default function Composer(props: ComposerProps) {
             variant="ghost"
             size="sm"
             className={cn(
-              "text-secondary hover:text-primary transition-colors p-2 h-10 w-10 flex-shrink-0",
+              "text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors p-2 h-10 w-10 rounded-full flex-shrink-0",
               (isImageUploading || isImageConverting) &&
                 "opacity-50 cursor-not-allowed"
             )}
@@ -771,7 +771,7 @@ export default function Composer(props: ComposerProps) {
             ) : isImageUploading || isImageConverting ? (
               <LoadingSpinner size={14} />
             ) : (
-              <ImageIcon className="w-4 h-4" />
+              <ImageIcon className="w-5 h-5" />
             )}
           </Button>
 
@@ -780,9 +780,9 @@ export default function Composer(props: ComposerProps) {
             type="submit"
             disabled={!text.trim() || isSending || isBlocked}
             className={cn(
-              "bg-primary hover:bg-primary/90 text-white font-medium px-4 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base flex-shrink-0",
+              "bg-primary hover:bg-primary/90 text-white font-medium h-10 w-10 rounded-full transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95 flex items-center justify-center flex-shrink-0 ml-1",
               (!text.trim() || isSending || isBlocked) &&
-                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100"
+                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100 bg-slate-200 text-slate-400 hover:bg-slate-200"
             )}
             aria-label={
               isBlocked
@@ -797,7 +797,7 @@ export default function Composer(props: ComposerProps) {
             {isSending ? (
               <LoadingSpinner size={16} className="text-white" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5 ml-0.5" />
             )}
           </Button>
 

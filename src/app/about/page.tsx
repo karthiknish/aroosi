@@ -39,9 +39,9 @@ export default function AboutPage() {
       <div className="flex flex-col bg-base-light">
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden bg-primary-light">
+        <section className="relative py-20 lg:py-32 overflow-hidden bg-primary/5">
           {/* Decorative background patterns */}
-          <div className="absolute inset-0 bg-gradient-to-br from-accent-light to-primary-light z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-primary/10 z-0"></div>
           <div
             className="absolute inset-0 opacity-[0.03] z-0"
             style={{
@@ -225,7 +225,7 @@ export default function AboutPage() {
         </section>
 
         {/* Our Values Section */}
-        <section className="py-20 bg-accent-100 relative overflow-hidden">
+        <section className="py-20 bg-accent/10 relative overflow-hidden">
           {/* Pink color pop circle */}
           <div className="absolute -top-24 -left-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
 
@@ -287,7 +287,7 @@ export default function AboutPage() {
             >
               {[
                 {
-                  icon: <Heart className="h-8 w-8 text-accent-700" />,
+                  icon: <Heart className="h-8 w-8 text-accent-dark" />,
                   ringClass: "animate-spin-slow",
                   title: "Respect",
                   desc: (
@@ -299,7 +299,7 @@ export default function AboutPage() {
                   ),
                 },
                 {
-                  icon: <Shield className="h-8 w-8 text-primary-600" />,
+                  icon: <Shield className="h-8 w-8 text-primary" />,
                   ringClass: "animate-pulse",
                   title: "Trust",
                   desc: (
@@ -311,7 +311,7 @@ export default function AboutPage() {
                   ),
                 },
                 {
-                  icon: <Smile className="h-8 w-8 text-primary-600" />,
+                  icon: <Smile className="h-8 w-8 text-primary" />,
                   ringClass: "animate-spin-slow",
                   ringStyle: { animationDirection: "reverse" },
                   title: "Empathy",
@@ -328,14 +328,14 @@ export default function AboutPage() {
                   key={item.title}
                   variants={fadeInUp}
                   custom={i}
-                  className="text-center p-8 border-accent-100 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10 overflow-hidden group"
+                  className="text-center p-8 border-accent/10 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10 overflow-hidden group"
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-accent-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-accent/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <CardContent className="space-y-6 relative z-10">
-                    <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto relative">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto relative">
                       {item.icon}
                       <div
-                        className={`absolute -inset-1 border-2 border-dashed border-primary-200 rounded-full ${item.ringClass}`}
+                        className={`absolute -inset-1 border-2 border-dashed border-primary/20 rounded-full ${item.ringClass}`}
                         style={item.ringStyle}
                       ></div>
                     </div>
@@ -355,7 +355,7 @@ export default function AboutPage() {
         {/* Our Story Section */}
         <section className="py-20 bg-base-light relative overflow-hidden">
           {/* Accent color pop circle */}
-          <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0"></div>
+          <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/10 rounded-full blur-3xl opacity-20 z-0"></div>
 
           <div className="container mx-auto px-4 lg:px-6 relative z-10">
             <div className="max-w-4xl mx-auto">
@@ -402,7 +402,7 @@ export default function AboutPage() {
               <div className="space-y-12">
                 {[
                   {
-                    icon: <Calendar className="h-6 w-6 text-accent-600" />,
+                    icon: <Calendar className="h-6 w-6 text-accent" />,
                     title: "2025: A New Beginning",
                     desc: (
                       <>
@@ -415,7 +415,7 @@ export default function AboutPage() {
                     ),
                   },
                   {
-                    icon: <Users className="h-6 w-6 text-accent-600" />,
+                    icon: <Users className="h-6 w-6 text-accent" />,
                     title: "Building Our Community",
                     desc: (
                       <>
@@ -428,7 +428,7 @@ export default function AboutPage() {
                     ),
                   },
                   {
-                    icon: <Award className="h-6 w-6 text-accent-600" />,
+                    icon: <Award className="h-6 w-6 text-accent" />,
                     title: "Our Commitment",
                     desc: (
                       <>
@@ -440,7 +440,7 @@ export default function AboutPage() {
                     ),
                   },
                   {
-                    icon: <Heart className="h-6 w-6 text-accent-600" />,
+                    icon: <Heart className="h-6 w-6 text-accent" />,
                     title: "Looking Ahead",
                     desc: (
                       <>
@@ -466,7 +466,7 @@ export default function AboutPage() {
                     <div className="grid md:grid-cols-[64px_1fr] gap-6 relative">
                       <div className="relative">
                         <motion.div
-                          className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center relative z-10"
+                          className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center relative z-10"
                           initial={{ scale: 0, opacity: 0 }}
                           whileInView={{ scale: 1, opacity: 1 }}
                           transition={{ duration: 0.5, delay: 0.1 + i * 0.1 }}
@@ -476,13 +476,13 @@ export default function AboutPage() {
                         </motion.div>
                       </div>
                       <motion.div
-                        className="bg-primary-50 rounded-lg p-6 shadow-sm relative"
+                        className="bg-primary/5 rounded-lg p-6 shadow-sm relative"
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.2 + i * 0.1 }}
                         viewport={{ once: true }}
                       >
-                        <div className="absolute top-6 -left-2 w-4 h-4 bg-primary-50 transform rotate-45 hidden md:block"></div>
+                        <div className="absolute top-6 -left-2 w-4 h-4 bg-primary/5 transform rotate-45 hidden md:block"></div>
                         <h3 className="font-serif text-xl font-semibold text-primary-dark mb-2">
                           {item.title}
                         </h3>
@@ -555,7 +555,7 @@ export default function AboutPage() {
                 { label: "Community", value: "You!" },
               ].map((stat, i) => (
                 <motion.div
-                  className="flex flex-col items-center space-y-2 p-4 hover:bg-accent-50 rounded-lg transition-colors"
+                  className="flex flex-col items-center space-y-2 p-4 hover:bg-accent/5 rounded-lg transition-colors"
                   key={stat.label}
                   variants={fadeInUp}
                   custom={i}
@@ -579,28 +579,28 @@ export default function AboutPage() {
             >
               {[
                 {
-                  icon: <Award className="h-5 w-5 text-accent-600" />,
+                  icon: <Award className="h-5 w-5 text-accent" />,
                   title: "Modern Experience",
                   desc: "Aroosi's new platform offers a seamless, intuitive, and mobile-friendly experience for all users.",
                 },
                 {
-                  icon: <Shield className="h-5 w-5 text-accent-600" />,
+                  icon: <Shield className="h-5 w-5 text-accent" />,
                   title: "Privacy & Security",
                   desc: "Your data is protected with industry-leading security and full GDPR compliance from day one.",
                 },
                 {
-                  icon: <Star className="h-5 w-5 text-accent-600" />,
+                  icon: <Star className="h-5 w-5 text-accent" />,
                   title: "Community-Driven",
                   desc: "We're building Aroosi together with our members—your feedback shapes our features and future.",
                 },
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
-                  className="p-6 border-accent-100 hover:shadow-xl transition-all duration-300 bg-white relative overflow-hidden group"
+                  className="p-6 border-accent/10 hover:shadow-xl transition-all duration-300 bg-white relative overflow-hidden group"
                   variants={fadeInUp}
                   custom={i}
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-accent-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-accent/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <CardContent className="space-y-4 relative z-10">
                     <div className="flex items-center space-x-2">
                       {item.icon}
@@ -617,10 +617,10 @@ export default function AboutPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 relative overflow-hidden bg-gradient-to-r from-[#5F92AC] to-[#3E647A]">
+        <section className="py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark">
           {/* Pink color pop circle */}
           <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#5F92AC] to-[#3E647A]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-dark"></div>
 
           {/* Decorative patterns */}
           <div
@@ -714,7 +714,7 @@ export default function AboutPage() {
               >
                 <Button
                   size="lg"
-                  className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  className="bg-white text-secondary-dark hover:bg-secondary/10 font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
                 >
                   <Link href="/">Create Your Profile</Link>
                   <ArrowRight className="ml-2 h-5 w-5" />

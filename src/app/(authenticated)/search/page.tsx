@@ -2,132 +2,23 @@
 
 import Head from "next/head";
 import React, { useState, useEffect, useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectItem,
-  SelectTrigger,
-  SelectContent,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { UserCircle, Rocket, BadgeCheck } from "lucide-react";
-import { SpotlightIcon } from "@/components/ui/spotlight-badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getSentInterests } from "@/lib/interestUtils";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { motion } from "framer-motion";
 import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
 import { ErrorState } from "@/components/ui/error-state";
 import { useOffline } from "@/hooks/useOffline";
 import { useBlockedUsers } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
-import { SearchableSelect, Option } from "@/components/ui/searchable-select";
-import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
-const commonCountries = [
-  "United Kingdom",
-  "United States",
-  "Canada",
-  "Australia",
-  "New Zealand",
-  "Afghanistan",
-  "United Arab Emirates",
-  "Qatar",
-  "Saudi Arabia",
-  "Kuwait",
-  "Bahrain",
-  "Oman",
-  "Germany",
-  "France",
-  "Netherlands",
-  "Belgium",
-  "Switzerland",
-  "Austria",
-  "Sweden",
-  "Norway",
-  "Denmark",
-  "Finland",
-  "Italy",
-  "Spain",
-  "Portugal",
-  "Ireland",
-  "Other",
-];
-const countryOptions = ["any", ...commonCountries.sort()];
-const countrySelectOptions: Option<string>[] = countryOptions.map((c) => ({
-  value: c,
-  label: c === "any" ? "Any Country" : c,
-}));
-
-// Additional premium filters
-const ethnicityOptions = [
-  "any",
-  "Pashtun",
-  "Tajik",
-  "Hazara",
-  "Uzbek",
-  "Turkmen",
-  "Nuristani",
-  "Aimaq",
-  "Baloch",
-  "Sadat",
-];
-
-const motherTongueOptions = [
-  "any",
-  "Pashto",
-  "Dari",
-  "Uzbeki",
-  "Turkmeni",
-  "Nuristani",
-  "Balochi",
-];
-
-const languageOptions = [
-  "any",
-  "English",
-  "Pashto",
-  "Dari",
-  "Farsi",
-  "Urdu",
-  "Arabic",
-  "German",
-  "Turkish",
-];
-
-function getAge(dateOfBirth: string) {
-  if (!dateOfBirth) return "-";
-  const dob = new Date(dateOfBirth);
-  const diff = Date.now() - dob.getTime();
-  const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-  return isNaN(age) ? "-" : age;
-}
-
-// Types for search results
-export interface ProfileData {
-  fullName: string;
-  city?: string;
-  dateOfBirth?: string;
-  profileCompletionPercentage?: number;
-  hiddenFromSearch?: boolean;
-  boostedUntil?: number;
-  subscriptionPlan?: string;
-  hideFromFreeUsers?: boolean;
-  profileImageUrls?: string[];
-  [key: string]: unknown;
-}
-export interface ProfileSearchResult {
-  userId: string;
-  email?: string;
-  profile: ProfileData;
-}
+import { SearchHeader } from "@/components/search/SearchHeader";
+import { SearchFilters } from "@/components/search/SearchFilters";
+import { SearchResults } from "@/components/search/SearchResults";
+import { IcebreakerBanner } from "@/components/search/IcebreakerBanner";
+import { ProfileSearchResult } from "@/components/search/ProfileCard";
 
 export default function SearchProfilesPage() {
   const {
@@ -662,195 +553,32 @@ export default function SearchProfilesPage() {
           }}
         ></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <section className="mb-10 text-center">
-            <div className="inline-block relative mb-4">
-              <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2">
-                Search Profiles
-              </h1>
-              {/* Pink wavy SVG underline */}
-              <svg
-                className="absolute -bottom-2 left-0 w-full"
-                height="6"
-                viewBox="0 0 200 6"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M0 3C50 0.5 150 0.5 200 3"
-                  stroke="#FDA4AF"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <p className="text-lg text-neutral-light max-w-2xl mx-auto mb-8 font-nunito">
-              Browse and filter profiles to find your ideal match on Aroosi.
-            </p>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="flex flex-wrap gap-3 justify-center mb-10 bg-white/80 rounded-xl shadow p-4"
-            >
-              <Input
-                type="text"
-                placeholder="City"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-40 bg-white rounded-lg shadow-sm font-nunito"
-              />
-              <div className="w-44">
-                <SearchableSelect
-                  options={countrySelectOptions}
-                  value={country}
-                  onValueChange={setCountry}
-                  placeholder="Country"
-                  className="bg-white"
-                />
-              </div>
-              <Input
-                type="number"
-                min={18}
-                max={99}
-                placeholder="Min Age"
-                value={ageMin || ""}
-                onChange={(e) => setAgeMin(e.target.value)}
-                className="w-24 bg-white rounded-lg shadow-sm font-nunito"
-              />
-              <Input
-                type="number"
-                min={18}
-                max={99}
-                placeholder="Max Age"
-                value={ageMax || ""}
-                onChange={(e) => setAgeMax(e.target.value)}
-                className="w-24 bg-white rounded-lg shadow-sm font-nunito"
-              />
-              {/* Premium-only filters */}
-              {isPremium(profile?.subscriptionPlan) ? (
-                <>
-                  <Select value={ethnicity} onValueChange={setEthnicity}>
-                    <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
-                      <SelectValue placeholder="Ethnicity" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto bg-white">
-                      {ethnicityOptions.map((opt) => (
-                        <SelectItem
-                          key={opt}
-                          value={opt}
-                          className="font-nunito"
-                        >
-                          {opt === "any" ? "Any Ethnicity" : opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <SearchHeader />
+          
+          <SearchFilters
+            city={city}
+            setCity={setCity}
+            country={country}
+            setCountry={setCountry}
+            ageMin={ageMin}
+            setAgeMin={setAgeMin}
+            ageMax={ageMax}
+            setAgeMax={setAgeMax}
+            ethnicity={ethnicity}
+            setEthnicity={setEthnicity}
+            motherTongue={motherTongue}
+            setMotherTongue={setMotherTongue}
+            language={language}
+            setLanguage={setLanguage}
+            isPremiumUser={isPremium(profile?.subscriptionPlan)}
+            onUpgrade={() => (window.location.href = "/subscription")}
+            activeFilterPills={activeFilterPills}
+            clearAllFilters={clearAllFilters}
+            setPage={setPage}
+          />
 
-                  <Select value={motherTongue} onValueChange={setMotherTongue}>
-                    <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
-                      <SelectValue placeholder="Mother Tongue" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto bg-white">
-                      {motherTongueOptions.map((opt) => (
-                        <SelectItem
-                          key={opt}
-                          value={opt}
-                          className="font-nunito"
-                        >
-                          {opt === "any" ? "Any Mother Tongue" : opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <IcebreakerBanner answeredCount={currentUser?.answeredIcebreakersCount} />
 
-                  <Select value={language} onValueChange={setLanguage}>
-                    <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
-                      <SelectValue placeholder="Language" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto bg-white">
-                      {languageOptions.map((opt) => (
-                        <SelectItem
-                          key={opt}
-                          value={opt}
-                          className="font-nunito"
-                        >
-                          {opt === "any" ? "Any Language" : opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              ) : (
-                <div className="flex items-center gap-2 text-xs text-neutral-light">
-                  <span>Upgrade to Premium for advanced search filters</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => (window.location.href = "/subscription")}
-                  >
-                    Upgrade
-                  </Button>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Active filter pills & clear-all row */}
-            <div className="flex flex-wrap gap-2 justify-center mb-8">
-              {activeFilterPills.map((pill) => (
-                <Badge key={pill.key} variant="outline" className="pr-1">
-                  <span>{pill.label}</span>
-                  <button
-                    aria-label={`Clear ${pill.key}`}
-                    className="ml-1 inline-flex items-center justify-center rounded hover:bg-muted/60"
-                    onClick={() => {
-                      pill.onClear();
-                      setPage(0);
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              {activeFilterPills.length > 0 && (
-                <Button size="sm" variant="ghost" onClick={clearAllFilters}>
-                  Clear all filters
-                </Button>
-              )}
-            </div>
-
-            {/* Icebreaker engagement banner (moved below filters) */}
-            {(!currentUser?.answeredIcebreakersCount ||
-              currentUser.answeredIcebreakersCount < 3) && (
-              <div className="mb-12">
-                <div className="relative overflow-hidden rounded-2xl border border-pink-200/70 bg-gradient-to-r from-rose-50 via-pink-50 to-rose-100 px-6 py-5 shadow-sm hover:shadow transition-shadow max-w-3xl mx-auto text-left">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <div className="flex-1">
-                      <h2 className="text-lg sm:text-xl font-semibold text-rose-700 flex items-center gap-2">
-                        <Rocket className="w-5 h-5 text-rose-600" />
-                        Boost your match chances
-                      </h2>
-                      <p className="text-sm text-rose-800/80 mt-1 leading-snug">
-                        Answer a few icebreaker questions so your personality
-                        shines. Profiles with icebreakers get more interests and
-                        faster matches.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        className="bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
-                        onClick={() => router.push("/engagement/icebreakers")}
-                      >
-                        Answer Icebreakers
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="pointer-events-none absolute -top-6 -right-6 w-32 h-32 rounded-full bg-rose-300/30 blur-2xl" />
-                  <div className="pointer-events-none absolute -bottom-8 -left-4 w-40 h-40 rounded-full bg-pink-200/40 blur-2xl" />
-                </div>
-              </div>
-            )}
-          </section>
           {!isSignedIn ? (
             <div className="text-center py-20">
               <h2 className="text-xl font-semibold mb-2">Authorizing…</h2>
@@ -859,229 +587,28 @@ export default function SearchProfilesPage() {
                 may be blocked.
               </p>
             </div>
-          ) : loadingProfiles ||
-            loadingImages ||
-            (profiles === undefined && isAuthenticated) ||
-            (userImages === undefined && profiles && profiles.length > 0) ? (
-            // Show loading skeleton when data is being fetched
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
-                >
-                  <Skeleton className="w-full aspect-square rounded-xl" />
-                  <Skeleton className="h-6 w-2/3 rounded" />
-                  <Skeleton className="h-4 w-1/2 rounded" />
-                  <Skeleton className="h-4 w-1/3 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            // Show 'No profiles found' message when there are no results
-            <div className="text-center py-12">
-              <div className="mx-auto w-24 h-24 text-gray-300 mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-neutral-700 mb-2">
-                No profiles found
-              </h3>
-              <p className="text-neutral-500 max-w-md mx-auto">
-                {city ||
-                country !== "any" ||
-                ageMin ||
-                ageMax ||
-                ethnicity !== "any" ||
-                motherTongue !== "any" ||
-                language !== "any"
-                  ? "Try adjusting your search criteria to see more results."
-                  : "There are currently no profiles available. Please check back later."}
-              </p>
-              {(city ||
-                country !== "any" ||
-                ageMin ||
-                ageMax ||
-                ethnicity !== "any" ||
-                motherTongue !== "any" ||
-                language !== "any") && (
-                <button
-                  onClick={() => {
-                    setCity("");
-                    setCountry("any");
-                    setAgeMin("");
-                    setAgeMax("");
-                    setEthnicity("any");
-                    setMotherTongue("any");
-                    setLanguage("any");
-                    setPage(0);
-                  }}
-                  className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
           ) : (
-            <>
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((u: ProfileSearchResult, idx: number) => {
-                  const p = u.profile!;
-                  const profileUrls = p.profileImageUrls;
-                  const matchImageUrl =
-                    profileUrls && profileUrls.length > 0
-                      ? profileUrls[0]
-                      : null;
-                  const loaded = imgLoaded[u.userId] || false;
-                  return (
-                    <motion.div
-                      key={
-                        typeof u.userId === "string" ? u.userId : String(idx)
-                      }
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.7, delay: idx * 0.05 }}
-                    >
-                      <Card
-                        className={`${
-                          p.boostedUntil && p.boostedUntil > Date.now()
-                            ? "ring-2 ring-pink-500 shadow-pink-200"
-                            : ""
-                        } hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col`}
-                      >
-                        {matchImageUrl ? (
-                          <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                            {/* Skeleton loader */}
-                            {!loaded && (
-                              <div className="absolute inset-0 bg-gray-100 dark:bg-gray-600 animate-pulse z-0" />
-                            )}
-                            <img
-                              src={matchImageUrl}
-                              alt={
-                                typeof p.fullName === "string" ? p.fullName : ""
-                              }
-                              className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
-                              onLoad={() =>
-                                setImgLoaded((prev) => ({
-                                  ...prev,
-                                  [u.userId]: true,
-                                }))
-                              }
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                if (target.src.includes("placeholder")) return; // prevent loop
-                                target.src = "/placeholder.jpg";
-                                setImgLoaded((prev) => ({
-                                  ...prev,
-                                  [u.userId]: true,
-                                }));
-                              }}
-                            />
-                            {p.boostedUntil && p.boostedUntil > Date.now() && (
-                              <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
-                                <Rocket className="h-3 w-3 fill-current" />
-                                <span className="font-semibold">Boosted</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                            <img
-                              src="/placeholder.jpg"
-                              alt="Profile placeholder"
-                              className="w-full h-full object-cover"
-                            />
-                            {p.boostedUntil && p.boostedUntil > Date.now() && (
-                              <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
-                                <Rocket className="h-3 w-3 fill-current" />
-                                <span className="font-semibold">Boosted</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
-                          <div className="text-xl font-bold text-neutral-900 mb-1 flex items-center gap-1">
-                            {typeof p.fullName === "string" ? p.fullName : ""}
-                            {isPremium(p.subscriptionPlan) && (
-                              <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
-                            )}
-                            {isPremium(p.subscriptionPlan) &&
-                            p.hasSpotlightBadge &&
-                            p.spotlightBadgeExpiresAt &&
-                            (p.spotlightBadgeExpiresAt as number) >
-                              Date.now() ? (
-                              <SpotlightIcon className="w-4 h-4" />
-                            ) : null}
-                          </div>
-                          <div
-                            className="text-sm text-neutral-600 mb-1"
-                            style={{
-                              fontFamily: "Nunito Sans, Arial, sans-serif",
-                            }}
-                          >
-                            {typeof p.city === "string" ? p.city : "-"}
-                          </div>
-                          <div
-                            className="text-sm text-neutral-600 mb-1"
-                            style={{
-                              fontFamily: "Nunito Sans, Arial, sans-serif",
-                            }}
-                          >
-                            Age:{" "}
-                            {getAge(
-                              typeof p.dateOfBirth === "string"
-                                ? p.dateOfBirth
-                                : ""
-                            )}
-                          </div>
-                          <Button
-                            className="bg-primary hover:bg-primary/90 text-white w-full mt-2"
-                            onClick={() => router.push(`/profile/${u.userId}`)}
-                          >
-                            {"View Profile"}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-4 mt-10">
-                  <button
-                    className="px-4 py-2 rounded bg-gray-200 text-neutral-700 disabled:opacity-50"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                  >
-                    Previous
-                  </button>
-                  <span>
-                    Page {page + 1} of {totalPages}
-                  </span>
-                  <button
-                    className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-                    onClick={() =>
-                      setPage((p) => Math.min(totalPages - 1, p + 1))
-                    }
-                    disabled={page >= totalPages - 1}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
+            <SearchResults
+              profiles={filtered}
+              loading={loadingProfiles || loadingImages || (profiles === undefined && isAuthenticated)}
+              error={profilesError}
+              onRetry={() => refetchProfiles()}
+              page={page}
+              setPage={setPage}
+              totalPages={totalPages}
+              imgLoaded={imgLoaded}
+              setImgLoaded={(userId) => setImgLoaded((prev) => ({ ...prev, [userId]: true }))}
+              hasFilters={
+                !!(city ||
+                country !== "any" ||
+                ageMin ||
+                ageMax ||
+                ethnicity !== "any" ||
+                motherTongue !== "any" ||
+                language !== "any")
+              }
+              clearAllFilters={clearAllFilters}
+            />
           )}
         </div>
       </div>

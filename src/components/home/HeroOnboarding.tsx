@@ -299,7 +299,7 @@ function HeroOnboardingInner() {
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                       i <= step
-                        ? "bg-pink-600 text-white"
+                        ? "bg-primary text-white"
                         : "bg-gray-200 text-gray-500"
                     }`}
                   >
@@ -308,7 +308,7 @@ function HeroOnboardingInner() {
                   {i < 3 && (
                     <div
                       className={`w-12 h-1 transition-colors ${
-                        i < step ? "bg-pink-600" : "bg-gray-200"
+                        i < step ? "bg-primary" : "bg-gray-200"
                       }`}
                     />
                   )}
@@ -373,7 +373,7 @@ function HeroOnboardingInner() {
                     </Select>
                     {heroErrors.profileFor && (
                       <p
-                        className="text-xs text-red-600 mt-1"
+                        className="text-xs text-danger mt-1"
                         id="profileFor-error"
                       >
                         {heroErrors.profileFor}
@@ -395,7 +395,7 @@ function HeroOnboardingInner() {
                         }
                         className={`w-full ${
                           (heroData.gender ?? "") === "male"
-                            ? "bg-pink-600 hover:bg-pink-700"
+                            ? "bg-primary hover:bg-primary-dark"
                             : ""
                         }`}
                         id="gender-male"
@@ -412,7 +412,7 @@ function HeroOnboardingInner() {
                         }
                         className={`w-full ${
                           (heroData.gender ?? "") === "female"
-                            ? "bg-pink-600 hover:bg-pink-700"
+                            ? "bg-primary hover:bg-primary-dark"
                             : ""
                         }`}
                         onClick={() => handleInputChange("gender", "female")}
@@ -422,7 +422,7 @@ function HeroOnboardingInner() {
                     </div>
                     {heroErrors.gender && (
                       <p
-                        className="text-xs text-red-600 mt-1"
+                        className="text-xs text-danger mt-1"
                         id="gender-error"
                       >
                         {heroErrors.gender}
@@ -458,7 +458,7 @@ function HeroOnboardingInner() {
                     />
                     {heroErrors.fullName && (
                       <p
-                        className="text-xs text-red-600 mt-1"
+                        className="text-xs text-danger mt-1"
                         id="fullName-error"
                       >
                         {heroErrors.fullName}
@@ -534,7 +534,7 @@ function HeroOnboardingInner() {
                     {/* Inline helper and friendly message */}
                     {heroErrors.dateOfBirth && (
                       <p
-                        className="text-xs text-red-600 mt-1"
+                        className="text-xs text-danger mt-1"
                         id="dateOfBirth-error"
                       >
                         {heroErrors.dateOfBirth}
@@ -581,7 +581,7 @@ function HeroOnboardingInner() {
                     />
                     {heroErrors.phoneNumber && (
                       <p
-                        className="text-xs text-red-600 mt-1"
+                        className="text-xs text-danger mt-1"
                         id="phoneNumber-error"
                       >
                         {heroErrors.phoneNumber}
@@ -608,7 +608,7 @@ function HeroOnboardingInner() {
               disabled={loading}
               className={`${
                 step === 1 ? "w-full" : "ml-auto"
-              } bg-pink-600 hover:bg-pink-700 text-white`}
+              } bg-primary hover:bg-primary-dark text-white`}
             >
               {loading ? (
                 "Please wait..."
@@ -627,7 +627,7 @@ function HeroOnboardingInner() {
             Already have an account?{" "}
             <Link
               href="/sign-in"
-              className="text-pink-600 hover:text-pink-700 font-medium"
+              className="text-primary hover:text-primary-dark font-medium"
             >
               Sign In
             </Link>

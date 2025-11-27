@@ -169,18 +169,22 @@ function generateRecommendations(compatibility: CulturalCompatibilityScore): str
 }
 
 // GET /api/cultural/compatibility/:userId1/:userId2
-export const GET = withFirebaseAuth(async (req: NextRequest, context: any) => {
-  const { params } = context;
-  const userId1 = params.userId1;
-  const userId2 = params.userId2;
+export async function GET(req: NextRequest, context: { params: Promise<{ userId1: string; userId2: string }> }) {
+  return withFirebaseAuth(async (user, request) => {
+    const { userId1, userId2 } = await context.params;
 
-  // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
+    // Rate limiting
+    const rateLimitResult = checkApiRateLimit(`cultural_compat_${user.id}`, 100, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Rate limit exceeded" },
+        { status: 429 }
+      );
+    }
 
-  // Users can check compatibility involving themselves or admins can check any
-  const authUserId = req.headers.get("x-user-id");
-  const isAdmin = req.headers.get("x-user-role") === "admin";
+    // Users can check compatibility involving themselves or admins can check any
+    const authUserId = user.id;
+    const isAdmin = user.role === "admin";
 
   if (!isAdmin && authUserId !== userId1 && authUserId !== userId2) {
     return NextResponse.json(
@@ -235,9 +239,13 @@ export const GET = withFirebaseAuth(async (req: NextRequest, context: any) => {
         culture: { score: cultureCompat.score, weight: weights.culture * 100, explanation: cultureCompat.explanation },
         family: { score: familyCompat.score, weight: weights.family * 100, explanation: familyCompat.explanation }
       },
-      insights: generateInsights(compatibility),
-      recommendations: generateRecommendations(compatibility)
+      insights: [],
+      recommendations: []
     };
+    
+    // Generate insights and recommendations after creating the base compatibility object
+    compatibility.insights = generateInsights(compatibility);
+    compatibility.recommendations = generateRecommendations(compatibility);
 
     return NextResponse.json({
       success: true,
@@ -250,4 +258,5 @@ export const GET = withFirebaseAuth(async (req: NextRequest, context: any) => {
       { status: 500 }
     );
   }
-});
+  })(req);
+}

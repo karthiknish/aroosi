@@ -51,19 +51,12 @@ export default function ModernChatHeader({
   })();
   return (
     <div
-      className={`bg-primary text-white px-3 sm:px-5 py-3 sm:py-4 rounded-t-2xl shadow-sm relative overflow-hidden ${className}`}
-      style={{
-        backgroundImage:
-          "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
-      }}
+      className={`bg-white px-4 py-3 border-b border-slate-100 ${className}`}
     >
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
-
       <div className="flex items-center justify-between relative z-10">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="relative flex-shrink-0">
-            <Avatar className="h-9 w-9 sm:h-11 sm:w-11 border-2 border-white/80 shadow-lg ring-2 ring-white/20 transition-all duration-200 hover:scale-105">
+            <Avatar className="h-10 w-10 border border-slate-100">
               {matchUserAvatarUrl ? (
                 <AvatarImage
                   src={matchUserAvatarUrl}
@@ -75,44 +68,37 @@ export default function ModernChatHeader({
                   className="object-cover"
                 />
               ) : null}
-              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-white/20 to-white/10">
+              <AvatarFallback className="text-sm font-medium bg-slate-100 text-slate-600">
                 {matchUserName ? matchUserName[0]?.toUpperCase() : "U"}
               </AvatarFallback>
             </Avatar>
-            {/* Enhanced status indicator with animation */}
-            <div className="absolute -bottom-0.5 -right-0.5">
+            {/* Enhanced status indicator */}
+            <div className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
               {connectionStatus === "connected" ? (
-                <div className="relative">
-                  <div className="h-4 w-4 rounded-full bg-green-400 border-2 border-white shadow-sm animate-pulse" />
-                  <div className="absolute inset-0 h-4 w-4 rounded-full bg-green-400 animate-ping opacity-75" />
-                </div>
+                <div className="h-3 w-3 rounded-full bg-green-500" />
               ) : connectionStatus === "connecting" ? (
-                <div className="h-4 w-4 rounded-full bg-yellow-400 border-2 border-white shadow-sm">
-                  <div className="h-full w-full rounded-full bg-yellow-400 animate-spin opacity-50" />
-                </div>
+                <div className="h-3 w-3 rounded-full bg-yellow-500" />
               ) : (
-                <div className="h-4 w-4 rounded-full bg-gray-400 border-2 border-white shadow-sm" />
+                <div className="h-3 w-3 rounded-full bg-slate-300" />
               )}
             </div>
           </div>
 
           <div className="flex flex-col min-w-0 flex-1">
-            <span className="font-bold text-base sm:text-lg leading-tight truncate max-w-full text-white drop-shadow-sm">
+            <span className="font-semibold text-[15px] leading-tight truncate text-slate-900">
               {matchUserName || "User"}
             </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm text-white/90 truncate">
-                {lastSeenLabel}
-              </span>
-            </div>
+            <span className="text-xs text-slate-500 truncate">
+              {lastSeenLabel}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {isPremium(subscriptionPlan) && (
-            <div className="text-xs bg-gradient-to-r from-amber-400/20 to-yellow-400/20 backdrop-blur-sm border border-white/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-              <Crown className="w-3.5 h-3.5 text-amber-300" />
-              <span className="text-white/95 font-medium truncate max-w-[8rem]">
+            <div className="hidden sm:flex text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full items-center gap-1 mr-2">
+              <Crown className="w-3 h-3 text-amber-500" />
+              <span className="font-medium truncate max-w-[6rem]">
                 {planDisplayName(subscriptionPlan)}
               </span>
             </div>
@@ -121,23 +107,23 @@ export default function ModernChatHeader({
             <Button
               variant="ghost"
               size="sm"
-              className="text-white/90 hover:bg-white/20 hover:text-white transition-all duration-200 rounded-full h-9 w-9 p-0 shadow-sm"
+              className="text-slate-400 hover:text-primary hover:bg-primary/5 rounded-full h-9 w-9 p-0"
               onClick={onToggleSearch}
               title="Search messages"
               aria-label="Search messages"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-5 h-5" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm"
-            className="text-white/90 hover:bg-white/20 hover:text-white transition-all duration-200 rounded-full h-9 w-9 p-0 shadow-sm"
+            className="text-slate-400 hover:text-primary hover:bg-primary/5 rounded-full h-9 w-9 p-0"
             onClick={onReport}
             title="Report or block user"
             aria-label="Report user"
           >
-            <Shield className="w-4 h-4" />
+            <Shield className="w-5 h-5" />
           </Button>
         </div>
       </div>

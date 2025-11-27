@@ -1,4 +1,4 @@
-import type { ProfileSearchResult } from "@/app/(authenticated)/search/page";
+import type { ProfileSearchResult } from "@/components/search/ProfileCard";
 import { showErrorToast } from "@/lib/ui/toast";
 import { router } from "next/client";
 import { getJson } from "@/lib/http/client";

@@ -86,9 +86,9 @@ export function PhoneInput({
               // Harden trigger to prevent arrow bleed and text overflow
               "h-10 overflow-hidden truncate whitespace-nowrap pr-10 pl-3 w-full",
               "min-w-[10rem] max-w-full",
-              "bg-white",
+              "bg-base-light",
               error &&
-                "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+                "ring-1 ring-danger border-danger focus-visible:ring-danger"
             )}
           />
           {/* Reserve chevron space and ensure it doesn't overlap text */}
@@ -107,9 +107,9 @@ export function PhoneInput({
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "flex-1 bg-white",
+          "flex-1 bg-base-light",
           error &&
-            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+            "ring-1 ring-danger border-danger focus-visible:ring-danger"
         )}
       />
     </div>

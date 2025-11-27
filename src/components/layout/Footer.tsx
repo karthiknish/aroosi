@@ -13,7 +13,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-primary-dark text-base-light py-12 sm:py-16 border-t border-primary-dark">
+    <footer className="bg-primary-dark text-white py-12 sm:py-16 border-t border-primary-dark">
       <motion.div
         variants={footerVariants}
         initial="hidden"
@@ -25,7 +25,7 @@ export default function Footer() {
           <div className="flex flex-col items-center md:items-start">
             <Link
               href="/"
-              className="text-3xl font-bold text-white   hover:text-primary-light transition-colors"
+              className="text-3xl font-bold text-white hover:text-primary-light transition-colors"
             >
               <h3 className="font-serif text-white">Aroosi</h3>
             </Link>
@@ -47,7 +47,7 @@ export default function Footer() {
                 href="https://twitter.com/aroosiapp"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-base-light text-white transition-colors"
+                className="hover:text-white text-white transition-colors"
                 aria-label="Twitter"
               >
                 <Twitter size={20} />
@@ -65,7 +65,7 @@ export default function Footer() {
                 href="https://linkedin.com/company/aroosi"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-base-light text-white transition-colors"
+                className="hover:text-white text-white transition-colors"
                 aria-label="LinkedIn"
               >
                 <Linkedin size={20} />
@@ -89,7 +89,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/about"
-                  className="hover:text-base-light text-white transition-colors"
+                  className="hover:text-white text-white transition-colors"
                 >
                   About Us
                 </Link>
@@ -105,7 +105,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/pricing"
-                  className="hover:text-base-light text-white transition-colors"
+                  className="hover:text-white text-white transition-colors"
                 >
                   Pricing
                 </Link>
@@ -113,7 +113,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/blog"
-                  className="hover:text-base-light text-white transition-colors"
+                  className="hover:text-white text-white transition-colors"
                 >
                   Blog
                 </Link>
@@ -145,7 +145,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/privacy"
-                  className="hover:text-base-light text-white transition-colors"
+                  className="hover:text-white text-white transition-colors"
                 >
                   Privacy Policy
                 </Link>

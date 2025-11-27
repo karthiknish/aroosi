@@ -188,7 +188,7 @@ export default function SignInPage() {
             <p className="text-center text-sm mt-4">
               <a
                 href="/forgot-password"
-                className="text-pink-600 hover:text-pink-700 underline"
+                className="text-primary hover:text-primary-dark underline"
               >
                 Forgot password?
               </a>

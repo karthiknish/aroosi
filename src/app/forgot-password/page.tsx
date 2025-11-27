@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
       </Head>
       <div className="w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/20 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
         <div className="relative z-10 w-full max-w-md mx-auto">
           <div className="text-center mb-8">
             <div className="inline-block relative mb-4">
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
                 Reset Password
               </h1>
               <svg
-                className="absolute -bottom-2 left-0 w-full"
+                className="absolute -bottom-2 left-0 w-full text-primary/30"
                 height="6"
                 viewBox="0 0 200 6"
                 fill="none"
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
               >
                 <path
                   d="M0 3C50 0.5 150 0.5 200 3"
-                  stroke="#FDA4AF"
+                  stroke="currentColor"
                   strokeWidth="5"
                   strokeLinecap="round"
                 />

@@ -136,12 +136,12 @@ export default function ContactPage() {
           }}
         />
       </Head>
-  <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+<div className="relative min-h-screen bg-base-light">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gradient-to-tr from-blue-300 to-indigo-300 rounded-full opacity-15 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-secondary/15 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/10 rounded-full blur-2xl" />
         </div>
 
   <div className="relative pt-32 pb-16 px-4">
@@ -154,28 +154,25 @@ export default function ContactPage() {
               className="text-center mb-20"
             >
               <h1
-                style={{
-                  lineHeight: "1.3",
-                }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-normal"
+                className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-primary leading-tight font-serif"
               >
                 Get in Touch
               </h1>
-              <p className="text-lg sm:text-xl text-neutral-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-lg sm:text-xl text-neutral-light mb-8 max-w-3xl mx-auto leading-relaxed">
                 Have a question or need assistance? We&apos;re here to help.
                 Reach out to us and we&apos;ll respond as quickly as possible.
               </p>
-              <div className="flex justify-center space-x-8 text-sm text-gray-500">
-                <span className="flex items-center gap-1 text-neutral-500">
-                  <Clock className="w-4 h-4 text-green-500" />
+              <div className="flex justify-center space-x-8 text-sm text-neutral-light">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4 text-success" />
                   24/7 Support
                 </span>
-                <span className="flex items-center gap-1 text-neutral-500">
-                  <MessageSquare className="w-4 h-4 text-green-500" />
+                <span className="flex items-center gap-1">
+                  <MessageSquare className="w-4 h-4 text-success" />
                   Quick Response
                 </span>
-                <span className="flex items-center gap-1 text-neutral-500">
-                  <Check className="w-4 h-4 text-green-500" />
+                <span className="flex items-center gap-1">
+                  <Check className="w-4 h-4 text-success" />
                   Friendly Team
                 </span>
               </div>
@@ -196,20 +193,20 @@ export default function ContactPage() {
                     className="text-center py-16"
                   >
                     <div className="mb-6">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                        <Check className="w-8 h-8 text-green-600" />
+                      <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto">
+                        <Check className="w-8 h-8 text-success" />
                       </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-neutral-800 mb-4">
+                    <h2 className="text-3xl font-bold text-neutral-dark mb-4">
                       Message Sent Successfully!
                     </h2>
-                    <p className="text-neutral-600 mb-8 max-w-md mx-auto">
+                    <p className="text-neutral-light mb-8 max-w-md mx-auto">
                       Thank you for reaching out. We&apos;ve received your
                       message and will get back to you within 24 hours.
                     </p>
                     <Button
                       onClick={() => setIsSubmitted(false)}
-                      className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                      className="bg-primary hover:bg-primary-dark text-white"
                     >
                       <div className="flex items-center gap-2">
                         Send Another Message
@@ -220,10 +217,10 @@ export default function ContactPage() {
                 ) : (
                   <>
                     <div className="text-center mb-8">
-                      <h2 className="text-2xl font-bold text-neutral-800 mb-2">
+                      <h2 className="text-2xl font-bold text-neutral-dark mb-2">
                         Send us a Message
                       </h2>
-                      <p className="text-neutral-600">
+                      <p className="text-neutral-light">
                         Fill out the form below and we&apos;ll get back to you
                         soon
                       </p>
@@ -240,11 +237,11 @@ export default function ContactPage() {
                         <div>
                           <Label
                             htmlFor="name"
-                            className="block text-sm font-medium text-neutral-700 mb-2"
+                            className="block text-sm font-medium text-neutral-dark mb-2"
                           >
                             Full Name{" "}
                             <span
-                              className="text-red-500"
+                              className="text-danger"
                               aria-label="required"
                             >
                               *
@@ -259,12 +256,12 @@ export default function ContactPage() {
                               errors.name ? "name-error" : undefined
                             }
                             aria-required="true"
-                            className={`${errors.name ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                            className={`${errors.name ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
                           />
                           {errors.name && (
                             <p
                               id="name-error"
-                              className="mt-1 text-sm text-red-600"
+                              className="mt-1 text-sm text-danger"
                               role="alert"
                             >
                               {errors.name.message}
@@ -275,11 +272,11 @@ export default function ContactPage() {
                         <div>
                           <Label
                             htmlFor="email"
-                            className="block text-sm font-medium text-neutral-700 mb-2"
+                            className="block text-sm font-medium text-neutral-dark mb-2"
                           >
                             Email Address{" "}
                             <span
-                              className="text-red-500"
+                              className="text-danger"
                               aria-label="required"
                             >
                               *
@@ -295,12 +292,12 @@ export default function ContactPage() {
                               errors.email ? "email-error" : undefined
                             }
                             aria-required="true"
-                            className={`${errors.email ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                            className={`${errors.email ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
                           />
                           {errors.email && (
                             <p
                               id="email-error"
-                              className="mt-1 text-sm text-red-600"
+                              className="mt-1 text-sm text-danger"
                               role="alert"
                             >
                               {errors.email.message}
@@ -312,10 +309,10 @@ export default function ContactPage() {
                       <div>
                         <Label
                           htmlFor="subject"
-                          className="block text-sm font-medium text-neutral-700 mb-2"
+                          className="block text-sm font-medium text-neutral-dark mb-2"
                         >
                           Subject{" "}
-                          <span className="text-red-500" aria-label="required">
+                          <span className="text-danger" aria-label="required">
                             *
                           </span>
                         </Label>
@@ -328,12 +325,12 @@ export default function ContactPage() {
                             errors.subject ? "subject-error" : undefined
                           }
                           aria-required="true"
-                          className={`${errors.subject ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                          className={`${errors.subject ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
                         />
                         {errors.subject && (
                           <p
                             id="subject-error"
-                            className="mt-1 text-sm text-red-600"
+                            className="mt-1 text-sm text-danger"
                             role="alert"
                           >
                             {errors.subject.message}
@@ -344,10 +341,10 @@ export default function ContactPage() {
                       <div>
                         <Label
                           htmlFor="message"
-                          className="block text-sm font-medium text-neutral-700 mb-2"
+                          className="block text-sm font-medium text-neutral-dark mb-2"
                         >
                           Message{" "}
-                          <span className="text-red-500" aria-label="required">
+                          <span className="text-danger" aria-label="required">
                             *
                           </span>
                         </Label>
@@ -360,12 +357,12 @@ export default function ContactPage() {
                             errors.message ? "message-error" : undefined
                           }
                           aria-required="true"
-                          className={`${errors.message ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                          className={`${errors.message ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
                         />
                         {errors.message && (
                           <p
                             id="message-error"
-                            className="mt-1 text-sm text-red-600"
+                            className="mt-1 text-sm text-danger"
                             role="alert"
                           >
                             {errors.message.message}
@@ -375,7 +372,7 @@ export default function ContactPage() {
 
                       {submitError && (
                         <div
-                          className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
+                          className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-lg"
                           role="alert"
                           aria-live="polite"
                         >
@@ -387,7 +384,7 @@ export default function ContactPage() {
                         <Button
                           type="submit"
                           disabled={isSubmitting}
-                          className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-50"
+                          className="w-full bg-primary hover:bg-primary-dark text-white disabled:opacity-50"
                         >
                           <div className="flex items-center justify-center gap-2">
                             {isSubmitting ? "Sending..." : "Send Message"}
@@ -409,19 +406,19 @@ export default function ContactPage() {
             >
               <Card className="p-6 bg-white hover:shadow-xl transition-all duration-300 h-full z-10">
                 <div className="flex justify-center mb-4">
-                  <div className="p-3 rounded-full bg-pink-100 text-pink-600">
+                  <div className="p-3 rounded-full bg-primary/10 text-primary">
                     <Mail className="w-6 h-6" />
                   </div>
                 </div>
-                <h3 className="text-xl font-semibold text-neutral-800 mb-2 text-center">
+                <h3 className="text-xl font-semibold text-neutral-dark mb-2 text-center">
                   Email Us
                 </h3>
-                <p className="text-neutral-600 text-center mb-4">
+                <p className="text-neutral-light text-center mb-4">
                   Send us an email anytime
                 </p>
                 <a
                   href="mailto:contact@aroosi.app"
-                  className="text-pink-600 hover:text-pink-700 font-medium text-center block hover:underline"
+                  className="text-primary hover:text-primary-dark font-medium text-center block hover:underline"
                 >
                   contact@aroosi.app
                 </a>

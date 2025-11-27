@@ -33,6 +33,7 @@ import {
   Heart,
   Star,
 } from "lucide-react";
+import Head from "next/head";
 
 const pricingPlans = [
   {
@@ -199,7 +200,15 @@ export default function SubscriptionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
+    <>
+      <Head>
+        <title>Subscription | Aroosi</title>
+        <meta
+          name="description"
+          content="Manage your Aroosi subscription, upgrade plans, and view billing details."
+        />
+      </Head>
+      <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <motion.div
@@ -495,5 +504,6 @@ export default function SubscriptionPage() {
         {/* Confirmation is handled locally by each cancel button */}
       </div>
     </div>
+    </>
   );
 }

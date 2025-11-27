@@ -8,21 +8,20 @@ import {
 } from "@/types/cultural";
 
 // POST /api/cultural/family-approval/request - Create a new family approval request
-export const POST = withFirebaseAuth(async (req: NextRequest) => {
+export const POST = withFirebaseAuth(async (user, request) => {
   // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
-
-  const userId = req.headers.get("x-user-id");
-  if (!userId) {
+  const rateLimitResult = checkApiRateLimit(`family_approval_request_${user.id}`, 50, 60000);
+  if (!rateLimitResult.allowed) {
     return NextResponse.json(
-      { success: false, error: "User not authenticated" },
-      { status: 401 }
+      { success: false, error: "Rate limit exceeded" },
+      { status: 429 }
     );
   }
 
+  const userId = user.id;
+
   try {
-    const body = await req.json();
+    const body = await request.json();
     const { familyMemberId, relationship, message } = body;
 
     // Validate required fields

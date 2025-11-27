@@ -29,8 +29,8 @@ const faqCategories = [
   {
     category: "Getting Started",
     icon: <Sparkles className="w-5 h-5" />,
-    color: "text-pink-600",
-    bgColor: "bg-pink-100",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
     questions: [
       {
         question: "What is Aroosi?",
@@ -52,8 +52,8 @@ const faqCategories = [
   {
     category: "Membership & Pricing",
     icon: <CreditCard className="w-5 h-5" />,
-    color: "text-green-600",
-    bgColor: "bg-green-100",
+    color: "text-success",
+    bgColor: "bg-success/10",
     questions: [
       {
         question: "Is Aroosi free to use?",
@@ -75,8 +75,8 @@ const faqCategories = [
   {
     category: "Safety & Privacy",
     icon: <Shield className="w-5 h-5" />,
-    color: "text-blue-600",
-    bgColor: "bg-blue-100",
+    color: "text-secondary",
+    bgColor: "bg-secondary/10",
     questions: [
       {
         question: "How do you ensure user safety?",
@@ -98,8 +98,8 @@ const faqCategories = [
   {
     category: "Matching & Communication",
     icon: <Heart className="w-5 h-5" />,
-    color: "text-rose-600",
-    bgColor: "bg-rose-100",
+    color: "text-primary-dark",
+    bgColor: "bg-primary/20",
     questions: [
       {
         question: "How does matching work?",
@@ -121,8 +121,8 @@ const faqCategories = [
   {
     category: "Account Management",
     icon: <Settings className="w-5 h-5" />,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
+    color: "text-accent-dark",
+    bgColor: "bg-accent/10",
     questions: [
       {
         question: "Can I delete my profile?",
@@ -258,12 +258,12 @@ export default function FaqPage() {
           }}
         />
       </Head>
-      <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      <div className="relative min-h-screen bg-base-light">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gradient-to-tr from-blue-300 to-indigo-300 rounded-full opacity-15 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-secondary/15 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/10 rounded-full blur-2xl" />
         </div>
 
         <div className="relative pt-32 pb-16 px-4">
@@ -276,36 +276,33 @@ export default function FaqPage() {
               className="text-center mb-20"
             >
               <h1
-                style={{
-                  lineHeight: "1.3",
-                }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-normal"
+                className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-tight font-serif"
               >
                 Frequently Asked Questions
               </h1>
-              <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-lg sm:text-xl text-neutral-light mb-8 max-w-3xl mx-auto leading-relaxed">
                 Everything you need to know about Aroosi. Can&apos;t find the
                 answer you&apos;re looking for? Our support team is here to
                 help.
               </p>
 
               {/* Quick Links */}
-              <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8">
                 {faqCategories.map((cat, index) => (
                   <motion.button
                     key={index}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
                     onClick={() => {
                       const element = document.getElementById(
                         slugify(cat.category)
                       );
                       element?.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className={`px-4 py-2 rounded-full ${cat.bgColor} ${cat.color} text-sm font-medium hover:shadow-md transition-all duration-200 flex items-center gap-2`}
+                    className="px-4 py-2.5 rounded-lg bg-white border border-neutral-200 text-neutral-dark text-sm font-medium hover:border-primary hover:bg-primary/5 hover:text-primary hover:shadow-md transition-all duration-200 flex items-center gap-2"
                   >
-                    {cat.icon}
+                    <span className="text-primary">{cat.icon}</span>
                     {cat.category}
                   </motion.button>
                 ))}
@@ -323,19 +320,19 @@ export default function FaqPage() {
                   <input
                     type="text"
                     placeholder="Search for answers..."
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500/20 transition-all duration-200"
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-neutral-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
                 {query.trim() && (
-                  <div className="mt-2 text-sm text-gray-500">
+                  <div className="mt-2 text-sm text-neutral-light">
                     Showing results for &quot;{query.trim()}&quot; —{" "}
                     {filtered.reduce((acc, c) => acc + c.questions.length, 0)}{" "}
                     matches
                     <button
                       type="button"
-                      className="ml-2 underline text-pink-600 hover:text-pink-700"
+                      className="ml-2 underline text-primary hover:text-primary-dark"
                       onClick={() => setQuery("")}
                     >
                       Clear
@@ -348,7 +345,7 @@ export default function FaqPage() {
             {/* FAQ Categories */}
             <div className="space-y-12">
               {filtered.length === 0 ? (
-                <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-gray-600">
+                <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-neutral-light">
                   No results found. Try a different search.
                 </div>
               ) : (
@@ -367,7 +364,7 @@ export default function FaqPage() {
                     <Card className="bg-white/80 backdrop-blur-sm shadow-xl overflow-hidden">
                       {/* Category Header */}
                       <div
-                        className={`p-6 border-b border-gray-100 bg-gradient-to-r from-${category.color.split("-")[1]}-50 to-white`}
+                        className={`p-6 border-b border-neutral-100 bg-gradient-to-r from-white to-white`}
                       >
                         <div className="flex items-center gap-3">
                           <div
@@ -375,7 +372,7 @@ export default function FaqPage() {
                           >
                             {category.icon}
                           </div>
-                          <h2 className="text-2xl font-bold text-gray-800">
+                          <h2 className="text-2xl font-bold text-neutral-dark font-serif">
                             {category.category}
                           </h2>
                         </div>
@@ -392,14 +389,14 @@ export default function FaqPage() {
                             <AccordionItem
                               key={index}
                               value={`${categoryIndex}-${index}`}
-                              className="border border-gray-200 rounded-lg px-4 hover:border-gray-300 transition-colors"
+                              className="border border-neutral-200 rounded-lg px-4 hover:border-neutral-300 transition-colors"
                             >
                               <AccordionTrigger className="text-left hover:no-underline py-4">
-                                <span className="font-light text-gray-800 pr-4">
+                                <span className="font-medium text-neutral-dark pr-4">
                                   {item.question}
                                 </span>
                               </AccordionTrigger>
-                              <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                              <AccordionContent className="text-neutral-light leading-relaxed pb-4">
                                 {item.answer}
                               </AccordionContent>
                             </AccordionItem>
@@ -419,13 +416,13 @@ export default function FaqPage() {
               transition={{ duration: 0.6, delay: 0.8 }}
               className="mt-20 text-center"
             >
-              <Card className="bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 p-12 text-white">
+              <Card className="bg-gradient-to-r from-primary to-primary-dark p-12 text-white">
                 <div className="max-w-2xl mx-auto">
                   <div className="mb-6">
                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                       <MessageSquare className="w-8 h-8 text-white" />
                     </div>
-                    <h2 className="text-3xl font-bold mb-4">
+                    <h2 className="text-3xl font-bold mb-4 font-serif">
                       Still have questions?
                     </h2>
                     <p className="text-xl text-white/90 mb-8">
@@ -436,7 +433,7 @@ export default function FaqPage() {
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link href="/contact">
-                      <Button className="bg-white text-pink-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
+                      <Button className="bg-white text-primary hover:bg-neutral-100 text-lg px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
                         <div className="flex items-center gap-2">
                           <MessageSquare className="w-5 h-5" />
                           Contact Support
@@ -466,7 +463,7 @@ export default function FaqPage() {
               transition={{ duration: 0.6, delay: 1 }}
               className="mt-20"
             >
-              <h3 className="text-2xl font-bold text-center text-gray-800 mb-8">
+              <h3 className="text-2xl font-bold text-center text-neutral-dark mb-8 font-serif">
                 Popular Help Topics
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
@@ -498,12 +495,12 @@ export default function FaqPage() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 1.1 + index * 0.1 }}
-                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg hover:border-pink-200 transition-all duration-200 flex flex-col items-center gap-3 text-center"
+                    className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-lg hover:border-primary/20 transition-all duration-200 flex flex-col items-center gap-3 text-center"
                   >
-                    <div className="p-2 bg-pink-100 text-pink-600 rounded-lg">
+                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
                       {topic.icon}
                     </div>
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-neutral-dark">
                       {topic.label}
                     </span>
                   </motion.a>

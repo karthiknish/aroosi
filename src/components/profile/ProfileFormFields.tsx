@@ -70,7 +70,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         {...form.register(name)}
         aria-invalid={!!form.formState.errors[name] || undefined}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
-        className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-pink-500 focus:border-pink-500 min-h-[100px]"
+        className="mt-1 block w-full rounded-md border border-neutral-light/30 shadow-sm focus:ring-primary focus:border-primary min-h-[100px]"
         rows={5}
       />
     ) : (
@@ -84,10 +84,10 @@ export const FormField: React.FC<FormFieldProps> = ({
       />
     )}
     {description && (
-      <p className="text-xs text-neutral-500 mt-1">{description}</p>
+      <p className="text-xs text-neutral-light mt-1">{description}</p>
     )}
     {form.formState.errors[name] && (
-      <p className="text-sm text-red-600 mt-1">
+      <p className="text-sm text-danger mt-1">
         {form.formState.errors[name]?.message as string}
       </p>
     )}
@@ -106,7 +106,7 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
   return (
     <div>
       <Label htmlFor={String(name)}>
-        {label} {isRequired && <span className="text-red-600">*</span>}
+        {label} {isRequired && <span className="text-danger">*</span>}
       </Label>
       <Controller
         control={form.control}
@@ -131,7 +131,7 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
                 className={cn(
                   "mt-1",
                   form.formState.errors[name] &&
-                    "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
+                    "ring-1 ring-danger border-danger focus-visible:ring-danger",
                 )}
               >
                 <SelectValue placeholder={placeholder} />
@@ -139,7 +139,7 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
               <SelectContent>
                 {options.map((opt) => (
                   <SelectItem
-                    className="bg-white"
+                    className="bg-base-light"
                     key={opt.value}
                     value={opt.value}
                   >
@@ -152,10 +152,10 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
         }}
       />
       {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
+        <p className="text-xs text-neutral-light mt-1">{description}</p>
       )}
       {form.formState.errors[name] && (
-        <p className="text-sm text-red-600 mt-1">
+        <p className="text-sm text-danger mt-1">
           {form.formState.errors[name]?.message as string}
         </p>
       )}
@@ -227,7 +227,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
   return (
     <div>
       <Label htmlFor={String(name)}>
-        {label} {isRequired && <span className="text-red-600">*</span>}
+        {label} {isRequired && <span className="text-danger">*</span>}
       </Label>
       <div className="mt-1 w-full">
         <Controller
@@ -262,7 +262,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                       "w-full justify-start text-left font-normal mt-1 data-[empty=true]:text-muted-foreground",
                       !selectedDate && "text-muted-foreground",
                       errors[name] &&
-                        "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+                        "ring-1 ring-danger border-danger focus-visible:ring-danger"
                     )}
                     disabled={form.formState.isSubmitting}
                   >
@@ -284,7 +284,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                   onOpenAutoFocus={(e: Event) => e.preventDefault()}
                 >
                   <Calendar
-                    className="bg-white border-0"
+                    className="bg-base-light border-0"
                     mode="single"
                     selected={selectedDate ?? undefined}
                     month={defaultMonth}
@@ -307,10 +307,10 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
         />
       </div>
       {description && (
-        <p className="text-xs text-neutral-500 mt-1">{description}</p>
+        <p className="text-xs text-neutral-light mt-1">{description}</p>
       )}
       {errors[name] && (
-        <p className="text-sm text-red-600 mt-1">
+        <p className="text-sm text-danger mt-1">
           {errors[name]?.message as string}
         </p>
       )}
@@ -361,10 +361,10 @@ export const FormPhoneField: React.FC<FormPhoneFieldProps> = ({
         />
       </div>
       {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
+        <p className="text-xs text-neutral-light mt-1">{description}</p>
       )}
       {errors[name] && (
-        <p className="text-sm text-red-600 mt-1">
+        <p className="text-sm text-danger mt-1">
           {errors[name]?.message as string}
         </p>
       )}

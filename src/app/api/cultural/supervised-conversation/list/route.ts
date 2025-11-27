@@ -8,18 +8,17 @@ import {
 } from "@/types/cultural";
 
 // GET /api/cultural/supervised-conversation/list - Get user's supervised conversations
-export const GET = withFirebaseAuth(async (req: NextRequest) => {
+export const GET = withFirebaseAuth(async (user, request) => {
   // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
-
-  const userId = req.headers.get("x-user-id");
-  if (!userId) {
+  const rateLimitResult = checkApiRateLimit(`supervised_conv_list_${user.id}`, 100, 60000);
+  if (!rateLimitResult.allowed) {
     return NextResponse.json(
-      { success: false, error: "User not authenticated" },
-      { status: 401 }
+      { success: false, error: "Rate limit exceeded" },
+      { status: 429 }
     );
   }
+
+  const userId = user.id;
 
   try {
     const conversationsSnapshot = await db
@@ -29,7 +28,7 @@ export const GET = withFirebaseAuth(async (req: NextRequest) => {
       .get();
 
     const conversations: SupervisedConversation[] = [];
-    conversationsSnapshot.forEach((doc) => {
+    conversationsSnapshot.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       conversations.push({ _id: doc.id, ...doc.data() } as SupervisedConversation);
     });
 

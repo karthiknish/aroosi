@@ -69,27 +69,27 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-base-light px-4">
           <Card className="max-w-md w-full p-6 text-center">
             <div className="flex justify-center mb-4">
-              <AlertTriangle className="h-12 w-12 text-red-500" />
+              <AlertTriangle className="h-12 w-12 text-danger" />
             </div>
 
-            <h2 className="text-xl font-semibold text-neutral-900 mb-2">
+            <h2 className="text-xl font-semibold text-neutral-dark mb-2">
               Something went wrong
             </h2>
 
-            <p className="text-neutral-600 mb-6">
+            <p className="text-neutral-light mb-6">
               We&apos;re sorry, but something unexpected happened. Please try
               refreshing the page or go back to the home page.
             </p>
 
             {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mb-6 text-left">
-                <summary className="cursor-pointer text-sm font-medium text-neutral-700 mb-2">
+                <summary className="cursor-pointer text-sm font-medium text-neutral-dark mb-2">
                   Error Details (Development)
                 </summary>
-                <div className="bg-gray-100 p-3 rounded text-xs font-mono text-neutral-800 overflow-auto max-h-32">
+                <div className="bg-neutral-100 p-3 rounded text-xs font-mono text-neutral-dark overflow-auto max-h-32">
                   <div className="mb-2">
                     <strong>Error:</strong> {this.state.error.message}
                   </div>
@@ -108,7 +108,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={this.handleRetry}
-                className="flex-1 bg-pink-600 hover:bg-pink-700"
+                className="flex-1 bg-primary hover:bg-primary-dark"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Try Again

@@ -133,26 +133,26 @@ const ProfileBoostButton = () => {
 
   if (isCurrentlyBoosted) {
     return (
-      <div className="space-y-2 p-3 border rounded-md bg-gradient-to-r from-pink-600/10 to-pink-600/5">
+      <div className="space-y-2 p-3 border rounded-md bg-gradient-to-r from-primary/10 to-primary/5">
         <div className="flex items-center gap-2">
-          <Badge className="bg-pink-600 text-white flex items-center gap-1">
+          <Badge className="bg-primary text-white flex items-center gap-1">
             <Zap className="h-3 w-3 fill-current" />
             Boost Active
           </Badge>
           {timeRemaining && (
-            <div className="text-xs text-gray-600 flex items-center gap-1">
+            <div className="text-xs text-neutral-light flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {timeRemaining}
             </div>
           )}
         </div>
-        <div className="h-1 w-full bg-pink-200 rounded overflow-hidden">
+        <div className="h-1 w-full bg-primary/20 rounded overflow-hidden">
           <div
-            className="h-full bg-pink-600 transition-all duration-700"
+            className="h-full bg-primary transition-all duration-700"
             style={{ width: `${progressPct}%` }}
           />
         </div>
-        <p className="text-[11px] text-pink-700">
+        <p className="text-[11px] text-primary-dark">
           Your profile is highlighted and appears first in search results while
           this boost is active.
         </p>
@@ -176,7 +176,7 @@ const ProfileBoostButton = () => {
                 ? "default"
                 : "secondary"
             }
-            className="bg-pink-600 hover:bg-pink-700 text-white"
+            className="bg-primary hover:bg-primary-dark text-white"
           >
             {loading ? (
               <LoadingSpinner size={16} className="mr-2" />
@@ -185,7 +185,7 @@ const ProfileBoostButton = () => {
             )}
             Boost Profile (24h)
           </Button>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-neutral-light">
             {effectiveRemaining === -1
               ? "Unlimited boosts"
               : effectiveRemaining > 0

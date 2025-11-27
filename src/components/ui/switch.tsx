@@ -8,7 +8,7 @@ const switchVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-input peer-data-[state=checked]:bg-pink-600",
+        default: "bg-input peer-data-[state=checked]:bg-primary",
       },
     },
     defaultVariants: {
@@ -27,7 +27,7 @@ const Switch = React.forwardRef<
     className={cn(switchVariants({ variant }), className)}
     {...props}
   >
-    <SwitchPrimitives.Thumb className="pointer-events-none block h-3 w-3 translate-x-0.5 rounded-full bg-white transition-transform data-[state=checked]:translate-x-3" />
+    <SwitchPrimitives.Thumb className="pointer-events-none block h-3 w-3 translate-x-0.5 rounded-full bg-base-light transition-transform data-[state=checked]:translate-x-3" />
   </SwitchPrimitives.Root>
 ));
 Switch.displayName = SwitchPrimitives.Root.displayName;

@@ -90,7 +90,7 @@ export default function SignUpPage() {
       <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
         {/* Decorative elements matching sign-in page */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/10 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
 
         <div className="relative z-10 w-full max-w-md mx-auto text-center">
           <div className="bg-white/90 rounded-2xl shadow-xl p-8">
@@ -98,7 +98,7 @@ export default function SignUpPage() {
             <p className="mb-4">
               We&apos;re redirecting you to complete your profile.
             </p>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           </div>
         </div>
       </div>

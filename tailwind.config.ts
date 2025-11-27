@@ -38,6 +38,7 @@ export default {
         neutral: {
           DEFAULT: "#4A4A4A",
           light: "#7A7A7A",
+          dark: "#2D2D2D",
         },
         success: {
           DEFAULT: "#7BA17D",

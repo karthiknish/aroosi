@@ -7,6 +7,15 @@ import { getMessaging } from 'firebase-admin/messaging';
 
 let app: admin.app.App;
 
+// Check if Firebase app already exists to prevent duplicate initialization
+function getExistingApp(): admin.app.App | null {
+  try {
+    return admin.app();
+  } catch {
+    return null;
+  }
+}
+
 // Credential resolution priority:
 // 1. FIREBASE_SERVICE_ACCOUNT (single-line JSON OR base64 if it does not start with '{')
 // 2. FIREBASE_SERVICE_ACCOUNT_BASE64 (base64 JSON)
@@ -63,54 +72,65 @@ function parseServiceAccount(): Record<string, any> | null {
 const svc = parseServiceAccount();
 const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || (svc?.project_id ? `${svc.project_id}.firebasestorage.app` : 'aroosi-project.firebasestorage.app');
 
-try {
-  if (svc) {
-    app = admin.initializeApp({
-      credential: admin.credential.cert(svc),
-      projectId: svc.project_id,
-      storageBucket,
-    });
-    // Ensure downstream Google libs see a project ID (some rely on GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT)
-    if (!process.env.GCLOUD_PROJECT && svc.project_id) {
-      process.env.GCLOUD_PROJECT = svc.project_id;
-    }
-    if (!process.env.GOOGLE_CLOUD_PROJECT && svc.project_id) {
-      process.env.GOOGLE_CLOUD_PROJECT = svc.project_id;
-    }
-    if (process.env.NODE_ENV !== "production") {
-      console.info(
-        "[firebase-admin] Initialized with explicit service account for project:",
-        svc.project_id
-      );
-    }
-  } else {
-    // Use project ID from environment or fallback to known project ID
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'aroosi-project';
-    app = admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-      projectId: projectId,
-      storageBucket,
-    });
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        "[firebase-admin] Using applicationDefault credentials (no explicit service account env parsed). Project ID:",
-        projectId
-      );
-    }
-  }
-} catch (e) {
-  console.error(
-    "[firebase-admin] Initialization error; final fallback to applicationDefault()",
-    (e as Error).message
-  );
+// Check for existing app first to prevent duplicate initialization
+const existingApp = getExistingApp();
+if (existingApp) {
+  app = existingApp;
+} else {
   try {
-    app = admin.initializeApp({ credential: admin.credential.applicationDefault() });
-  } catch (e2) {
+    if (svc) {
+      app = admin.initializeApp({
+        credential: admin.credential.cert(svc),
+        projectId: svc.project_id,
+        storageBucket,
+      });
+      // Ensure downstream Google libs see a project ID (some rely on GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT)
+      if (!process.env.GCLOUD_PROJECT && svc.project_id) {
+        process.env.GCLOUD_PROJECT = svc.project_id;
+      }
+      if (!process.env.GOOGLE_CLOUD_PROJECT && svc.project_id) {
+        process.env.GOOGLE_CLOUD_PROJECT = svc.project_id;
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.info(
+          "[firebase-admin] Initialized with explicit service account for project:",
+          svc.project_id
+        );
+      }
+    } else {
+      // Use project ID from environment or fallback to known project ID
+      const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'aroosi-project';
+      app = admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId: projectId,
+        storageBucket,
+      });
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[firebase-admin] Using applicationDefault credentials (no explicit service account env parsed). Project ID:",
+          projectId
+        );
+      }
+    }
+  } catch (e) {
     console.error(
-      "[firebase-admin] Final fallback also failed:",
-      (e2 as Error).message
+      "[firebase-admin] Initialization error; final fallback to applicationDefault()",
+      (e as Error).message
     );
-    throw e2;
+    try {
+      const existingFallback = getExistingApp();
+      if (existingFallback) {
+        app = existingFallback;
+      } else {
+        app = admin.initializeApp({ credential: admin.credential.applicationDefault() });
+      }
+    } catch (e2) {
+      console.error(
+        "[firebase-admin] Final fallback also failed:",
+        (e2 as Error).message
+      );
+      throw e2;
+    }
   }
 }
 

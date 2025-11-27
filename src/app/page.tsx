@@ -118,7 +118,7 @@ export default function HomePage() {
       </Head>
       <div className="flex flex-col bg-base-light">
         {/* Header */}
-        <main className="flex-1">
+        <main className="flex-1" id="main-content">
           {/* Hero Section */}
           <section className="relative min-h-screen flex flex-col items-start lg:flex-row lg:items-center justify-center overflow-y-auto lg:overflow-visible py-8 sm:py-12 overflow-hidden">
             {/* Background Image */}
@@ -143,11 +143,7 @@ export default function HomePage() {
                     transition={{ duration: 0.6 }}
                   >
                     <h1
-                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal text-white"
-                      style={{
-                        fontFamily: "Boldonse, serif",
-                        lineHeight: "1.4",
-                      }}
+                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal text-white font-serif leading-snug"
                     >
                       Connect with Afghans Worldwide
                     </h1>
@@ -202,7 +198,6 @@ export default function HomePage() {
                     variants={fadeInUp}
                     custom={0}
                     className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative"
-                    style={{ fontFamily: "Boldonse, serif" }}
                   >
                     How Aroosi Works
                     <svg
@@ -281,7 +276,6 @@ export default function HomePage() {
                         </div>
                         <h3
                           className="font-serif text-xl font-semibold text-primary-dark"
-                          style={{ fontFamily: "Boldonse, serif" }}
                         >
                           {card.title}
                         </h3>
@@ -316,7 +310,6 @@ export default function HomePage() {
                       variants={fadeInUp}
                       custom={0}
                       className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative inline-block"
-                      style={{ fontFamily: "Boldonse, serif" }}
                     >
                       Why Choose Aroosi?
                       <svg
@@ -381,7 +374,6 @@ export default function HomePage() {
                         <div>
                           <h3
                             className="font-serif text-xl font-semibold text-neutral"
-                            style={{ fontFamily: "Boldonse, serif" }}
                           >
                             {feature.title}
                           </h3>
@@ -453,7 +445,6 @@ export default function HomePage() {
                       variants={fadeInUp}
                       custom={0}
                       className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
-                      style={{ fontFamily: "Boldonse, serif" }}
                     >
                       Afghan Community Values
                     </motion.h2>
@@ -524,7 +515,6 @@ export default function HomePage() {
                       <div className="mb-4">{item.icon}</div>
                       <h3
                         className="font-serif text-xl font-semibold text-primary-dark mb-2"
-                        style={{ fontFamily: "Boldonse, serif" }}
                       >
                         {item.title}
                       </h3>
@@ -564,7 +554,6 @@ export default function HomePage() {
                     variants={fadeInUp}
                     custom={0}
                     className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
-                    style={{ fontFamily: "Boldonse, serif" }}
                   >
                     Success Stories
                   </motion.h2>
@@ -646,7 +635,6 @@ export default function HomePage() {
                           <div>
                             <h4
                               className="font-serif font-semibold text-neutral-900"
-                              style={{ fontFamily: "Boldonse, serif" }}
                             >
                               {story.name}
                             </h4>
@@ -672,10 +660,10 @@ export default function HomePage() {
           </section>
 
           {/* CTA Section */}
-          <section className="py-20 relative overflow-hidden bg-gradient-to-r from-[#5F92AC] to-[#3E647A]">
+          <section className="py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark">
             {/* Pink color pop circle */}
             <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#5F92AC] to-[#3E647A]"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-dark"></div>
 
             {/* Decorative patterns */}
             <div
@@ -748,7 +736,6 @@ export default function HomePage() {
                     variants={fadeInUp}
                     custom={0}
                     className="font-serif text-2xl lg:text-3xl font-bold text-white"
-                    style={{ fontFamily: "Boldonse, serif" }}
                   >
                     Ready to Find Your Life Partner?
                   </motion.h2>
@@ -768,7 +755,7 @@ export default function HomePage() {
                   custom={0.2}
                   className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                 >
-                  <Button className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
+                  <Button asChild className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
                     <Link href="/">Get Started Free</Link>
                   </Button>
                 </motion.div>

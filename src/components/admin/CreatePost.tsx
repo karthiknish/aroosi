@@ -119,14 +119,14 @@ export function CreatePost({
             <div className="flex items-center justify-between">
               <label
                 htmlFor="blog-content"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-medium text-neutral-dark"
               >
                 Content
               </label>
               <Button
                 type="button"
                 variant="outline"
-                className="text-pink-600 border-pink-300 h-8 px-3"
+                className="text-primary border-primary/30 h-8 px-3"
                 disabled={creating || aiLoading?.content}
                 onClick={async () => {
                   const context = [
@@ -164,13 +164,13 @@ export function CreatePost({
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-pink-600 hover:bg-pink-700"
+              className="bg-primary hover:bg-primary-dark"
               disabled={creating}
             >
               {creating ? "Creating..." : "Publish Post"}
             </Button>
           </div>
-          {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+          {error && <div className="text-danger text-sm mt-2">{error}</div>}
         </form>
       </CardContent>
     </Card>

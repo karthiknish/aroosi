@@ -74,16 +74,16 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   // Show a skeleton header while hydrating or while auth state not loaded to prevent layout shift / missing links
   if (!hydrated || !isLoaded) {
     return (
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-base-light shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h2 className="text-2xl text-primary-dark font-bold">Aroosi</h2>
+              <h2 className="text-2xl text-primary font-bold">Aroosi</h2>
             </div>
             <div className="hidden md:flex items-center space-x-2">
-              <div className="h-9 w-24 bg-gray-100 rounded animate-pulse" />
-              <div className="h-9 w-24 bg-gray-100 rounded animate-pulse" />
-              <div className="h-9 w-24 bg-gray-100 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-neutral-100 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-neutral-100 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-neutral-100 rounded animate-pulse" />
             </div>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                    className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   >
                     <Search className="h-5 w-5 mr-2" />
                     <span>Search Profiles</span>
@@ -165,7 +165,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   >
                     <Button
                       variant="ghost"
-                      className="w-full justify-start text-primary-dark hover:text-primary hover:bg-pink-50 font-semibold"
+                      className="w-full justify-start text-primary font-semibold hover:text-primary hover:bg-primary/10"
                     >
                       <ShieldUser className="h-5 w-5 mr-2" />
                       <span>Admin</span>
@@ -190,9 +190,9 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                    className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   >
-                    <Heart className="h-5 w-5 mr-2 text-pink-500" />
+                    <Heart className="h-5 w-5 mr-2 text-primary" />
                     <span>Matches</span>
                   </Button>
                 </Link>
@@ -216,7 +216,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                    className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   >
                     <SlidersHorizontal className="h-5 w-5 mr-2" />
                     <span>Shortlists</span>
@@ -244,7 +244,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     >
                       <Button
                         variant="ghost"
-                        className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
+                        className="w-full justify-start text-accent hover:text-accent hover:bg-primary/10"
                       >
                         <Gem className="h-5 w-5 mr-2" />
                         <span>Premium Settings</span>
@@ -261,7 +261,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   >
                     <Button
                       variant="ghost"
-                      className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                      className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                       onClick={async () => {
                         try {
                           const mod = await import("@/lib/api/subscription");
@@ -296,7 +296,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     onClick={onClick}
                     className="block"
                   >
-                    <Button className="w-full justify-start bg-pink-600 hover:bg-pink-700 text-white">
+                    <Button className="w-full justify-start bg-primary hover:bg-primary-dark text-white">
                       <span>Upgrade</span>
                     </Button>
                   </Link>
@@ -319,7 +319,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                    className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   >
                     <BarChart className="h-5 w-5 mr-2" />
                     <span>Usage</span>
@@ -363,7 +363,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               >
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                  className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   onClick={() => signOut()}
                 >
                   <LogOut className="h-5 w-5 mr-2" />
@@ -387,7 +387,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                    className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   >
                     <span>About</span>
                   </Button>
@@ -410,7 +410,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                    className="w-full justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
                   >
                     <span>How It Works</span>
                   </Button>
@@ -435,7 +435,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 >
                   <Button
                     variant="outline"
-                    className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
+                    className="w-full flex items-center justify-center gap-1.5 text-primary border-primary hover:bg-primary/10 hover:border-primary-dark"
                   >
                     <LogIn className="h-4 w-4" />
                     <span>Sign In</span>
@@ -448,7 +448,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   className="block"
                   aria-current={pathname === "/" ? "page" : undefined}
                 >
-                  <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
+                  <Button className="w-full flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-dark text-white">
                     <UserPlus className="h-4 w-4" />
                     <span>Sign Up</span>
                   </Button>
@@ -477,7 +477,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           >
             <Button
               variant="ghost"
-              className="justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+              className="justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
             >
               About
             </Button>
@@ -489,7 +489,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           >
             <Button
               variant="ghost"
-              className="justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+              className="justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
             >
               How It Works
             </Button>
@@ -502,7 +502,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           >
             <Button
               variant="outline"
-              className="flex items-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
+              className="flex items-center gap-1.5 text-primary border-primary hover:bg-primary/10 hover:border-primary-dark"
             >
               <LogIn className="h-4 w-4" />
               <span>Sign In</span>
@@ -514,7 +514,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
             className="block"
             aria-current={pathname === "/" ? "page" : undefined}
           >
-            <Button className="flex items-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
+            <Button className="flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-white">
               <UserPlus className="h-4 w-4" />
               <span>Sign Up</span>
             </Button>
@@ -544,8 +544,8 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               size="icon"
               aria-label={label}
               className={
-                "h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors" +
-                (opts.premiumTint ? " text-[#BFA67A] hover:text-[#BFA67A]" : "")
+                "h-10 w-10 rounded-xl text-neutral-light hover:text-primary hover:bg-primary/10 transition-colors" +
+                (opts.premiumTint ? " text-accent hover:text-accent" : "")
               }
             >
               <IconComp className="h-5 w-5" />
@@ -589,7 +589,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 aria-label="Billing Portal"
-                className="h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors"
+                className="h-10 w-10 rounded-xl text-neutral-light hover:text-primary hover:bg-primary/10 transition-colors"
                 onClick={async () => {
                   try {
                     const mod = await import("@/lib/api/subscription");
@@ -615,7 +615,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   variant="ghost"
                   size="icon"
                   aria-label="Upgrade"
-                  className="h-10 w-10 rounded-xl text-pink-600 hover:text-pink-600 hover:bg-pink-50"
+                  className="h-10 w-10 rounded-xl text-primary hover:text-primary hover:bg-primary/10"
                 >
                   <Star className="h-5 w-5" />
                 </Button>
@@ -632,7 +632,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
       <Tooltip key="profile">
         <TooltipTrigger asChild>
           <Link href="/profile" className="block" aria-label="Profile">
-            <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
+            <Avatar className="h-10 w-10 border border-neutral-200 shadow-sm">
               {avatarUrl ? (
                 <AvatarImage
                   src={avatarUrl}
@@ -643,7 +643,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   }}
                 />
               ) : null}
-              <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-medium">
+              <AvatarFallback className="bg-neutral-100 text-neutral-light text-sm font-medium">
                 {avatarInitial || <UserIcon className="h-4 w-4" />}
               </AvatarFallback>
             </Avatar>
@@ -660,7 +660,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
             variant="ghost"
             size="icon"
             aria-label="Sign Out"
-            className="h-10 w-10 rounded-xl text-gray-600 hover:text-red-600 hover:bg-red-50"
+            className="h-10 w-10 rounded-xl text-neutral-light hover:text-red-600 hover:bg-red-50"
             onClick={() => signOut()}
           >
             <LogOut className="h-5 w-5" />
@@ -688,15 +688,15 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         className={
           "fixed top-0 left-0 right-0 z-50 transition-all duration-300 " +
           (scrolled
-            ? "bg-white/90 backdrop-blur border-b border-gray-200 shadow-sm"
-            : "bg-white shadow-sm")
+            ? "bg-base-light/90 backdrop-blur border-b border-neutral-200 shadow-sm"
+            : "bg-base-light shadow-sm")
         }
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
-                <h2 className="text-2xl text-primary-dark font-bold">Aroosi</h2>
+                <h2 className="text-2xl text-primary font-bold">Aroosi</h2>
               </Link>
             </div>
 
@@ -709,7 +709,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-gray-700 hover:text-pink-600 p-2 rounded-md hover:bg-pink-50 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                className="text-neutral-dark hover:text-primary p-2 rounded-md hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 {mobileOpen ? (
@@ -731,7 +731,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -30, opacity: 0 }}
               transition={{ type: "spring", stiffness: 120, damping: 18 }}
-              className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg"
+              className="md:hidden absolute top-full left-0 right-0 bg-base-light shadow-lg"
             >
               <div className="px-4 py-4 flex flex-col space-y-2">
                 {/* Mobile (text + icon) */}

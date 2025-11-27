@@ -9,24 +9,23 @@ import {
 } from "@/types/cultural";
 
 // PUT /api/cultural/supervised-conversation/:id - Update a supervised conversation
-export const PUT = withFirebaseAuth(async (req: NextRequest, context: any) => {
-  const { params } = context;
-  const conversationId = params.id;
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return withFirebaseAuth(async (user, request) => {
+    const { id: conversationId } = await context.params;
 
-  // Rate limiting
-  const rateLimitResult = await checkApiRateLimit(req);
-  if (rateLimitResult) return rateLimitResult;
+    // Rate limiting
+    const rateLimitResult = checkApiRateLimit(`supervised_conv_put_${user.id}`, 50, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Rate limit exceeded" },
+        { status: 429 }
+      );
+    }
 
-  const userId = req.headers.get("x-user-id");
-  if (!userId) {
-    return NextResponse.json(
-      { success: false, error: "User not authenticated" },
-      { status: 401 }
-    );
-  }
+    const userId = user.id;
 
-  try {
-    const body = await req.json();
+    try {
+      const body = await request.json();
     const { status, conversationId: chatConversationId } = body;
 
     // Get the conversation
@@ -117,4 +116,5 @@ export const PUT = withFirebaseAuth(async (req: NextRequest, context: any) => {
       { status: 500 }
     );
   }
-});
+  })(req);
+}

@@ -25,7 +25,7 @@ export default function BackToTop() {
       aria-label="Back to top"
       onClick={onClick}
       className={
-        "fixed bottom-6 right-6 z-[60] h-11 w-11 rounded-full bg-pink-600 text-white shadow-lg border border-white/30 transition-all " +
+        "fixed bottom-6 right-6 z-[60] h-11 w-11 rounded-full bg-primary text-white shadow-lg border border-white/30 transition-all " +
         (visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none")
       }
     >
