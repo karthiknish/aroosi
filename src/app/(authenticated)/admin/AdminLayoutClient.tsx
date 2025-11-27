@@ -15,7 +15,24 @@ export default function AdminLayoutClient({
   const router = useRouter();
   const pathname = usePathname();
   const { isLoaded, isSignedIn, isAdmin } = useAuthContext();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Default to collapsed (mobile-first approach) to avoid flash of open sidebar on mobile
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  // Adjust sidebar state based on screen width on mount
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarCollapsed(false);
+      }
+    };
+
+    // Check immediately
+    handleResize();
+
+    // Optional: Add listener if we want dynamic resizing behavior
+    // window.addEventListener('resize', handleResize);
+    // return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Redirect if not admin
   useEffect(() => {

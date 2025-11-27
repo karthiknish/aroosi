@@ -353,6 +353,7 @@ export default function AdminProfileDetailPage() {
                   width={64}
                   height={64}
                   className="w-16 h-16 rounded-full object-cover border"
+                  unoptimized
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border">
@@ -400,9 +401,7 @@ export default function AdminProfileDetailPage() {
                     <Image
                       src={
                         orderedImages[currentImageIdx]?.url ||
-                        (orderedImages[currentImageIdx]?.storageId
-                          ? `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${orderedImages[currentImageIdx].storageId}`
-                          : "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png")
+                        "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png"
                       }
                       alt={
                         typeof profile?.fullName === "string"
@@ -412,13 +411,11 @@ export default function AdminProfileDetailPage() {
                       width={256}
                       height={256}
                       className="max-h-full  max-w-full object-contain"
+                      unoptimized
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src =
-                          orderedImages[currentImageIdx]?.url ||
-                          (orderedImages[currentImageIdx]?.storageId
-                            ? `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${orderedImages[currentImageIdx].storageId}`
-                            : "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png");
+                          "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png";
                       }}
                     />
                   </div>
@@ -511,7 +508,7 @@ export default function AdminProfileDetailPage() {
                         <Image
                           src={
                             img.url ||
-                            `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${img.storageId}`
+                            "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png"
                           }
                           alt={
                             typeof profile?.fullName === "string"
@@ -521,6 +518,7 @@ export default function AdminProfileDetailPage() {
                           width={128}
                           height={128}
                           className="w-full h-full object-cover"
+                          unoptimized
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src =

@@ -174,6 +174,17 @@ export async function GET(req: NextRequest) {
       (images as any[]).map(async (img) => {
         const storageId = img.storageId || img.id || null;
         let url = img.url || null;
+
+        // If the URL is a direct GCS URL (which is now private), ignore it so we generate a signed URL.
+        // We keep URLs that might already be signed (have query params) or are from other sources.
+        if (
+          url &&
+          url.includes("storage.googleapis.com") &&
+          !url.includes("X-Goog-Signature")
+        ) {
+          url = null;
+        }
+
         if (!url && storageId && bucketName) {
           try {
             const file = adminStorage.bucket(bucketName).file(storageId);

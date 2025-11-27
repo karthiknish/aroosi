@@ -97,13 +97,27 @@ export function AdminSidebar({
   ];
 
   return (
-    <div
-      className={cn(
-        "bg-white border-r shadow-sm transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
-      {/* Logo Area */}
+    <>
+      {/* Mobile Overlay */}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300",
+          collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
+        onClick={() => setCollapsed(true)}
+        aria-hidden="true"
+      />
+
+      <div
+        className={cn(
+          "bg-white border-r shadow-sm transition-all duration-300 flex flex-col",
+          "fixed inset-y-0 left-0 z-50 h-full lg:relative",
+          collapsed
+            ? "-translate-x-full lg:translate-x-0 lg:w-16"
+            : "translate-x-0 w-64"
+        )}
+      >
+        {/* Logo Area */}
       <div className="p-6 border-b">
         {collapsed ? (
           <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
@@ -181,5 +195,6 @@ export function AdminSidebar({
         </Button>
       </div>
     </div>
+    </>
   );
 }

@@ -35,6 +35,8 @@ import CharacterCount from "@tiptap/extension-character-count";
 import Dropcursor from "@tiptap/extension-dropcursor";
 import Gapcursor from "@tiptap/extension-gapcursor";
 import TextAlign from "@tiptap/extension-text-align";
+import Youtube from "@tiptap/extension-youtube";
+import FontFamily from "@tiptap/extension-font-family";
 import {
   Bold as BoldIcon,
   Italic as ItalicIcon,
@@ -62,6 +64,8 @@ import {
   AlignJustify,
   Eraser,
   Type,
+  Youtube as YoutubeIcon,
+  Type as FontIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
@@ -121,6 +125,8 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [tableCols, setTableCols] = useState(3);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string>("");
+  const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState<string>("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
@@ -198,6 +204,30 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             active={editor.isActive("highlight")}
             label="Highlight"
             icon={HighlightIcon}
+          />
+        </div>
+
+        <ToolbarDivider />
+
+        {/* Fonts */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setFontFamily("Inter").run()}
+            active={editor.isActive("textStyle", { fontFamily: "Inter" })}
+            label="Sans Serif"
+            icon={FontIcon}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setFontFamily("serif").run()}
+            active={editor.isActive("textStyle", { fontFamily: "serif" })}
+            label="Serif"
+            icon={() => <span className="font-serif text-xs font-bold">S</span>}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setFontFamily("monospace").run()}
+            active={editor.isActive("textStyle", { fontFamily: "monospace" })}
+            label="Monospace"
+            icon={() => <span className="font-mono text-xs font-bold">M</span>}
           />
         </div>
 
@@ -323,6 +353,11 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             onClick={() => setImageModalOpen(true)}
             label="Insert Image"
             icon={ImageIcon}
+          />
+          <ToolbarButton
+            onClick={() => setYoutubeModalOpen(true)}
+            label="Insert Youtube Video"
+            icon={YoutubeIcon}
           />
           <ToolbarButton
             onClick={() => setTableModalOpen(true)}
@@ -594,6 +629,66 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         </div>
       )}
 
+      {/* Youtube Modal */}
+      {youtubeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+              onClick={() => {
+                setYoutubeModalOpen(false);
+                setYoutubeUrl("");
+              }}
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <YoutubeIcon className="w-5 h-5 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold text-neutral-dark">Insert Youtube Video</h2>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+                Video URL
+              </label>
+              <input
+                type="url"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
+                onClick={() => {
+                  setYoutubeModalOpen(false);
+                  setYoutubeUrl("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white font-medium transition-colors disabled:opacity-50"
+                onClick={() => {
+                  if (youtubeUrl) {
+                    editor.commands.setYoutubeVideo({ src: youtubeUrl });
+                    setYoutubeModalOpen(false);
+                    setYoutubeUrl("");
+                  }
+                }}
+                disabled={!youtubeUrl}
+              >
+                Insert Video
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Emoji Picker */}
       {emojiPickerOpen && (
         <div ref={emojiPopoverRef} className="absolute z-50 mt-2 right-4 shadow-xl rounded-xl overflow-hidden">
@@ -643,7 +738,10 @@ export default function BlogEditor({
       CodeBlock,
       HardBreak,
       HorizontalRule,
-      Link,
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+      }),
       Image,
       ImageResize,
       Table.configure({ resizable: true }),
@@ -660,6 +758,10 @@ export default function BlogEditor({
       Dropcursor,
       Gapcursor,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Youtube.configure({
+        controls: false,
+      }),
+      FontFamily,
     ],
     content: value,
     onUpdate: ({ editor }: { editor: EditorType }) => {
@@ -843,6 +945,13 @@ export default function BlogEditor({
         min-width: 80px;
         min-height: 40px;
         background: var(--color-base-light);
+      }
+      .tiptap-editor-content iframe {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        border-radius: 0.5em;
+        margin: 1.5em 0;
       }
     `;
     document.head.appendChild(style);

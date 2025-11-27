@@ -10,19 +10,15 @@ import {
   getEmailCampaigns,
 } from "@/lib/marketingEmailApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { CampaignForm } from "./components/CampaignForm";
+import { AudienceFilters } from "./components/AudienceFilters";
+import { TestEmailSection } from "./components/TestEmailSection";
+import { CampaignHistory } from "./components/CampaignHistory";
+import { CampaignActions } from "./components/CampaignActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Eye, RefreshCw } from "lucide-react";
 
 type TemplateItem = { key: string; label: string; category: string };
 
@@ -37,7 +33,6 @@ export default function MarketingEmailAdminPage() {
   const [dryRun, setDryRun] = useState(true);
   const [maxAudience, setMaxAudience] = useState<number>(500);
   const [sendToAll, setSendToAll] = useState<boolean>(false);
-  // const [preview, setPreview] = useState<string>("");
   const [mode, setMode] = useState<"template" | "custom">("template");
   const [useEditor, setUseEditor] = useState<boolean>(true);
   const [preheader, setPreheader] = useState<string>("");
@@ -45,13 +40,16 @@ export default function MarketingEmailAdminPage() {
   const [abSubjectA, setAbSubjectA] = useState<string>("");
   const [abSubjectB, setAbSubjectB] = useState<string>("");
   const [abRatio, setAbRatio] = useState<number>(50);
+  
   // Template params
   const [discountPct, setDiscountPct] = useState<number>(30);
   const [daysSinceLastLogin, setDaysSinceLastLogin] = useState<number>(7);
   const [completionPct, setCompletionPct] = useState<number>(70);
+  
   // Custom mode fields
   const [customSubject, setCustomSubject] = useState("");
   const [customBody, setCustomBody] = useState("");
+  
   // Audience filters
   const [search, setSearch] = useState("");
   const [htmlPreview, setHtmlPreview] = useState<string>("");
@@ -59,6 +57,7 @@ export default function MarketingEmailAdminPage() {
   const [banned, setBanned] = useState<string>("all");
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(500);
+  
   // Advanced filters
   const [lastActiveDays, setLastActiveDays] = useState<number>(NaN as any);
   const [createdAtFrom, setCreatedAtFrom] = useState<string>("");
@@ -67,14 +66,15 @@ export default function MarketingEmailAdminPage() {
   const [completionMax, setCompletionMax] = useState<number>(NaN as any);
   const [city, setCity] = useState<string>("");
   const [country, setCountry] = useState<string>("");
+  
   // Test email functionality
   const [testEmail, setTestEmail] = useState<string>("");
   const [sendingTest, setSendingTest] = useState(false);
   const [showTestSection, setShowTestSection] = useState<boolean>(false);
+  
   // Campaign history
   const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [showCampaignHistory, setShowCampaignHistory] =
-    useState<boolean>(false);
+  const [showCampaignHistory, setShowCampaignHistory] = useState<boolean>(false);
   const [processingOutbox, setProcessingOutbox] = useState(false);
 
   useEffect(() => {
@@ -111,11 +111,6 @@ export default function MarketingEmailAdminPage() {
     initFromQuery.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  const selectedTemplate = useMemo(
-    () => templates.find((t) => t.key === templateKey),
-    [templates, templateKey]
-  );
 
   const handleSend = async () => {
     // Validate form before sending
@@ -200,8 +195,11 @@ export default function MarketingEmailAdminPage() {
       });
       if (res.success && (res.data as any)?.html) {
         setHtmlPreview((res.data as any).html);
+        showSuccessToast("Preview updated");
       }
-    } catch {}
+    } catch {
+      showErrorToast(null, "Failed to generate preview");
+    }
   };
 
   const handleSendTestEmail = async () => {
@@ -235,6 +233,7 @@ export default function MarketingEmailAdminPage() {
       });
 
       if (res.success) {
+        showSuccessToast(`Test email sent to ${testEmail}`);
         setTestEmail("");
         setShowTestSection(false);
       }
@@ -244,7 +243,7 @@ export default function MarketingEmailAdminPage() {
   };
 
   const loadCampaignHistory = async () => {
-    if (showCampaignHistory && campaigns.length === 0) {
+    if (campaigns.length === 0) {
       const res = await getEmailCampaigns("", { limit: 20 });
       if (res.success && (res.data as any)?.campaigns) {
         setCampaigns((res.data as any).campaigns);
@@ -291,686 +290,224 @@ export default function MarketingEmailAdminPage() {
     }
   };
 
+  const handleExportCsv = async () => {
+    try {
+      const params: Record<string, unknown> = {};
+      if (templateKey === "premiumPromo") params.args = [discountPct];
+      if (templateKey === "profileCompletionReminder")
+        params.args = [completionPct];
+      if (templateKey === "reEngagement")
+        params.args = [daysSinceLastLogin];
+      const res = await fetch("/api/admin/marketing-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateKey: mode === "template" ? templateKey : undefined,
+          subject: mode === "custom" ? customSubject : undefined,
+          body: mode === "custom" ? customBody : undefined,
+          params,
+          dryRun: true,
+          exportCsv: true,
+          maxAudience,
+          search: search || undefined,
+          plan: plan !== "all" ? plan : undefined,
+          banned: banned !== "all" ? banned : undefined,
+          lastActiveDays: Number.isFinite(lastActiveDays)
+            ? Number(lastActiveDays)
+            : undefined,
+          createdAtFrom: createdAtFrom
+            ? Date.parse(createdAtFrom)
+            : undefined,
+          createdAtTo: createdAtTo
+            ? Date.parse(createdAtTo)
+            : undefined,
+          completionMin: Number.isFinite(completionMin)
+            ? Number(completionMin)
+            : undefined,
+          completionMax: Number.isFinite(completionMax)
+            ? Number(completionMax)
+            : undefined,
+          city: city || undefined,
+          country: country || undefined,
+          page,
+          pageSize,
+        }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = new Blob([text], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "audience.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showErrorToast(null, "Failed to export CSV");
+    }
+  };
+
   return (
-    <Card className="max-w-3xl">
-      <CardHeader>
-        <CardTitle>Marketing Email Campaign Manager</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Create, test, and send marketing emails to your users with advanced
-          targeting and analytics.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
-          <TabsList className="bg-muted p-1 rounded-lg">
-            <TabsTrigger
-              value="template"
-              className="data-[state=active]:bg-background data-[state=active]:shadow px-3 py-1.5 rounded-md"
-            >
-              Use Template
-            </TabsTrigger>
-            <TabsTrigger
-              value="custom"
-              className="data-[state=active]:bg-background data-[state=active]:shadow px-3 py-1.5 rounded-md"
-            >
-              Custom Email
-            </TabsTrigger>
-          </TabsList>
+    <div className="max-w-7xl mx-auto pb-20">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Marketing Email Manager</h1>
+        <p className="text-gray-500">Create, target, and send email campaigns to your user base.</p>
+      </div>
 
-          <TabsContent value="template" className="space-y-4">
-            <div>
-              <label
-                htmlFor="template-select"
-                className="block text-sm font-medium mb-1"
-              >
-                Select Template
-              </label>
-              <Select value={templateKey} onValueChange={setTemplateKey}>
-                <SelectTrigger id="template-select" className="w-full bg-white">
-                  <SelectValue placeholder="Choose template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((opt) => (
-                    <SelectItem key={opt.key} value={opt.key}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Configuration */}
+        <div className="lg:col-span-7 space-y-6">
+          <CampaignForm
+            mode={mode}
+            setMode={setMode}
+            templates={templates}
+            templateKey={templateKey}
+            setTemplateKey={setTemplateKey}
+            discountPct={discountPct}
+            setDiscountPct={setDiscountPct}
+            daysSinceLastLogin={daysSinceLastLogin}
+            setDaysSinceLastLogin={setDaysSinceLastLogin}
+            completionPct={completionPct}
+            setCompletionPct={setCompletionPct}
+            customSubject={customSubject}
+            setCustomSubject={setCustomSubject}
+            customBody={customBody}
+            setCustomBody={setCustomBody}
+            preheader={preheader}
+            setPreheader={setPreheader}
+            useEditor={useEditor}
+            setUseEditor={setUseEditor}
+            abEnabled={abEnabled}
+            setAbEnabled={setAbEnabled}
+            abSubjectA={abSubjectA}
+            setAbSubjectA={setAbSubjectA}
+            abSubjectB={abSubjectB}
+            setAbSubjectB={setAbSubjectB}
+            abRatio={abRatio}
+            setAbRatio={setAbRatio}
+          />
 
-            {/* Template preview */}
-            {selectedTemplate && (
-              <div className="rounded-md border p-3 bg-gray-50 text-sm">
-                <div className="mb-1 font-medium">Template</div>
-                <div className="text-muted-foreground">
-                  Key: {selectedTemplate.key} • Category:{" "}
-                  {selectedTemplate.category}
-                </div>
-              </div>
-            )}
-
-            {/* Per-template params */}
-            {templateKey === "premiumPromo" && (
-              <div>
-                <label htmlFor="discount-pct" className="block text-sm mb-1">
-                  Discount %
-                </label>
-                <Input
-                  id="discount-pct"
-                  type="number"
-                  min={5}
-                  max={90}
-                  value={discountPct}
-                  onChange={(e) =>
-                    setDiscountPct(parseInt(e.target.value || "0", 10))
-                  }
-                />
-              </div>
-            )}
-            {templateKey === "profileCompletionReminder" && (
-              <div>
-                <label htmlFor="completion-pct" className="block text-sm mb-1">
-                  Completion %
-                </label>
-                <Input
-                  id="completion-pct"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={completionPct}
-                  onChange={(e) =>
-                    setCompletionPct(parseInt(e.target.value || "0", 10))
-                  }
-                />
-              </div>
-            )}
-            {templateKey === "reEngagement" && (
-              <div>
-                <label
-                  htmlFor="days-since-login"
-                  className="block text-sm mb-1"
-                >
-                  Days since last login
-                </label>
-                <Input
-                  id="days-since-login"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={daysSinceLastLogin}
-                  onChange={(e) =>
-                    setDaysSinceLastLogin(parseInt(e.target.value || "0", 10))
-                  }
-                />
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="custom" className="space-y-4">
-            <div>
-              <label htmlFor="custom-subject" className="block text-sm mb-1">
-                Subject
-              </label>
-              <Input
-                id="custom-subject"
-                value={customSubject}
-                onChange={(e) => setCustomSubject(e.target.value)}
-                placeholder="Your subject line"
-              />
-            </div>
-            <div>
-              <label htmlFor="preheader" className="block text-sm mb-1">
-                Preheader
-              </label>
-              <Input
-                id="preheader"
-                value={preheader}
-                onChange={(e) => setPreheader(e.target.value)}
-                placeholder="Short preview text shown in inbox"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={useEditor}
-                onChange={(e) => setUseEditor(e.target.checked)}
-              />
-              Use WYSIWYG editor
-            </label>
-            <div>
-              <label htmlFor="custom-body" className="block text-sm mb-1">
-                HTML Body
-              </label>
-              {useEditor ? (
-                <Textarea
-                  id="custom-body"
-                  value={customBody}
-                  onChange={(e) => setCustomBody(e.target.value)}
-                  rows={10}
-                  placeholder="Write or paste HTML (WYSIWYG integration placeholder)"
-                />
-              ) : (
-                <Textarea
-                  id="custom-body"
-                  value={customBody}
-                  onChange={(e) => setCustomBody(e.target.value)}
-                  rows={10}
-                  placeholder="Raw HTML content"
-                />
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="dry-run"
-              className="flex items-center gap-2 text-sm"
-            >
-              <input
-                id="dry-run"
-                type="checkbox"
-                checked={dryRun}
-                onChange={(e) => setDryRun(e.target.checked)}
-              />
-              Dry run (no emails sent)
-            </label>
-            <p className="text-xs text-muted-foreground">
-              {dryRun
-                ? "Preview mode - shows what would be sent"
-                : "Live mode - emails will be sent to users"}
-            </p>
-          </div>
-          <div>
-            <label htmlFor="max-audience" className="block text-sm mb-1">
-              Max audience
-            </label>
-            <Input
-              id="max-audience"
-              type="number"
-              min={1}
-              max={10000}
-              value={maxAudience}
-              onChange={(e) =>
-                setMaxAudience(parseInt(e.target.value || "0", 10))
-              }
-              disabled={sendToAll}
-            />
-          </div>
-          {/* Audience filters */}
-          <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label htmlFor="search" className="block text-sm mb-1">
-                Search (name/email)
-              </label>
-              <Input
-                id="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="e.g. john or john@..."
-              />
-            </div>
-            <div>
-              <label htmlFor="plan" className="block text-sm mb-1">
-                Plan
-              </label>
-              <Select value={plan} onValueChange={setPlan}>
-                <SelectTrigger id="plan" className="w-full bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
-                  <SelectItem value="premiumPlus">Premium Plus</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="banned" className="block text-sm mb-1">
-                Banned status
-              </label>
-              <Select value={banned} onValueChange={setBanned}>
-                <SelectTrigger id="banned" className="w-full bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="true">Banned</SelectItem>
-                  <SelectItem value="false">Not banned</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="city" className="block text-sm mb-1">
-                City
-              </label>
-              <Input
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. London"
-              />
-            </div>
-            <div>
-              <label htmlFor="country" className="block text-sm mb-1">
-                Country
-              </label>
-              <Input
-                id="country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="e.g. UK"
-              />
-            </div>
-          </div>
-          {/* Paging */}
-          <div className="col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <label htmlFor="page" className="block text-sm mb-1">
-                Page
-              </label>
-              <Input
-                id="page"
-                type="number"
-                min={1}
-                value={page}
-                onChange={(e) => setPage(parseInt(e.target.value || "1", 10))}
-              />
-            </div>
-            <div>
-              <label htmlFor="pageSize" className="block text-sm mb-1">
-                Page size
-              </label>
-              <Input
-                id="pageSize"
-                type="number"
-                min={10}
-                max={5000}
-                value={pageSize}
-                onChange={(e) =>
-                  setPageSize(parseInt(e.target.value || "500", 10))
-                }
-              />
-            </div>
-          </div>
-          {/* Advanced filters */}
-          <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <label htmlFor="last-active-days" className="block text-sm mb-1">
-                Last active ≥ days ago
-              </label>
-              <Input
-                id="last-active-days"
-                type="number"
-                min={1}
-                max={3650}
-                value={
-                  Number.isFinite(lastActiveDays) ? lastActiveDays : ("" as any)
-                }
-                onChange={(e) => {
-                  const v = parseInt(e.target.value || "", 10);
-                  setLastActiveDays(Number.isFinite(v) ? v : (NaN as any));
-                }}
-              />
-            </div>
-            <div>
-              <label htmlFor="created-from" className="block text-sm mb-1">
-                Created from
-              </label>
-              <Input
-                id="created-from"
-                type="date"
-                value={createdAtFrom}
-                onChange={(e) => setCreatedAtFrom(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="created-to" className="block text-sm mb-1">
-                Created to
-              </label>
-              <Input
-                id="created-to"
-                type="date"
-                value={createdAtTo}
-                onChange={(e) => setCreatedAtTo(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="completion-min" className="block text-sm mb-1">
-                Completion % min/max
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  id="completion-min"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={
-                    Number.isFinite(completionMin) ? completionMin : ("" as any)
-                  }
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value || "", 10);
-                    setCompletionMin(Number.isFinite(v) ? v : (NaN as any));
-                  }}
-                />
-                <Input
-                  id="completion-max"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={
-                    Number.isFinite(completionMax) ? completionMax : ("" as any)
-                  }
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value || "", 10);
-                    setCompletionMax(Number.isFinite(v) ? v : (NaN as any));
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="col-span-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={sendToAll}
-                onChange={(e) => setSendToAll(e.target.checked)}
-              />
-              Send to all users (ignores Max audience)
-            </label>
-            {!dryRun && (
-              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                ⚠️ Live mode: Emails will be sent to real users. Consider
-                testing first.
-              </div>
-            )}
-          </div>
-          <div className="col-span-2 border-t pt-3">
-            <label className="flex items-center gap-2 text-sm mb-2">
-              <input
-                type="checkbox"
-                checked={abEnabled}
-                onChange={(e) => setAbEnabled(e.target.checked)}
-              />
-              Enable A/B subject testing
-            </label>
-            {abEnabled && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="ab-a" className="block text-sm mb-1">
-                    Subject A
-                  </label>
-                  <Input
-                    id="ab-a"
-                    value={abSubjectA}
-                    onChange={(e) => setAbSubjectA(e.target.value)}
-                    placeholder="Variant A subject"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="ab-b" className="block text-sm mb-1">
-                    Subject B
-                  </label>
-                  <Input
-                    id="ab-b"
-                    value={abSubjectB}
-                    onChange={(e) => setAbSubjectB(e.target.value)}
-                    placeholder="Variant B subject"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label htmlFor="ab-ratio" className="block text-sm mb-1">
-                    Split ratio (A%)
-                  </label>
-                  <Input
-                    id="ab-ratio"
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={abRatio}
-                    onChange={(e) =>
-                      setAbRatio(parseInt(e.target.value || "50", 10))
-                    }
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          <AudienceFilters
+            search={search}
+            setSearch={setSearch}
+            plan={plan}
+            setPlan={setPlan}
+            banned={banned}
+            setBanned={setBanned}
+            city={city}
+            setCity={setCity}
+            country={country}
+            setCountry={setCountry}
+            page={page}
+            setPage={setPage}
+            pageSize={pageSize}
+            setPageSize={setPageSize}
+            lastActiveDays={lastActiveDays}
+            setLastActiveDays={setLastActiveDays}
+            createdAtFrom={createdAtFrom}
+            setCreatedAtFrom={setCreatedAtFrom}
+            createdAtTo={createdAtTo}
+            setCreatedAtTo={setCreatedAtTo}
+            completionMin={completionMin}
+            setCompletionMin={setCompletionMin}
+            completionMax={completionMax}
+            setCompletionMax={setCompletionMax}
+            maxAudience={maxAudience}
+            setMaxAudience={setMaxAudience}
+            sendToAll={sendToAll}
+            setSendToAll={setSendToAll}
+            dryRun={dryRun}
+          />
         </div>
 
-        {/* Test Email Section */}
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-medium">Test Email</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTestSection(!showTestSection)}
-            >
-              {showTestSection ? "Hide" : "Show"} Test Options
-            </Button>
-          </div>
-
-          {showTestSection && (
-            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                Send a test email to verify your content before sending to your
-                audience.
-              </p>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Input
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={testEmail}
-                    onChange={(e) => setTestEmail(e.target.value)}
-                  />
-                </div>
-                <Button
-                  onClick={handleSendTestEmail}
-                  disabled={sendingTest || !testEmail.trim()}
-                  variant="outline"
+        {/* Right Column: Preview & History */}
+        <div className="lg:col-span-5 space-y-6">
+          <Card className="sticky top-6 border-slate-200 shadow-sm">
+            <CardHeader className="pb-3 border-b bg-slate-50/50">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-slate-500" />
+                  Live Preview
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handlePreviewHtml}
+                  className="h-8 text-xs text-slate-500 hover:text-slate-900"
                 >
-                  {sendingTest ? "Sending..." : "Send Test Email"}
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  Refresh
                 </Button>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Campaign History Section */}
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-medium">Campaign History</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setShowCampaignHistory(!showCampaignHistory);
-                if (!showCampaignHistory) {
-                  loadCampaignHistory();
-                }
-              }}
-            >
-              {showCampaignHistory ? "Hide" : "Show"} History
-            </Button>
-          </div>
-
-          {showCampaignHistory && (
-            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-              {campaigns.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No campaigns found.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {campaigns.map((campaign) => (
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="bg-slate-100 min-h-[500px] flex flex-col relative">
+                {htmlPreview ? (
+                  <iframe
+                    title="email-html-preview"
+                    className="w-full flex-1 bg-white"
+                    sandbox="allow-same-origin"
+                    srcDoc={htmlPreview}
+                  />
+                ) : mode === "custom" && customBody ? (
+                  <div className="p-6 bg-white h-full overflow-auto">
                     <div
-                      key={campaign.id}
-                      className="flex items-center justify-between p-3 bg-white rounded border text-sm"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          {campaign.templateKey ||
-                            campaign.subject ||
-                            "Custom Campaign"}
-                        </div>
-                        <div className="text-muted-foreground">
-                          {new Date(campaign.createdAt).toLocaleDateString()} •
-                          {campaign.totalSent} emails sent
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            campaign.status === "completed"
-                              ? "bg-green-100 text-green-800"
-                              : campaign.status === "processing"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {campaign.status}
-                        </span>
-                        <a
-                          className="px-2 py-1 rounded border text-xs"
-                          href={`/admin/marketing-email/campaign/${campaign.id}`}
-                        >
-                          View
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: customBody,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center flex-1 p-8 text-center text-slate-400">
+                    <Eye className="h-12 w-12 mb-3 opacity-20" />
+                    <p className="text-sm font-medium text-slate-600">No preview available</p>
+                    <p className="text-xs mt-1 max-w-[200px]">
+                      Select a template or start typing in the custom editor to see a preview.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={handlePreviewHtml} className="mt-4">
+                      Generate Preview
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-        <div className="flex gap-3">
-          <Button onClick={handleSend} disabled={sending}>
-            {sending
-              ? dryRun
-                ? "Generating preview..."
-                : "Sending campaign..."
-              : dryRun
-                ? "Generate Preview"
-                : sendToAll
-                  ? `Send to All Users (${maxAudience} max per batch)`
-                  : `Send to ${maxAudience} Users`}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handlePreviewHtml}
-            disabled={sending}
-          >
-            Preview HTML
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              try {
-                const params: Record<string, unknown> = {};
-                if (templateKey === "premiumPromo") params.args = [discountPct];
-                if (templateKey === "profileCompletionReminder")
-                  params.args = [completionPct];
-                if (templateKey === "reEngagement")
-                  params.args = [daysSinceLastLogin];
-                const res = await fetch("/api/admin/marketing-email", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    templateKey: mode === "template" ? templateKey : undefined,
-                    subject: mode === "custom" ? customSubject : undefined,
-                    body: mode === "custom" ? customBody : undefined,
-                    params,
-                    dryRun: true,
-                    exportCsv: true,
-                    maxAudience,
-                    search: search || undefined,
-                    plan: plan !== "all" ? plan : undefined,
-                    banned: banned !== "all" ? banned : undefined,
-                    lastActiveDays: Number.isFinite(lastActiveDays)
-                      ? Number(lastActiveDays)
-                      : undefined,
-                    createdAtFrom: createdAtFrom
-                      ? Date.parse(createdAtFrom)
-                      : undefined,
-                    createdAtTo: createdAtTo
-                      ? Date.parse(createdAtTo)
-                      : undefined,
-                    completionMin: Number.isFinite(completionMin)
-                      ? Number(completionMin)
-                      : undefined,
-                    completionMax: Number.isFinite(completionMax)
-                      ? Number(completionMax)
-                      : undefined,
-                    city: city || undefined,
-                    country: country || undefined,
-                    page,
-                    pageSize,
-                  }),
-                });
-                const text = await res.text();
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const blob = new Blob([text], {
-                  type: "text/csv;charset=utf-8;",
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "audience.csv";
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-              } catch (e) {
-                showErrorToast(null, "Failed to export CSV");
-              }
-            }}
-            disabled={sending}
-            title="Download CSV of targeted audience (dry run)"
-          >
-            Export Audience CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleProcessOutbox}
-            disabled={processingOutbox}
-            title="Process a small batch of queued emails"
-          >
-            {processingOutbox ? "Processing…" : "Process Outbox"}
-          </Button>
-        </div>
+          <TestEmailSection
+            testEmail={testEmail}
+            setTestEmail={setTestEmail}
+            sendingTest={sendingTest}
+            onSendTest={handleSendTestEmail}
+            showTestSection={showTestSection}
+            setShowTestSection={setShowTestSection}
+          />
 
-        {/* Live preview (client-side) */}
-        <div className="border rounded-md p-3">
-          <div className="text-sm font-medium mb-2">Live Preview</div>
-          {htmlPreview ? (
-            <iframe
-              title="email-html-preview"
-              className="w-full h-[600px] bg-white rounded border"
-              sandbox="allow-same-origin"
-              srcDoc={htmlPreview}
-            />
-          ) : mode === "custom" ? (
-            <div
-              className="prose max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: customBody || "<p>Preview will appear here...</p>",
-              }}
-            />
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              Preview is available via Dry run (shows first 5 subjects). For
-              full HTML preview, send yourself a small-audience test.
-            </div>
-          )}
+          <CampaignHistory
+            campaigns={campaigns}
+            showCampaignHistory={showCampaignHistory}
+            setShowCampaignHistory={setShowCampaignHistory}
+            loadCampaignHistory={loadCampaignHistory}
+          />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <CampaignActions
+        sending={sending}
+        dryRun={dryRun}
+        setDryRun={setDryRun}
+        sendToAll={sendToAll}
+        maxAudience={maxAudience}
+        onSend={handleSend}
+        onPreviewHtml={handlePreviewHtml}
+        onExportCsv={handleExportCsv}
+        processingOutbox={processingOutbox}
+        onProcessOutbox={handleProcessOutbox}
+      />
+    </div>
   );
 }

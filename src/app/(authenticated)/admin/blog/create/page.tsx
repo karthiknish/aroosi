@@ -1,18 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  createBlogPost,
-  convertAiTextToHtml,
-  convertTextToMarkdown,
-} from "@/lib/blogUtil";
-import { CreatePost } from "@/components/admin/CreatePost";
+import { createBlogPost, fetchBlogPostBySlug } from "@/lib/blogUtil";
+import { PostForm } from "@/components/admin/PostForm";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
-import { fetchBlogPostBySlug } from "@/lib/blogUtil";
+import { useBlogAI } from "@/hooks/useBlogAI";
 
 export default function CreateBlogPage() {
   useAuthContext(); // maintain hook order; no token usage in cookie-auth
@@ -27,13 +23,13 @@ export default function CreateBlogPage() {
   const [error, setError] = useState<string | null>(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
   const [pexelsOpen, setPexelsOpen] = useState<boolean>(false);
-  const contentRef = useRef<HTMLTextAreaElement>(null);
-  const [aiLoading, setAiLoading] = useState<{
-    excerpt?: boolean;
-    category?: boolean;
-    title?: boolean;
-    content?: boolean;
-  }>({});
+
+  const slugify = (str: string): string => {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  };
 
   // Auto-generate slug from title if user hasn't manually edited it
   const onTitleChange = (v: string) => {
@@ -47,176 +43,14 @@ export default function CreateBlogPage() {
     setSlugManuallyEdited(true);
   };
 
-  // Dummy implementations for missing variables and functions
-  // Replace these with your actual implementations
-  type MarkdownShortcut = {
-    label: string;
-    title: string;
-    md: string;
-    wrap?: string;
-    block?: boolean;
-  };
-  const markdownShortcuts: MarkdownShortcut[] = [
-    { label: "H1", title: "Heading 1", md: "# " },
-    { label: "H2", title: "Heading 2", md: "## " },
-    { label: "H3", title: "Heading 3", md: "### " },
-    { label: "B", title: "Bold", md: "**", wrap: "**" },
-    { label: "I", title: "Italic", md: "_", wrap: "_" },
-    { label: "Link", title: "Link", md: "[", wrap: "](url)" },
-    { label: "Img", title: "Image", md: "![alt](", wrap: ")" },
-    { label: "Code", title: "Code", md: "```\n", wrap: "\n```", block: true },
-    { label: "List", title: "List", md: "- ", block: true },
-    {
-      label: "Table",
-      title: "Table",
-      md: "| Header | Header |\n| ------ | ------ |\n| Cell | Cell |",
-      block: true,
-    },
-  ];
-  async function aiText(
-    text: string,
-    field: "excerpt" | "category" | "title" | "content"
-  ) {
-    try {
-      setAiLoading((prev) => ({ ...prev, [field]: true }));
-      // cookie-auth; server reads cookies
-      const stripTags = (s: string) =>
-        s
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-      const cleanGeneratedHtml = (html: string): string => {
-        if (!html) return html;
-        // Remove fenced code blocks markers e.g., ```html ... ```
-        let out = html.replace(/```[a-zA-Z]*\s*\n?/g, "").replace(/```/g, "");
-        // Remove leading prompt echo lines (Title:/Excerpt:/Categories:) if present as plain text
-        out = out.replace(/^(\s*(Title|Excerpt|Categories)\s*:[^\n]*\n)+/i, "");
-        // Remove up to three leading <p> that echo prompt
-        for (let i = 0; i < 3; i++) {
-          const before = out;
-          out = out.replace(
-            /^\s*<p>\s*(Title|Excerpt|Categories)\s*:[\s\S]*?<\/p>\s*/i,
-            ""
-          );
-          if (out === before) break;
-        }
-        return out.trim();
-      };
-      if (field === "content") {
-        // Build an instruction prompt to generate a full article
-        const instructions = `Write a complete blog article in clean semantic HTML based on the details below.
-Requirements:
-- Use the Title exactly once as the <h1> at the top.
-- Use British English spelling and punctuation throughout (e.g., colour, organise, programme).
-- Do NOT include any lines like "Title:", "Excerpt:", or "Categories:" in the output, and do NOT wrap anything in code fences.
-- Include: an engaging introduction paragraph, 4–6 concise sections with <h2> headings, at least one <ul> list, and a short conclusion with a call to action.
-- Length target: 800–1200 words. Tone: warm, helpful, and authoritative.
-- Allowed tags only: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <blockquote>, <strong>, <em>, <a>. No inline styles, no scripts.`;
-        const contextLines: string[] = [];
-        if (title) contextLines.push(`Title: ${title}`);
-        if (excerpt) contextLines.push(`Excerpt: ${excerpt}`);
-        if (categories.length)
-          contextLines.push(`Categories: ${categories.join(", ")}`);
-        const prompt = `${instructions}\n\n${contextLines.join("\n")}`;
-        const res = await convertAiTextToHtml({
-          text: prompt,
-          type: "blog",
-        } as any);
-        const raw = typeof res === "string" ? res : (res as any)?.html || "";
-        return cleanGeneratedHtml(raw);
-      }
-      // For title/excerpt/category, build a clean context and ensure plain text
-      let context = text;
-      if (field === "title" || field === "excerpt" || field === "category") {
-        const base = stripTags(content);
-        const ctxLines: string[] = [];
-        if (base) ctxLines.push(base);
-        if (title) ctxLines.push(`Current title: ${stripTags(title)}`);
-        if (slug) ctxLines.push(`Slug: ${slug}`);
-        if (categories.length)
-          ctxLines.push(`Categories: ${categories.join(", ")}`);
-        context = ctxLines.join("\n\n");
-      }
-      const res = await convertAiTextToHtml({
-        text: context,
-        type: field,
-      } as any);
-      // title/excerpt/category return plain text via html field
-      if (typeof res === "string") return res;
-      return (res as any)?.html || "";
-    } catch (error) {
-      console.error(`Error in AI ${field} generation:`, error);
-      const message =
-        error instanceof Error ? error.message : "AI processing failed";
-      showErrorToast(null, message);
-      return "";
-    } finally {
-      setAiLoading((prev) => ({ ...prev, [field]: false }));
-    }
-  }
+  const { aiLoading, aiText } = useBlogAI({
+    title,
+    slug,
+    excerpt,
+    categories,
+    content,
+  });
 
-  const insertMarkdown = (
-    text: string,
-    setText: (value: string) => void,
-    ref: React.MutableRefObject<HTMLTextAreaElement | null>,
-    md: string,
-    wrap?: string,
-    block?: boolean
-  ) => {
-    if (!ref.current) return;
-
-    const start = ref.current.selectionStart ?? 0;
-    const end = ref.current.selectionEnd ?? 0;
-    const selectedText = text.substring(start, end);
-    const before = text.substring(0, start);
-    const after = text.substring(end);
-
-    let newText = text;
-    if (wrap) {
-      newText = before + md + selectedText + wrap + after;
-    } else if (block) {
-      const lines = text.split("\n");
-      const currentLine = before.split("\n").length - 1;
-      lines.splice(currentLine, 0, md);
-      newText = lines.join("\n");
-    } else {
-      newText = before + md + after;
-    }
-
-    setText(newText);
-    setTimeout(() => {
-      if (ref.current) {
-        const newCursorPos = wrap
-          ? start + md.length + selectedText.length + wrap.length
-          : start + md.length;
-        ref.current.selectionStart = newCursorPos;
-        ref.current.selectionEnd = newCursorPos;
-        ref.current.focus();
-      }
-    }, 0);
-  };
-  const convertToMarkdownWithGemini = async (
-    text: string,
-    prompt?: string
-  ): Promise<string> => {
-    try {
-      // cookie-auth
-      return await convertTextToMarkdown({ text, prompt } as any);
-    } catch (error) {
-      console.error("Error converting to markdown:", error);
-      showErrorToast(error, "Failed to convert to markdown");
-      return text;
-    }
-  };
-
-  const slugify = (str: string): string => {
-    return str
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  };
-
-  const previewHtml = "";
   const editorResetKey = 0;
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -276,66 +110,35 @@ Requirements:
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-2 md:px-0 flex flex-col items-center">
-      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 md:p-10">
-        <div className="mb-6 border-b pb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Create New Blog Post
-          </h1>
-          {creating && (
-            <span className="ml-4 text-pink-600 animate-pulse">
-              Creating...
-            </span>
-          )}
-        </div>
+      <div className="w-full max-w-4xl">
         {error && <ErrorState message={error} className="mb-4" />}
-        <div className="my-8">
-          <CreatePost
-            title={title}
-            setTitle={onTitleChange}
-            slug={slug}
-            setSlug={onSlugChange}
-            excerpt={excerpt}
-            setExcerpt={setExcerpt}
-            content={content}
-            setContent={setContent}
-            imageUrl={imageUrl}
-            setImageUrl={setImageUrl}
-            creating={creating}
-            error={error}
-            onSubmit={handleCreatePost}
-            slugManuallyEdited={slugManuallyEdited}
-            setSlugManuallyEdited={setSlugManuallyEdited}
-            pexelsOpen={pexelsOpen}
-            setPexelsOpen={setPexelsOpen}
-            markdownShortcuts={markdownShortcuts}
-            insertMarkdown={insertMarkdown}
-            contentRef={contentRef}
-            convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-            slugify={slugify}
-            categories={categories}
-            setCategories={setCategories}
-            aiLoading={aiLoading}
-            aiText={aiText}
-            previewHtml={previewHtml}
-            editorResetKey={editorResetKey}
-          />
-          {/* Live validation + info */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-600">
-            <div>Title: {title.trim().length}/120</div>
-            <div>Excerpt: {excerpt.trim().length}/300</div>
-            <div>Content: {content.trim().length} chars</div>
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            className="px-4 py-2 rounded-md border text-sm disabled:opacity-50"
-            onClick={() => router.back()}
-            disabled={creating}
-          >
-            Cancel
-          </button>
-        </div>
+        <PostForm
+          mode="create"
+          title={title}
+          setTitle={onTitleChange}
+          slug={slug}
+          setSlug={onSlugChange}
+          excerpt={excerpt}
+          setExcerpt={setExcerpt}
+          content={content}
+          setContent={setContent}
+          imageUrl={imageUrl}
+          setImageUrl={setImageUrl}
+          isSubmitting={creating}
+          error={error}
+          onSubmit={handleCreatePost}
+          onCancel={() => router.back()}
+          slugManuallyEdited={slugManuallyEdited}
+          setSlugManuallyEdited={setSlugManuallyEdited}
+          pexelsOpen={pexelsOpen}
+          setPexelsOpen={setPexelsOpen}
+          slugify={slugify}
+          categories={categories}
+          setCategories={setCategories}
+          aiLoading={aiLoading}
+          aiText={aiText}
+          editorResetKey={editorResetKey}
+        />
       </div>
       <PexelsImageModal
         isOpen={pexelsOpen}

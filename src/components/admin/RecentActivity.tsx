@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +10,10 @@ import {
   FileText,
   AlertCircle,
   ExternalLink,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
+
 // Helper function to format relative time
 function formatDistanceToNow(date: Date): string {
   const now = new Date();
@@ -20,13 +22,10 @@ function formatDistanceToNow(date: Date): string {
   const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minutes ago`;
-  } else if (diffInHours < 24) {
-    return `${diffInHours} hours ago`;
-  } else {
-    return `${diffInDays} days ago`;
-  }
+  if (diffInMinutes < 1) return "Just now";
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  return `${diffInDays}d ago`;
 }
 
 interface ActivityItem {
@@ -48,20 +47,20 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ activities, loading }: RecentActivityProps) {
-  const getActivityIcon = (type: ActivityItem["type"]) => {
+  const getActivityConfig = (type: ActivityItem["type"]) => {
     switch (type) {
       case "registration":
-        return <UserPlus className="h-4 w-4 text-green-600" />;
+        return { icon: UserPlus, color: "text-blue-600", bg: "bg-blue-50" };
       case "match":
-        return <Heart className="h-4 w-4 text-pink-600" />;
+        return { icon: Heart, color: "text-pink-600", bg: "bg-pink-50" };
       case "message":
-        return <MessageSquare className="h-4 w-4 text-blue-600" />;
+        return { icon: MessageSquare, color: "text-purple-600", bg: "bg-purple-50" };
       case "blog":
-        return <FileText className="h-4 w-4 text-purple-600" />;
+        return { icon: FileText, color: "text-teal-600", bg: "bg-teal-50" };
       case "approval":
-        return <AlertCircle className="h-4 w-4 text-orange-600" />;
+        return { icon: CheckCircle2, color: "text-orange-600", bg: "bg-orange-50" };
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
+        return { icon: AlertCircle, color: "text-slate-600", bg: "bg-slate-50" };
     }
   };
 
@@ -69,77 +68,32 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
     if (!status) return null;
     
     const variants = {
-      pending: "bg-yellow-100 text-yellow-700",
-      approved: "bg-green-100 text-green-700",
-      rejected: "bg-red-100 text-red-700",
+      pending: "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100",
+      approved: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100",
+      rejected: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
     };
 
     return (
-      <Badge className={`text-xs ${variants[status as keyof typeof variants]}`}>
-        {status}
+      <Badge variant="outline" className={`text-[10px] px-2 py-0.5 h-5 ${variants[status as keyof typeof variants]}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   };
 
-  const defaultActivities: ActivityItem[] = [
-    {
-      id: "1",
-      type: "registration",
-      title: "New User Registration",
-      description: "Sarah Ahmed completed profile setup",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      user: { name: "Sarah Ahmed" },
-      status: "pending",
-    },
-    {
-      id: "2",
-      type: "match",
-      title: "New Match Created",
-      description: "Ahmad Khan and Fatima Ali matched",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    },
-    {
-      id: "3",
-      type: "approval",
-      title: "Profile Approval Needed",
-      description: "Hassan Sheikh's profile pending review",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-      user: { name: "Hassan Sheikh" },
-      status: "pending",
-    },
-    {
-      id: "4",
-      type: "message",
-      title: "Support Message",
-      description: "User reported a technical issue",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-      status: "pending",
-    },
-    {
-      id: "5",
-      type: "blog",
-      title: "New Blog Post",
-      description: "Marriage tips article published",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    },
-  ];
-
-  const activityList = activities || defaultActivities;
-
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <CardTitle className="text-lg font-semibold text-slate-900">Recent Activity</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="pt-6">
+          <div className="space-y-6">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center space-x-3 animate-pulse">
-                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+              <div key={i} className="flex items-start space-x-4 animate-pulse">
+                <div className="w-10 h-10 bg-slate-100 rounded-full"></div>
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-4 bg-slate-100 rounded w-3/4"></div>
+                  <div className="h-3 bg-slate-100 rounded w-1/2"></div>
                 </div>
               </div>
             ))}
@@ -149,60 +103,75 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
     );
   }
 
+  const activityList = activities || [];
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Recent Activity</CardTitle>
-        <Button variant="ghost" size="sm">
+    <Card className="border-slate-200 shadow-sm h-full">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
+        <div className="space-y-1">
+          <CardTitle className="text-lg font-semibold text-slate-900">Recent Activity</CardTitle>
+          <p className="text-sm text-slate-500">Latest actions across the platform</p>
+        </div>
+        <Button variant="outline" size="sm" className="text-slate-600">
           View All
-          <ExternalLink className="ml-2 h-3 w-3" />
         </Button>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {activityList.slice(0, 8).map((activity) => (
-            <div key={activity.id} className="flex items-start space-x-3 group">
-              <div className="flex-shrink-0 w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
-                {getActivityIcon(activity.type)}
-              </div>
+      <CardContent className="pt-6">
+        {activityList.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            <Clock className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+            <p>No recent activity found</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {activityList.slice(0, 8).map((activity) => {
+              const config = getActivityConfig(activity.type);
+              const Icon = config.icon;
               
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {activity.title}
-                  </p>
-                  {getStatusBadge(activity.status)}
-                </div>
-                
-                <p className="text-sm text-gray-500 truncate">
-                  {activity.description}
-                </p>
-                
-                <div className="flex items-center mt-1 space-x-2">
-                  <span className="text-xs text-gray-400">
-                    {formatDistanceToNow(activity.timestamp)}
-                  </span>
-                  {activity.user && (
-                    <>
-                      <span className="text-gray-300">•</span>
-                      <span className="text-xs text-gray-500">
-                        {activity.user.name}
+              return (
+                <div key={activity.id} className="flex items-start space-x-4 group">
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.bg} ${config.color}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-slate-900 truncate pr-2">
+                        {activity.title}
+                      </p>
+                      <span className="text-xs text-slate-400 whitespace-nowrap">
+                        {formatDistanceToNow(activity.timestamp)}
                       </span>
-                    </>
-                  )}
+                    </div>
+                    
+                    <p className="text-sm text-slate-600 mb-2 line-clamp-1">
+                      {activity.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {activity.user && (
+                          <span className="text-xs font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
+                            {activity.user.name}
+                          </span>
+                        )}
+                        {getStatusBadge(activity.status)}
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mr-2"
+                      >
+                        <ExternalLink className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

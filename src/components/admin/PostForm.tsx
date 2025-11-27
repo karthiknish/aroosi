@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import BlogEditor from "@/components/admin/BlogEditor";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 
-interface CreatePostProps {
+interface PostFormProps {
+  mode: "create" | "edit";
   title: string;
   setTitle: (value: string) => void;
   slug: string;
@@ -20,30 +21,15 @@ interface CreatePostProps {
   setContent: (value: string) => void;
   imageUrl: string;
   setImageUrl: (value: string) => void;
-  creating: boolean;
+  isSubmitting: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onCancel: () => void;
+  onReset?: () => void;
   slugManuallyEdited: boolean;
   setSlugManuallyEdited: (value: boolean) => void;
   pexelsOpen: boolean;
   setPexelsOpen: (open: boolean) => void;
-  markdownShortcuts: Array<{
-    label: string;
-    title: string;
-    md: string;
-    wrap?: string;
-    block?: boolean;
-  }>;
-  insertMarkdown: (
-    text: string,
-    setText: (value: string) => void,
-    ref: React.MutableRefObject<HTMLTextAreaElement | null>,
-    md: string,
-    wrap?: string,
-    block?: boolean
-  ) => void;
-  contentRef: React.MutableRefObject<HTMLTextAreaElement | null>;
-  convertToMarkdownWithGemini: (text: string) => Promise<string>;
   slugify: (str: string) => string;
   categories: string[];
   setCategories: (value: string[]) => void;
@@ -57,11 +43,11 @@ interface CreatePostProps {
     text: string,
     field: "excerpt" | "category" | "title" | "content"
   ) => Promise<string>;
-  previewHtml: string;
-  editorResetKey: number;
+  editorResetKey?: number;
 }
 
-export function CreatePost({
+export function PostForm({
+  mode,
   title,
   setTitle,
   slug,
@@ -72,9 +58,11 @@ export function CreatePost({
   setContent,
   imageUrl,
   setImageUrl,
-  creating,
+  isSubmitting,
   error,
   onSubmit,
+  onCancel,
+  onReset,
   slugManuallyEdited,
   setSlugManuallyEdited,
   slugify,
@@ -85,12 +73,18 @@ export function CreatePost({
   pexelsOpen,
   setPexelsOpen,
   editorResetKey,
-}: CreatePostProps) {
+}: PostFormProps) {
   return (
-    <Card>
+    <Card className="w-full max-w-4xl mx-auto shadow-lg">
       <CardHeader>
-        <CardTitle>Create New Post</CardTitle>
-        <CardDescription>Write and publish a new blog post</CardDescription>
+        <CardTitle>
+          {mode === "create" ? "Create New Post" : "Edit Blog Post"}
+        </CardTitle>
+        <CardDescription>
+          {mode === "create"
+            ? "Write and publish a new blog post"
+            : "Update existing blog post details"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
@@ -113,9 +107,10 @@ export function CreatePost({
             aiLoading={aiLoading}
             aiText={aiText}
             content={content}
-            disabled={creating}
+            disabled={isSubmitting}
           />
-          <div>
+          
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="blog-content"
@@ -126,8 +121,9 @@ export function CreatePost({
               <Button
                 type="button"
                 variant="outline"
-                className="text-primary border-primary/30 h-8 px-3"
-                disabled={creating || aiLoading?.content}
+                size="sm"
+                className="text-primary border-primary/30"
+                disabled={isSubmitting || aiLoading?.content}
                 onClick={async () => {
                   const context = [
                     title ? `Title: ${title}` : "",
@@ -142,16 +138,16 @@ export function CreatePost({
                   if (html) setContent(html);
                 }}
               >
-                {aiLoading?.content ? "AI..." : "AI"}
+                {aiLoading?.content ? "Generating Content..." : "Generate with AI"}
               </Button>
             </div>
-            <div className="mt-1">
+            <div className="mt-1 border rounded-md overflow-hidden">
               <BlogEditor
                 key={editorResetKey}
                 value={content}
                 onChange={setContent}
               />
-              {/* Associate label via aria-labelledby since BlogEditor isn't a native control */}
+              {/* Hidden textarea for accessibility/form submission if needed */}
               <textarea
                 id="blog-content"
                 aria-labelledby="blog-content-label"
@@ -161,16 +157,47 @@ export function CreatePost({
               />
             </div>
           </div>
-          <div className="flex justify-end">
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            {onReset && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onReset}
+                disabled={isSubmitting}
+                className="mr-auto"
+              >
+                Reset
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
-              className="bg-primary hover:bg-primary-dark"
-              disabled={creating}
+              className="bg-pink-600 hover:bg-pink-700 text-white"
+              disabled={isSubmitting}
             >
-              {creating ? "Creating..." : "Publish Post"}
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Saving..."
+                : mode === "create"
+                ? "Publish Post"
+                : "Save Changes"}
             </Button>
           </div>
-          {error && <div className="text-danger text-sm mt-2">{error}</div>}
         </form>
       </CardContent>
     </Card>

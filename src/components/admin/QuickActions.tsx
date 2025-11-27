@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Bell,
+  ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -19,7 +20,8 @@ interface QuickAction {
   description: string;
   icon: React.ReactNode;
   href: string;
-  color: string;
+  colorClass: string;
+  iconColor: string;
 }
 
 export function QuickActions() {
@@ -30,90 +32,104 @@ export function QuickActions() {
       id: "create-blog",
       title: "Create Blog Post",
       description: "Write a new article",
-      icon: <Plus className="h-4 w-4" />,
+      icon: <Plus className="h-5 w-5" />,
       href: "/admin/blog/create",
-      color: "bg-blue-50 text-blue-600 hover:bg-blue-100",
+      colorClass: "bg-blue-50 hover:bg-blue-100 border-blue-100",
+      iconColor: "text-blue-600",
     },
     {
       id: "review-profiles",
       title: "Review Profiles",
       description: "Approve pending profiles",
-      icon: <Shield className="h-4 w-4" />,
+      icon: <Shield className="h-5 w-5" />,
       href: "/admin/profile",
-      color: "bg-orange-50 text-orange-600 hover:bg-orange-100",
+      colorClass: "bg-orange-50 hover:bg-orange-100 border-orange-100",
+      iconColor: "text-orange-600",
     },
     {
       id: "view-messages",
       title: "Contact Messages",
       description: "Respond to user inquiries",
-      icon: <Mail className="h-4 w-4" />,
+      icon: <Mail className="h-5 w-5" />,
       href: "/admin/contact",
-      color: "bg-green-50 text-green-600 hover:bg-green-100",
+      colorClass: "bg-green-50 hover:bg-green-100 border-green-100",
+      iconColor: "text-green-600",
     },
     {
       id: "user-management",
       title: "Manage Users",
       description: "Search and manage users",
-      icon: <Search className="h-4 w-4" />,
+      icon: <Search className="h-5 w-5" />,
       href: "/admin/profile",
-      color: "bg-purple-50 text-purple-600 hover:bg-purple-100",
+      colorClass: "bg-purple-50 hover:bg-purple-100 border-purple-100",
+      iconColor: "text-purple-600",
     },
     {
       id: "analytics",
       title: "View Analytics",
       description: "Platform insights",
-      icon: <BarChart3 className="h-4 w-4" />,
+      icon: <BarChart3 className="h-5 w-5" />,
       href: "/admin/analytics",
-      color: "bg-pink-50 text-pink-600 hover:bg-pink-100",
+      colorClass: "bg-pink-50 hover:bg-pink-100 border-pink-100",
+      iconColor: "text-pink-600",
     },
     {
       id: "marketing-email",
       title: "Send Marketing Email",
       description: "Promote to all users",
-      icon: <Mail className="h-4 w-4" />,
+      icon: <Mail className="h-5 w-5" />,
       href: "/admin/marketing-email",
-      color: "bg-red-50 text-red-600 hover:bg-red-100",
+      colorClass: "bg-red-50 hover:bg-red-100 border-red-100",
+      iconColor: "text-red-600",
     },
     {
       id: "push-notification",
       title: "Send Push Notification",
       description: "Notify all app users",
-      icon: <Bell className="h-4 w-4" />,
+      icon: <Bell className="h-5 w-5" />,
       href: "/admin/push-notification",
-      color: "bg-yellow-50 text-yellow-600 hover:bg-yellow-100",
+      colorClass: "bg-yellow-50 hover:bg-yellow-100 border-yellow-100",
+      iconColor: "text-yellow-600",
     },
     {
       id: "settings",
       title: "Platform Settings",
       description: "Configure system",
-      icon: <Settings className="h-4 w-4" />,
+      icon: <Settings className="h-5 w-5" />,
       href: "/admin/settings",
-      color: "bg-gray-50 text-gray-600 hover:bg-gray-100",
+      colorClass: "bg-slate-50 hover:bg-slate-100 border-slate-100",
+      iconColor: "text-slate-600",
     },
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
+    <Card className="border-slate-200 shadow-sm h-full">
+      <CardHeader className="border-b border-slate-100 pb-4">
+        <CardTitle className="text-lg font-semibold text-slate-900">Quick Actions</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div className="grid grid-cols-1 gap-3">
           {actions.map((action) => (
-            <Button
+            <button
               key={action.id}
-              variant="ghost"
-              className={`h-auto p-4 flex items-center justify-start space-x-3 transition-colors ${action.color}`}
               onClick={() => router.push(action.href)}
+              className={`group flex items-center justify-between w-full p-4 rounded-xl border transition-all duration-200 ${action.colorClass}`}
             >
-              <div className="flex-shrink-0">{action.icon}</div>
-              <div className="flex flex-col items-start space-y-1 min-w-0">
-                <span className="font-medium text-sm">{action.title}</span>
-                <span className="text-xs opacity-80 text-left">
-                  {action.description}
-                </span>
+              <div className="flex items-center space-x-4">
+                <div className={`p-2 rounded-lg bg-white/60 ${action.iconColor}`}>
+                  {action.icon}
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-semibold text-slate-900 text-sm">
+                    {action.title}
+                  </span>
+                  <span className="text-xs text-slate-600">
+                    {action.description}
+                  </span>
+                </div>
               </div>
-            </Button>
+              <ChevronRight className={`h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity ${action.iconColor}`} />
+            </button>
           ))}
         </div>
       </CardContent>
