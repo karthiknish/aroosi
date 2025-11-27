@@ -5,7 +5,6 @@ import { RecentActivity } from "@/components/admin/RecentActivity";
 import { QuickActions } from "@/components/admin/QuickActions";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import Head from "next/head";
 interface DashboardStatsPayload {
   totalUsers: number;
   activeUsers: number;
@@ -171,9 +170,6 @@ export default function AdminPage() {
 
   return (
     <>
-      <Head>
-        <title>Admin Dashboard</title>
-      </Head>
       <div className="space-y-6">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-6 border border-pink-100">

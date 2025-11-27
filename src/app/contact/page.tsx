@@ -1,5 +1,4 @@
 "use client";
-import Head from "next/head";
 import { motion } from "framer-motion";
 import { fadeInUp, fadeIn } from "@/components/animation/motion";
 import { Button } from "@/components/ui/button";
@@ -68,50 +67,6 @@ export default function ContactPage() {
 
   return (
     <>
-      <Head>
-        <title>
-          Contact Us - Aroosi | Get Support for Afghan Matrimony Platform
-        </title>
-        <meta
-          name="description"
-          content="Contact Aroosi support team for help with your Afghan matrimony account. Available 24/7 to assist with profile setup, membership questions, and technical support."
-        />
-        <meta
-          name="keywords"
-          content="aroosi contact, afghan matrimony support, customer service, help desk, matrimonial assistance, account support"
-        />
-
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://aroosi.app/contact" />
-        <meta
-          property="og:title"
-          content="Contact Us - Aroosi | Get Support for Afghan Matrimony Platform"
-        />
-        <meta
-          property="og:description"
-          content="Contact Aroosi support team for help with your Afghan matrimony account. Available 24/7 to assist with profile setup and membership questions."
-        />
-        <meta property="og:image" content="https://aroosi.app/og-contact.png" />
-
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content="https://aroosi.app/contact" />
-        <meta
-          property="twitter:title"
-          content="Contact Us - Aroosi | Get Support for Afghan Matrimony Platform"
-        />
-        <meta
-          property="twitter:description"
-          content="Contact Aroosi support team for help with your Afghan matrimony account. Available 24/7 to assist with profile setup and membership questions."
-        />
-        <meta
-          property="twitter:image"
-          content="https://aroosi.app/og-contact.png"
-        />
-
-        <link rel="canonical" href="https://aroosi.app/contact" />
-
         {/* Schema.org for Organization Contact */}
         <script
           type="application/ld+json"
@@ -135,7 +90,6 @@ export default function ContactPage() {
             }),
           }}
         />
-      </Head>
 <div className="relative min-h-screen bg-base-light">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

@@ -7,9 +7,86 @@ import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 import RouteTransition from "@/components/RouteTransition";
 import RouteLoader from "@/components/RouteLoader";
-// Note: Client-only UI like VerifyEmailBanner is rendered inside ClientRoot.
+import type { Metadata, Viewport } from "next";
 
-// Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#EC4899",
+};
+
+export const metadata: Metadata = {
+  title: {
+    default: "Aroosi - Number 1 Afghan Matrimony Site",
+    template: "%s | Aroosi",
+  },
+  description:
+    "Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service trusted by the global Afghan community.",
+  keywords: [
+    "afghan matrimony",
+    "afghan marriage",
+    "afghan singles",
+    "matrimonial site",
+    "aroosi",
+    "rishta",
+    "afghan community",
+    "afghan wedding",
+    "muslim matrimony",
+    "halal dating",
+  ],
+  authors: [{ name: "Aroosi Team" }],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  openGraph: {
+    type: "website",
+    url: "https://aroosi.app/",
+    title: "Aroosi - Afghan Matrimony Platform | Connecting Afghans Worldwide",
+    description:
+      "Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service.",
+    siteName: "Aroosi",
+    locale: "en_US",
+    images: [
+      {
+        url: "https://aroosi.app/og-home.png",
+        width: 1200,
+        height: 630,
+        alt: "Aroosi - Afghan Matrimony Platform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@aroosiapp",
+    creator: "@aroosiapp",
+    title: "Aroosi - Afghan Matrimony Platform | Connecting Afghans Worldwide",
+    description:
+      "Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service.",
+    images: ["https://aroosi.app/og-home.png"],
+  },
+  alternates: {
+    canonical: "https://aroosi.app",
+  },
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: "/favicon.ico",
+  },
+  other: {
+    "geo.region": "GLOBAL",
+    "geo.placename": "Worldwide",
+    "geo.position": "0;0",
+    ICBM: "0, 0",
+    copyright: "© 2024 Aroosi. All rights reserved.",
+    rating: "General",
+    distribution: "global",
+    "revisit-after": "1 days",
+  },
+};
 
 export default function RootLayout({
   children,
@@ -19,21 +96,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta charSet="utf-8" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, shrink-to-fit=no"
-        />
-        <meta name="theme-color" content="#EC4899" />
-        <meta name="robots" content="index, follow" />
-        <meta name="googlebot" content="index, follow" />
-        <meta name="language" content="en" />
-        <meta name="author" content="Aroosi Team" />
-        <meta name="copyright" content="© 2024 Aroosi. All rights reserved." />
-        <meta name="rating" content="General" />
-        <meta name="distribution" content="global" />
-        <meta name="revisit-after" content="1 days" />
-
         {/* Security headers */}
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta httpEquiv="X-Frame-Options" content="DENY" />
@@ -42,13 +104,6 @@ export default function RootLayout({
           httpEquiv="Referrer-Policy"
           content="strict-origin-when-cross-origin"
         />
-
-        {/* Canonical URL */}
-        <link rel="canonical" href="https://aroosi.app" />
-
-        {/* Favicon: rely on public/favicon.ico only (avoid duplicate app favicon file) */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="manifest" href="/site.webmanifest" />
 
         {/* Fonts */}
         <link
@@ -72,12 +127,6 @@ export default function RootLayout({
         {/* DNS prefetch for performance */}
         <link rel="dns-prefetch" href="https://aroosi.app" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-
-        {/* Meta Description for SEO */}
-        <meta
-          name="description"
-          content="No 1 Afghan matrimony site. Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform."
-        />
       </head>
       <body suppressHydrationWarning>
         {/* Skip to main content link for screen readers */}

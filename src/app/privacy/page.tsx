@@ -3,33 +3,10 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeInUp } from "@/components/animation/motion";
-import Head from "next/head";
 
 export default function PrivacyPage() {
   return (
     <>
-      <Head>
-        <title>Privacy Policy | Aroosi</title>
-        <meta
-          name="description"
-          content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans worldwide."
-        />
-        <meta property="og:title" content="Privacy Policy | Aroosi" />
-        <meta
-          property="og:description"
-          content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans worldwide."
-        />
-        <meta property="og:image" content="/og-image.png" />
-        <meta property="og:url" content="https://aroosi.app/privacy" />
-        <meta property="og:type" content="article" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Privacy Policy | Aroosi" />
-        <meta
-          name="twitter:description"
-          content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans worldwide."
-        />
-        <meta name="twitter:image" content="/og-image.png" />
-      </Head>
       <div className="bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
         <motion.main
           initial={{ opacity: 0, y: 20 }}

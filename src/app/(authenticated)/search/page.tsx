@@ -1,6 +1,6 @@
 "use client";
 
-import Head from "next/head";
+
 import React, { useState, useEffect, useMemo } from "react";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -464,82 +464,7 @@ export default function SearchProfilesPage() {
 
   return (
     <>
-      <Head>
-        <title>Search Profiles | Aroosi Afghan Matrimony</title>
-        <meta
-          name="description"
-          content="Search for compatible Afghan singles on Aroosi. Find your perfect match using advanced filters for location, age, education, and cultural preferences."
-        />
-        <meta
-          name="keywords"
-          content="search profiles aroosi, afghan profiles search, matrimonial search, find matches, afghan singles search, muslim dating search"
-        />
-        <link rel="canonical" href="https://aroosi.app/search" />
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://aroosi.app/search" />
-        <meta
-          property="og:title"
-          content="Search Profiles | Aroosi Afghan Matrimony"
-        />
-        <meta
-          property="og:description"
-          content="Search for compatible Afghan singles on Aroosi. Find your perfect match using advanced filters."
-        />
-        <meta property="og:image" content="https://aroosi.app/og-search.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta
-          property="og:image:alt"
-          content="Search Afghan Profiles on Aroosi"
-        />
-        <meta property="og:site_name" content="Aroosi" />
-        <meta property="og:locale" content="en_US" />
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content="https://aroosi.app/search" />
-        <meta
-          property="twitter:title"
-          content="Search Profiles | Aroosi Afghan Matrimony"
-        />
-        <meta
-          property="twitter:description"
-          content="Search for compatible Afghan singles on Aroosi. Find your perfect match using advanced filters."
-        />
-        <meta
-          property="twitter:image"
-          content="https://aroosi.app/og-search.png"
-        />
-        <meta property="twitter:site" content="@aroosiapp" />
-        <meta property="twitter:creator" content="@aroosiapp" />
-        {/* Additional SEO */}
-        <meta name="robots" content="noindex, nofollow" />{" "}
-        {/* Private search results */}
-        <meta name="author" content="Aroosi Team" />
-        <meta name="geo.region" content="GLOBAL" />
-        <meta name="geo.placename" content="Worldwide" />
-        <meta name="geo.position" content="0;0" />
-        <meta name="ICBM" content="0, 0" />
-        {/* Schema.org structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebPage",
-              name: "Search Profiles",
-              url: "https://aroosi.app/search",
-              description:
-                "Search for compatible Afghan singles on Aroosi matrimony platform",
-              isPartOf: {
-                "@type": "WebSite",
-                name: "Aroosi",
-                url: "https://aroosi.app",
-              },
-            }),
-          }}
-        />
-      </Head>
+
       {/* Removed debug auth status banner */}
       <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
         {/* Decorative color pop circles */}

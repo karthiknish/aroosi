@@ -20,7 +20,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import Head from "next/head";
+
 
 interface UsageHistoryItem {
   feature: string;
@@ -114,13 +114,7 @@ export default function UsagePage() {
 
   return (
     <>
-      <Head>
-        <title>Usage Analytics | Aroosi</title>
-        <meta
-          name="description"
-          content="Track your activity and usage statistics on Aroosi."
-        />
-      </Head>
+
       <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
       {/* Decorative color pop circles (match search page) */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

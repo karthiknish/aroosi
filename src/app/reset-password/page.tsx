@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useCallback, useMemo, useState } from "react";
-import Head from "next/head";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -237,29 +236,6 @@ export default function ResetPasswordPage() {
   // Wrap client navigation/searchParams usage with Suspense per Next.js guidance.
   return (
     <>
-      <Head>
-        <title>Reset Password | Aroosi</title>
-        <meta
-          name="description"
-          content="Reset your Aroosi account password securely. Enter your email and reset code to set a new password."
-        />
-        <meta property="og:title" content="Reset Password | Aroosi" />
-        <meta
-          property="og:description"
-          content="Reset your Aroosi account password securely. Enter your email and reset code to set a new password."
-        />
-        <meta property="og:image" content="/logo.png" />
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Reset Password | Aroosi" />
-        <meta
-          name="twitter:description"
-          content="Reset your Aroosi account password securely. Enter your email and reset code to set a new password."
-        />
-        <meta name="twitter:image" content="/logo.png" />
-        <link rel="canonical" href="https://aroosi.app/reset-password" />
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
       <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
         <ResetPasswordInner />
       </Suspense>

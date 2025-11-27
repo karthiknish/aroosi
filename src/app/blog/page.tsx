@@ -1,6 +1,6 @@
 "use client";
 
-import Head from "next/head";
+
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import React from "react";
@@ -99,99 +99,7 @@ export default function BlogPage() {
 
   return (
     <>
-      <Head>
-        <title>
-          Blog - Aroosi | Afghan Matrimony Stories, Advice & Cultural Insights
-        </title>
-        <meta
-          name="description"
-          content="Discover inspiring Afghan matrimony stories, expert marriage advice, and cultural insights. Get guidance for your journey to finding the perfect Afghan life partner through Aroosi."
-        />
-        <meta
-          name="keywords"
-          content="afghan blog, matrimony advice, afghan marriage stories, cultural insights, relationship guidance, afghan wedding traditions, aroosi blog"
-        />
-        <link rel="canonical" href="https://aroosi.app/blog" />
 
-        {/* Open Graph */}
-        <meta
-          property="og:title"
-          content="Blog - Aroosi | Afghan Matrimony Stories & Advice"
-        />
-        <meta
-          property="og:description"
-          content="Read inspiring Afghan matrimony stories, expert advice, and cultural insights to guide your journey towards finding your perfect life partner."
-        />
-        <meta property="og:url" content="https://aroosi.app/blog" />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://aroosi.app/og-blog.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta
-          property="og:image:alt"
-          content="Aroosi Blog - Afghan Matrimony Stories and Advice"
-        />
-
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta
-          name="twitter:title"
-          content="Blog - Aroosi | Afghan Matrimony Stories & Advice"
-        />
-        <meta
-          name="twitter:description"
-          content="Read inspiring Afghan matrimony stories, expert advice, and cultural insights to guide your journey towards finding your perfect life partner."
-        />
-        <meta name="twitter:image" content="https://aroosi.app/og-blog.png" />
-
-        {/* Additional SEO */}
-        <meta name="author" content="Aroosi Team" />
-        <meta name="robots" content="index, follow" />
-        <meta name="language" content="en" />
-
-        {/* Blog-specific structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Blog",
-              name: "Aroosi Blog",
-              description:
-                "Afghan matrimony advice, stories, and cultural insights for singles seeking their perfect life partner",
-              url: "https://aroosi.app/blog",
-              publisher: {
-                "@type": "Organization",
-                name: "Aroosi",
-                url: "https://aroosi.app",
-                logo: {
-                  "@type": "ImageObject",
-                  url: "https://aroosi.app/logo.png",
-                },
-              },
-              mainEntityOfPage: {
-                "@type": "WebPage",
-                "@id": "https://aroosi.app/blog",
-              },
-              blogPost: filteredPosts.map((post) => ({
-                "@type": "BlogPosting",
-                headline: post.title,
-                description: post.excerpt,
-                url: `https://aroosi.app/blog/${post.slug}`,
-                datePublished: post.createdAt,
-                author: {
-                  "@type": "Organization",
-                  name: "Aroosi Team",
-                },
-                publisher: {
-                  "@type": "Organization",
-                  name: "Aroosi",
-                },
-              })),
-            }),
-          }}
-        />
-      </Head>
 
       <section className="pt-24 sm:pt-28 md:pt-32 pb-16 text-center bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50 relative overflow-hidden">
         {/* Enhanced decorative elements */}

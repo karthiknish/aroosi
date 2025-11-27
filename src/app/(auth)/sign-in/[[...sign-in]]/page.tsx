@@ -6,7 +6,6 @@ import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
 import { useRouter } from "next/navigation";
 import { getJson } from "@/lib/http/client";
-import Head from "next/head";
 export default function SignInPage() {
   const { isAuthenticated, isLoaded, refreshUser } = useFirebaseAuth();
 
@@ -51,78 +50,24 @@ export default function SignInPage() {
 
   return (
     <>
-      <Head>
-        <title>Sign In | Aroosi Afghan Matrimony</title>
-        <meta
-          name="description"
-          content="Sign in to your Aroosi account to find your perfect Afghan match. Access your profile, matches, messages, and premium features securely."
-        />
-        <meta
-          name="keywords"
-          content="signin aroosi, login afghan matrimony, aroosi account, matrimonial login, afghan dating login, muslim marriage login"
-        />
-        <link rel="canonical" href="https://aroosi.app/sign-in" />
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://aroosi.app/sign-in" />
-        <meta property="og:title" content="Sign In | Aroosi Afghan Matrimony" />
-        <meta
-          property="og:description"
-          content="Sign in to your Aroosi account to find your perfect Afghan match. Access your profile, matches, and premium features."
-        />
-        <meta property="og:image" content="https://aroosi.app/og-signin.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta
-          property="og:image:alt"
-          content="Sign In to Aroosi - Afghan Matrimony"
-        />
-        <meta property="og:site_name" content="Aroosi" />
-        <meta property="og:locale" content="en_US" />
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content="https://aroosi.app/sign-in" />
-        <meta
-          property="twitter:title"
-          content="Sign In | Aroosi Afghan Matrimony"
-        />
-        <meta
-          property="twitter:description"
-          content="Sign in to your Aroosi account to find your perfect Afghan match. Access your profile and premium features."
-        />
-        <meta
-          property="twitter:image"
-          content="https://aroosi.app/og-signin.png"
-        />
-        <meta property="twitter:site" content="@aroosiapp" />
-        <meta property="twitter:creator" content="@aroosiapp" />
-        {/* Additional SEO */}
-        <meta name="robots" content="noindex, follow" />{" "}
-        {/* Don't index auth pages */}
-        <meta name="author" content="Aroosi Team" />
-        <meta name="geo.region" content="GLOBAL" />
-        <meta name="geo.placename" content="Worldwide" />
-        <meta name="geo.position" content="0;0" />
-        <meta name="ICBM" content="0, 0" />
-        {/* Schema.org structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebPage",
-              name: "Aroosi Sign In",
-              url: "https://aroosi.app/sign-in",
-              description: "Sign in page for Aroosi Afghan matrimony platform",
-              isPartOf: {
-                "@type": "WebSite",
-                name: "Aroosi",
-                url: "https://aroosi.app",
-              },
-            }),
-          }}
-        />
-      </Head>
+      {/* Schema.org structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            name: "Aroosi Sign In",
+            url: "https://aroosi.app/sign-in",
+            description: "Sign in page for Aroosi Afghan matrimony platform",
+            isPartOf: {
+              "@type": "WebSite",
+              name: "Aroosi",
+              url: "https://aroosi.app",
+            },
+          }),
+        }}
+      />
 
       <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
         {/* Decorative color pop circles */}

@@ -1,7 +1,5 @@
 "use client";
 
-import Head from "next/head";
-
 export default function Error({
   reset,
 }: {
@@ -9,12 +7,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <>
-      <Head>
-        <title>Error | Aroosi</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-      <div className="flex min-h-screen flex-col items-center justify-center bg-base-light">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-base-light">
       <h2 className="text-2xl font-bold mb-4 text-neutral-dark">Something went wrong!</h2>
       <button
         onClick={() => reset()}
@@ -23,6 +16,5 @@ export default function Error({
         Try again
       </button>
     </div>
-    </>
   );
 }

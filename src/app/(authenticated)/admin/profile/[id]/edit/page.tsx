@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { ProfileFormValues } from "@/types/profile";
 import ProfileEditForm from "@/components/admin/ProfileEditForm";
 
-function AdminEditProfilePageInner() {
+export default function AdminEditProfilePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
+  const params = useParams<{ id: string }>();
+  const id = params.id;
   const { isLoaded: authIsLoaded, isSignedIn, isAdmin } = useAuthContext();
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -166,7 +166,7 @@ function AdminEditProfilePageInner() {
     try {
       await updateAdminProfileById({ id, updates });
       showSuccessToast("Profile updated successfully!");
-      router.push(`/admin/profile/[id]?id=${id}`);
+      router.push(`/admin/profile/${id}`);
     } catch (error) {
       showErrorToast(
         null,
@@ -211,11 +211,11 @@ function AdminEditProfilePageInner() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push("/admin/profile")}
+            onClick={() => router.push(`/admin/profile/${id}`)}
             className="text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Profile Management
+            Back to Profile
           </Button>
         </div>
         <ProfileEditForm
@@ -229,13 +229,5 @@ function AdminEditProfilePageInner() {
         />
       </div>
     </div>
-  );
-}
-
-export default function AdminEditProfilePage() {
-  return (
-    <Suspense fallback={<LoadingSpinner size={32} />}>
-      <AdminEditProfilePageInner />
-    </Suspense>
   );
 }

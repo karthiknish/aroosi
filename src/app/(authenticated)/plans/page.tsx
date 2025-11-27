@@ -24,7 +24,7 @@ import { DEFAULT_PLANS } from "@/lib/constants/plans";
 import React, { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
-import Head from "next/head";
+
 
 type PlanId = "free" | "premium" | "premiumPlus" | string;
 
@@ -149,13 +149,7 @@ export default function ManagePlansPage() {
 
   return (
     <>
-      <Head>
-        <title>Subscription Plans | Aroosi</title>
-        <meta
-          name="description"
-          content="Choose the perfect subscription plan for your journey on Aroosi."
-        />
-      </Head>
+
       <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
       {/* Decorative background elements for visual appeal */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

@@ -11,7 +11,6 @@ import {
   deleteUserProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
-import Head from "next/head";
 import {
   Dialog,
   DialogContent,
@@ -177,27 +176,6 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
   return (
     <>
-      <Head>
-        <title>My Profile | Aroosi</title>
-        <meta
-          name="description"
-          content="View and manage your Aroosi profile, photos, and account settings."
-        />
-        <meta property="og:title" content="My Profile | Aroosi" />
-        <meta
-          property="og:description"
-          content="View and manage your Aroosi profile, photos, and account settings."
-        />
-        <meta property="og:image" content="/logo.png" />
-        <meta property="og:type" content="profile" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="My Profile | Aroosi" />
-        <meta
-          name="twitter:description"
-          content="View and manage your Aroosi profile, photos, and account settings."
-        />
-        <meta name="twitter:image" content="/logo.png" />
-      </Head>
       <div className="flex overflow-y-hidden items-center justify-center w-full bg-pink-50">
         <div className="w-full space-y-6 py-6">
           <ProfileView

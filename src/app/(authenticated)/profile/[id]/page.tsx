@@ -31,7 +31,6 @@ import {
   Building2,
   Eye,
 } from "lucide-react";
-import Head from "next/head";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -491,50 +490,6 @@ export default function ProfileDetailPage() {
         onBlockUser={handleBlockUser}
         onReportUser={handleReportUser}
       />
-      <Head>
-        <title>
-          {profile?.fullName ? `${profile.fullName}'s Profile` : "View Profile"}{" "}
-          | Aroosi
-        </title>
-        <meta
-          name="description"
-          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans worldwide.`}
-        />
-        <meta
-          property="og:title"
-          content={
-            profile?.fullName
-              ? `${profile.fullName}'s Profile | Aroosi`
-              : "View Profile | Aroosi"
-          }
-        />
-        <meta
-          property="og:description"
-          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans worldwide.`}
-        />
-        <meta
-          property="og:image"
-          content={mainProfileImageUrl || "/logo.png"}
-        />
-        <meta property="og:type" content="profile" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta
-          name="twitter:title"
-          content={
-            profile?.fullName
-              ? `${profile.fullName}'s Profile | Aroosi`
-              : "View Profile | Aroosi"
-          }
-        />
-        <meta
-          name="twitter:description"
-          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans worldwide.`}
-        />
-        <meta
-          name="twitter:image"
-          content={mainProfileImageUrl || "/logo.png"}
-        />
-      </Head>
       <div className="relative w-full overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

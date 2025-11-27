@@ -214,7 +214,8 @@ export async function POST(req: NextRequest) {
     }
 
     // If still no customer id, return clearer guidance
-    if (!customerId || typeof customerId !== "string") {
+    // We allow proceeding if a static portal URL is configured (generic fallback)
+    if ((!customerId || typeof customerId !== "string") && !staticPortalUrl) {
       console.warn("Portal route: missing Stripe customer id", {
         scope: "stripe.portal",
         userId,
@@ -303,7 +304,7 @@ export async function POST(req: NextRequest) {
     let portalSession;
     try {
       portalSession = await stripe!.billingPortal.sessions.create({
-        customer: customerId,
+        customer: customerId as string,
         return_url: cleanedReturn,
       });
     } catch (stripeErr: any) {

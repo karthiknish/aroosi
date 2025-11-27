@@ -27,15 +27,16 @@ export async function GET(request: NextRequest) {
       Math.min(1000, Number(url.searchParams.get("limit") || 200))
     );
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    // Query usage events for the user
+    // Note: We removed .where("timestamp", ">=", cutoff) and .orderBy("timestamp", "desc")
+    // to avoid requiring a composite index on (userId ASC, timestamp DESC) which might not exist.
+    // We perform filtering and sorting in memory instead.
     const snap = await db
       .collection(COL_USAGE_EVENTS)
       .where("userId", "==", auth.userId)
-      .where("timestamp", ">=", cutoff)
-      .orderBy("timestamp", "desc")
-      .limit(limit)
       .get();
 
-    const items: UsageHistoryItem[] = snap.docs.map(
+    const allItems: UsageHistoryItem[] = snap.docs.map(
       (
         d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
       ) => {
@@ -46,6 +47,13 @@ export async function GET(request: NextRequest) {
         };
       }
     );
+
+    // Filter, sort, and limit in memory
+    const items = allItems
+      .filter((item) => item.timestamp >= cutoff)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit);
+
     return successResponse<UsageHistoryItem[]>(items);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

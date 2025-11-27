@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { motion } from "framer-motion";
 import { Heart, Sparkles, UserCheck } from "lucide-react";
-import Head from "next/head";
+
 
 // Dynamically import react-confetti to avoid SSR issues
 const Confetti = dynamic(() => import("react-confetti"), {
@@ -63,13 +63,7 @@ export default function ProfileCreationSuccessPage() {
 
   return (
     <>
-      <Head>
-        <title>Welcome to Aroosi!</title>
-        <meta
-          name="description"
-          content="Your profile has been successfully created. Welcome to the Aroosi community!"
-        />
-      </Head>
+
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center relative overflow-hidden bg-gradient-to-br from-pink-50 via-white to-rose-50">
       {/* Decorative elements matching sign-in page */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

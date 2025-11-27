@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 // OAuth callback page for handling authentication redirects
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import Head from "next/head";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();
@@ -36,12 +35,7 @@ export default function OAuthCallbackPage() {
   }, [isSignedIn, isLoaded, router]);
 
   return (
-    <>
-      <Head>
-        <title>Authenticating | Aroosi</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-      <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <h2 className="text-xl font-semibold mb-2">Completing sign in...</h2>
         <p className="text-gray-600">Please wait while we redirect you.</p>
@@ -52,6 +46,5 @@ export default function OAuthCallbackPage() {
         )}
       </div>
     </div>
-    </>
   );
 }

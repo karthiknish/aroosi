@@ -1,6 +1,5 @@
 "use client";
 
-import Head from "next/head";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,12 +35,7 @@ export default function BannedPage() {
   };
 
   return (
-    <>
-      <Head>
-        <title>Account Banned | Aroosi</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-      <div className="min-h-screen bg-base-light flex items-center justify-center py-10 px-4">
+    <div className="min-h-screen bg-base-light flex items-center justify-center py-10 px-4">
       <Card className="w-full max-w-2xl shadow-xl">
         <CardHeader>
           <CardTitle className="text-danger text-2xl">Your account is banned</CardTitle>
@@ -67,7 +61,6 @@ export default function BannedPage() {
         </CardContent>
       </Card>
     </div>
-    </>
   );
 }
 

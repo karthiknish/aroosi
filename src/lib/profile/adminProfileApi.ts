@@ -210,19 +210,23 @@ export async function fetchAllAdminProfileImages({
   const newImages: Record<string, ImageType[]> = {};
   await Promise.all(
     profiles.map(async (profile) => {
-      if (!profile.userId) {
+      const targetId = profile.userId || profile._id;
+      if (!targetId) {
         return;
       }
       try {
-        const data = await fetchAdminProfileImages({ userId: profile.userId });
-        if (Array.isArray(data)) {
-          newImages[profile._id] = data;
-        } else if (Array.isArray(data.userProfileImages)) {
-          newImages[profile._id] = data.userProfileImages;
-        } else {
-        }
+        // Use the robust fetchAdminProfileImagesById which handles multiple response formats
+        const images = await fetchAdminProfileImagesById({
+          profileId: targetId,
+        });
+        newImages[profile._id] = images;
       } catch (error) {
-        // Optionally log error for each profile, but don't throw to allow others to continue
+        // Log error but don't throw; set empty array so UI shows placeholder instead of loading state
+        console.error(
+          `Error fetching images for profile ${profile._id}:`,
+          error
+        );
+        newImages[profile._id] = [];
       }
     })
   );

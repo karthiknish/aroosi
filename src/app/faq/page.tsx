@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Head from "next/head";
+
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeInUp, fadeIn } from "@/components/animation/motion";
@@ -177,87 +177,7 @@ export default function FaqPage() {
 
   return (
     <>
-      <Head>
-        <title>
-          FAQ - Aroosi | Frequently Asked Questions About Afghan Matrimony
-        </title>
-        <meta
-          name="description"
-          content="Find answers to common questions about Aroosi Afghan matrimony platform. Learn about membership plans, safety features, profile verification, matching system, and more."
-        />
-        <meta
-          name="keywords"
-          content="aroosi faq, afghan matrimony questions, membership help, profile setup, matching system, safety guidelines, subscription plans"
-        />
 
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://aroosi.app/faq" />
-        <meta
-          property="og:title"
-          content="FAQ - Aroosi | Frequently Asked Questions About Afghan Matrimony"
-        />
-        <meta
-          property="og:description"
-          content="Find answers to common questions about Aroosi Afghan matrimony platform. Learn about membership plans, safety features, and matching system."
-        />
-        <meta property="og:image" content="https://aroosi.app/og-faq.png" />
-
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content="https://aroosi.app/faq" />
-        <meta
-          property="twitter:title"
-          content="FAQ - Aroosi | Frequently Asked Questions About Afghan Matrimony"
-        />
-        <meta
-          property="twitter:description"
-          content="Find answers to common questions about Aroosi Afghan matrimony platform. Learn about membership plans, safety features, and matching system."
-        />
-        <meta
-          property="twitter:image"
-          content="https://aroosi.app/og-faq.png"
-        />
-
-        <link rel="canonical" href="https://aroosi.app/faq" />
-
-        {/* Schema.org for FAQ Page */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "FAQPage",
-              mainEntity: [
-                {
-                  "@type": "Question",
-                  name: "What is Aroosi?",
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: "Aroosi is a premium matrimony platform specifically designed for the Afghan community. We provide a safe, secure, and culturally sensitive environment for Afghan singles to find their life partners.",
-                  },
-                },
-                {
-                  "@type": "Question",
-                  name: "Is Aroosi free to use?",
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: "Yes! Aroosi offers a Free plan that includes creating a profile, limited daily searches, and viewing profiles. For unlimited messaging and premium features, we offer Premium (£14.99/month) and Premium Plus (£39.99/month) plans.",
-                  },
-                },
-                {
-                  "@type": "Question",
-                  name: "How do you ensure user safety?",
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: "We implement multiple safety layers: profile verification, photo authentication, content moderation, secure messaging, and the ability to block/report users. All profiles are reviewed before approval.",
-                  },
-                },
-              ],
-            }),
-          }}
-        />
-      </Head>
       <div className="relative min-h-screen bg-base-light">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

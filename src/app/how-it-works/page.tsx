@@ -1,5 +1,4 @@
 "use client";
-import Head from "next/head";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,32 +22,6 @@ import { fadeInUp, fadeIn } from "@/components/animation/motion";
 export default function HowItWorksPage() {
   return (
     <>
-      <Head>
-        <title>How Aroosi Works | Find Your Afghan Match</title>
-        <meta
-          name="description"
-          content="Learn how Aroosi helps Afghans find trusted matches with safety and privacy at heart."
-        />
-        <link rel="canonical" href="https://aroosi.app/how-it-works" />
-        <meta property="og:type" content="website" />
-        <meta
-          property="og:title"
-          content="How Aroosi Works | Find Your Afghan Match"
-        />
-        <meta
-          property="og:description"
-          content="Steps to create your profile, match, and connect on Aroosi."
-        />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta
-          name="twitter:title"
-          content="How Aroosi Works | Find Your Afghan Match"
-        />
-        <meta
-          name="twitter:description"
-          content="Steps to create your profile, match, and connect on Aroosi."
-        />
-      </Head>
       <div className="relative min-h-screen bg-base-light">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

@@ -1,5 +1,4 @@
 "use client";
-import Head from "next/head";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -16,26 +15,6 @@ import { ArrowRight, Calendar, Award, Smile } from "lucide-react";
 export default function AboutPage() {
   return (
     <>
-      <Head>
-        <title>About Aroosi | Afghan Matrimony</title>
-        <meta
-          name="description"
-          content="Learn about Aroosi's mission to connect Afghans worldwide with a safe, private, and trusted matrimony platform."
-        />
-        <link rel="canonical" href="https://aroosi.app/about" />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="About Aroosi | Afghan Matrimony" />
-        <meta
-          property="og:description"
-          content="Our mission and values: safety, privacy, and meaningful connections for Afghans worldwide."
-        />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="About Aroosi | Afghan Matrimony" />
-        <meta
-          name="twitter:description"
-          content="Our mission and values: safety, privacy, and meaningful connections for Afghans worldwide."
-        />
-      </Head>
       <div className="flex flex-col bg-base-light">
       <main className="flex-1">
         {/* Hero Section */}

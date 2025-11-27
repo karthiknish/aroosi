@@ -16,7 +16,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
-import Head from "next/head";
 
 function todayKey(): string {
   const d = new Date();
@@ -147,15 +146,7 @@ export default function QuickPicksPage() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Quick Picks | Aroosi</title>
-        <meta
-          name="description"
-          content="Discover your daily curated matches with Quick Picks on Aroosi."
-        />
-      </Head>
-      <div className="min-h-screen flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-3">
           <div className="text-sm text-neutral-600">Daily Quick Picks</div>
@@ -259,7 +250,6 @@ export default function QuickPicksPage() {
         )}
       </div>
     </div>
-    </>
   );
 }
 

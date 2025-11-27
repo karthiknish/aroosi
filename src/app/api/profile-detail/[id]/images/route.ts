@@ -170,15 +170,32 @@ export async function GET(req: NextRequest) {
         ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
         : undefined);
 
-    const normalized = (images as any[]).map((img) => {
-      const storageId = img.storageId || img.id || null;
-      let url = img.url || null;
-      if (!url && storageId && bucketName) {
-        // Ensure no leading slash duplication
-        url = `https://storage.googleapis.com/${bucketName}/${storageId}`;
-      }
-      return { id: storageId || img.id, storageId, url };
-    });
+    const normalized = await Promise.all(
+      (images as any[]).map(async (img) => {
+        const storageId = img.storageId || img.id || null;
+        let url = img.url || null;
+        if (!url && storageId && bucketName) {
+          try {
+            const file = adminStorage.bucket(bucketName).file(storageId);
+            // Generate a signed URL valid for 1 hour
+            const [signedUrl] = await file.getSignedUrl({
+              action: "read",
+              expires: Date.now() + 60 * 60 * 1000, // 1 hour
+            });
+            url = signedUrl;
+          } catch (e) {
+            if (debug)
+              console.warn(
+                `[${requestId}] Failed to sign URL for ${storageId}:`,
+                e
+              );
+            // Fallback to public URL if signing fails
+            url = `https://storage.googleapis.com/${bucketName}/${storageId}`;
+          }
+        }
+        return { id: storageId || img.id, storageId, url };
+      })
+    );
     return NextResponse.json(
       {
         success: true,

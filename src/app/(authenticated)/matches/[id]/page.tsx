@@ -11,7 +11,6 @@ import { markConversationRead } from "@/lib/api/messages";
 import { useState, useEffect } from "react";
 import { showErrorToast } from "@/lib/ui/toast";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
-import Head from "next/head";
 export default function MatchChatPage() {
   const { id: otherUserId } = useParams<{ id: string }>();
   // Cookie-auth: remove token from context; server reads HttpOnly cookies
@@ -74,12 +73,6 @@ export default function MatchChatPage() {
 
   return (
     <>
-      <Head>
-        <title>Chat — Aroosi Matches</title>
-        <meta name="robots" content="noindex" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#bfa67a" />
-      </Head>
       <div className="relative min-h-screen">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

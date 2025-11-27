@@ -9,7 +9,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import Head from "next/head";
 
 export default function MyShortlistsPage() {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -74,15 +73,7 @@ export default function MyShortlistsPage() {
   }
 
   return (
-    <>
-      <Head>
-        <title>My Shortlists | Aroosi</title>
-        <meta
-          name="description"
-          content="View and manage your shortlisted profiles and personal notes on Aroosi."
-        />
-      </Head>
-      <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6">
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-4">
           <h1 className="text-xl font-semibold mb-4">My Shortlists</h1>
@@ -155,7 +146,6 @@ export default function MyShortlistsPage() {
         </CardContent>
       </Card>
     </div>
-    </>
   );
 }
 

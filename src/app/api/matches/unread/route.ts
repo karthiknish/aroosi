@@ -9,11 +9,11 @@ export const GET = withFirebaseAuth(async (authUser, _req: NextRequest) => {
   const userId = authUser.id;
   try {
     // Query messages for the user - use only existing indexes to avoid requiring composite index
+    // Note: We removed orderBy("createdAt", "desc") and limit(500) because it requires a composite index
+    // on (toUserId ASC, createdAt DESC) which might not exist.
     const snap = await db
       .collection(COLLECTION)
       .where("toUserId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .limit(500)
       .get();
 
     const counts: Record<string, number> = {};

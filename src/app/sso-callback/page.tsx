@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { Suspense } from 'react';
 import Loading from './loading';
-import Head from "next/head";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,12 +36,7 @@ function SSOCallbackContent() {
 
   if (error) {
     return (
-      <>
-        <Head>
-          <title>Authentication Error | Aroosi</title>
-          <meta name="robots" content="noindex, nofollow" />
-        </Head>
-        <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">
             Authentication Error
@@ -56,17 +50,11 @@ function SSOCallbackContent() {
           </button>
         </div>
       </div>
-      </>
     );
   }
 
   return (
-    <>
-      <Head>
-        <title>Authenticating | Aroosi</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-      <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-neutral-800 mb-4">
           Completing Authentication
@@ -77,7 +65,6 @@ function SSOCallbackContent() {
         </p>
       </div>
     </div>
-    </>
   );
 }
 

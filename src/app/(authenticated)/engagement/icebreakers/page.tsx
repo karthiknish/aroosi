@@ -4,20 +4,11 @@ import { IcebreakersPanel } from "@/app/(authenticated)/profile/[id]/Icebreakers
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Rocket } from "lucide-react";
-import Head from "next/head";
 
 export default function EngagementIcebreakersPage() {
   const router = useRouter();
   return (
-    <>
-      <Head>
-        <title>Icebreakers | Aroosi</title>
-        <meta
-          name="description"
-          content="Answer icebreaker questions to help your profile stand out and attract more meaningful connections on Aroosi."
-        />
-      </Head>
-      <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="max-w-4xl mx-auto px-4 py-16">
       <div className="mb-8 text-center">
         <h1 className="text-3xl sm:text-4xl font-serif font-bold text-primary mb-3 flex items-center justify-center gap-2">
           <Rocket className="w-6 h-6 text-rose-600" />
@@ -32,6 +23,5 @@ export default function EngagementIcebreakersPage() {
         <Button variant="outline" onClick={() => router.push("/search")}>Back to Search</Button>
       </div>
     </div>
-    </>
   );
 }

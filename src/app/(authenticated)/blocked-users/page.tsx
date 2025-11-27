@@ -9,7 +9,7 @@ import { useBlockedUsers, useUnblockUser } from "@/hooks/useSafety";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import Link from "next/link";
-import Head from "next/head";
+
 
 export default function BlockedUsersPage() {
   const {
@@ -69,13 +69,7 @@ export default function BlockedUsersPage() {
 
   return (
     <>
-      <Head>
-        <title>Blocked Users | Aroosi</title>
-        <meta
-          name="description"
-          content="Manage your blocked users list on Aroosi."
-        />
-      </Head>
+
       <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="space-y-2">

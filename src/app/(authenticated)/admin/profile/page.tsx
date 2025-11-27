@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   fetchAdminProfiles,
@@ -69,6 +69,7 @@ export default function AdminProfilePage() {
   // Cookie-auth; ensure auth context is initialized (no token usage)
   useAuthContext();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "banned">("all");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
@@ -82,10 +83,23 @@ export default function AdminProfilePage() {
     "createdAt"
   );
   const [sortDir] = useState<"asc" | "desc">("desc");
-  const [bannedFilter] = useState<"all" | "true" | "false">("all");
   const [planFilter] = useState<"all" | "free" | "premium" | "premiumPlus">(
     "all"
   );
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page on status change
+  useEffect(() => {
+    setPage(1);
+  }, [status]);
 
   const {
     data,
@@ -99,9 +113,9 @@ export default function AdminProfilePage() {
       pageSize,
       sortBy,
       sortDir,
-      bannedFilter,
+      status,
       planFilter,
-      // Note: search/status remain client-side for now
+      debouncedSearch,
     ],
     queryFn: async () => {
       // Server reads HttpOnly cookies for admin auth
@@ -111,12 +125,13 @@ export default function AdminProfilePage() {
         page: srvPage,
         pageSize: srvPageSize,
       } = await fetchAdminProfiles({
-        search: "", // server-side search not used yet
+        search: debouncedSearch,
         page,
         pageSize,
         sortBy,
         sortDir,
-        banned: bannedFilter,
+        banned:
+          status === "all" ? "all" : status === "banned" ? "true" : "false",
         plan: planFilter,
       });
 
@@ -157,29 +172,6 @@ export default function AdminProfilePage() {
     Math.ceil((total || 0) / (serverPageSize || 1))
   );
 
-  // Debug logging removed to satisfy no-console lint
-
-  // Client-side filtering: search + status only (minimal)
-  const filteredProfiles: AdminProfile[] = useMemo((): AdminProfile[] => {
-    let filtered = profiles;
-
-    if (search.trim()) {
-      const s = search.trim().toLowerCase();
-      filtered = filtered.filter(
-        (p: AdminProfile) =>
-          (p.fullName || "").toLowerCase().includes(s) ||
-          (p.city || "").toLowerCase().includes(s) ||
-          (p.phoneNumber || "").toLowerCase().includes(s)
-      );
-    }
-    if (status === "active")
-      filtered = filtered.filter((p: AdminProfile) => !p.banned);
-    if (status === "banned")
-      filtered = filtered.filter((p: AdminProfile) => !!p.banned);
-
-    return filtered;
-  }, [profiles, search, status]);
-
   // Handlers
   const onDelete = async (id: string) => {
     await deleteAdminProfile({ id });
@@ -198,73 +190,6 @@ export default function AdminProfilePage() {
     void loadProfiles();
     showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
   };
-
-  // Loading state
-  if (loading)
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          {/* Header Skeleton */}
-          <div className="bg-white rounded-lg border shadow-sm p-6 mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex-1">
-                <Skeleton className="h-8 w-64 mb-2" />
-                <Skeleton className="h-5 w-96 max-w-full" />
-              </div>
-              <Skeleton className="h-12 w-48" />
-            </div>
-          </div>
-
-          {/* Search Controls Skeleton */}
-          <div className="bg-white rounded-lg border shadow-sm p-4 mb-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <Skeleton className="h-10 flex-1" />
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-32" />
-            </div>
-          </div>
-
-          {/* Pagination Skeleton */}
-          <div className="bg-white rounded-lg border shadow-sm p-4 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <Skeleton className="h-5 w-48" />
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-8 w-12" />
-                <Skeleton className="h-8 w-20" />
-              </div>
-            </div>
-          </div>
-
-          {/* Grid Skeleton */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-xl shadow-md border p-4 flex flex-col gap-3 min-h-[320px]"
-              >
-                <Skeleton className="h-20 w-20 rounded-xl mx-auto mb-2" />
-                <div className="text-center space-y-2 flex-1">
-                  <Skeleton className="h-6 w-32 mx-auto" />
-                  <Skeleton className="h-4 w-24 mx-auto" />
-                  <Skeleton className="h-3 w-16 mx-auto" />
-                </div>
-                <div className="flex justify-center gap-1 mt-auto">
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-                <div className="border-t border-gray-100 pt-2">
-                  <div className="flex justify-center gap-1">
-                    <Skeleton className="h-8 flex-1" />
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
 
   if (error)
     return (
@@ -352,7 +277,7 @@ export default function AdminProfilePage() {
             {/* Results Count */}
             <div className="flex items-center">
               <span className="text-sm text-muted-foreground">
-                {filteredProfiles.length} of {profiles.length} profiles
+                {total} profiles found
               </span>
             </div>
           </div>
@@ -402,7 +327,33 @@ export default function AdminProfilePage() {
         </div>
 
         {/* Profiles Grid or Empty State */}
-        {filteredProfiles.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-md border p-4 flex flex-col gap-3 min-h-[320px]"
+              >
+                <Skeleton className="h-20 w-20 rounded-xl mx-auto mb-2" />
+                <div className="text-center space-y-2 flex-1">
+                  <Skeleton className="h-6 w-32 mx-auto" />
+                  <Skeleton className="h-4 w-24 mx-auto" />
+                  <Skeleton className="h-3 w-16 mx-auto" />
+                </div>
+                <div className="flex justify-center gap-1 mt-auto">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+                <div className="border-t border-gray-100 pt-2">
+                  <div className="flex justify-center gap-1">
+                    <Skeleton className="h-8 flex-1" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : profiles.length === 0 ? (
           <div className="bg-white rounded-lg border shadow-sm p-12">
             <div className="flex flex-col items-center justify-center text-center gap-4">
               <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
@@ -444,7 +395,7 @@ export default function AdminProfilePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProfiles.map((profile: AdminProfile) => (
+            {profiles.map((profile: AdminProfile) => (
               <div
                 key={profile._id}
                 className="bg-white rounded-xl shadow-md border hover:shadow-lg transition-all duration-200 group relative overflow-hidden"
@@ -455,7 +406,7 @@ export default function AdminProfilePage() {
                   className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-white hover:shadow-md transition-all opacity-0 group-hover:opacity-100"
                   title="Edit Profile"
                   onClick={() =>
-                    router.push(`/admin/profile/edit?id=${profile._id}`)
+                    router.push(`/admin/profile/${profile._id}/edit`)
                   }
                 >
                   <Pencil className="w-4 h-4 text-gray-600" />
@@ -476,6 +427,7 @@ export default function AdminProfilePage() {
                         width={80}
                         height={80}
                         className="w-full h-full object-cover"
+                        unoptimized
                       />
                     ) : (
                       <UserX className="w-8 h-8 text-gray-300" />
@@ -657,14 +609,14 @@ export default function AdminProfilePage() {
           >
             <DialogContent className="bg-white">
               <DialogTitle>
-                {filteredProfiles.find((p) => p._id === confirmBanId)?.banned
+                {profiles.find((p) => p._id === confirmBanId)?.banned
                   ? "Unban"
                   : "Ban"}{" "}
                 Profile
               </DialogTitle>
               <DialogDescription>
                 Are you sure you want to{" "}
-                {filteredProfiles.find((p) => p._id === confirmBanId)?.banned
+                {profiles.find((p) => p._id === confirmBanId)?.banned
                   ? "unban"
                   : "ban"}{" "}
                 this profile?
@@ -678,12 +630,11 @@ export default function AdminProfilePage() {
                   onClick={() =>
                     onToggleBan(
                       confirmBanId,
-                      !!filteredProfiles.find((p) => p._id === confirmBanId)
-                        ?.banned
+                      !!profiles.find((p) => p._id === confirmBanId)?.banned
                     )
                   }
                 >
-                  {filteredProfiles.find((p) => p._id === confirmBanId)?.banned
+                  {profiles.find((p) => p._id === confirmBanId)?.banned
                     ? "Unban"
                     : "Ban"}
                 </Button>

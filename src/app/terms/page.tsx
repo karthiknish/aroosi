@@ -4,37 +4,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeInUp } from "@/components/animation/motion";
 import React from "react";
-import Head from "next/head";
 
 export default function TermsPage() {
   return (
     <>
-      <Head>
-        <title>Terms & Conditions | Aroosi Afghan Matrimony</title>
-        <meta
-          name="description"
-          content="Read the terms and conditions for using Aroosi's Afghan matrimony platform."
-        />
-        <link rel="canonical" href="https://aroosi.app/terms" />
-        <meta property="og:type" content="website" />
-        <meta
-          property="og:title"
-          content="Terms & Conditions | Aroosi Afghan Matrimony"
-        />
-        <meta
-          property="og:description"
-          content="Rules and policies for using Aroosi services."
-        />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta
-          name="twitter:title"
-          content="Terms & Conditions | Aroosi Afghan Matrimony"
-        />
-        <meta
-          name="twitter:description"
-          content="Rules and policies for using Aroosi services."
-        />
-      </Head>
       <div className="bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
         <motion.main
           initial={{ opacity: 0, y: 20 }}

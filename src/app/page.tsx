@@ -1,6 +1,5 @@
 "use client";
 
-import Head from "next/head";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Users, Shield, Star, CheckCircle } from "lucide-react";
@@ -33,89 +32,31 @@ function OnboardingSlot() {
 export default function HomePage() {
   return (
     <>
-      <Head>
-        <title>Aroosi - Number 1 Afghan Matrimony Site</title>
-        <meta
-          name="description"
-          content="Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service trusted by the global Afghan community."
-        />
-        <meta
-          name="keywords"
-          content="afghan matrimony, afghan marriage, afghan singles, matrimonial site, aroosi, rishta, afghan community, afghan wedding, muslim matrimony, halal dating"
-        />
-
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://aroosi.app/" />
-        <meta
-          property="og:title"
-          content="Aroosi - Afghan Matrimony Platform | Connecting Afghans Worldwide"
-        />
-        <meta
-          property="og:description"
-          content="Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service."
-        />
-        <meta property="og:image" content="https://aroosi.app/og-home.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta
-          property="og:image:alt"
-          content="Aroosi - Afghan Matrimony Platform"
-        />
-        <meta property="og:site_name" content="Aroosi" />
-        <meta property="og:locale" content="en_US" />
-
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content="https://aroosi.app/" />
-        <meta
-          property="twitter:title"
-          content="Aroosi - Afghan Matrimony Platform | Connecting Afghans Worldwide"
-        />
-        <meta
-          property="twitter:description"
-          content="Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service."
-        />
-        <meta
-          property="twitter:image"
-          content="https://aroosi.app/og-home.png"
-        />
-        <meta property="twitter:site" content="@aroosiapp" />
-        <meta property="twitter:creator" content="@aroosiapp" />
-
-        {/* Additional SEO */}
-        <link rel="canonical" href="https://aroosi.app/" />
-        <meta name="geo.region" content="GLOBAL" />
-        <meta name="geo.placename" content="Worldwide" />
-        <meta name="geo.position" content="0;0" />
-        <meta name="ICBM" content="0, 0" />
-
-        {/* Schema.org structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              name: "Aroosi",
-              alternateName: "Aroosi Afghan Matrimony",
-              url: "https://aroosi.app",
-              description:
-                "Premier Afghan matrimony platform connecting Afghan singles worldwide",
-              potentialAction: {
-                "@type": "SearchAction",
-                target: "https://aroosi.app/search?q={search_term_string}",
-                "query-input": "required name=search_term_string",
-              },
-              sameAs: [
-                "https://facebook.com/aroosi",
-                "https://instagram.com/aroosi",
-                "https://twitter.com/aroosiapp",
-              ],
-            }),
-          }}
-        />
-      </Head>
+      {/* Schema.org structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Aroosi",
+            alternateName: "Aroosi Afghan Matrimony",
+            url: "https://aroosi.app",
+            description:
+              "Premier Afghan matrimony platform connecting Afghan singles worldwide",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: "https://aroosi.app/search?q={search_term_string}",
+              "query-input": "required name=search_term_string",
+            },
+            sameAs: [
+              "https://facebook.com/aroosi",
+              "https://instagram.com/aroosi",
+              "https://twitter.com/aroosiapp",
+            ],
+          }),
+        }}
+      />
       <div className="flex flex-col bg-base-light">
         {/* Header */}
         <main className="flex-1" id="main-content">
