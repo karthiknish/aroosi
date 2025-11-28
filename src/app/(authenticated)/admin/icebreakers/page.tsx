@@ -83,9 +83,9 @@ async function createIcebreaker(payload: {
 async function updateIcebreaker(payload: {
   id: string;
   text?: string;
-  category?: string;
+  category?: string | null;
   active?: boolean;
-  weight?: number;
+  weight?: number | null;
 }) {
   const res = await fetch("/api/admin/icebreakers", {
     method: "PUT",
