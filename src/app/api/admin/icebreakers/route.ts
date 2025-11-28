@@ -72,9 +72,9 @@ export async function POST(req: NextRequest) {
 const UpdateSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(3).max(300).optional(),
-  category: z.string().trim().max(100).optional(),
+  category: z.string().trim().max(100).nullable().optional(),
   active: z.boolean().optional(),
-  weight: z.number().min(0).max(100).optional(),
+  weight: z.number().min(0).max(100).nullable().optional(),
 }).refine((v) => {
   const { id, ...rest } = v as any;
   return Object.keys(rest).length > 0;

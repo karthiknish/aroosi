@@ -5,13 +5,14 @@ service cloud.firestore {
     function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
     // Safe version that handles missing conversation docs by checking conversation ID format
     function safeInConversation(convId) {
+      // Fast-path: conversation IDs are normalized "userA_userB" strings, so validate membership by format first.
+      let parts = convId.split('_');
+      if (parts.size() == 2 && request.auth.uid in parts) {
+        return true;
+      }
+      // Fallback: conversation doc may use a different format; verify via document read if permitted.
       let convDoc = get(/databases/$(database)/documents/conversations/$(convId));
-      // If conversation doc exists, check membership; otherwise validate based on ID format
-      return convDoc.data != null
-        ? (request.auth.uid in convDoc.data.participants)
-        : (
-          convId.split('_').size() == 2 && request.auth.uid in convId.split('_')
-        );
+      return convDoc.data != null && (request.auth.uid in convDoc.data.participants);
     }
 
     match /users/{userId} {

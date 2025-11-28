@@ -137,7 +137,6 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// Reports handlers moved to /api/admin/reports
 
 export async function PUT(req: NextRequest) {
   try {

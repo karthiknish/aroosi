@@ -87,13 +87,6 @@ export function AdminSidebar({
       href: "/admin/marketing-email",
       isActive: currentPath.startsWith("/admin/marketing-email"),
     },
-    {
-      id: "reports",
-      label: "Reports",
-      icon: FileText,
-      href: "/admin/reports",
-      isActive: currentPath.startsWith("/admin/reports"),
-    },
   ];
 
   return (

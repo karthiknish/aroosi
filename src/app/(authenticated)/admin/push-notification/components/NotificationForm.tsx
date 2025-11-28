@@ -12,8 +12,13 @@ import {
   Copy,
   Users,
   Clock,
+  Zap,
+  Settings,
+  Image as ImageIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 import { NotificationPreview } from "./NotificationPreview";
+import { Switch } from "@/components/ui/switch";
 
 interface NotificationFormProps {
   // Form state
@@ -92,243 +97,220 @@ export function NotificationForm({
   copyToClipboard,
 }: NotificationFormProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
-        <CardHeader className="pb-6">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <div className="p-2 bg-pink-500 rounded-xl">
-              <Send className="h-5 w-5 text-white" />
-            </div>
-            Compose Notification
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          {/* Safety Notice */}
-          <div className="rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 p-4 border border-blue-200/50">
-            <div className="flex items-center gap-3">
-              <div className="p-1 bg-blue-500 rounded-lg">
-                <AlertTriangle className="h-4 w-4 text-white" />
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* Left Column: Form */}
+      <div className="xl:col-span-7 space-y-6">
+        <Card className="border-0 shadow-lg bg-white">
+          <CardHeader className="pb-6 border-b border-slate-100">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-pink-500 rounded-xl shadow-sm">
+                <Send className="h-5 w-5 text-white" />
               </div>
-              <span className="font-semibold">Safety Mode Active</span>
-            </div>
-            <p className="mt-2 text-sm">
-              Use <strong>Dry Run</strong> to preview the payload and audience without sending. Always test before live sends.
-            </p>
-          </div>
-
-          {/* Quick Start Section */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-1 bg-purple-500 rounded-lg">
-                <Copy className="h-4 w-4 text-white" />
+              Compose Notification
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8 pt-6">
+            {/* Safety Notice */}
+            <div className="rounded-xl bg-blue-50 text-blue-800 p-4 border border-blue-100 flex items-start gap-3">
+              <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
+                <AlertTriangle className="h-4 w-4 text-blue-600" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800">Quick Start Templates</h3>
+              <div className="text-sm">
+                <span className="font-semibold block mb-1">Safety Mode Active</span>
+                Use <strong>Dry Run</strong> to preview the payload and audience without sending. Always test before live sends.
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="template-category"
-                  className="text-sm font-medium text-slate-700"
-                >
-                  Template Category
-                </Label>
-                <select
-                  id="template-category"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                >
-                  {categoryNames.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+            {/* Quick Start Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                <Zap className="h-4 w-4 text-amber-500" />
+                <h3>Quick Start Templates</h3>
               </div>
-              <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-slate-700">
-                  Quick Templates
-                </Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {presets.map((p) => (
-                    <Button
-                      key={p.name}
-                      size="sm"
-                      variant="outline"
-                      className="hover:bg-pink-50 hover:border-pink-300 hover:text-pink-700 transition-all"
-                      onClick={() => {
-                        setTitle(p.title);
-                        setMessage(p.message);
-                        if (p.imageUrl) setImageUrl(p.imageUrl);
-                        setAppliedTemplateId(null);
-                      }}
-                      title={`Apply ${p.name} preset`}
-                    >
-                      {p.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="border-t border-slate-200 pt-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-1 bg-green-500 rounded-lg">
-                <Bell className="h-4 w-4 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-800">Notification Content</h3>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              {/* Essential Fields */}
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <div className="space-y-2">
-                  <Label htmlFor="push-title" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    Title
+                  <Label
+                    htmlFor="template-category"
+                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                  >
+                    Category
                   </Label>
-                  <Input
-                    id="push-title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter notification title"
-                    maxLength={65}
-                    className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                  />
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Required field</span>
-                    <span className={title.length > 65 ? "text-red-500" : "text-slate-500"}>
-                      {title.length}/65 characters
-                    </span>
-                  </div>
+                  <select
+                    id="template-category"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                  >
+                    {categoryNames.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="push-message" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <span className="text-red-500">*</span>
-                    Message
-                  </Label>
-                  <Textarea
-                    id="push-message"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={4}
-                    placeholder="Enter notification message"
-                    maxLength={240}
-                    className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all resize-none"
-                  />
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Required field</span>
-                    <span className={message.length > 240 ? "text-red-500" : "text-slate-500"}>
-                      {message.length}/240 characters
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Optional Fields */}
-              <div className="space-y-4 p-4 bg-slate-50/50 rounded-lg border border-slate-200">
-                <h4 className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                  Additional Options
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="push-url" className="text-sm font-medium text-slate-700">
-                      Action URL
-                    </Label>
-                    <Input
-                      id="push-url"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://aroosi.com/..."
-                      className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="push-image" className="text-sm font-medium text-slate-700">
-                      Image URL
-                    </Label>
-                    <Input
-                      id="push-image"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="https://aroosi.com/images/..."
-                      className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Advanced Data */}
-              <div className="space-y-4 p-4 bg-amber-50/30 rounded-lg border border-amber-200">
-                <h4 className="text-sm font-medium text-amber-700 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full"></div>
-                  Advanced Configuration
-                </h4>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">
-                      Custom Data (JSON)
-                    </Label>
-                    <Textarea
-                      value={dataJson}
-                      onChange={(e) => setDataJson(e.target.value)}
-                      rows={4}
-                      placeholder='{"type":"new_message","conversationId":"..."}'
-                      className="border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all font-mono text-sm"
-                    />
-                    <p className="text-xs text-slate-500">
-                      Additional data sent with the notification payload
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">
-                      Action Buttons (JSON)
-                    </Label>
-                    <Textarea
-                      value={buttonsJson}
-                      onChange={(e) => setButtonsJson(e.target.value)}
-                      rows={3}
-                      placeholder='[{"id":"view","text":"View","icon":"👁️"}]'
-                      className="border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all font-mono text-sm"
-                    />
-                    <p className="text-xs text-slate-500">
-                      Supported keys: id, text, icon, url
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Audience Configuration */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-1 bg-indigo-500 rounded-lg">
-                <Users className="h-4 w-4 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-800">Audience & Targeting</h3>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Target Segments */}
-              <div className="space-y-4 p-4 bg-green-50/50 rounded-lg border border-green-200">
-                <h4 className="text-sm font-medium text-green-700 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Target Audience
-                </h4>
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-slate-700">
-                    Include Segments
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Presets
                   </Label>
                   <div className="flex flex-wrap gap-2">
+                    {presets.map((p) => (
+                      <Button
+                        key={p.name}
+                        size="sm"
+                        variant="outline"
+                        className="bg-white hover:bg-pink-50 hover:border-pink-200 hover:text-pink-700 transition-all text-xs h-9"
+                        onClick={() => {
+                          setTitle(p.title);
+                          setMessage(p.message);
+                          if (p.imageUrl) setImageUrl(p.imageUrl);
+                          setAppliedTemplateId(null);
+                        }}
+                        title={`Apply ${p.name} preset`}
+                      >
+                        {p.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-slate-800 font-semibold border-t border-slate-100 pt-6">
+                <Bell className="h-4 w-4 text-pink-500" />
+                <h3>Content</h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Essential Fields */}
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="push-title" className="text-sm font-semibold text-slate-700 flex items-center justify-between">
+                      <span>Title <span className="text-red-500">*</span></span>
+                      <span className={`text-xs font-normal ${title.length > 65 ? "text-red-500" : "text-slate-400"}`}>
+                        {title.length}/65
+                      </span>
+                    </Label>
+                    <Input
+                      id="push-title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter notification title"
+                      maxLength={65}
+                      className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="push-message" className="text-sm font-semibold text-slate-700 flex items-center justify-between">
+                      <span>Message <span className="text-red-500">*</span></span>
+                      <span className={`text-xs font-normal ${message.length > 240 ? "text-red-500" : "text-slate-400"}`}>
+                        {message.length}/240
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="push-message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      rows={4}
+                      placeholder="Enter notification message"
+                      maxLength={240}
+                      className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Optional Fields */}
+                <div className="space-y-4 p-5 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                    <Settings className="h-4 w-4 text-slate-400" />
+                    Additional Options
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="push-url" className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <LinkIcon className="h-3 w-3" /> Action URL
+                      </Label>
+                      <Input
+                        id="push-url"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://aroosi.com/..."
+                        className="bg-white border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="push-image" className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" /> Image URL
+                      </Label>
+                      <Input
+                        id="push-image"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="https://aroosi.com/images/..."
+                        className="bg-white border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advanced Data */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+                      Advanced Configuration
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 p-4 border border-slate-100 rounded-xl">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Custom Data (JSON)
+                      </Label>
+                      <Textarea
+                        value={dataJson}
+                        onChange={(e) => setDataJson(e.target.value)}
+                        rows={3}
+                        placeholder='{"type":"new_message","conversationId":"..."}'
+                        className="font-mono text-xs bg-slate-50 border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Action Buttons (JSON)
+                      </Label>
+                      <Textarea
+                        value={buttonsJson}
+                        onChange={(e) => setButtonsJson(e.target.value)}
+                        rows={2}
+                        placeholder='[{"id":"view","text":"View","icon":"👁️"}]'
+                        className="font-mono text-xs bg-slate-50 border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Audience Configuration */}
+            <div className="space-y-6 border-t border-slate-100 pt-6">
+              <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                <Users className="h-4 w-4 text-indigo-500" />
+                <h3>Audience & Targeting</h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Target Segments */}
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Include Segments
+                  </Label>
+                  <div className="flex flex-wrap gap-2 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100">
                     {[
                       "Subscribed Users",
                       "Active Users",
@@ -340,7 +322,11 @@ export function NotificationForm({
                           key={seg}
                           variant={active ? "default" : "outline"}
                           size="sm"
-                          className={active ? "bg-green-600 hover:bg-green-700" : "hover:bg-green-50"}
+                          className={`transition-all ${
+                            active 
+                              ? "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent shadow-sm" 
+                              : "bg-white hover:bg-indigo-50 text-slate-600 border-slate-200"
+                          }`}
                           onClick={() =>
                             setSegments((prev: string[]) =>
                               prev.includes(seg)
@@ -355,19 +341,13 @@ export function NotificationForm({
                     })}
                   </div>
                 </div>
-              </div>
 
-              {/* Exclude Segments */}
-              <div className="space-y-4 p-4 bg-red-50/50 rounded-lg border border-red-200">
-                <h4 className="text-sm font-medium text-red-700 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  Exclude Segments
-                </h4>
+                {/* Exclude Segments */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium text-slate-700">
-                    Remove from Target
+                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Exclude Segments
                   </Label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 p-4 bg-red-50/30 rounded-xl border border-red-100">
                     {["Dormant", "Churn Risk"].map((seg) => {
                       const active = excludedSegments.includes(seg);
                       return (
@@ -375,7 +355,11 @@ export function NotificationForm({
                           key={seg}
                           variant={active ? "default" : "outline"}
                           size="sm"
-                          className={active ? "bg-red-600 hover:bg-red-700" : "hover:bg-red-50"}
+                          className={`transition-all ${
+                            active 
+                              ? "bg-red-600 hover:bg-red-700 text-white border-transparent shadow-sm" 
+                              : "bg-white hover:bg-red-50 text-slate-600 border-slate-200"
+                          }`}
                           onClick={() =>
                             setExcludedSegments((prev: string[]) =>
                               prev.includes(seg)
@@ -392,115 +376,81 @@ export function NotificationForm({
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
 
-            {/* Audience Limits */}
-            <div className="p-4 bg-slate-50/50 rounded-lg border border-slate-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-slate-700">
-                    Max Audience Size
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={100000}
-                    value={maxAudience}
-                    onChange={(e) =>
-                      setMaxAudience(Number(e.target.value) || 1)
-                    }
-                    className="border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+      {/* Right Column: Preview & Actions */}
+      <div className="xl:col-span-5 space-y-6">
+        <div className="sticky top-6 space-y-6">
+          {/* Send Actions Card */}
+          <Card className="border-0 shadow-lg bg-white overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-pink-500 to-purple-600"></div>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-800">Send Configuration</h3>
+                <Badge variant={dryRun ? "outline" : "default"} className={dryRun ? "text-slate-500" : "bg-pink-500"}>
+                  {dryRun ? "Preview Mode" : "Live Mode"}
+                </Badge>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium text-slate-700">Dry Run</Label>
+                    <p className="text-xs text-slate-500">Simulate without sending</p>
+                  </div>
+                  <Switch
+                    checked={dryRun}
+                    onCheckedChange={setDryRun}
                   />
                 </div>
-                <div className="text-sm text-slate-600">
-                  <p>Provider-side segmentation applies</p>
-                  <p className="text-xs">This limit is informational only</p>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Send Button */}
-          <div className="space-y-4">
-            <Button
-              onClick={handleSend}
-              disabled={
-                sending ||
-                !title.trim() ||
-                !message.trim() ||
-                (!dryRun && !confirmLive)
-              }
-              className={`w-full transition-all duration-300 ${
-                dryRun
-                  ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/25"
-                  : "bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 shadow-lg shadow-pink-500/25"
-              }`}
-              size="lg"
-            >
-              {sending ? (
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    <div className="absolute inset-0 rounded-full border-2 border-white/30 animate-pulse"></div>
+                {!dryRun && (
+                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium text-red-700">Confirm Live Send</Label>
+                      <p className="text-xs text-red-500">Required for production</p>
+                    </div>
+                    <Switch
+                      checked={confirmLive}
+                      onCheckedChange={setConfirmLive}
+                      className="data-[state=checked]:bg-red-600"
+                    />
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="font-semibold">
-                      {dryRun ? "Generating Preview..." : "Sending Notification..."}
-                    </span>
-                    <span className="text-xs opacity-90">
-                      {dryRun ? "Building preview payload" : "Broadcasting to audience"}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  {dryRun ? (
-                    <Eye className="h-5 w-5" />
+                )}
+
+                <Button
+                  onClick={handleSend}
+                  disabled={
+                    sending ||
+                    !title.trim() ||
+                    !message.trim() ||
+                    (!dryRun && !confirmLive)
+                  }
+                  className={`w-full h-12 text-base transition-all duration-300 ${
+                    dryRun
+                      ? "bg-slate-800 hover:bg-slate-900 text-white shadow-lg shadow-slate-200"
+                      : "bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white shadow-lg shadow-pink-200"
+                  }`}
+                >
+                  {sending ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Processing...</span>
+                    </div>
                   ) : (
-                    <Send className="h-5 w-5" />
+                    <div className="flex items-center gap-2">
+                      {dryRun ? <Eye className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+                      <span>{dryRun ? "Generate Preview" : "Send Notification"}</span>
+                    </div>
                   )}
-                  <div className="flex flex-col items-start">
-                    <span className="font-semibold">
-                      {dryRun ? "Preview Notification" : "Send Notification"}
-                    </span>
-                    <span className="text-xs opacity-90">
-                      {dryRun
-                        ? "Safe preview mode - no actual send"
-                        : `Live send to ${segments.join(", ")}`
-                      }
-                    </span>
-                  </div>
-                </div>
-              )}
-            </Button>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Send Status Indicators */}
-            <div className="flex items-center justify-center gap-4 text-sm text-slate-500">
-              {dryRun && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>Preview Mode Active</span>
-                </div>
-              )}
-              {!dryRun && confirmLive && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Live Send Confirmed</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Preview Panel */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Live Preview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          {/* Preview Component */}
           <NotificationPreview
             title={title}
             message={message}
@@ -512,29 +462,8 @@ export function NotificationForm({
             previewData={previewData}
             onCopy={copyToClipboard}
           />
-
-          {previewData && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-sm">Payload Preview</h4>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    copyToClipboard(JSON.stringify(previewData, null, 2))
-                  }
-                >
-                  <Copy className="h-3 w-3 mr-1" />
-                  Copy
-                </Button>
-              </div>
-              <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-48">
-                {JSON.stringify(previewData, null, 2)}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

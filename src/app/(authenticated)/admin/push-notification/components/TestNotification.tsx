@@ -8,6 +8,8 @@ import {
   Smartphone,
   AlertTriangle,
   Copy,
+  CheckCircle2,
+  Send,
 } from "lucide-react";
 
 interface TestNotificationProps {
@@ -47,34 +49,51 @@ export function TestNotification({
   copyToClipboard,
 }: TestNotificationProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TestTube className="h-5 w-5" />
-          Test Notification
-        </CardTitle>
-        <p className="text-sm text-gray-600">
-          Send a test notification to verify your setup and preview how it will appear
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Safety Notice */}
-        <div className="rounded-lg bg-amber-50 text-amber-800 p-4 border border-amber-200">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="font-medium">Test Mode</span>
-          </div>
-          <p className="mt-1 text-sm">
-            Test notifications are sent to specific devices only and won&apos;t affect your audience.
-          </p>
-        </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-7">
+        <Card className="border-0 shadow-lg bg-white h-full">
+          <CardHeader className="pb-4 border-b border-slate-100">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-amber-500 rounded-xl">
+                <TestTube className="h-5 w-5 text-white" />
+              </div>
+              Test Notification
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-6">
+            {/* Safety Notice */}
+            <div className="rounded-xl bg-amber-50 text-amber-900 p-4 border border-amber-100 flex items-start gap-3">
+              <div className="p-1.5 bg-amber-100 rounded-lg mt-0.5">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              </div>
+              <div className="text-sm">
+                <span className="font-semibold block mb-1">Sandbox Mode</span>
+                Test notifications are sent to specific devices only and won&apos;t affect your general audience.
+              </div>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Test Form */}
-          <div className="space-y-6">
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="test-title" className="text-sm font-medium">
+                <Label htmlFor="test-player-id" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-slate-400" />
+                  Target Device Player ID
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="test-player-id"
+                    value={testPlayerId}
+                    onChange={(e) => setTestPlayerId(e.target.value)}
+                    placeholder="Paste Player ID here..."
+                    className="font-mono text-sm bg-slate-50 border-slate-200 focus:ring-2 focus:ring-amber-500 transition-all"
+                  />
+                </div>
+                <p className="text-xs text-slate-500">
+                  Copy a Player ID from the <strong>Devices</strong> tab to target a specific device.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="test-title" className="text-sm font-semibold text-slate-700">
                   Test Title
                 </Label>
                 <Input
@@ -83,155 +102,136 @@ export function TestNotification({
                   onChange={(e) => setTestTitle(e.target.value)}
                   placeholder="Test notification title"
                   maxLength={65}
+                  className="border-slate-200 focus:ring-2 focus:ring-amber-500 transition-all"
                 />
-                <div className="text-xs text-gray-500">
-                  {testTitle.length}/65 characters
-                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="test-message" className="text-sm font-medium">
+                <Label htmlFor="test-message" className="text-sm font-semibold text-slate-700">
                   Test Message
                 </Label>
                 <Textarea
                   id="test-message"
                   value={testMessage}
                   onChange={(e) => setTestMessage(e.target.value)}
-                  rows={4}
+                  rows={3}
                   placeholder="Test notification message"
                   maxLength={240}
+                  className="border-slate-200 focus:ring-2 focus:ring-amber-500 transition-all resize-none"
                 />
-                <div className="text-xs text-gray-500">
-                  {testMessage.length}/240 characters
-                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="test-url" className="text-sm font-medium">
-                    Action URL (Optional)
+                  <Label htmlFor="test-url" className="text-sm font-medium text-slate-700">
+                    Action URL
                   </Label>
                   <Input
                     id="test-url"
                     value={testUrl}
                     onChange={(e) => setTestUrl(e.target.value)}
-                    placeholder="https://aroosi.com/..."
+                    placeholder="https://..."
+                    className="border-slate-200 focus:ring-2 focus:ring-amber-500 transition-all"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="test-image" className="text-sm font-medium">
-                    Image URL (Optional)
+                  <Label htmlFor="test-image" className="text-sm font-medium text-slate-700">
+                    Image URL
                   </Label>
                   <Input
                     id="test-image"
                     value={testImageUrl}
                     onChange={(e) => setTestImageUrl(e.target.value)}
-                    placeholder="https://aroosi.com/images/..."
+                    placeholder="https://..."
+                    className="border-slate-200 focus:ring-2 focus:ring-amber-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="test-player-id" className="text-sm font-medium flex items-center gap-2">
-                  <Smartphone className="h-4 w-4" />
-                  Target Device Player ID
-                </Label>
-                <Input
-                  id="test-player-id"
-                  value={testPlayerId}
-                  onChange={(e) => setTestPlayerId(e.target.value)}
-                  placeholder="Player ID from Devices tab"
-                  className="font-mono text-sm"
-                />
-                <p className="text-xs text-gray-500">
-                  Get Player ID from the Devices tab to test specific devices
-                </p>
-              </div>
-            </div>
-
-            {/* Send Button */}
-            <Button
-              onClick={handleTestSend}
-              disabled={testSending || !testTitle.trim() || !testMessage.trim()}
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-              size="lg"
-            >
-              {testSending ? (
-                <div className="flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                  <span>Sending Test...</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <TestTube className="h-4 w-4" />
-                  <span>Send Test Notification</span>
-                </div>
-              )}
-            </Button>
-          </div>
-
-          {/* Test Results */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Test Results</h3>
-
-            {testResult ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-800">
-                      Test Successful
-                    </span>
+              <Button
+                onClick={handleTestSend}
+                disabled={testSending || !testTitle.trim() || !testMessage.trim() || !testPlayerId.trim()}
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-200 transition-all"
+                size="lg"
+              >
+                {testSending ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    <span>Sending Test...</span>
                   </div>
-                  <p className="text-sm text-green-700">
-                    Notification sent successfully to test device.
-                  </p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    <span>Send Test Notification</span>
+                  </div>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="lg:col-span-5 space-y-6">
+        <Card className="border-0 shadow-lg bg-white h-full">
+          <CardHeader className="pb-4 border-b border-slate-100">
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Test Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            {testResult ? (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-start gap-3">
+                  <div className="p-1 bg-green-100 rounded-full mt-0.5">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-green-900 text-sm">Delivery Successful</h4>
+                    <p className="text-xs text-green-700 mt-1">
+                      The notification was successfully handed off to the push provider.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Response Details */}
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-sm">API Response</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      API Response
+                    </h4>
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="ghost"
+                      className="h-6 text-xs hover:bg-slate-100"
                       onClick={() =>
                         copyToClipboard(JSON.stringify(testResult, null, 2))
                       }
                     >
                       <Copy className="h-3 w-3 mr-1" />
-                      Copy
+                      Copy JSON
                     </Button>
                   </div>
-                  <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-48">
-                    {JSON.stringify(testResult, null, 2)}
-                  </pre>
+                  <div className="bg-slate-900 rounded-xl p-4 overflow-hidden">
+                    <pre className="text-[10px] text-slate-50 font-mono overflow-auto max-h-[300px]">
+                      {JSON.stringify(testResult, null, 2)}
+                    </pre>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                <TestTube className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">No test results yet</p>
-                <p className="text-xs mt-1">
-                  Send a test notification to see the results here
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400 min-h-[300px]">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <TestTube className="h-8 w-8 text-slate-300" />
+                </div>
+                <h4 className="font-medium text-slate-600">No results yet</h4>
+                <p className="text-sm mt-1 max-w-[200px]">
+                  Fill out the form and send a test notification to see the results here.
                 </p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Test Tips */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-800 mb-2">Testing Tips</h4>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• Use a real device Player ID from the Devices tab for accurate testing</li>
-            <li>• Test notifications won&apos;t count toward your monthly quota</li>
-            <li>• Include an image URL to test rich notifications</li>
-            <li>• Check the API response for detailed delivery information</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

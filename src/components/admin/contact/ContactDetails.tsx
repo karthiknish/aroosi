@@ -27,7 +27,7 @@ export function ContactDetails({ contact, open, onClose }: ContactDetailsProps) 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] bg-white">
         <DialogHeader>
           <DialogTitle>Contact Details</DialogTitle>
           <DialogDescription>

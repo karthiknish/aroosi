@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { UsageTracker } from "@/components/usage/UsageTracker";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useUnreadCounts } from "@/lib/hooks/useUnreadCounts";
@@ -20,32 +20,64 @@ import {
   Cell,
   Legend,
 } from "recharts";
-
+import { 
+  Activity, 
+  TrendingUp, 
+  Calendar, 
+  MessageSquare, 
+  Search, 
+  Eye, 
+  Zap, 
+  Mic, 
+  Heart,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface UsageHistoryItem {
   feature: string;
   timestamp: number;
 }
 
-export default function UsagePage() {
-  useAuthContext(); // ensure auth order; no token usage
-  // Unread counts (aggregate) for display - safe even if undefined
-  const { data: unreadCounts } = useUnreadCounts(
-    undefined as any,
-    undefined as any
-  );
+const CHART_COLORS = [
+  "#EC4899", // pink-500
+  "#8B5CF6", // violet-500
+  "#3B82F6", // blue-500
+  "#10B981", // emerald-500
+  "#F59E0B", // amber-500
+  "#EF4444", // red-500
+];
 
-  // Detailed usage history (last 100 events)
-  const {
-    data: history,
-    isLoading,
-    isError,
-  } = useQuery({
+const FEATURE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  message_sent: { label: "Messages", icon: <MessageSquare className="h-4 w-4" />, color: "text-blue-500" },
+  profile_view: { label: "Profile Views", icon: <Eye className="h-4 w-4" />, color: "text-emerald-500" },
+  search_performed: { label: "Searches", icon: <Search className="h-4 w-4" />, color: "text-amber-500" },
+  interest_sent: { label: "Interests", icon: <Heart className="h-4 w-4" />, color: "text-pink-500" },
+  profile_boost_used: { label: "Boosts", icon: <Zap className="h-4 w-4" />, color: "text-purple-500" },
+  voice_message_sent: { label: "Voice Messages", icon: <Mic className="h-4 w-4" />, color: "text-indigo-500" },
+};
+
+export default function UsagePage() {
+  useAuthContext();
+  const { data: unreadCounts } = useUnreadCounts(undefined as any, undefined as any);
+
+  // Fetch history
+  const { data: history, isLoading, isError } = useQuery({
     queryKey: ["usage-history"],
     queryFn: async () => {
       const { getJson } = await import("@/lib/http/client");
       const json = await getJson<{ data: UsageHistoryItem[] }>(
-        "/api/subscription/usage-history?days=7&limit=200",
+        "/api/subscription/usage-history?days=30&limit=500", // Increased limit for better stats
         {
           cache: "no-store",
           headers: { "x-client-check": "usage-history" },
@@ -53,218 +85,306 @@ export default function UsagePage() {
       );
       return json.data;
     },
-    enabled: true,
   });
 
-  const chartColors = [
-    "#EC4899", // pink
-    "#3B82F6", // blue
-    "#10B981", // green
-    "#F59E0B", // yellow
-    "#8B5CF6", // purple
-    "#EF4444", // red
-  ];
+  // Pagination state for table
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  const featureNames: Record<string, string> = {
-    message_sent: "Messages",
-    profile_view: "Profile Views",
-    search_performed: "Searches",
-    interest_sent: "Interests",
-    profile_boost_used: "Boosts",
-    voice_message_sent: "Voice Messages",
-  };
+  // Process data
+  const { chartData, stats, paginatedHistory, totalPages } = useMemo(() => {
+    if (!history) return { 
+      chartData: { daily: [], distribution: [] }, 
+      stats: { total: 0, topFeature: "-", activeDay: "-" },
+      paginatedHistory: [],
+      totalPages: 0
+    };
 
-  // Transform history data for charts
-  const chartData = React.useMemo(() => {
-    if (!history) return { daily: [], distribution: [] };
-
-    // Group by day for the last 7 days
+    // 1. Stats & Charts Processing
     const dailyData: Record<string, Record<string, number>> = {};
     const featureCounts: Record<string, number> = {};
+    const dayCounts: Record<string, number> = {};
 
     history.forEach((item) => {
-      const day = format(new Date(item.timestamp), "MMM dd");
-      if (!dailyData[day]) {
-        dailyData[day] = {};
-      }
-      if (!dailyData[day][item.feature]) {
-        dailyData[day][item.feature] = 0;
-      }
-      dailyData[day][item.feature]++;
+      const date = new Date(item.timestamp);
+      const dayStr = format(date, "MMM dd");
+      
+      // Daily Chart Data
+      if (!dailyData[dayStr]) dailyData[dayStr] = {};
+      dailyData[dayStr][item.feature] = (dailyData[dayStr][item.feature] || 0) + 1;
 
-      // Count total by feature
+      // Feature Distribution
       featureCounts[item.feature] = (featureCounts[item.feature] || 0) + 1;
+      
+      // Activity per day (for "Most Active Day")
+      dayCounts[dayStr] = (dayCounts[dayStr] || 0) + 1;
     });
 
-    // Convert to chart format
-    const daily = Object.entries(dailyData).map(([date, features]) => ({
-      date,
-      ...features,
-    }));
+    // Format for Recharts
+    const daily = Object.entries(dailyData)
+      .map(([date, features]) => ({ date, ...features }))
+      .slice(-7); // Last 7 days for chart
 
-    const distribution = Object.entries(featureCounts).map(
-      ([feature, count]) => ({
-        name: featureNames[feature] || feature,
+    const distribution = Object.entries(featureCounts)
+      .map(([feature, count]) => ({
+        name: FEATURE_CONFIG[feature]?.label || feature,
         value: count,
-      })
-    );
+      }))
+      .sort((a, b) => b.value - a.value);
 
-    return { daily, distribution };
-  }, [history, featureNames]);
+    // Calculate Top Stats
+    const topFeatureEntry = Object.entries(featureCounts).sort((a, b) => b[1] - a[1])[0];
+    const topFeature = topFeatureEntry ? FEATURE_CONFIG[topFeatureEntry[0]]?.label || topFeatureEntry[0] : "-";
+    
+    const activeDayEntry = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
+    const activeDay = activeDayEntry ? activeDayEntry[0] : "-";
+
+    // 2. Pagination
+    const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
+    const totalPages = Math.ceil(sortedHistory.length / pageSize);
+    const start = (page - 1) * pageSize;
+    const paginatedHistory = sortedHistory.slice(start, start + pageSize);
+
+    return {
+      chartData: { daily, distribution },
+      stats: {
+        total: history.length,
+        topFeature,
+        activeDay
+      },
+      paginatedHistory,
+      totalPages
+    };
+  }, [history, page]);
 
   return (
-    <>
-
-      <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
-      {/* Decorative color pop circles (match search page) */}
-      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-      {/* Subtle SVG background pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      ></div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2 inline-block">
-            Usage Analytics
-          </h1>
-          <svg
-            className="w-full"
-            height="6"
-            viewBox="0 0 200 6"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 3C50 0.5 150 0.5 200 3"
-              stroke="#EC4899"
-              strokeWidth="5"
-              strokeLinecap="round"
-            />
-          </svg>
+    <div className="min-h-screen bg-slate-50/50 pt-24 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Usage & Analytics</h1>
+            <p className="text-slate-500 mt-1">Track your activity and plan usage limits.</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-slate-500 bg-white px-3 py-1.5 rounded-full border shadow-sm">
+            <Calendar className="h-4 w-4" />
+            <span>Last 30 Days</span>
+          </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
-          <UsageTracker />
-
-          <Card className="bg-white shadow-lg border border-gray-100 z-10">
-            <CardHeader>
-              <CardTitle className="text-neutral">Usage Distribution</CardTitle>
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Actions</CardTitle>
+              <Activity className="h-4 w-4 text-slate-500" />
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <div className="h-[300px] bg-gray-100 animate-pulse rounded" />
-              ) : isError ? (
-                <div className="text-sm text-red-600">
-                  Failed to load usage data.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={chartData.distribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent = 0 }) =>
-                        `${name} ${(percent * 100).toFixed(0)}%`
-                      }
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {chartData.distribution.map((_, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={chartColors[index % chartColors.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
+              <div className="text-2xl font-bold">{isLoading ? "..." : stats.total}</div>
+              <p className="text-xs text-slate-500">Recorded activities in period</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Top Feature</CardTitle>
+              <TrendingUp className="h-4 w-4 text-pink-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{isLoading ? "..." : stats.topFeature}</div>
+              <p className="text-xs text-slate-500">Most frequently used</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Most Active Day</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{isLoading ? "..." : stats.activeDay}</div>
+              <p className="text-xs text-slate-500">Highest volume of activity</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="mt-8 bg-white shadow-lg border border-gray-100 z-10">
-          <CardHeader>
-            <CardTitle className="text-neutral">Daily Usage Trends</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="h-[400px] bg-gray-100 animate-pulse rounded" />
-            ) : isError ? (
-              <div className="text-sm text-red-600">
-                Failed to load usage data.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={chartData.daily}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip
-                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                    wrapperStyle={{ zIndex: 30 }}
-                  />
-                  {Object.keys(featureNames).map((feature, index) => (
-                    <Bar
-                      key={feature}
-                      dataKey={feature}
-                      fill={chartColors[index % chartColors.length]}
-                      name={featureNames[feature]}
-                    />
-                  ))}
-                  <Legend verticalAlign="bottom" height={36} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Unread aggregate summary */}
-        <Card className="mt-8 bg-white shadow-lg border border-gray-100 z-10">
-          <CardHeader>
-            <CardTitle className="text-neutral">
-              Unread Messages Snapshot
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {unreadCounts ? (
-              <div className="text-sm text-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <span>
-                  Conversations with unread messages:{" "}
-                  {
-                    Object.values(unreadCounts).filter((v) => (v as number) > 0)
-                      .length
-                  }
-                </span>
-                <span className="text-xs text-gray-500">
-                  Total unread messages (approx):{" "}
-                  {Object.values(unreadCounts).reduce(
-                    (a, b) => a + (b as number),
-                    0
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Tracker & Distribution */}
+          <div className="space-y-8 lg:col-span-1">
+            <UsageTracker />
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Activity Distribution</CardTitle>
+                <CardDescription>Breakdown by feature type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] w-full">
+                  {isLoading ? (
+                    <div className="h-full w-full bg-slate-100 animate-pulse rounded-lg" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData.distribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {chartData.distribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
                   )}
-                </span>
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500">
-                No unread message data available.
-              </div>
-            )}
-            <p className="mt-3 text-xs text-gray-500">
-              Unread counts update automatically while you browse. Opening a
-              conversation marks its messages as read.
-            </p>
-          </CardContent>
-        </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column: Trends & History */}
+          <div className="space-y-8 lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Activity Trends</CardTitle>
+                <CardDescription>Activity volume over the last 7 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full">
+                  {isLoading ? (
+                    <div className="h-full w-full bg-slate-100 animate-pulse rounded-lg" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData.daily} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="date" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#64748b', fontSize: 12 }} 
+                          dy={10}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#64748b', fontSize: 12 }} 
+                        />
+                        <Tooltip 
+                          cursor={{ fill: '#f8fafc' }}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        {Object.keys(FEATURE_CONFIG).map((feature, index) => (
+                          <Bar
+                            key={feature}
+                            dataKey={feature}
+                            stackId="a"
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            name={FEATURE_CONFIG[feature].label}
+                            radius={index === Object.keys(FEATURE_CONFIG).length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Activity Log</CardTitle>
+                <CardDescription>Detailed history of your recent actions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell><div className="h-4 w-24 bg-slate-100 rounded animate-pulse" /></TableCell>
+                          <TableCell><div className="h-4 w-32 bg-slate-100 rounded animate-pulse" /></TableCell>
+                          <TableCell className="text-right"><div className="h-4 w-16 bg-slate-100 rounded animate-pulse ml-auto" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : paginatedHistory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8 text-slate-500">
+                          No activity recorded yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedHistory.map((item, i) => {
+                        const config = FEATURE_CONFIG[item.feature] || { label: item.feature, icon: <Activity className="h-4 w-4" />, color: "text-slate-500" };
+                        return (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className={`p-1.5 rounded-full bg-slate-100 ${config.color}`}>
+                                  {config.icon}
+                                </div>
+                                <span className="font-medium text-slate-700">{config.label}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-500">
+                              {format(new Date(item.timestamp), "MMM d, yyyy • h:mm a")}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                Completed
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="text-sm text-slate-500">
+                      Page {page} of {totalPages}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
-    </>
   );
 }
