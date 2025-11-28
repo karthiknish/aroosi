@@ -16,7 +16,7 @@ export default function SignUpPage() {
     }
 
     // Redirect to the onboarding flow
-    router.push("/profile/create");
+    router.push("/");
   }, [isAuthenticated, router]);
 
   return (

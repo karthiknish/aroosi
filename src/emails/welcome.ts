@@ -23,7 +23,7 @@ export function welcomeEmailHtml(name: string): string {
                   <li>Tell us about yourself</li>
                   <li>Set your preferences</li>
                 </ul>
-                <a href="https://aroosi.app/profile/create" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Complete your profile</a>
+                <a href="https://aroosi.app/" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Complete your profile</a>
               </td>
             </tr>
             <tr>

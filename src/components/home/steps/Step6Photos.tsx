@@ -337,17 +337,22 @@ export function Step6Photos(props: {
 
   return (
     <div className="space-y-6">
-      <div className="text-center mb-4">
-        <h3 className="text-lg font-semibold text-neutral">Profile Photos</h3>
-        <p className="text-sm text-neutral/70">
-          Add photos to your profile (optional)
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <h3>Profile Photos</h3>
+        </div>
+        
+        <p className="text-sm text-gray-500">
+          Add up to 5 photos to your profile. The first photo will be your main profile picture.
         </p>
       </div>
-      <div className="mb-6">
-        <Label className="text-neutral mb-2 block">Profile Photos</Label>
+
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
         {pendingImages.length > 0 && (
-          <div className="mt-2">
-            {/* Reorder strip (placed above uploader). Also provides delete X on each image. */}
+          <div className="mb-6">
             <ProfileImageReorder
               preUpload
               images={pendingImages as ImageType[]}
@@ -357,17 +362,17 @@ export function Step6Photos(props: {
                 const state = itemState[img.id];
                 if (!state) return null;
                 const base =
-                  "text-[10px] rounded px-1.5 py-0.5 font-medium shadow-sm";
+                  "text-[10px] rounded-full px-2 py-1 font-medium shadow-sm";
                 if (state.status === "uploading")
                   return (
-                    <span className={`${base} bg-pink-600 text-white`}>
+                    <span className={`${base} bg-primary text-white`}>
                       {state.progress}%
                     </span>
                   );
                 if (state.status === "success")
                   return (
-                    <span className={`${base} bg-emerald-600 text-white`}>
-                      Uploaded
+                    <span className={`${base} bg-emerald-500 text-white`}>
+                      ✓ Uploaded
                     </span>
                   );
                 if (state.status === "error")
@@ -378,7 +383,7 @@ export function Step6Photos(props: {
                         e.stopPropagation();
                         void handleRetry(img);
                       }}
-                      className={`${base} bg-red-600 text-white hover:bg-red-700`}
+                      className={`${base} bg-red-500 text-white hover:bg-red-600`}
                     >
                       Retry
                     </button>
@@ -401,7 +406,6 @@ export function Step6Photos(props: {
                 onImagesChanged(next);
               }}
               onDeleteImage={async (imageId: string) => {
-                // No server persistence in pre-upload mode; ensure local state is clean
                 const next = pendingImages.filter((im) => im.id !== imageId);
                 setPendingImages(next);
                 onImagesChanged(next);
@@ -417,7 +421,7 @@ export function Step6Photos(props: {
           </div>
         )}
 
-        <div className="mt-4">
+        <div>
           <imported.ImageUploader
             mode="local"
             userId={userId}
@@ -434,9 +438,15 @@ export function Step6Photos(props: {
               } catch {}
             }}
           />
-          <p className="mt-2 text-xs text-neutral/60">
-            Max 5 images. JPG, PNG, WebP up to 5MB, minimum 512x512.
-          </p>
+        </div>
+        
+        <div className="mt-4 flex items-start gap-2 text-xs text-gray-500 bg-white/50 rounded-lg p-3">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            Upload high-quality photos (JPG, PNG, WebP). Maximum 5 images, 5MB each, minimum 512x512 pixels.
+          </span>
         </div>
       </div>
     </div>

@@ -4,7 +4,9 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { ValidatedInput } from "@/components/ui/ValidatedInput";
 import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
+import { Slider } from "@/components/ui/slider";
 import type { ProfileCreationData } from "../profileCreation/types";
+import { Heart, MapPin } from "lucide-react";
 
 export function Step5PartnerPreferences(props: {
   formData: ProfileCreationData;
@@ -14,74 +16,95 @@ export function Step5PartnerPreferences(props: {
   setPreferredCitiesInput: (v: string) => void;
 }) {
   const { formData, step, onChange, preferredCitiesInput, setPreferredCitiesInput } = props;
-  return (
-    <div className="space-y-6">
-      <ValidatedSelect
-        label="Preferred Gender"
-        field="preferredGender"
-        step={step}
-        value={formData.preferredGender}
-        onValueChange={(v) => onChange("preferredGender", v)}
-        options={[
-          { value: "male", label: "Male" },
-          { value: "female", label: "Female" },
-          { value: "any", label: "Any" },
-          { value: "other", label: "Other" },
-        ]}
-        placeholder="Select preferred gender"
-        required
-      />
+  
+  const minAge = formData.partnerPreferenceAgeMin ?? 18;
+  const maxAge = formData.partnerPreferenceAgeMax ?? 35;
 
-      <div>
-        <Label className="text-gray-700 mb-2 block">Age Range</Label>
-        <div className="flex gap-2 items-center">
-          <ValidatedInput
-            label="Min"
-            field="partnerPreferenceAgeMin"
+  return (
+    <div className="space-y-8">
+      {/* Preferences Section */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+            <Heart className="w-4 h-4" />
+            <h3>Partner Preferences</h3>
+        </div>
+
+        <ValidatedSelect
+            label="Preferred Gender"
+            field="preferredGender"
             step={step}
-            value={formData.partnerPreferenceAgeMin !== undefined ? String(formData.partnerPreferenceAgeMin) : ""}
-            type="number"
-            onValueChange={(v) => onChange("partnerPreferenceAgeMin", v === "" ? "" : Number(v))}
-            className="w-24"
-            placeholder="18"
-          />
-          <span>to</span>
-          <ValidatedInput
-            label="Max"
-            field="partnerPreferenceAgeMax"
-            step={step}
-            value={formData.partnerPreferenceAgeMax !== undefined ? String(formData.partnerPreferenceAgeMax) : ""}
-            type="number"
-            onValueChange={(v) => onChange("partnerPreferenceAgeMax", v === "" ? "" : Number(v))}
-            className="w-24"
-            placeholder="99"
-          />
+            value={formData.preferredGender}
+            onValueChange={(v) => onChange("preferredGender", v)}
+            options={[
+            { value: "male", label: "Male" },
+            { value: "female", label: "Female" },
+            { value: "any", label: "Any" },
+            { value: "other", label: "Other" },
+            ]}
+            placeholder="Select preferred gender"
+            required
+        />
+
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+                <Label className="text-gray-700 font-medium">Age Range</Label>
+                <div className="text-right">
+                    <span className="text-lg font-bold text-primary">
+                        {minAge} - {maxAge}
+                    </span>
+                    <span className="text-xs text-gray-500 ml-1">years</span>
+                </div>
+            </div>
+            <Slider
+                value={[minAge, maxAge]}
+                min={18}
+                max={70}
+                step={1}
+                onValueChange={(vals) => {
+                    onChange("partnerPreferenceAgeMin", vals[0]);
+                    onChange("partnerPreferenceAgeMax", vals[1]);
+                }}
+                className="py-2"
+            />
+            <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
+                <span>18</span>
+                <span>70</span>
+            </div>
         </div>
       </div>
 
-      <ValidatedInput
-        label="Preferred Cities"
-        field="partnerPreferenceCity"
-        step={step}
-        value={preferredCitiesInput}
-        onValueChange={async (raw) => {
-          const val = String(raw);
-          setPreferredCitiesInput(val);
-          try {
-            const { parsePreferredCities } = await import("../profileCreation/step5");
-            const parsed = parsePreferredCities(val);
-            onChange("partnerPreferenceCity", parsed);
-          } catch {
-            const parsed = val
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            onChange("partnerPreferenceCity", parsed);
-          }
-        }}
-        placeholder="e.g. London, Kabul"
-        hint="Comma-separated list"
-      />
+      {/* Location Preferences */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+            <MapPin className="w-4 h-4" />
+            <h3>Location Preferences</h3>
+        </div>
+
+        <ValidatedInput
+            label="Preferred Cities"
+            field="partnerPreferenceCity"
+            step={step}
+            value={preferredCitiesInput}
+            onValueChange={async (raw) => {
+                const val = String(raw);
+                setPreferredCitiesInput(val);
+                try {
+                    const { parsePreferredCities } = await import("../profileCreation/step5");
+                    const parsed = parsePreferredCities(val);
+                    onChange("partnerPreferenceCity", parsed);
+                } catch {
+                    const parsed = val
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                    onChange("partnerPreferenceCity", parsed);
+                }
+            }}
+            placeholder="e.g. London, Kabul, Dubai"
+            hint="Enter cities separated by commas"
+            className="bg-white"
+        />
+      </div>
     </div>
   );
 }

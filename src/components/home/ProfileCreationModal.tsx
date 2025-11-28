@@ -92,7 +92,7 @@ export function ProfileCreationModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
-        className="max-w-md w-full p-0 overflow-y-scroll bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none "
+        className="max-w-2xl w-full p-0 overflow-hidden bg-white/95 backdrop-blur-xl shadow-2xl border-0 sm:rounded-2xl ring-1 ring-black/5"
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
@@ -104,52 +104,57 @@ export function ProfileCreationModal({
         aria-labelledby="profile-modal-title"
         aria-describedby="profile-modal-desc"
       >
-        <div className="relative">
+        <div className="relative flex flex-col h-[85vh] sm:h-auto sm:max-h-[85vh]">
           {isSubmitting && (
             <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm gap-4">
               <div
-                className="w-10 h-10 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin"
+                className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
                 aria-label="Submitting profile"
               />
-              <p className="text-sm font-medium text-pink-700">
+              <p className="text-sm font-medium text-primary animate-pulse">
                 {hasSubmittedProfile
                   ? "Finalizing your profile..."
                   : "Submitting..."}
               </p>
             </div>
           )}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
-            <div
-              className="h-full bg-pink-600 transition-all duration-300"
-              style={{ width: `${(step / totalSteps) * 100}%` }}
-            />
+          
+          {/* Header with Progress */}
+          <div className="relative bg-white/50 backdrop-blur-md border-b border-gray-100 p-6 pb-6 z-10">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gray-100">
+              <motion.div
+                className="h-full bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_100%] animate-gradient-x"
+                initial={{ width: 0 }}
+                animate={{ width: `${(step / totalSteps) * 100}%` }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+            </div>
+
+            <div className="mt-2">
+              <DialogTitle id="profile-modal-title" className="text-2xl font-bold text-gray-900 tracking-tight">
+                {step === 7 ? "Create Account" : "Complete Your Profile"}
+              </DialogTitle>
+              <div className="flex items-center justify-between mt-1">
+                <p id="profile-modal-desc" className="text-gray-500 text-sm">
+                  {step < 5 ? "Tell us a bit more about yourself" : "Almost there!"}
+                </p>
+                <span className="text-xs font-medium px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                  Step {step} of {totalSteps}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <DialogHeader className="p-6 pb-0">
-            <DialogTitle id="profile-modal-title" className="sr-only">
-              Profile creation
-            </DialogTitle>
-            <DialogTitle
-              aria-hidden="true"
-              className="text-2xl font-bold text-neutral-900"
-            >
-              Find Your Perfect Match
-            </DialogTitle>
-            {step < 5 && (
-              <p id="profile-modal-desc" className="text-neutral-600 mt-2">
-                Join thousands of Afghan singles finding love
-              </p>
-            )}
-          </DialogHeader>
-
-          <div className="p-6 ">
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="min-h-[300px]"
               >
                 {step === 1 && !hasBasicData && (
                   <Step1Basic
@@ -230,52 +235,62 @@ export function ProfileCreationModal({
                 )}
               </motion.div>
             </AnimatePresence>
+          </div>
 
-            <div className="mt-8 flex justify-between items-center">
-              {step > 2 && (
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                  disabled={false}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-              )}
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center z-10">
+            {step > 2 ? (
+              <Button
+                variant="ghost"
+                onClick={handleBack}
+                disabled={false}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+            ) : (
+              <div />
+            )}
 
-              {(step === 1 || step === 2) && <div />}
-
-              {step >= 1 && step < 7 && (
-                <Button
-                  onClick={async () => {
-                    if (step === 2) {
-                      const precheckMissing =
-                        !(formData as any).city ||
-                        String((formData as any).city).trim() === "" ||
-                        !(formData as any).height ||
-                        String((formData as any).height).trim() === "" ||
-                        !(formData as any).maritalStatus ||
-                        String((formData as any).maritalStatus).trim() === "";
-                      if (precheckMissing) {
-                        showErrorToast(
-                          null,
-                          "Please complete location and physical details"
-                        );
-                        await handleNext();
-                        return;
-                      }
+            {step >= 1 && step < 7 && (
+              <Button
+                onClick={async () => {
+                  if (step === 2) {
+                    const precheckMissing =
+                      !(formData as any).city ||
+                      String((formData as any).city).trim() === "" ||
+                      !(formData as any).height ||
+                      String((formData as any).height).trim() === "" ||
+                      !(formData as any).maritalStatus ||
+                      String((formData as any).maritalStatus).trim() === "";
+                    if (precheckMissing) {
+                      showErrorToast(
+                        null,
+                        "Please complete location and physical details"
+                      );
+                      await handleNext();
+                      return;
                     }
-                    await handleNext();
-                  }}
-                  disabled={stepValidation.isValidating}
-                  className="bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                >
-                  {stepValidation.isValidating ? "Validating..." : "Next"}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+                  }
+                  await handleNext();
+                }}
+                disabled={stepValidation.isValidating}
+                className="bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300 px-8"
+              >
+                {stepValidation.isValidating ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Validating...
+                  </span>
+                ) : (
+                  <>
+                    Next
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

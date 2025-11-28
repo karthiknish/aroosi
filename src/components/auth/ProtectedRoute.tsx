@@ -59,7 +59,7 @@ export default function ProtectedRoute({
     const hasProfile = !!profile || !!(user as any)?.profile;
     if (requireProfile && !hasProfile) {
       notify("Please create your profile to continue");
-      router.push("/profile/create");
+      router.push("/");
       return;
     }
 

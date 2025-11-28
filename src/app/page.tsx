@@ -13,10 +13,17 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Using shared animation presets
 
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
+
 function OnboardingSlot() {
-  const { isLoaded, isAuthenticated } = useAuth();
+  const { isLoaded, isAuthenticated, profile } = useAuth();
   if (!isLoaded) return null;
-  if (isAuthenticated) return null;
+  
+  // If authenticated and profile is complete, hide onboarding
+  if (isAuthenticated && profile && isOnboardingEssentialComplete(profile)) {
+    return null;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}

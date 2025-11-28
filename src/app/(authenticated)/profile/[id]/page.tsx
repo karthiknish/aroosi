@@ -61,12 +61,10 @@ import { ProfileActions } from "@/components/profile/ProfileActions";
 import { IcebreakersPanel } from "./IcebreakersPanel";
 import { fetchIcebreakers } from "@/lib/engagementUtil";
 import { getJson } from "@/lib/http/client";
-import ReportModal from "@/components/chat/ReportModal";
+import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
 import {
-  blockUserUtil,
-  reportUserUtil,
   unblockUserUtil,
-  ReportReason,
+  blockUserUtil,
   handleErrorUtil,
 } from "@/lib/chat/utils";
 
@@ -269,27 +267,6 @@ export default function ProfileDetailPage() {
   const [showReportModal, setShowReportModal] = useState(false);
 
   // Moderation handlers (parity with chat modal)
-  const handleBlockUser = async () => {
-    try {
-      await blockUserUtil({
-        matchUserId: userId,
-        setIsBlocked,
-        setShowReportModal,
-      });
-      trackUsage({
-        feature: "user_block" as any,
-        metadata: { targetUserId: userId },
-      });
-      showSuccessToast("User has been blocked");
-    } catch (err) {
-      const mapped = handleErrorUtil(err);
-      console.error("Error blocking user (profile page):", mapped.message);
-      if (mapped.type === "RATE_LIMITED")
-        showErrorToast(null, "Too many actions. Please wait and try again.");
-      else showErrorToast(null, "Failed to block user");
-    }
-  };
-
   const handleUnblockUser = async () => {
     try {
       await unblockUserUtil({
@@ -325,34 +302,6 @@ export default function ProfileDetailPage() {
       if (mapped.type === "RATE_LIMITED")
         showErrorToast(null, "Too many actions. Please wait and try again.");
       else showErrorToast(null, "Failed to unblock user");
-    }
-  };
-
-  const handleReportUser = async (
-    reason: ReportReason,
-    description: string
-  ) => {
-    try {
-      await reportUserUtil({
-        matchUserId: userId,
-        reason,
-        description,
-        setShowReportModal,
-      });
-      trackUsage({
-        feature: "user_report" as any,
-        metadata: { targetUserId: userId, reason },
-      });
-      showSuccessToast("Report submitted successfully");
-    } catch (err) {
-      const mapped = handleErrorUtil(err);
-      console.error("Error reporting user (profile page):", mapped.message);
-      if (mapped.type === "RATE_LIMITED")
-        showErrorToast(
-          null,
-          "Too many reports. Please slow down and try later."
-        );
-      else showErrorToast(null, "Failed to submit report");
     }
   };
 
@@ -575,11 +524,23 @@ export default function ProfileDetailPage() {
 
   return (
     <>
-      <ReportModal
-        open={showReportModal}
+      <ReportUserDialog
+        isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
-        onBlockUser={handleBlockUser}
-        onReportUser={handleReportUser}
+        userId={userId}
+        userName={profile?.fullName}
+        onReportSuccess={() => {
+          trackUsage({
+            feature: "user_report" as any,
+            metadata: { targetUserId: userId },
+          });
+        }}
+        onBlockSuccess={() => {
+          trackUsage({
+            feature: "user_block" as any,
+            metadata: { targetUserId: userId },
+          });
+        }}
       />
       <div className="relative w-full overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
         {/* Decorative color pop circles */}

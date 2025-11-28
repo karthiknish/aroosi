@@ -11,6 +11,7 @@ import {
   Sparkles,
   ArrowRight,
   Check,
+  X,
 } from "lucide-react";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
 // Source of truth: fetch normalized plans from server only (no client constants)
@@ -342,22 +343,35 @@ export default function ManagePlansPage() {
 
                     <CardContent className="relative px-6 pb-8">
                       <ul className="space-y-3 mb-8">
-                        {plan.features.map((feature) => (
-                          <li key={feature} className="flex items-start gap-3">
-                            <CheckCircle
-                              className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
-                                plan.id === "free"
-                                  ? "text-green-500"
-                                  : plan.id === "premium"
-                                    ? "text-pink-500"
-                                    : "text-amber-500"
-                              }`}
-                            />
-                            <span className="text-sm text-neutral-700">
-                              {feature}
-                            </span>
-                          </li>
-                        ))}
+                        {plan.features.map((feature) => {
+                          const isObj = typeof feature !== "string";
+                          const text = isObj ? feature.text : feature;
+                          const included = isObj ? feature.included : true;
+
+                          return (
+                            <li
+                              key={text}
+                              className={`flex items-start gap-3 ${!included ? "opacity-50" : ""}`}
+                            >
+                              {included ? (
+                                <CheckCircle
+                                  className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                                    plan.id === "free"
+                                      ? "text-green-500"
+                                      : plan.id === "premium"
+                                        ? "text-pink-500"
+                                        : "text-amber-500"
+                                  }`}
+                                />
+                              ) : (
+                                <X className="h-4 w-4 mt-0.5 flex-shrink-0 text-neutral-400" />
+                              )}
+                              <span className="text-sm text-neutral-700">
+                                {text}
+                              </span>
+                            </li>
+                          );
+                        })}
                       </ul>
 
                       <Button

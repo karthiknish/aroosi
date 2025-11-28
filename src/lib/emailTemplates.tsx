@@ -57,7 +57,7 @@ export function profileCreatedTemplate(profile: Profile): EmailPayload {
       <li>Share a short bio</li>
       <li>Set your preferences</li>
     </ul>
-    <a href="https://aroosi.app/profile/create" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Complete my profile</a>
+    <a href="https://aroosi.app/" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Complete my profile</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ValidatedInput } from "@/components/ui/ValidatedInput";
 import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
@@ -39,6 +40,8 @@ import { auth, db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import RequiredLabel from "../ui/RequiredLabel";
+import { useAuth } from "@/hooks/useAuth";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 interface OnboardingData {
   profileFor: string;
@@ -73,6 +76,7 @@ const onboardingStepSchemas = [
 function HeroOnboardingInner() {
   const { formData, updateFormData } = useProfileWizard();
   const router = useRouter();
+  const { isAuthenticated, profile } = useAuth();
   const [step, setStep] = useState<number>(() => {
     try {
       if (typeof window !== "undefined") {
@@ -102,6 +106,13 @@ function HeroOnboardingInner() {
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [heroErrors, setHeroErrors] = useState<Record<string, string>>({});
+
+  // Auto-open modal if authenticated but profile incomplete
+  React.useEffect(() => {
+    if (isAuthenticated && profile && !isOnboardingEssentialComplete(profile)) {
+      setShowProfileModal(true);
+    }
+  }, [isAuthenticated, profile]);
 
   const fieldLabels: Record<keyof OnboardingData, string> = {
     profileFor: "This profile is for",
@@ -279,60 +290,66 @@ function HeroOnboardingInner() {
   const required = (label: string) => <RequiredLabel>{label}</RequiredLabel>;
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 max-h-[80vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
-        <div className="sm:p-8 p-4">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-neutral mb-2">
-              Find Your Perfect Match
+    <div className="w-full max-w-md mx-auto relative z-10">
+      <Card className="bg-white/95 backdrop-blur-xl shadow-2xl border-0 overflow-hidden relative ring-1 ring-white/20">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-pink-500 to-primary animate-gradient-x" />
+        
+        <div className="sm:p-8 p-6">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+              Find Your Match
             </h2>
-            <p className="text-neutral-light">
+            <p className="text-gray-500 text-sm">
               Join thousands of Afghan singles finding love
             </p>
           </div>
 
-          {/* Progress indicator */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center space-x-2">
+          {/* Modern Progress Indicator */}
+          <div className="flex justify-center mb-8 relative">
+            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -z-10 rounded-full" />
+            <div className="flex items-center justify-between w-full max-w-[200px]">
               {[1, 2, 3].map((i) => (
-                <React.Fragment key={i}>
+                <div key={i} className="relative group">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2",
                       i <= step
-                        ? "bg-primary text-white"
-                        : "bg-gray-200 text-gray-500"
-                    }`}
+                        ? "bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-110"
+                        : "bg-white border-gray-200 text-gray-400"
+                    )}
                   >
                     {i}
                   </div>
-                  {i < 3 && (
-                    <div
-                      className={`w-12 h-1 transition-colors ${
-                        i < step ? "bg-primary" : "bg-gray-200"
-                      }`}
-                    />
-                  )}
-                </React.Fragment>
+                </div>
               ))}
             </div>
+             {/* Active Progress Line */}
+             <div 
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[200px] h-0.5 -z-20 bg-gray-100 overflow-hidden rounded-full"
+             >
+                <motion.div 
+                  className="h-full bg-primary"
+                  initial={{ width: "0%" }}
+                  animate={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%" }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                />
+             </div>
           </div>
 
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -20, filter: "blur(10px)" }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="min-h-[280px]"
             >
               {/* Step 1: Profile For & Gender */}
               {step === 1 && (
                 <div className="space-y-6">
-                  <div>
-                    <Label
-                      htmlFor="profileFor"
-                      className="text-neutral mb-2 block"
-                    >
+                  <div className="space-y-3">
+                    <Label className="text-gray-700 font-medium block">
                       {required("This profile is for")}
                     </Label>
                     <Select
@@ -343,88 +360,52 @@ function HeroOnboardingInner() {
                     >
                       <SelectTrigger
                         id="profileFor"
-                        className="w-full bg-white"
+                        className="w-full h-12 bg-gray-50/50 border-gray-200 focus:ring-2 focus:ring-primary/20 transition-all"
                       >
-                        <SelectValue placeholder="Select..." />
+                        <SelectValue placeholder="Select who this is for" />
                       </SelectTrigger>
-                      <SelectContent
-                        className="bg-white border border-gray-200 z-[100]"
-                        style={{ backgroundColor: "white" }}
-                      >
-                        <SelectItem
-                          value="self"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Myself
-                        </SelectItem>
-                        <SelectItem
-                          value="friend"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Friend
-                        </SelectItem>
-                        <SelectItem
-                          value="family"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Family
-                        </SelectItem>
+                      <SelectContent className="bg-white/95 backdrop-blur-xl border-gray-100 shadow-xl">
+                        <SelectItem value="self">Myself</SelectItem>
+                        <SelectItem value="friend">A Friend</SelectItem>
+                        <SelectItem value="family">A Family Member</SelectItem>
                       </SelectContent>
                     </Select>
                     {heroErrors.profileFor && (
-                      <p
-                        className="text-xs text-danger mt-1"
-                        id="profileFor-error"
-                      >
+                      <p className="text-xs text-red-500 font-medium animate-shake">
                         {heroErrors.profileFor}
                       </p>
                     )}
                   </div>
 
-                  <div>
-                    <Label className="text-neutral mb-2 block">
+                  <div className="space-y-3">
+                    <Label className="text-gray-700 font-medium block">
                       {required("Gender")}
                     </Label>
                     <div className="grid grid-cols-2 gap-4">
-                      <Button
-                        type="button"
-                        variant={
-                          (heroData.gender ?? "") === "male"
-                            ? "default"
-                            : "outline"
-                        }
-                        className={`w-full ${
-                          (heroData.gender ?? "") === "male"
-                            ? "bg-primary hover:bg-primary-dark"
-                            : ""
-                        }`}
-                        id="gender-male"
-                        onClick={() => handleInputChange("gender", "male")}
-                      >
-                        Male
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          (heroData.gender ?? "") === "female"
-                            ? "default"
-                            : "outline"
-                        }
-                        className={`w-full ${
-                          (heroData.gender ?? "") === "female"
-                            ? "bg-primary hover:bg-primary-dark"
-                            : ""
-                        }`}
-                        onClick={() => handleInputChange("gender", "female")}
-                      >
-                        Female
-                      </Button>
+                      {["male", "female"].map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => handleInputChange("gender", g)}
+                          className={cn(
+                            "relative h-12 rounded-lg border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize",
+                            (heroData.gender ?? "") === g
+                              ? "border-primary bg-primary/5 text-primary shadow-sm"
+                              : "border-gray-100 bg-gray-50/50 text-gray-600 hover:border-gray-200 hover:bg-gray-100"
+                          )}
+                        >
+                          {g}
+                          {(heroData.gender ?? "") === g && (
+                            <motion.div
+                              layoutId="gender-check"
+                              className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"
+                            />
+                          )}
+                        </button>
+                      ))}
                     </div>
                     {heroErrors.gender && (
-                      <p
-                        className="text-xs text-danger mt-1"
-                        id="gender-error"
-                      >
+                      <p className="text-xs text-red-500 font-medium animate-shake">
                         {heroErrors.gender}
                       </p>
                     )}
@@ -435,42 +416,20 @@ function HeroOnboardingInner() {
               {/* Step 2: Name & Date of Birth */}
               {step === 2 && (
                 <div className="space-y-6">
-                  <div>
-                    <Label
-                      htmlFor="fullName"
-                      className="text-neutral mb-2 block"
-                    >
-                      {required("Full Name")}
-                    </Label>
-                    <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Enter full name"
-                      value={heroData.fullName ?? ""}
-                      onChange={(e) =>
-                        handleInputChange("fullName", e.target.value)
-                      }
-                      className="w-full bg-white"
-                      aria-invalid={!!heroErrors.fullName}
-                      aria-describedby={
-                        heroErrors.fullName ? "fullName-error" : undefined
-                      }
-                    />
-                    {heroErrors.fullName && (
-                      <p
-                        className="text-xs text-danger mt-1"
-                        id="fullName-error"
-                      >
-                        {heroErrors.fullName}
-                      </p>
-                    )}
-                  </div>
+                  <ValidatedInput
+                    label="Full Name"
+                    field="fullName"
+                    step={1}
+                    value={heroData.fullName ?? ""}
+                    onValueChange={(val) => handleInputChange("fullName", val)}
+                    placeholder="e.g. Sarah Ahmad"
+                    required
+                    externalError={heroErrors.fullName}
+                    className="h-12 bg-gray-50/50 border-gray-200 focus:ring-2 focus:ring-primary/20"
+                  />
 
-                  <div>
-                    <Label
-                      htmlFor="dateOfBirth"
-                      className="text-neutral mb-2 block"
-                    >
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium block">
                       {required("Date of Birth")}
                     </Label>
                     <Popover>
@@ -478,11 +437,11 @@ function HeroOnboardingInner() {
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal bg-white",
+                            "w-full h-12 justify-start text-left font-normal bg-gray-50/50 border-gray-200 hover:bg-gray-100 transition-all",
                             !heroData.dateOfBirth && "text-muted-foreground"
                           )}
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
                           {heroData.dateOfBirth ? (
                             format(new Date(heroData.dateOfBirth), "PPP")
                           ) : (
@@ -490,10 +449,7 @@ function HeroOnboardingInner() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto p-0 bg-white"
-                        align="start"
-                      >
+                      <PopoverContent className="w-auto p-0 bg-white border-gray-100 shadow-xl rounded-xl" align="start">
                         <Calendar
                           mode="single"
                           selected={
@@ -502,14 +458,7 @@ function HeroOnboardingInner() {
                               : undefined
                           }
                           onSelect={(date) => {
-                            // Guard against invalid dates before writing to state
-                            if (!date || isNaN(date.getTime())) {
-                              showErrorToast(
-                                null,
-                                "Please select a valid date."
-                              );
-                              return;
-                            }
+                            if (!date || isNaN(date.getTime())) return;
                             handleInputChange(
                               "dateOfBirth",
                               format(date, "yyyy-MM-dd")
@@ -528,22 +477,13 @@ function HeroOnboardingInner() {
                           }}
                           captionLayout="dropdown"
                           defaultMonth={new Date(2000, 0, 1)}
+                          className="rounded-xl"
                         />
                       </PopoverContent>
                     </Popover>
-                    {/* Inline helper and friendly message */}
                     {heroErrors.dateOfBirth && (
-                      <p
-                        className="text-xs text-danger mt-1"
-                        id="dateOfBirth-error"
-                      >
+                      <p className="text-xs text-red-500 font-medium animate-shake">
                         {heroErrors.dateOfBirth}
-                      </p>
-                    )}
-                    {heroData.dateOfBirth && (
-                      <p className="text-sm text-neutral-light mt-1">
-                        Date selected:{" "}
-                        {format(new Date(heroData.dateOfBirth), "PPP")}
                       </p>
                     )}
                   </div>
@@ -553,65 +493,71 @@ function HeroOnboardingInner() {
               {/* Step 3: Phone Number */}
               {step === 3 && (
                 <div className="space-y-6">
-                  <div>
-                    <Label
-                      htmlFor="phoneNumber"
-                      className="text-neutral mb-2 block"
-                    >
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium block">
                       {required("Phone Number")}
                     </Label>
-                    <PhoneInput
-                      value={heroData.phoneNumber ?? ""}
-                      onChange={(value: string) => {
-                        // Strip spaces and normalize to "+<digits>" for storage in context
-                        const cleaned = value.replace(/[^\d+]/g, "");
-                        const digits = cleaned.replace(/\D/g, "");
-                        const normalized =
-                          digits.length >= 10 && digits.length <= 15
-                            ? `+${digits}`
-                            : value;
-                        handleInputChange("phoneNumber", normalized);
-                      }}
-                      placeholder="7XXX XXXXXX"
-                      className="w-full"
-                      aria-invalid={!!heroErrors.phoneNumber}
-                      aria-describedby={
-                        heroErrors.phoneNumber ? "phoneNumber-error" : undefined
-                      }
-                    />
+                    <div className={cn(
+                      "transition-all duration-200 rounded-lg border",
+                      heroErrors.phoneNumber 
+                        ? "border-red-500 ring-1 ring-red-500/20" 
+                        : "border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary"
+                    )}>
+                      <PhoneInput
+                        value={heroData.phoneNumber ?? ""}
+                        onChange={(value: string) => {
+                          const cleaned = value.replace(/[^\d+]/g, "");
+                          const digits = cleaned.replace(/\D/g, "");
+                          const normalized =
+                            digits.length >= 10 && digits.length <= 15
+                              ? `+${digits}`
+                              : value;
+                          handleInputChange("phoneNumber", normalized);
+                        }}
+                        placeholder="7XXX XXXXXX"
+                        className="w-full border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg"
+                      />
+                    </div>
                     {heroErrors.phoneNumber && (
-                      <p
-                        className="text-xs text-danger mt-1"
-                        id="phoneNumber-error"
-                      >
+                      <p className="text-xs text-red-500 font-medium animate-shake">
                         {heroErrors.phoneNumber}
                       </p>
                     )}
+                    <p className="text-xs text-gray-400 mt-2">
+                      We'll send you a verification code to confirm your number.
+                    </p>
                   </div>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          <div className="mt-8 flex justify-between">
-            {step > 1 && (
+          <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100">
+            {step > 1 ? (
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => setStep(step - 1)}
                 disabled={loading}
+                className="text-gray-500 hover:text-gray-900 hover:bg-gray-100"
               >
                 Back
               </Button>
+            ) : (
+              <div /> 
             )}
             <Button
               onClick={handleNext}
               disabled={loading}
-              className={`${
-                step === 1 ? "w-full" : "ml-auto"
-              } bg-primary hover:bg-primary-dark text-white`}
+              className={cn(
+                "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300",
+                step === 3 ? "px-8" : "px-6"
+              )}
             >
               {loading ? (
-                "Please wait..."
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </span>
               ) : step === 3 ? (
                 "Create Profile"
               ) : (
@@ -623,11 +569,11 @@ function HeroOnboardingInner() {
             </Button>
           </div>
 
-          <div className="mt-6 text-center text-sm text-neutral-light">
+          <div className="mt-6 text-center text-sm text-gray-500">
             Already have an account?{" "}
             <Link
               href="/sign-in"
-              className="text-primary hover:text-primary-dark font-medium"
+              className="text-primary hover:text-primary-dark font-semibold hover:underline transition-all"
             >
               Sign In
             </Link>
@@ -637,25 +583,28 @@ function HeroOnboardingInner() {
 
       {/* Trust indicators */}
       <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-        <div className="text-white">
-          <Shield className="h-8 w-8 mx-auto mb-2 opacity-80" />
-          <p className="text-sm opacity-90">100% Verified</p>
-        </div>
-        <div className="text-white">
-          <Users className="h-8 w-8 mx-auto mb-2 opacity-80" />
-          <p className="text-sm opacity-90">1000+ Members</p>
-        </div>
-        <div className="text-white">
-          <Star className="h-8 w-8 mx-auto mb-2 opacity-80" />
-          <p className="text-sm opacity-90">Success Stories</p>
-        </div>
+        {[
+          { icon: Shield, text: "100% Verified" },
+          { icon: Users, text: "1000+ Members" },
+          { icon: Star, text: "Success Stories" },
+        ].map(({ icon: Icon, text }, idx) => (
+          <motion.div 
+            key={text}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 + idx * 0.1 }}
+            className="text-white/90 backdrop-blur-sm bg-white/10 rounded-xl p-3 border border-white/10"
+          >
+            <Icon className="h-6 w-6 mx-auto mb-2 opacity-90" />
+            <p className="text-xs font-medium">{text}</p>
+          </motion.div>
+        ))}
       </div>
 
       {/* Profile Creation Modal */}
       <ProfileCreationModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        // Cast onboarding subset into the generic profile creation data shape
         initialData={heroData as unknown as Partial<Record<string, unknown>>}
       />
     </div>

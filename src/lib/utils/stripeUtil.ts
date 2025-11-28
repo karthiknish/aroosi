@@ -18,13 +18,25 @@ export interface CheckoutSessionResponse {
   error?: string;
 }
 
+export interface PlanFeatureObj {
+  text: string;
+  included: boolean;
+}
+
 export interface NormalizedPlan {
   id: "free" | "premium" | "premiumPlus" | string;
   name: string;
   price: number; // minor units
   currency: string; // e.g. "GBP"
-  features: string[];
+  features: string[] | PlanFeatureObj[];
   popular: boolean;
+  // Optional UI fields that might be merged in
+  description?: string;
+  color?: string;
+  gradient?: string;
+  billing?: string;
+  iconName?: string;
+  highlight?: boolean;
 }
 
 /**

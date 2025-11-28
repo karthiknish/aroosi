@@ -19,6 +19,7 @@ interface ValidatedInputProps
   maxLength?: number;
   showCharacterCount?: boolean;
   validateOnMount?: boolean;
+  externalError?: string;
 }
 
 export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
@@ -35,21 +36,23 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
       showCharacterCount = false,
       validateOnMount = false,
       validationValue,
+      externalError,
       className,
       ...props
     },
     ref
   ) => {
-    const { isValid, error, isValidating, hasBeenValidated } =
+    const { isValid, error: internalError, isValidating, hasBeenValidated } =
           useFieldValidation(field, validationValue ?? value, {
         step,
         validateOnMount,
         debounceMs: 500,
       });
 
-    const showError = hasBeenValidated && !isValid && error;
+    const error = externalError || internalError;
+    const showError = (hasBeenValidated && !isValid && error) || !!externalError;
     const showSuccess =
-      hasBeenValidated && isValid && value && value.trim() !== "";
+      !externalError && hasBeenValidated && isValid && value && value.trim() !== "";
     const characterCount = value?.length || 0;
     const isOverLimit = maxLength && characterCount > maxLength;
 

@@ -9,44 +9,10 @@ import {
   useSubscriptionGuard,
 } from "@/hooks/useSubscription";
 import { CancelSubscriptionButton } from "./CancelSubscriptionButton";
-// import { formatDistanceToNow } from 'date-fns';
+import { DEFAULT_PLANS } from "@/lib/constants/plans";
 
 // Narrow the plan key type so TS knows valid indices
 type PlanKey = "free" | "premium" | "premiumPlus";
-
-const planConfig: Record<
-  PlanKey,
-  {
-    name: string;
-    color: string;
-    features: string[];
-    price?: string;
-  }
-> = {
-  free: {
-    name: "Free",
-    color: "bg-gray-500",
-    features: ["Limited messaging", "Basic search", "Profile views"],
-  },
-  premium: {
-    name: "Premium",
-    color: "bg-blue-500",
-    features: ["Unlimited messaging", "Advanced filters", "Priority support"],
-    price: "£14.99/month",
-  },
-  premiumPlus: {
-    name: "Premium Plus",
-    color: "bg-purple-500",
-    features: [
-      "All Premium features",
-      "Profile boost (5/month)",
-      "Profile viewers",
-      "Spotlight badge",
-      "Unlimited voice messages",
-    ],
-    price: "£39.99/month",
-  },
-};
 
 interface SubscriptionCardProps {
   onUpgrade?: (tier: "premium" | "premiumPlus") => void;
@@ -112,9 +78,9 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   const effectivePlanKey: PlanKey =
     effectivePlan || (isAdmin ? "premiumPlus" : planKey);
 
-  const config = planConfig[effectivePlanKey];
+  const config = DEFAULT_PLANS.find((p) => p.id === effectivePlanKey) || DEFAULT_PLANS[0];
+
   const isExpiringSoon = status.daysRemaining > 0 && status.daysRemaining <= 7;
-  const isTrial = false; // trials disabled server-side
   const isExpired =
     status.expiresAt && status.expiresAt < Date.now() && planKey !== "free";
   const isCancelScheduled = Boolean(status.cancelAtPeriodEnd && !isExpired);
@@ -144,18 +110,12 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               Admin Access
             </Badge>
           )}
-
-          {/* Trial badge with countdown when available */}
-          {/* Trial badge removed */}
         </div>
 
-        {"price" in config && config.price && (
-          <span className="text-sm text-gray-600">{config.price}</span>
+        {config.price && (
+          <span className="text-sm text-gray-600">{config.price}/{config.billing}</span>
         )}
       </div>
-
-      {/* Small trial end date line below badges */}
-      {/* Trial end date removed */}
 
       {/* Status indicators */}
       {isCancelScheduled && status.expiresAt && (
@@ -173,8 +133,6 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           </p>
         </div>
       )}
-
-      {/* Trial alert removed */}
 
       {isExpiringSoon && !isExpired && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -195,7 +153,6 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           </div>
         )}
 
-        {/* boostsRemaining is not in SubscriptionStatusResponse; omit to fix TS and data mismatch */}
         {effectivePlanKey === "premiumPlus" && (
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Premium Plus benefits:</span>
@@ -214,7 +171,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               className="text-sm text-gray-600 flex items-center gap-2"
             >
               <span className="text-green-500">✓</span>
-              {feature}
+              {feature.text}
             </li>
           ))}
         </ul>

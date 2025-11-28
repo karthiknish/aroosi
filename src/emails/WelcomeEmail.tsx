@@ -108,7 +108,7 @@ export function WelcomeEmail({ name }: { name: string }) {
         <li>Tell us about yourself</li>
         <li>Set your preferences</li>
       </ul>
-      <a href="https://aroosi.app/profile/create" style={{ display: "inline-block", background: "#111", color: "#fff", textDecoration: "none", padding: "10px 14px", borderRadius: 10, fontSize: 14 }}>Complete your profile</a>
+      <a href="https://aroosi.app/" style={{ display: "inline-block", background: "#111", color: "#fff", textDecoration: "none", padding: "10px 14px", borderRadius: 10, fontSize: 14 }}>Complete your profile</a>
     </EmailContainer>
   );
 }

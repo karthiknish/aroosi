@@ -3,12 +3,13 @@ import { cn } from "@/lib/utils";
 import ModernChatHeader from "@/components/chat/ModernChatHeader";
 import MessagesList from "@/components/chat/MessagesList";
 import Composer from "@/components/chat/Composer";
-import ReportModal from "@/components/chat/ReportModal";
+import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
 import { useModernChat, type ReportReason } from "@/hooks/useModernChat";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useState } from "react";
 import { canSendVoiceMessage } from "@/lib/utils/messageUtils";
 import { MessageCircle } from "lucide-react";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 
 export type ModernChatProps = {
   conversationId: string;
@@ -46,6 +47,8 @@ function ModernChat({
     currentUserId,
     matchUserId,
   });
+
+  const { trackUsage } = useUsageTracking(undefined);
 
   const {
     text,
@@ -212,15 +215,22 @@ function ModernChat({
       </div>
 
       {/* Enhanced Modals */}
-      <ReportModal
-        open={showReportModal}
+      <ReportUserDialog
+        isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
-        onBlockUser={handleBlockUser}
-        onReportUser={async (reason: string, description: string) => {
-          await handleReportUser(
-            reason as unknown as ReportReason,
-            description
-          );
+        userId={matchUserId}
+        userName={matchUserName}
+        onReportSuccess={() => {
+          trackUsage({
+            feature: "user_report" as any,
+            metadata: { targetUserId: matchUserId },
+          });
+        }}
+        onBlockSuccess={() => {
+          trackUsage({
+            feature: "user_block" as any,
+            metadata: { targetUserId: matchUserId },
+          });
         }}
       />
 

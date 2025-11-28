@@ -1,13 +1,41 @@
 import type { NormalizedPlan } from "@/lib/utils/stripeUtil";
 
+export interface PlanFeature {
+  text: string;
+  included: boolean;
+}
+
+export interface PlanConfig extends Omit<NormalizedPlan, "features"> {
+  billing: string;
+  description: string;
+  gradient: string;
+  color: string; // for badges/text
+  highlight?: boolean; // for popular/recommended
+  iconName?: string;
+  features: PlanFeature[];
+}
+
 // Shared fallback plans used when Stripe / server returns no plans.
-export const DEFAULT_PLANS: NormalizedPlan[] = [
+export const DEFAULT_PLANS: PlanConfig[] = [
   {
     id: "free",
     name: "Free",
     price: 0,
     currency: "GBP",
-    features: ["Create profile", "100 searches/day", "Limited likes"],
+    billing: "forever",
+    description: "Essential features to get started",
+    gradient: "bg-gray-100",
+    color: "bg-gray-500",
+    iconName: "Star",
+    features: [
+      { text: "Create profile", included: true },
+      { text: "100 searches/day", included: true },
+      { text: "Limited likes", included: true },
+      { text: "Basic search filters", included: true },
+      { text: "Unlimited messages", included: false },
+      { text: "Profile Boost", included: false },
+      { text: "See who viewed you", included: false },
+    ],
     popular: false,
   },
   {
@@ -15,15 +43,41 @@ export const DEFAULT_PLANS: NormalizedPlan[] = [
     name: "Premium",
     price: 1499,
     currency: "GBP",
-    features: ["500 searches/day", "Unlimited messages", "Profile Boost"],
+    billing: "per month",
+    description: "Perfect for active users",
+    gradient: "bg-gradient-to-br from-purple-600 to-pink-600",
+    color: "bg-blue-500",
+    iconName: "Crown",
+    features: [
+      { text: "500 searches/day", included: true },
+      { text: "Unlimited messages", included: true },
+      { text: "Profile Boost", included: true },
+      { text: "Advanced search filters", included: true },
+      { text: "Priority support", included: true },
+      { text: "See who viewed you", included: false },
+      { text: "Spotlight", included: false },
+    ],
     popular: true,
+    highlight: true,
   },
   {
     id: "premiumPlus",
     name: "Premium Plus",
     price: 3999,
     currency: "GBP",
-    features: ["2000 searches/day", "Unlimited messages", "Spotlight & Boosts"],
+    billing: "per month",
+    description: "Maximum visibility and features",
+    gradient: "bg-gradient-to-br from-pink-600 to-rose-600",
+    color: "bg-purple-500",
+    iconName: "Rocket",
+    features: [
+      { text: "2000 searches/day", included: true },
+      { text: "Unlimited messages", included: true },
+      { text: "Spotlight & Boosts", included: true },
+      { text: "See who viewed you", included: true },
+      { text: "Priority matching", included: true },
+      { text: "Unlimited voice messages", included: true },
+    ],
     popular: false,
   },
 ];
