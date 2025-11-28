@@ -75,105 +75,134 @@ export function PostForm({
   editorResetKey,
 }: PostFormProps) {
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-lg">
-      <CardHeader>
-        <CardTitle>
+    <div className="space-y-8 pb-24">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-neutral-900">
           {mode === "create" ? "Create New Post" : "Edit Blog Post"}
-        </CardTitle>
-        <CardDescription>
+        </h1>
+        <p className="text-neutral-500">
           {mode === "create"
-            ? "Write and publish a new blog post"
-            : "Update existing blog post details"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={onSubmit} className="space-y-6">
-          <BlogPostFields
-            title={title}
-            setTitle={setTitle}
-            slug={slug}
-            setSlug={setSlug}
-            slugManuallyEdited={slugManuallyEdited}
-            setSlugManuallyEdited={setSlugManuallyEdited}
-            slugify={slugify}
-            excerpt={excerpt}
-            setExcerpt={setExcerpt}
-            categories={categories}
-            setCategories={setCategories}
-            imageUrl={imageUrl}
-            setImageUrl={setImageUrl}
-            pexelsOpen={pexelsOpen}
-            setPexelsOpen={setPexelsOpen}
-            aiLoading={aiLoading}
-            aiText={aiText}
-            content={content}
-            disabled={isSubmitting}
-          />
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="blog-content"
-                className="text-sm font-medium text-neutral-dark"
-              >
-                Content
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-primary border-primary/30"
-                disabled={isSubmitting || aiLoading?.content}
-                onClick={async () => {
-                  const context = [
-                    title ? `Title: ${title}` : "",
-                    excerpt ? `Excerpt: ${excerpt}` : "",
-                    categories?.length
-                      ? `Categories: ${categories.join(", ")}`
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join("\n\n");
-                  const html = await aiText(context, "content");
-                  if (html) setContent(html);
-                }}
-              >
-                {aiLoading?.content ? "Generating Content..." : "Generate with AI"}
-              </Button>
-            </div>
-            <div className="mt-1 border rounded-md overflow-hidden">
-              <BlogEditor
-                key={editorResetKey}
-                value={content}
-                onChange={setContent}
-              />
-              {/* Hidden textarea for accessibility/form submission if needed */}
-              <textarea
-                id="blog-content"
-                aria-labelledby="blog-content-label"
-                className="hidden"
-                readOnly
-                value={content}
-              />
-            </div>
+            ? "Write and publish a new blog post for your audience."
+            : "Update existing blog post details and content."}
+        </p>
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-8">
+        {/* Basic Details Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/60 overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50/50">
+            <h2 className="text-lg font-semibold text-neutral-800">
+              Basic Details
+            </h2>
           </div>
+          <div className="p-6">
+            <BlogPostFields
+              title={title}
+              setTitle={setTitle}
+              slug={slug}
+              setSlug={setSlug}
+              slugManuallyEdited={slugManuallyEdited}
+              setSlugManuallyEdited={setSlugManuallyEdited}
+              slugify={slugify}
+              excerpt={excerpt}
+              setExcerpt={setExcerpt}
+              categories={categories}
+              setCategories={setCategories}
+              imageUrl={imageUrl}
+              setImageUrl={setImageUrl}
+              pexelsOpen={pexelsOpen}
+              setPexelsOpen={setPexelsOpen}
+              aiLoading={aiLoading}
+              aiText={aiText}
+              content={content}
+              disabled={isSubmitting}
+            />
+          </div>
+        </div>
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
-              {error}
-            </div>
-          )}
+        {/* Content Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/60 overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-neutral-800">
+              Content
+            </h2>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-primary border-primary/20 hover:bg-primary/5 hover:text-primary-dark"
+              disabled={isSubmitting || aiLoading?.content}
+              onClick={async () => {
+                const context = [
+                  title ? `Title: ${title}` : "",
+                  excerpt ? `Excerpt: ${excerpt}` : "",
+                  categories?.length
+                    ? `Categories: ${categories.join(", ")}`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join("\n\n");
+                const html = await aiText(context, "content");
+                if (html) setContent(html);
+              }}
+            >
+              {aiLoading?.content ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  Generating...
+                </span>
+              ) : (
+                "Generate with AI"
+              )}
+            </Button>
+          </div>
+          <div className="p-0">
+            <BlogEditor
+              key={editorResetKey}
+              value={content}
+              onChange={setContent}
+            />
+            {/* Hidden textarea for accessibility/form submission if needed */}
+            <textarea
+              id="blog-content"
+              aria-labelledby="blog-content-label"
+              className="hidden"
+              readOnly
+              value={content}
+            />
+          </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="w-5 h-5 flex-shrink-0"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {error}
+          </div>
+        )}
+
+        {/* Sticky Action Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-neutral-200/60 z-40 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
+          <div className="max-w-4xl mx-auto flex justify-end gap-3">
             {onReset && (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={onReset}
                 disabled={isSubmitting}
-                className="mr-auto"
+                className="mr-auto text-neutral-500 hover:text-neutral-700"
               >
-                Reset
+                Reset Form
               </Button>
             )}
             <Button
@@ -181,25 +210,29 @@ export function PostForm({
               variant="outline"
               onClick={onCancel}
               disabled={isSubmitting}
+              className="min-w-[100px] rounded-full border-neutral-300"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-pink-600 hover:bg-pink-700 text-white"
+              className="min-w-[140px] rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 text-white font-medium"
               disabled={isSubmitting}
             >
-              {isSubmitting
-                ? mode === "create"
-                  ? "Creating..."
-                  : "Saving..."
-                : mode === "create"
-                ? "Publish Post"
-                : "Save Changes"}
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {mode === "create" ? "Creating..." : "Saving..."}
+                </span>
+              ) : mode === "create" ? (
+                "Publish Post"
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </form>
+    </div>
   );
 }

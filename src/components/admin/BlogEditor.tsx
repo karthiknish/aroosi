@@ -152,252 +152,179 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const characterCount = editor.storage.characterCount;
 
   return (
-    <div className="sticky top-0 z-20 bg-white border-b border-neutral-200">
-      {/* Main Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 p-2">
-        {/* History */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={!editor.can().undo()}
-            label="Undo (Ctrl+Z)"
-            icon={UndoIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={!editor.can().redo()}
-            label="Redo (Ctrl+Y)"
-            icon={RedoIcon}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Text Formatting */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            active={editor.isActive("bold")}
-            label="Bold (Ctrl+B)"
-            icon={BoldIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            active={editor.isActive("italic")}
-            label="Italic (Ctrl+I)"
-            icon={ItalicIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            active={editor.isActive("underline")}
-            label="Underline (Ctrl+U)"
-            icon={UnderlineIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-            active={editor.isActive("strike")}
-            label="Strikethrough"
-            icon={StrikeIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-            active={editor.isActive("highlight")}
-            label="Highlight"
-            icon={HighlightIcon}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Fonts */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setFontFamily("Inter").run()}
-            active={editor.isActive("textStyle", { fontFamily: "Inter" })}
-            label="Sans Serif"
-            icon={FontIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setFontFamily("serif").run()}
-            active={editor.isActive("textStyle", { fontFamily: "serif" })}
-            label="Serif"
-            icon={() => <span className="font-serif text-xs font-bold">S</span>}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setFontFamily("monospace").run()}
-            active={editor.isActive("textStyle", { fontFamily: "monospace" })}
-            label="Monospace"
-            icon={() => <span className="font-mono text-xs font-bold">M</span>}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Headings */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            active={editor.isActive("heading", { level: 1 })}
-            label="Heading 1"
-            icon={HeadingIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            active={editor.isActive("heading", { level: 2 })}
-            label="Heading 2"
-            icon={Heading2Icon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            active={editor.isActive("heading", { level: 3 })}
-            label="Heading 3"
-            icon={Heading3Icon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setParagraph().run()}
-            active={editor.isActive("paragraph")}
-            label="Paragraph"
-            icon={Type}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Text Alignment */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setTextAlign("left").run()}
-            active={editor.isActive({ textAlign: "left" })}
-            label="Align Left"
-            icon={AlignLeft}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setTextAlign("center").run()}
-            active={editor.isActive({ textAlign: "center" })}
-            label="Align Center"
-            icon={AlignCenter}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setTextAlign("right").run()}
-            active={editor.isActive({ textAlign: "right" })}
-            label="Align Right"
-            icon={AlignRight}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setTextAlign("justify").run()}
-            active={editor.isActive({ textAlign: "justify" })}
-            label="Justify"
-            icon={AlignJustify}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Lists */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            active={editor.isActive("bulletList")}
-            label="Bullet List"
-            icon={ListIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            active={editor.isActive("orderedList")}
-            label="Numbered List"
-            icon={ListOrderedIcon}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Block Elements */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            active={editor.isActive("blockquote")}
-            label="Quote"
-            icon={QuoteIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            active={editor.isActive("codeBlock")}
-            label="Code Block"
-            icon={CodeIcon}
-          />
-          <ToolbarButton
-            onClick={() => editor.chain().focus().setHorizontalRule().run()}
-            label="Horizontal Rule"
-            icon={MinusIcon}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Insert */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            onClick={() => {
-              setLinkSelection({
-                from: editor.state.selection.from,
-                to: editor.state.selection.to,
-              });
-              setLinkValue((editor.getAttributes("link").href as string) || "");
-              setLinkModalOpen(true);
-            }}
-            active={editor.isActive("link")}
-            label="Insert Link"
-            icon={LinkIcon}
-          />
-          <ToolbarButton
-            onClick={() => setImageModalOpen(true)}
-            label="Insert Image"
-            icon={ImageIcon}
-          />
-          <ToolbarButton
-            onClick={() => setYoutubeModalOpen(true)}
-            label="Insert Youtube Video"
-            icon={YoutubeIcon}
-          />
-          <ToolbarButton
-            onClick={() => setTableModalOpen(true)}
-            label="Insert Table"
-            icon={TableIcon}
-          />
-          <button
-            ref={emojiButtonRef}
-            type="button"
-            onClick={() => setEmojiPickerOpen((v) => !v)}
-            className="p-2 rounded-md transition-all duration-150 text-neutral-dark hover:bg-neutral-100 hover:shadow-sm"
-            title="Insert Emoji"
-          >
-            <Smile className="w-4 h-4" />
-          </button>
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Clear Formatting */}
+    <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-neutral-200/60 px-2 py-2 flex flex-wrap gap-1 items-center">
+      {/* History */}
+      <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
-          onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-          label="Clear Formatting"
-          icon={Eraser}
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.can().undo()}
+          label="Undo (Ctrl+Z)"
+          icon={UndoIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.can().redo()}
+          label="Redo (Ctrl+Y)"
+          icon={RedoIcon}
         />
       </div>
 
-      {/* Status Bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-neutral-50 border-t border-neutral-100 text-xs text-neutral-500">
-        <div className="flex items-center gap-4">
-          <span>{characterCount?.characters?.() ?? 0} characters</span>
-          <span>{characterCount?.words?.() ?? 0} words</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {editor.isActive("link") && (
-            <span className="text-primary">Link selected</span>
-          )}
-        </div>
+      <div className="w-px h-5 bg-neutral-200 mx-1" />
+
+      {/* Text Formatting */}
+      <div className="flex items-center gap-0.5">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          active={editor.isActive("bold")}
+          label="Bold (Ctrl+B)"
+          icon={BoldIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          active={editor.isActive("italic")}
+          label="Italic (Ctrl+I)"
+          icon={ItalicIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          active={editor.isActive("underline")}
+          label="Underline (Ctrl+U)"
+          icon={UnderlineIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          active={editor.isActive("strike")}
+          label="Strikethrough"
+          icon={StrikeIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHighlight().run()}
+          active={editor.isActive("highlight")}
+          label="Highlight"
+          icon={HighlightIcon}
+        />
       </div>
 
+      <div className="w-px h-5 bg-neutral-200 mx-1" />
+
+      {/* Headings */}
+      <div className="flex items-center gap-0.5">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          active={editor.isActive("heading", { level: 2 })}
+          label="Heading 2"
+          icon={Heading2Icon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          active={editor.isActive("heading", { level: 3 })}
+          label="Heading 3"
+          icon={Heading3Icon}
+        />
+      </div>
+
+      <div className="w-px h-5 bg-neutral-200 mx-1" />
+
+      {/* Lists & Alignment */}
+      <div className="flex items-center gap-0.5">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          active={editor.isActive("bulletList")}
+          label="Bullet List"
+          icon={ListIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          active={editor.isActive("orderedList")}
+          label="Numbered List"
+          icon={ListOrderedIcon}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          active={editor.isActive("blockquote")}
+          label="Quote"
+          icon={QuoteIcon}
+        />
+      </div>
+
+      <div className="w-px h-5 bg-neutral-200 mx-1" />
+
+      {/* Alignment */}
+      <div className="flex items-center gap-0.5">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign("left").run()}
+          active={editor.isActive({ textAlign: "left" })}
+          label="Align Left"
+          icon={AlignLeft}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign("center").run()}
+          active={editor.isActive({ textAlign: "center" })}
+          label="Align Center"
+          icon={AlignCenter}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign("right").run()}
+          active={editor.isActive({ textAlign: "right" })}
+          label="Align Right"
+          icon={AlignRight}
+        />
+      </div>
+
+      <div className="w-px h-5 bg-neutral-200 mx-1" />
+
+      {/* Insert */}
+      <div className="flex items-center gap-0.5">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          label="Horizontal Rule"
+          icon={MinusIcon}
+        />
+        <ToolbarButton
+          onClick={() => {
+            setLinkSelection({
+              from: editor.state.selection.from,
+              to: editor.state.selection.to,
+            });
+            setLinkValue((editor.getAttributes("link").href as string) || "");
+            setLinkModalOpen(true);
+          }}
+          active={editor.isActive("link")}
+          label="Insert Link"
+          icon={LinkIcon}
+        />
+        <ToolbarButton
+          onClick={() => setImageModalOpen(true)}
+          label="Insert Image"
+          icon={ImageIcon}
+        />
+        <ToolbarButton
+          onClick={() => setYoutubeModalOpen(true)}
+          label="Insert Youtube Video"
+          icon={YoutubeIcon}
+        />
+        <button
+          ref={emojiButtonRef}
+          type="button"
+          onClick={() => setEmojiPickerOpen((v) => !v)}
+          className="p-2 rounded-md transition-all duration-150 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+          title="Insert Emoji"
+        >
+          <Smile className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1" />
+
+      {/* Clear Formatting */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+        label="Clear Formatting"
+        icon={Eraser}
+      />
+
+      {/* Modals (kept same logic, just ensuring they render) */}
+      {/* ... (Modals code is fine, just need to ensure they are inside the return) ... */}
       {/* Table Modal */}
       {tableModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -770,7 +697,7 @@ export default function BlogEditor({
     editorProps: {
       attributes: {
         class:
-          "prose max-w-none min-h-[300px] p-6 bg-base-light rounded-b-lg border border-neutral-light/20 focus:outline-none shadow-sm",
+          "prose max-w-none min-h-[400px] p-8 focus:outline-none",
       },
       handleDOMEvents: {},
     },
@@ -958,10 +885,22 @@ export default function BlogEditor({
   }
 
   return (
-    <div className="max-w-2xl mx-auto my-8 rounded-lg shadow-lg border border-neutral-light/20 bg-base-light">
+    <div className="w-full bg-white">
       <MenuBar editor={editor} />
       <div className="tiptap-editor-content">
         <EditorContent editor={editor} />
+      </div>
+      {/* Status Bar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-neutral-50 border-t border-neutral-100 text-xs text-neutral-500">
+        <div className="flex items-center gap-4">
+          <span>{editor.storage.characterCount?.characters() ?? 0} characters</span>
+          <span>{editor.storage.characterCount?.words() ?? 0} words</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {editor.isActive("link") && (
+            <span className="text-primary font-medium">Link selected</span>
+          )}
+        </div>
       </div>
     </div>
   );

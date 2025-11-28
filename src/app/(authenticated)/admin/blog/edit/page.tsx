@@ -134,49 +134,47 @@ function AdminEditBlogPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-2 md:px-0 flex flex-col items-center">
-      <div className="w-full max-w-4xl">
-        <PostForm
-          mode="edit"
-          title={title}
-          setTitle={setTitle}
-          slug={slug}
-          setSlug={setSlug}
-          excerpt={excerpt}
-          setExcerpt={setExcerpt}
-          content={content}
-          setContent={setContent}
-          imageUrl={imageUrl}
-          setImageUrl={setImageUrl}
-          isSubmitting={saving}
-          error={null}
-          onSubmit={async (e) => {
-            e.preventDefault();
-            saveEdit();
-          }}
-          onCancel={() => router.back()}
-          onReset={() => {
-            if (blogPost) {
-              setTitle(blogPost.title || "");
-              setSlug(blogPost.slug || "");
-              setExcerpt(blogPost.excerpt || "");
-              setCategories(blogPost.categories || []);
-              setImageUrl(blogPost.imageUrl || "");
-              setContent(blogPost.content || "");
-              setSlugManuallyEdited(false);
-            }
-          }}
-          slugManuallyEdited={slugManuallyEdited}
-          setSlugManuallyEdited={setSlugManuallyEdited}
-          pexelsOpen={pexelsOpen}
-          setPexelsOpen={setPexelsOpen}
-          slugify={slugify}
-          categories={categories}
-          setCategories={setCategories}
-          aiLoading={aiLoading}
-          aiText={aiText}
-        />
-      </div>
+    <>
+      <PostForm
+        mode="edit"
+        title={title}
+        setTitle={setTitle}
+        slug={slug}
+        setSlug={setSlug}
+        excerpt={excerpt}
+        setExcerpt={setExcerpt}
+        content={content}
+        setContent={setContent}
+        imageUrl={imageUrl}
+        setImageUrl={setImageUrl}
+        isSubmitting={saving}
+        error={null}
+        onSubmit={async (e) => {
+          e.preventDefault();
+          saveEdit();
+        }}
+        onCancel={() => router.back()}
+        onReset={() => {
+          if (blogPost) {
+            setTitle(blogPost.title || "");
+            setSlug(blogPost.slug || "");
+            setExcerpt(blogPost.excerpt || "");
+            setCategories(blogPost.categories || []);
+            setImageUrl(blogPost.imageUrl || "");
+            setContent(blogPost.content || "");
+            setSlugManuallyEdited(false);
+          }
+        }}
+        slugManuallyEdited={slugManuallyEdited}
+        setSlugManuallyEdited={setSlugManuallyEdited}
+        pexelsOpen={pexelsOpen}
+        setPexelsOpen={setPexelsOpen}
+        slugify={slugify}
+        categories={categories}
+        setCategories={setCategories}
+        aiLoading={aiLoading}
+        aiText={aiText}
+      />
 
       <PexelsImageModal
         isOpen={pexelsOpen}
@@ -186,7 +184,7 @@ function AdminEditBlogPageInner() {
           setPexelsOpen(false);
         }}
       />
-    </div>
+    </>
   );
 }
 

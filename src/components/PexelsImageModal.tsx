@@ -9,24 +9,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Loader2, Image as ImageIcon, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchImages } from "@/lib/utils/imageSearchUtil";
+import { searchImages, type PexelsImage } from "@/lib/utils/imageSearchUtil";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { cn } from "@/lib/utils";
 
 interface PexelsImageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (url: string) => void;
-}
-
-interface PexelsImage {
-  id: number;
-  src: {
-    medium: string;
-    large: string;
-  };
-  alt: string;
 }
 
 export function PexelsImageModal({
@@ -42,7 +34,7 @@ export function PexelsImageModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const perPage = 12;
+  const perPage = 15;
   const [total, setTotal] = useState<number | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -171,147 +163,202 @@ export function PexelsImageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
-        <DialogHeader className="px-4 pt-4 pb-2 border-b">
-          <div className="flex items-center gap-2">
-            <DialogTitle className="text-base font-semibold">
-              Search Pexels Images
-            </DialogTitle>
-            <span className="ml-auto text-xs text-gray-500">
-              Powered by Pexels
-            </span>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white gap-0 border-neutral-200 shadow-2xl sm:rounded-xl h-[85vh] flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b border-neutral-100 bg-white shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ImageIcon className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-neutral-900">
+                  Select Image
+                </DialogTitle>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Search high-quality photos from Pexels
+                </p>
+              </div>
+            </div>
           </div>
         </DialogHeader>
-  <div className="p-4">
+
+        <div className="p-4 border-b border-neutral-100 bg-neutral-50/50 shrink-0">
           <form
             onSubmit={handleSearch}
-            className="flex gap-2 mb-3"
+            className="relative flex gap-2"
             role="search"
             aria-label="Search images"
           >
-            <Input
-              ref={inputRef}
-              placeholder="Search for images (e.g. wedding, couple, love)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="flex-1"
-              aria-label="Image search query"
-            />
-            <Button type="submit" className="bg-pink-600 hover:bg-pink-700">
-              <Search className="w-4 h-4 mr-2" />
-              Search
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Input
+                ref={inputRef}
+                placeholder="Search for images (e.g. wedding, couple, love)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-9 bg-white border-neutral-200 focus-visible:ring-primary/20 focus-visible:border-primary"
+                aria-label="Image search query"
+              />
+            </div>
+            <Button 
+              type="submit" 
+              disabled={loading || !query.trim()}
+              className="bg-primary hover:bg-primary-dark text-white min-w-[100px]"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
             </Button>
           </form>
-          <div className="flex items-center justify-between mb-3 text-sm text-gray-600">
+          
+          <div className="flex items-center justify-between mt-3 text-xs text-neutral-500 px-1">
             <div>
               {loading
-                ? "Searching…"
+                ? "Searching..."
                 : error
-                  ? "Error"
+                  ? <span className="text-red-500">{error}</span>
                   : hasResults
                     ? total
-                      ? `${total.toLocaleString()} results`
+                      ? `Found ${total.toLocaleString()} results`
                       : `${results.length} results`
                     : committedQuery
-                      ? "No results"
-                      : "Enter a search term"}
+                      ? "No results found"
+                      : "Enter a keyword to start searching"}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={onPrev}
-                disabled={!canPrev || loading}
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={onNext}
-                disabled={!canNext || loading}
-                aria-label="Next page"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-        {loading && (
-          <div className="grid grid-cols-3 gap-3 px-4 pb-4">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <Skeleton key={i} className="w-full h-28 rounded-md" />
-            ))}
-          </div>
-        )}
-        {error && (
-          <div className="px-4 text-red-600 text-sm mb-2" role="alert">
-            {error}
-          </div>
-        )}
-        {!loading && !error && committedQuery && !hasResults && (
-          <div className="px-4 text-sm text-gray-500 pb-4">
-            No images found. Try different keywords.
-          </div>
-        )}
-        <div
-          className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto focus:outline-none bg-white"
-          ref={gridRef}
-          role="listbox"
-          aria-label="Search results"
-          tabIndex={0}
-          onKeyDown={handleKeyDown}
-        >
-          {results.map((img, idx) => (
-            <button
-              key={img.id}
-              type="button"
-              data-img
-              role="option"
-              aria-selected={idx === activeIndex}
-              className={`group focus:outline-none border rounded-md overflow-hidden relative transition-colors ${
-                idx === activeIndex
-                  ? "border-pink-600 ring-2 ring-pink-300"
-                  : "border-transparent hover:border-pink-500"
-              }`}
-              onClick={() => {
-                onSelect(img.src.large);
-                onClose();
-              }}
-              onMouseEnter={() => setActiveIndex(idx)}
-            >
-              <img
-                src={img.src.medium}
-                alt={img.alt}
-                className="w-full h-28 object-cover transition-transform duration-200 group-hover:scale-105"
-                draggable={false}
-              />
-              <div className="absolute bottom-0 left-0 right-0 h-6 bg-black/40 text-white text-[10px] px-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity truncate">
-                {img.alt}
+            {hasResults && (
+              <div className="flex items-center gap-2">
+                <span className="mr-2">
+                  Page {page} {maxPage ? `of ${maxPage}` : ""}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={onPrev}
+                    disabled={!canPrev || loading}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={onNext}
+                    disabled={!canNext || loading}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </button>
-          ))}
-        </div>
-        <div className="px-4 pb-4 flex items-center justify-between text-xs text-gray-500">
-          <div>
-            {total != null && total >= 0 && (
-              <span>
-                Page {page}
-                {maxPage ? ` of ${maxPage}` : ""}
-              </span>
             )}
           </div>
-          <a
-            href="https://pexels.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline text-pink-600"
-          >
-            Pexels
-          </a>
+        </div>
+
+        <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-50/30 p-4">
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="w-full aspect-[3/2] rounded-lg" />
+                  <Skeleton className="h-3 w-2/3 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-500">
+              <div className="p-3 bg-red-50 rounded-full mb-3">
+                <ImageIcon className="w-6 h-6 text-red-400" />
+              </div>
+              <p className="text-neutral-900 font-medium mb-1">Failed to load images</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          ) : !hasResults && committedQuery ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-500">
+              <div className="p-3 bg-neutral-100 rounded-full mb-3">
+                <Search className="w-6 h-6 text-neutral-400" />
+              </div>
+              <p className="text-neutral-900 font-medium mb-1">No images found</p>
+              <p className="text-sm">Try adjusting your search terms</p>
+            </div>
+          ) : !hasResults ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-500">
+              <div className="p-3 bg-primary/5 rounded-full mb-3">
+                <ImageIcon className="w-8 h-8 text-primary/40" />
+              </div>
+              <p className="text-neutral-900 font-medium mb-1">Start searching</p>
+              <p className="text-sm max-w-xs mx-auto">
+                Enter keywords above to find high-quality photos for your blog post
+              </p>
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
+              ref={gridRef}
+              role="listbox"
+              aria-label="Search results"
+              tabIndex={0}
+              onKeyDown={handleKeyDown}
+            >
+              {results.map((img, idx) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  data-img
+                  role="option"
+                  aria-selected={idx === activeIndex}
+                  className={cn(
+                    "group relative aspect-[3/2] rounded-lg overflow-hidden bg-neutral-200 focus:outline-none transition-all duration-200",
+                    idx === activeIndex
+                      ? "ring-2 ring-primary ring-offset-2"
+                      : "hover:ring-2 hover:ring-primary/50 hover:ring-offset-1"
+                  )}
+                  onClick={() => {
+                    onSelect(img.src.large);
+                    onClose();
+                  }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                >
+                  <img
+                    src={img.src.medium}
+                    alt={img.alt}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-3 text-left">
+                    <p className="text-white text-xs font-medium truncate w-full">
+                      {img.alt || "Untitled"}
+                    </p>
+                    {img.photographer && (
+                      <p className="text-white/80 text-[10px] truncate w-full">
+                        by {img.photographer}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Selection Indicator Overlay */}
+                  <div className="absolute inset-0 bg-primary/10 opacity-0 group-active:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-neutral-100 bg-white shrink-0 flex items-center justify-between text-xs text-neutral-500">
+          <div className="flex items-center gap-2">
+            <span>Photos provided by</span>
+            <a
+              href="https://www.pexels.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline font-medium"
+            >
+              Pexels
+            </a>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-8">
+            Cancel
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

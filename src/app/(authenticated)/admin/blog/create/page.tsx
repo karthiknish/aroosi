@@ -109,37 +109,39 @@ export default function CreateBlogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-2 md:px-0 flex flex-col items-center">
-      <div className="w-full max-w-4xl">
-        {error && <ErrorState message={error} className="mb-4" />}
-        <PostForm
-          mode="create"
-          title={title}
-          setTitle={onTitleChange}
-          slug={slug}
-          setSlug={onSlugChange}
-          excerpt={excerpt}
-          setExcerpt={setExcerpt}
-          content={content}
-          setContent={setContent}
-          imageUrl={imageUrl}
-          setImageUrl={setImageUrl}
-          isSubmitting={creating}
-          error={error}
-          onSubmit={handleCreatePost}
-          onCancel={() => router.back()}
-          slugManuallyEdited={slugManuallyEdited}
-          setSlugManuallyEdited={setSlugManuallyEdited}
-          pexelsOpen={pexelsOpen}
-          setPexelsOpen={setPexelsOpen}
-          slugify={slugify}
-          categories={categories}
-          setCategories={setCategories}
-          aiLoading={aiLoading}
-          aiText={aiText}
-          editorResetKey={editorResetKey}
-        />
-      </div>
+    <>
+      {error && (
+        <div className="max-w-5xl mx-auto px-6 pt-6">
+          <ErrorState message={error} />
+        </div>
+      )}
+      <PostForm
+        mode="create"
+        title={title}
+        setTitle={onTitleChange}
+        slug={slug}
+        setSlug={onSlugChange}
+        excerpt={excerpt}
+        setExcerpt={setExcerpt}
+        content={content}
+        setContent={setContent}
+        imageUrl={imageUrl}
+        setImageUrl={setImageUrl}
+        isSubmitting={creating}
+        error={error}
+        onSubmit={handleCreatePost}
+        onCancel={() => router.back()}
+        slugManuallyEdited={slugManuallyEdited}
+        setSlugManuallyEdited={setSlugManuallyEdited}
+        pexelsOpen={pexelsOpen}
+        setPexelsOpen={setPexelsOpen}
+        slugify={slugify}
+        categories={categories}
+        setCategories={setCategories}
+        aiLoading={aiLoading}
+        aiText={aiText}
+        editorResetKey={editorResetKey}
+      />
       <PexelsImageModal
         isOpen={pexelsOpen}
         onClose={() => setPexelsOpen(false)}
@@ -148,6 +150,6 @@ export default function CreateBlogPage() {
           setPexelsOpen(false);
         }}
       />
-    </div>
+    </>
   );
 }

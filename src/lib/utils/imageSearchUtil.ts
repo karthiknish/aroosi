@@ -8,6 +8,9 @@ export interface PexelsImage {
   id: number;
   url: string;
   photographer: string;
+  photographer_url: string;
+  photographer_id: number;
+  avg_color: string;
   alt: string;
   src: {
     original: string;
@@ -19,6 +22,7 @@ export interface PexelsImage {
     landscape: string;
     tiny: string;
   };
+  liked: boolean;
 }
 
 export interface ImageSearchResponse {
