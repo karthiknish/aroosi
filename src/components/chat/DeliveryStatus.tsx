@@ -17,15 +17,15 @@ export function DeliveryStatus({ status, className, isCurrentUser = false }: Del
   const getStatusIcon = () => {
     switch (status) {
       case "sending":
-        return <Clock className="w-3 h-3" />;
+        return <Clock className="w-3 h-3 animate-pulse" />;
       case "sent":
         return <Check className="w-3 h-3" />;
       case "delivered":
         return <CheckCheck className="w-3 h-3" />;
       case "read":
-        return <CheckCheck className="w-3 h-3 text-blue-300" />;
+        return <CheckCheck className="w-3 h-3" />;
       case "failed":
-        return <AlertCircle className="w-3 h-3 text-red-300" />;
+        return <AlertCircle className="w-3 h-3" />;
       default:
         return <Clock className="w-3 h-3" />;
     }
@@ -34,17 +34,17 @@ export function DeliveryStatus({ status, className, isCurrentUser = false }: Del
   const getStatusColor = () => {
     switch (status) {
       case "sending":
-        return "text-gray-400";
+        return "text-white/50";
       case "sent":
-        return "text-purple-100";
+        return "text-white/70";
       case "delivered":
-        return "text-purple-100";
+        return "text-white/70";
       case "read":
-        return "text-blue-300";
+        return "text-emerald-300";
       case "failed":
         return "text-red-300";
       default:
-        return "text-gray-400";
+        return "text-white/50";
     }
   };
 
@@ -68,7 +68,7 @@ export function DeliveryStatus({ status, className, isCurrentUser = false }: Del
   return (
     <div
       className={cn(
-        "flex items-center",
+        "flex items-center transition-colors duration-200",
         getStatusColor(),
         className
       )}

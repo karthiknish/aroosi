@@ -292,7 +292,7 @@ export default function MessagesList(props: MessagesListProps) {
   let earlyContent: React.ReactNode = null;
   if (loading) {
     earlyContent = (
-      <div className="p-4 space-y-3">
+      <div className="p-6 space-y-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
@@ -300,8 +300,8 @@ export default function MessagesList(props: MessagesListProps) {
           >
             <div
               className={cn(
-                "h-6 w-40 rounded-xl",
-                i % 2 ? "bg-primary/20" : "bg-gray-200"
+                "h-8 rounded-2xl animate-pulse",
+                i % 2 ? "w-48 bg-gradient-to-r from-rose-100 to-rose-50" : "w-44 bg-gradient-to-r from-neutral-100 to-neutral-50"
               )}
             />
           </div>
@@ -311,24 +311,24 @@ export default function MessagesList(props: MessagesListProps) {
   } else if (isBlocked) {
     earlyContent = (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-            <Shield className="w-8 h-8 text-red-500" />
+        <div className="text-center space-y-4 px-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-rose-100 to-rose-50 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+            <Shield className="w-9 h-9 text-rose-500" />
           </div>
-          <div>
-            <h3 className="font-medium text-gray-900 mb-1">Chat Unavailable</h3>
-            <p className="text-gray-500 text-sm">
-              You cannot message this user
+          <div className="space-y-1.5">
+            <h3 className="font-semibold text-neutral-800 text-lg tracking-tight">Chat Unavailable</h3>
+            <p className="text-neutral-500 text-sm max-w-xs mx-auto">
+              You cannot message this user at this time
             </p>
           </div>
           {typeof onUnblock === "function" && (
             <Button
               size="sm"
               variant="outline"
-              className="mt-1"
+              className="mt-2 rounded-xl border-neutral-200 hover:bg-neutral-50"
               onClick={onUnblock}
             >
-              Unblock
+              Unblock User
             </Button>
           )}
         </div>
@@ -352,23 +352,23 @@ export default function MessagesList(props: MessagesListProps) {
         }
       }}
     >
-      {/* Search Bar */}
+      {/* Search Bar - refined styling */}
       <AnimatePresence>
         {showSearch && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="px-4 py-2 border-b border-gray-200/60 bg-white/80 backdrop-blur-sm"
+            className="px-4 py-3 border-b border-neutral-100/80 bg-gradient-to-r from-white/95 via-[#FEFCFA]/95 to-white/95 backdrop-blur-xl"
           >
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-3 bg-neutral-50/80 rounded-xl px-3 py-2 border border-neutral-200/60">
+              <Search className="w-4 h-4 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search messages..."
+                placeholder="Search in conversation..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent border-none outline-none text-sm placeholder-gray-400"
+                className="flex-1 bg-transparent border-none outline-none text-sm placeholder-neutral-400 text-neutral-700"
                 autoFocus
                 aria-label="Search through conversation messages"
                 aria-describedby="search-results"
@@ -391,17 +391,17 @@ export default function MessagesList(props: MessagesListProps) {
               />
               {searchQuery && (
                 <div
-                  className="flex items-center gap-1 text-xs text-gray-500"
+                  className="flex items-center gap-1.5 text-xs text-neutral-500"
                   id="search-results"
                 >
                   {searchResults.length > 0 && (
-                    <span aria-live="polite">
+                    <span aria-live="polite" className="font-medium">
                       {currentSearchIndex + 1}/{searchResults.length}
                     </span>
                   )}
                   <button
                     onClick={() => navigateSearch("prev")}
-                    className="p-1 hover:bg-gray-100 rounded"
+                    className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"
                     disabled={searchResults.length <= 1}
                     aria-label="Previous search result"
                     title="Previous (↑)"
@@ -410,7 +410,7 @@ export default function MessagesList(props: MessagesListProps) {
                   </button>
                   <button
                     onClick={() => navigateSearch("next")}
-                    className="p-1 hover:bg-gray-100 rounded"
+                    className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"
                     disabled={searchResults.length <= 1}
                     aria-label="Next search result"
                     title="Next (↓)"
@@ -424,9 +424,9 @@ export default function MessagesList(props: MessagesListProps) {
                   setShowSearch(false);
                   setSearchQuery("");
                 }}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"
               >
-                <X className="w-4 h-4 text-gray-400" />
+                <X className="w-4 h-4 text-neutral-400" />
               </button>
             </div>
           </motion.div>
@@ -434,7 +434,7 @@ export default function MessagesList(props: MessagesListProps) {
       </AnimatePresence>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 focus:outline-none"
+        className="h-full overflow-y-auto px-4 py-5 space-y-2 scrollbar-thin scrollbar-thumb-neutral-300/60 scrollbar-track-transparent hover:scrollbar-thumb-neutral-400/60 focus:outline-none"
         role="region"
         aria-label="Messages scroll area"
       >
@@ -443,9 +443,9 @@ export default function MessagesList(props: MessagesListProps) {
         ) : (
           <>
             {hasMore && !loading && !empty && (
-              <div className="flex items-center justify-center py-2">
+              <div className="flex items-center justify-center py-3">
                 {loadingOlder ? (
-                  <div className="flex items-center gap-2 text-neutral-light text-sm">
+                  <div className="flex items-center gap-2 text-neutral-500 text-sm">
                     <LoadingSpinner size={16} />
                     <span>Loading older messages...</span>
                   </div>
@@ -454,7 +454,7 @@ export default function MessagesList(props: MessagesListProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => onFetchOlder()}
-                    className="text-primary hover:bg-primary/10 text-sm"
+                    className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 text-sm rounded-xl font-medium"
                   >
                     Load older messages
                   </Button>
@@ -463,15 +463,15 @@ export default function MessagesList(props: MessagesListProps) {
             )}
             {empty ? (
               <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-3">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-                    <Smile className="w-8 h-8 text-slate-400" />
+                <div className="text-center space-y-4 px-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-amber-50 to-rose-50 rounded-2xl flex items-center justify-center mx-auto shadow-sm border border-amber-100/50">
+                    <Smile className="w-9 h-9 text-amber-500" />
                   </div>
-                  <div>
-                    <h3 className="font-medium text-neutral mb-1">
+                  <div className="space-y-1.5">
+                    <h3 className="font-semibold text-neutral-800 text-lg tracking-tight">
                       Start the conversation!
                     </h3>
-                    <p className="text-neutral-light text-sm">
+                    <p className="text-neutral-500 text-sm max-w-xs mx-auto">
                       Send a message to break the ice
                     </p>
                   </div>
@@ -538,9 +538,9 @@ export default function MessagesList(props: MessagesListProps) {
                         className="space-y-1"
                       >
                         {isNewDay && (
-                          <div className="flex items-center gap-3 my-4">
-                            <div className="flex-1 h-px bg-slate-200" />
-                            <span className="text-[11px] font-medium text-slate-400">
+                          <div className="flex items-center gap-4 my-6">
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
+                            <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider bg-white/80 px-3 py-1 rounded-full border border-neutral-100/80 shadow-sm">
                               {new Date(msg.createdAt).toLocaleDateString(
                                 undefined,
                                 {
@@ -550,30 +550,30 @@ export default function MessagesList(props: MessagesListProps) {
                                 }
                               )}
                             </span>
-                            <div className="flex-1 h-px bg-slate-200" />
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
                           </div>
                         )}
                         {index === firstUnreadIndex && (
-                          <div className="flex items-center gap-3 my-4">
-                            <div className="flex-1 h-px bg-primary/20" />
-                            <span className="text-[11px] font-medium text-primary">
-                              Unread Messages
+                          <div className="flex items-center gap-4 my-5">
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-rose-300/60 to-transparent" />
+                            <span className="text-[10px] font-semibold text-rose-500 uppercase tracking-wider bg-rose-50 px-3 py-1 rounded-full border border-rose-100/80">
+                              New Messages
                             </span>
-                            <div className="flex-1 h-px bg-primary/20" />
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-rose-300/60 to-transparent" />
                           </div>
                         )}
                         {index === lastSeenSeparatorIndex && (
-                          <div className="flex items-center gap-3 my-2">
-                            <div className="flex-1 h-px bg-blue-100" />
-                            <span className="text-[10px] font-medium text-blue-400">
+                          <div className="flex items-center gap-4 my-3">
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+                            <span className="text-[10px] font-medium text-emerald-500 bg-emerald-50/80 px-2.5 py-0.5 rounded-full">
                               Seen
                             </span>
-                            <div className="flex-1 h-px bg-blue-100" />
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
                           </div>
                         )}
                         {showTime && (
-                          <div className="text-center py-1">
-                            <span className="text-[10px] text-slate-400 font-medium">
+                          <div className="text-center py-2">
+                            <span className="text-[10px] text-neutral-400 font-medium tracking-wide">
                               {formatMessageTime(msg.createdAt)}
                             </span>
                           </div>
@@ -584,31 +584,27 @@ export default function MessagesList(props: MessagesListProps) {
                           <div className="relative group inline-block pt-1">
                             <div
                               className={cn(
-                                "relative max-w-[85%] sm:max-w-[360px] px-4 py-2.5 shadow-sm text-[15px] leading-relaxed break-words transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 touch-manipulation",
+                                "relative max-w-[85%] sm:max-w-[360px] px-4 py-3 text-[15px] leading-relaxed break-words transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-rose-300/50 touch-manipulation",
                                 highlightedId === msg._id &&
-                                  "ring-2 ring-primary/40 shadow-lg",
+                                  "ring-2 ring-rose-400/50 shadow-xl scale-[1.02]",
+                                // Refined bubble styling - distinctive gradient for sent messages
                                 isCurrentUser
-                                  ? "text-white bg-primary border border-primary"
-                                  : "text-slate-800 bg-white border border-slate-200",
-                                // Enhanced rounded adjustments for grouping with better visual flow
+                                  ? "text-white bg-gradient-to-br from-rose-500 via-rose-500 to-rose-600 shadow-lg shadow-rose-500/20"
+                                  : "text-neutral-800 bg-white shadow-md shadow-neutral-900/5 border border-neutral-100/80",
+                                // Elegant rounded adjustments with better visual flow
                                 isCurrentUser
                                   ? cn(
-                                      "rounded-[20px] rounded-br-[4px]",
-                                      !isFirstOfGroup && "rounded-tr-[4px]",
-                                      !isLastOfGroup && "rounded-br-[20px]"
+                                      "rounded-[22px] rounded-br-[6px]",
+                                      !isFirstOfGroup && "rounded-tr-[6px]",
+                                      !isLastOfGroup && "rounded-br-[22px]"
                                     )
                                   : cn(
-                                      "rounded-[20px] rounded-bl-[4px]",
-                                      !isFirstOfGroup && "rounded-tl-[4px]",
-                                      !isLastOfGroup && "rounded-bl-[20px]"
+                                      "rounded-[22px] rounded-bl-[6px]",
+                                      !isFirstOfGroup && "rounded-tl-[6px]",
+                                      !isLastOfGroup && "rounded-bl-[22px]"
                                     ),
-                                // Enhanced background difference for grouped siblings
-                                !isFirstOfGroup &&
-                                  isCurrentUser &&
-                                  "mt-0.5",
-                                !isFirstOfGroup &&
-                                  !isCurrentUser &&
-                                  "mt-0.5"
+                                // Refined spacing for grouped messages
+                                !isFirstOfGroup && "mt-0.5"
                               )}
                               data-message-id={msg._id}
                               tabIndex={0}
@@ -660,7 +656,12 @@ export default function MessagesList(props: MessagesListProps) {
                               {hasReply && (
                                 <button
                                   type="button"
-                                  className="mb-2 pl-2 pr-1 py-1 border-l-2 border-primary/60 bg-gray-100/70 rounded-md text-xs text-gray-600 w-full text-left hover:bg-primary/10 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+                                  className={cn(
+                                    "mb-2.5 pl-3 pr-2 py-1.5 border-l-2 rounded-lg text-xs w-full text-left transition-all duration-200 focus:outline-none focus:ring-1",
+                                    isCurrentUser 
+                                      ? "border-white/40 bg-white/15 text-white/90 hover:bg-white/20 focus:ring-white/30" 
+                                      : "border-rose-300/60 bg-rose-50/50 text-neutral-600 hover:bg-rose-50 focus:ring-rose-300/50"
+                                  )}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const targetId = (msg as any)
@@ -678,16 +679,16 @@ export default function MessagesList(props: MessagesListProps) {
                                   }}
                                   aria-label="View original replied message"
                                 >
-                                  <span className="block truncate max-w-[250px] pointer-events-none">
+                                  <span className="block truncate max-w-[250px] pointer-events-none font-medium">
                                     {makeReplySnippet(msg)}
                                   </span>
                                 </button>
                               )}
-                              {/* top-right triple-dot for own text messages */}
+                              {/* Refined menu button for own text messages */}
                               {isCurrentUser && msg.type === "text" && (
                                 <button
                                   type="button"
-                                  className="absolute -top-2 -right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white rounded-full border border-gray-200 shadow p-1 hover:bg-gray-50 active:bg-gray-100"
+                                  className="absolute -top-2 -right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 bg-white rounded-xl border border-neutral-200/80 shadow-lg p-1.5 hover:bg-neutral-50 hover:scale-110 active:scale-95"
                                   aria-label="Message menu"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -697,7 +698,7 @@ export default function MessagesList(props: MessagesListProps) {
                                     openContextMenu(rect.right, rect.top, msg);
                                   }}
                                 >
-                                  <MoreVertical className="w-4 h-4 text-gray-600" />
+                                  <MoreVertical className="w-3.5 h-3.5 text-neutral-500" />
                                 </button>
                               )}
 
@@ -764,10 +765,10 @@ export default function MessagesList(props: MessagesListProps) {
                                           key={`${msg._id}-${r.emoji}`}
                                           type="button"
                                           className={cn(
-                                            "relative h-8 w-8 rounded-full border bg-white shadow-md flex items-center justify-center text-sm transition-all duration-200 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-primary/50 focus:outline-none",
+                                            "relative h-7 w-7 rounded-xl border bg-white shadow-md flex items-center justify-center text-sm transition-all duration-200 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-rose-300/50 focus:outline-none",
                                             r.reactedByMe
-                                              ? "border-primary/60 ring-2 ring-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 shadow-lg"
-                                              : "border-gray-200 hover:border-primary/40 hover:shadow-lg"
+                                              ? "border-rose-300/60 ring-2 ring-rose-300/40 bg-gradient-to-br from-rose-50 to-rose-100/50 shadow-lg"
+                                              : "border-neutral-200 hover:border-rose-300/60 hover:shadow-lg"
                                           )}
                                           onClick={() =>
                                             props.onToggleReaction?.(
@@ -779,15 +780,15 @@ export default function MessagesList(props: MessagesListProps) {
                                           aria-label={`${r.emoji} reaction${r.reactedByMe ? " (reacted by you)" : ""}${r.count > 1 ? ` (${r.count} reactions)` : ""}`}
                                           title={`${r.emoji} ${r.count} reaction${r.count !== 1 ? "s" : ""}`}
                                         >
-                                          <span className="leading-none select-none">
+                                          <span className="leading-none select-none text-xs">
                                             {r.emoji}
                                           </span>
                                           {r.count > 1 && (
                                             <span
                                               className={cn(
-                                                "absolute -bottom-1 -right-1 text-[10px] leading-none rounded-full px-1.5 py-0.5 bg-gray-900 text-white shadow-md border border-gray-700 min-w-[18px] h-[18px] flex items-center justify-center font-semibold",
+                                                "absolute -bottom-1 -right-1 text-[9px] leading-none rounded-full px-1 py-0.5 bg-neutral-800 text-white shadow-md min-w-[16px] h-[16px] flex items-center justify-center font-bold",
                                                 r.reactedByMe &&
-                                                  "bg-primary border-primary/50"
+                                                  "bg-rose-500"
                                               )}
                                               aria-hidden
                                             >
@@ -801,10 +802,10 @@ export default function MessagesList(props: MessagesListProps) {
                                 })()}
                               <div
                                 className={cn(
-                                  "text-xs mt-2 flex items-center gap-1",
+                                  "text-[11px] mt-2.5 flex items-center gap-1.5 font-medium",
                                   isCurrentUser
-                                    ? "text-gray-500 justify-end"
-                                    : "text-gray-500"
+                                    ? "text-white/70 justify-end"
+                                    : "text-neutral-400"
                                 )}
                               >
                                 <span className="tabular-nums">
@@ -819,10 +820,10 @@ export default function MessagesList(props: MessagesListProps) {
                                 {(msg as any).edited && (
                                   <span
                                     className={cn(
-                                      "ml-1 text-[10px]",
+                                      "text-[10px] italic",
                                       isCurrentUser
-                                        ? "text-gray-400"
-                                        : "text-gray-400"
+                                        ? "text-white/50"
+                                        : "text-neutral-400"
                                     )}
                                     title={
                                       (msg as any).editedAt
@@ -862,9 +863,9 @@ export default function MessagesList(props: MessagesListProps) {
                               </div>
                               {isCurrentUser &&
                                 (msg as any).clientStatus === "failed" && (
-                                  <div className="mt-1 text-right">
+                                  <div className="mt-1.5 text-right">
                                     <button
-                                      className="text-[11px] text-red-500 underline"
+                                      className="text-[11px] text-red-400 font-medium hover:text-red-500 hover:underline transition-colors"
                                       onClick={() => {
                                         const ev = new CustomEvent(
                                           "retryMessage",
@@ -888,18 +889,18 @@ export default function MessagesList(props: MessagesListProps) {
                                 className={cn(
                                   "absolute top-0 z-20",
                                   isCurrentUser ? "right-2" : "left-2",
-                                  "opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                                  "opacity-0 group-hover:opacity-100 transition-all duration-200"
                                 )}
                                 role="toolbar"
                                 aria-label="Quick reactions"
                               >
-                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-md rounded-full px-2 py-1">
+                                <div className="flex items-center gap-0.5 bg-white/95 backdrop-blur-md border border-neutral-200/80 shadow-lg rounded-xl px-2 py-1.5">
                                   {["👍", "❤️", "😂", "😮", "🙏"].map(
                                     (emoji) => (
                                       <button
                                         key={`${msg._id}-${emoji}`}
                                         type="button"
-                                        className="h-6 w-6 text-[13px] leading-none rounded-full hover:bg-gray-100 active:scale-95 transition"
+                                        className="h-7 w-7 text-[14px] leading-none rounded-lg hover:bg-neutral-100 active:scale-90 transition-all duration-150"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           props.onToggleReaction?.(
@@ -937,19 +938,20 @@ export default function MessagesList(props: MessagesListProps) {
           </>
         )}
       </div>
-      {/* Scroll to bottom button */}
+      {/* Refined scroll to bottom button */}
       <AnimatePresence>
         {showScrollToBottom && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2"
+            initial={{ opacity: 0, y: 16, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className="absolute bottom-5 left-1/2 -translate-x-1/2"
           >
             <Button
               size="sm"
               onClick={() => onScrollToBottom(true)}
-              className="rounded-full shadow-xl bg-primary text-white hover:bg-primary/90 border border-white/20 h-10 px-4 py-2 flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
+              className="rounded-2xl shadow-2xl bg-gradient-to-r from-rose-500 to-rose-600 text-white hover:from-rose-600 hover:to-rose-700 border border-white/20 h-11 px-5 py-2.5 flex items-center gap-2.5 transition-all duration-300 hover:scale-105 hover:shadow-rose-500/30 active:scale-95 backdrop-blur-sm focus:ring-2 focus:ring-rose-400/50 focus:ring-offset-2"
               aria-label={
                 unreadCount > 0
                   ? `${unreadCount} new message${unreadCount !== 1 ? "s" : ""}. Scroll to bottom`
@@ -960,11 +962,11 @@ export default function MessagesList(props: MessagesListProps) {
             >
               <ArrowDown className="w-4 h-4 animate-bounce" />
               {unreadCount > 0 ? (
-                <span className="font-semibold animate-pulse">
-                  {unreadCount}
+                <span className="font-bold text-sm animate-pulse">
+                  {unreadCount} new
                 </span>
               ) : (
-                <span className="font-medium">New</span>
+                <span className="font-semibold text-sm">Latest</span>
               )}
             </Button>
           </motion.div>
@@ -974,12 +976,12 @@ export default function MessagesList(props: MessagesListProps) {
         <div
           id="chat-msg-context-menu"
           role="menu"
-          className="absolute z-50 min-w-[160px] rounded-md border border-gray-200 bg-white/95 backdrop-blur-sm shadow-lg p-1 animate-in fade-in-0 zoom-in-95"
+          className="absolute z-50 min-w-[180px] rounded-2xl border border-neutral-200/80 bg-white/98 backdrop-blur-xl shadow-2xl p-2 animate-in fade-in-0 zoom-in-95"
           style={{ top: menuState.adjustedY, left: menuState.adjustedX }}
         >
           <button
             role="menuitem"
-            className="w-full text-left text-sm px-3 py-2 rounded hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
+            className="w-full text-left text-sm px-3 py-2.5 rounded-xl hover:bg-rose-50 focus:bg-rose-50 focus:outline-none font-medium text-neutral-700 transition-colors"
             onClick={() => {
               if (onSelectReply) onSelectReply(menuState.message);
               setMenuState(null);
@@ -987,13 +989,13 @@ export default function MessagesList(props: MessagesListProps) {
           >
             Reply
           </button>
-          <div className="px-2 py-1">
-            <div className="text-[11px] text-gray-500 mb-1">React</div>
+          <div className="px-3 py-2 border-t border-neutral-100 mt-1">
+            <div className="text-[10px] text-neutral-400 mb-2 uppercase tracking-wider font-semibold">React</div>
             <div className="flex gap-1">
               {["👍", "❤️", "😂", "😮", "🙏"].map((emoji) => (
                 <button
                   key={emoji}
-                  className="px-2 py-1 rounded hover:bg-gray-100"
+                  className="h-8 w-8 rounded-lg hover:bg-neutral-100 transition-colors flex items-center justify-center text-base"
                   onClick={() => {
                     props.onToggleReaction?.(menuState.message._id, emoji);
                     setMenuState(null);
@@ -1012,15 +1014,15 @@ export default function MessagesList(props: MessagesListProps) {
               ).filter((r) => r.reactedByMe);
               if (!own || own.length === 0) return null;
               return (
-                <div className="px-2 py-1 border-t border-gray-100 mt-1">
-                  <div className="text-[11px] text-gray-500 mb-1">
+                <div className="px-3 py-2 border-t border-neutral-100 mt-1">
+                  <div className="text-[10px] text-neutral-400 mb-2 uppercase tracking-wider font-semibold">
                     Your reactions
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {own.map((r) => (
                       <button
                         key={`own-${menuState.message._id}-${r.emoji}`}
-                        className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
+                        className="px-2.5 py-1.5 rounded-lg bg-neutral-100 hover:bg-red-50 hover:text-red-600 text-sm font-medium transition-colors"
                         onClick={() => {
                           props.onToggleReaction?.(
                             menuState.message._id,
@@ -1040,21 +1042,21 @@ export default function MessagesList(props: MessagesListProps) {
             })()}
           {menuState.message.fromUserId === currentUserId &&
             (menuState.message as any).type !== "voice" && (
-              <>
+              <div className="border-t border-neutral-100 mt-1 pt-1">
                 <button
                   role="menuitem"
-                  className="w-full text-left text-sm px-3 py-2 rounded hover:bg-primary/10 focus:bg-primary/10 focus:outline-none flex items-center gap-2"
+                  className="w-full text-left text-sm px-3 py-2.5 rounded-xl hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none flex items-center gap-2.5 text-neutral-700 font-medium transition-colors"
                   onClick={() => {
                     const m = menuState.message;
                     onEditMessage?.(m._id, (m as any).text || "");
                     setMenuState(null);
                   }}
                 >
-                  <Edit3 className="w-4 h-4 text-gray-600" /> Edit
+                  <Edit3 className="w-4 h-4 text-neutral-500" /> Edit
                 </button>
                 <button
                   role="menuitem"
-                  className="w-full text-left text-sm px-3 py-2 rounded hover:bg-red-50 focus:bg-red-50 focus:outline-none text-red-600 flex items-center gap-2"
+                  className="w-full text-left text-sm px-3 py-2.5 rounded-xl hover:bg-red-50 focus:bg-red-50 focus:outline-none text-red-600 flex items-center gap-2.5 font-medium transition-colors"
                   onClick={() => {
                     const m = menuState.message;
                     onDeleteMessage?.(m._id);
@@ -1063,7 +1065,7 @@ export default function MessagesList(props: MessagesListProps) {
                 >
                   <Trash className="w-4 h-4" /> Delete
                 </button>
-              </>
+              </div>
             )}
         </div>
       )}

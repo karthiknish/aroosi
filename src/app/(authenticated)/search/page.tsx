@@ -144,6 +144,7 @@ export default function SearchProfilesPage() {
     data: searchResults,
     isLoading: loadingProfiles,
     isError: profilesError,
+    error: profilesQueryError,
     refetch: refetchProfiles,
   } = useQuery({
     queryKey: [
@@ -398,11 +399,14 @@ export default function SearchProfilesPage() {
     answeredIcebreakersCount?: number;
   } | null;
 
-  // Visual on-page banner to verify the page truly mounted even if console logs are filtered
-  React.useEffect(() => setMounted(true), []);
+  // Track mount state
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get blocked users to filter them out
   const { data: blockedPages } = useBlockedUsers();
+
   const blockedUserIds = blockedPages
     ? blockedPages.pages.flatMap((p) =>
         p.blockedUsers.map((b) => b.blockedUserId)
@@ -413,7 +417,6 @@ export default function SearchProfilesPage() {
   const filtered = useMemo(() => {
     return (publicProfiles || []).filter((u: ProfileSearchResult) => {
       const p = u.profile;
-  // isOnboardingComplete removed
 
       // Hide blocked users from search results
       if (blockedUserIds.includes(u.userId)) return false;
@@ -425,6 +428,7 @@ export default function SearchProfilesPage() {
       const viewerPlan = currentUser?.subscriptionPlan || "free";
       if (p.hideFromFreeUsers && viewerPlan === "free") return false;
 
+      // Hide current user from results
       if (currentUser) {
         if (u.userId === currentUser.userId) return false;
         if (
@@ -441,13 +445,11 @@ export default function SearchProfilesPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const offline = useOffline();
+  const networkStatus = useOffline();
 
   // Edge cases – offline or errors
-  const edgeContent = (content: React.ReactNode) => content;
-
-  if (offline) {
-    return edgeContent(
+  if (!networkStatus.isOnline) {
+    return (
       <div className="flex items-center justify-center min-h-screen">
         <ErrorState />
       </div>
@@ -455,9 +457,12 @@ export default function SearchProfilesPage() {
   }
 
   if (profilesError) {
-    return edgeContent(
+    return (
       <div className="flex items-center justify-center min-h-screen">
-        <ErrorState onRetry={() => refetchProfiles()} />
+        <ErrorState 
+          message={(profilesQueryError as Error)?.message || "Failed to load profiles"}
+          onRetry={() => refetchProfiles()} 
+        />
       </div>
     );
   }

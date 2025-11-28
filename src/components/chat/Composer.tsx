@@ -569,19 +569,19 @@ export default function Composer(props: ComposerProps) {
 
   return (
     <div
-      className="p-4 bg-white"
+      className="p-4 sm:p-5"
       aria-label="Message composer"
       role="group"
     >
-      {/* Editing banner */}
+      {/* Editing banner - refined */}
       {props.editing && (
-        <div className="mb-2 p-2 rounded-lg border border-blue-200 bg-blue-50 text-xs text-blue-800 flex items-center justify-between">
-          <div className="truncate mr-2">Editing message</div>
+        <div className="mb-3 p-3 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-amber-100/50 text-xs text-amber-800 flex items-center justify-between shadow-sm">
+          <div className="truncate mr-2 font-medium">Editing message</div>
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className="h-6 text-xs px-2"
+            className="h-7 text-xs px-3 rounded-lg hover:bg-amber-200/50"
             onClick={props.onCancelEdit}
           >
             Cancel
@@ -617,19 +617,20 @@ export default function Composer(props: ComposerProps) {
       />
 
       <form
-        className="flex items-end gap-2 relative"
+        className="flex items-end gap-2.5 relative"
         onSubmit={async (e) => {
           e.preventDefault();
           await onSend(text);
         }}
       >
         {replyTo && (
-          <div className="absolute -top-14 left-0 right-0 mb-2 flex items-start gap-2 bg-white border border-gray-200 rounded-lg p-2 shadow-sm animate-in fade-in slide-in-from-bottom-1">
-            <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+          <div className="absolute -top-16 left-0 right-0 mb-2 flex items-start gap-2.5 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-lg animate-in fade-in slide-in-from-bottom-2">
+            <div className="w-1 h-full bg-gradient-to-b from-rose-400 to-rose-300 rounded-full absolute left-3 top-3 bottom-3" />
+            <div className="flex-1 overflow-hidden pl-3">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-0.5 font-semibold">
                 Replying to
               </p>
-              <p className="text-xs text-gray-700 line-clamp-2 break-words">
+              <p className="text-xs text-neutral-700 line-clamp-2 break-words font-medium">
                 {replyTo.type === "voice"
                   ? "Voice message"
                   : replyTo.text || "(no text)"}
@@ -639,15 +640,15 @@ export default function Composer(props: ComposerProps) {
               type="button"
               size="sm"
               variant="ghost"
-              className="h-6 text-xs px-2 -mt-1"
+              className="h-7 w-7 p-0 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
               onClick={onCancelReply}
               aria-label="Cancel reply"
             >
-              ✕
+              <X className="w-4 h-4" />
             </Button>
           </div>
         )}
-        <div className="flex-1 relative bg-slate-100 rounded-[24px] border border-transparent focus-within:border-primary/30 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 transition-all duration-200" aria-live="polite">
+        <div className="flex-1 relative bg-neutral-50/80 rounded-2xl border border-neutral-200/60 focus-within:border-rose-300/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-rose-100/50 focus-within:shadow-lg transition-all duration-300" aria-live="polite">
           <textarea
             ref={inputRef as any}
             value={text}
@@ -657,7 +658,7 @@ export default function Composer(props: ComposerProps) {
             }}
             onKeyPress={onKeyPress}
             placeholder={
-              isBlocked ? "Cannot send messages" : "Type a message..."
+              isBlocked ? "Cannot send messages" : "Write a message..."
             }
             disabled={isSending || isBlocked}
             rows={1}
@@ -666,44 +667,45 @@ export default function Composer(props: ComposerProps) {
             aria-multiline="true"
             maxLength={maxChars}
             className={cn(
-              "w-full bg-transparent border-none px-4 py-3 pr-10 focus:ring-0 text-slate-900 placeholder-slate-500 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-gray-300 text-[15px]",
+              "w-full bg-transparent border-none px-4 py-3.5 pr-12 focus:ring-0 text-neutral-800 placeholder-neutral-400 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-neutral-300/60 text-[15px] font-medium",
               (isSending || isBlocked) &&
                 "opacity-50 cursor-not-allowed"
             )}
           />
-          {/* Character counter */}
+          {/* Character counter - refined */}
           <div
             className={cn(
-              "absolute right-10 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 select-none",
-              nearingLimit && remaining >= 0 && "text-orange-500",
-              remaining < 0 && "text-red-600"
+              "absolute right-11 top-1/2 -translate-y-1/2 text-[10px] font-semibold select-none transition-colors",
+              remaining > 100 && "text-neutral-300",
+              nearingLimit && remaining >= 0 && "text-amber-500",
+              remaining < 0 && "text-red-500"
             )}
             aria-live="polite"
           >
-            {remaining <= 0 ? "Limit" : `${remaining}`}
+            {remaining <= 100 && (remaining <= 0 ? "Limit" : remaining)}
           </div>
 
-          {/* Emoji picker toggle */}
+          {/* Emoji picker toggle - refined */}
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => setShowPicker(!showPicker)}
             ref={toggleBtnRef}
-            className="absolute right-2 bottom-1.5 text-slate-400 hover:text-primary hover:bg-transparent transition-colors p-2 h-8 w-8 rounded-full"
+            className="absolute right-2 bottom-2 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 p-2 h-9 w-9 rounded-xl"
             aria-label={showPicker ? "Close emoji picker" : "Open emoji picker"}
           >
             <Smile className="w-5 h-5" />
           </Button>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-1 items-center pb-1">
+        {/* Action buttons - refined */}
+        <div className="flex gap-1.5 items-center pb-0.5">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors p-2 h-10 w-10 rounded-full flex-shrink-0"
+            className="text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 p-2 h-11 w-11 rounded-xl flex-shrink-0 border border-transparent hover:border-rose-200/50"
             title={canUseVoice ? "Record voice" : "Voice not available"}
             disabled={!canUseVoice || isSending || isBlocked || isRecording}
             onClick={startRecording}
@@ -876,7 +878,7 @@ export default function Composer(props: ComposerProps) {
             variant="ghost"
             size="sm"
             className={cn(
-              "text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors p-2 h-10 w-10 rounded-full flex-shrink-0",
+              "text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 p-2 h-11 w-11 rounded-xl flex-shrink-0 border border-transparent hover:border-rose-200/50",
               (isImageUploading || isImageConverting) &&
                 "opacity-50 cursor-not-allowed"
             )}
@@ -902,7 +904,7 @@ export default function Composer(props: ComposerProps) {
             {isCompressing ? (
               <div className="flex items-center gap-1">
                 <LoadingSpinner size={12} />
-                <span className="text-xs">{compressionProgress}%</span>
+                <span className="text-xs font-medium">{compressionProgress}%</span>
               </div>
             ) : isImageUploading || isImageConverting ? (
               <LoadingSpinner size={14} />
@@ -911,14 +913,14 @@ export default function Composer(props: ComposerProps) {
             )}
           </Button>
 
-          {/* Send */}
+          {/* Send - refined with gradient */}
           <Button
             type="submit"
             disabled={!text.trim() || isSending || isBlocked}
             className={cn(
-              "bg-primary hover:bg-primary/90 text-white font-medium h-10 w-10 rounded-full transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95 flex items-center justify-center flex-shrink-0 ml-1",
+              "bg-gradient-to-br from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-semibold h-11 w-11 rounded-xl transition-all duration-300 shadow-lg shadow-rose-500/25 hover:shadow-xl hover:shadow-rose-500/30 transform hover:scale-105 active:scale-95 flex items-center justify-center flex-shrink-0 ml-1",
               (!text.trim() || isSending || isBlocked) &&
-                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100 bg-slate-200 text-slate-400 hover:bg-slate-200"
+                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100 bg-neutral-200 from-neutral-200 to-neutral-200 text-neutral-400 hover:from-neutral-200 hover:to-neutral-200"
             )}
             aria-label={
               isBlocked
@@ -937,30 +939,30 @@ export default function Composer(props: ComposerProps) {
             )}
           </Button>
 
-          {/* Inline upgrade hint when voice is unavailable */}
+          {/* Inline upgrade hint when voice is unavailable - refined */}
           {!canUseVoice && needsVoiceUpgrade && !isBlocked && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 text-xs bg-[#BFA67A] hover:bg-[#a89263] text-white border-0 shadow-sm"
+              className="h-9 text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-0 shadow-lg shadow-amber-500/20 rounded-xl font-semibold px-3"
               onClick={() => (window.location.href = "/subscription")}
               title="Upgrade to Premium to send voice messages"
             >
-              Upgrade to Premium
+              Upgrade
             </Button>
           )}
         </div>
 
-        {/* Emoji picker */}
+        {/* Emoji picker - refined container */}
         <AnimatePresence>
           {showPicker && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute bottom-full right-0 mb-2 z-50 shadow-xl rounded-lg overflow-hidden"
+              transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 25 }}
+              className="absolute bottom-full right-0 mb-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-neutral-200/80"
             >
               <EmojiPicker
                 theme="light"
@@ -976,24 +978,24 @@ export default function Composer(props: ComposerProps) {
         </AnimatePresence>
       </form>
 
-      {/* Selected image preview with overlay */}
+      {/* Selected image preview with overlay - refined */}
       <AnimatePresence>
         {imagePreviewUrl && (
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="mt-2 relative inline-flex flex-col gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-sm max-w-full"
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 25 }}
+            className="mt-3 relative inline-flex flex-col gap-1.5 rounded-2xl border border-neutral-200/80 bg-white p-2.5 shadow-lg max-w-full"
           >
             <div className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imagePreviewUrl}
                 alt={imageFileName || "Selected image"}
-                className="max-h-56 md:max-h-64 max-w-full h-auto rounded-lg object-contain"
+                className="max-h-56 md:max-h-64 max-w-full h-auto rounded-xl object-contain"
               />
-              {/* Close button */}
+              {/* Close button - refined */}
               <button
                 type="button"
                 aria-label="Remove selected image"
@@ -1039,7 +1041,7 @@ export default function Composer(props: ComposerProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs px-2"
+                  className="h-7 text-xs px-3 rounded-lg hover:bg-neutral-100"
                   onClick={() => {
                     try {
                       imageAbortRef.current?.abort();
@@ -1051,19 +1053,25 @@ export default function Composer(props: ComposerProps) {
               )}
             </div>
             {imageError && (
-              <div className="text-xs text-red-600">{imageError}</div>
+              <div className="text-xs text-red-500 font-medium">{imageError}</div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Keyboard shortcuts hint */}
-      <div className="mt-2 text-[11px] text-gray-400 flex items-center gap-3 pl-1 select-none">
-        <span>Press Enter to send</span>
-        <span className="hidden sm:inline">Shift+Enter for newline</span>
+      {/* Keyboard shortcuts hint - refined */}
+      <div className="mt-3 text-[11px] text-neutral-400 flex items-center gap-4 pl-1 select-none">
+        <span className="flex items-center gap-1.5">
+          <kbd className="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-medium text-neutral-500">Enter</kbd>
+          <span>to send</span>
+        </span>
+        <span className="hidden sm:flex items-center gap-1.5">
+          <kbd className="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-medium text-neutral-500">Shift+Enter</kbd>
+          <span>for newline</span>
+        </span>
       </div>
 
-      {/* Tiny typing hint below composer */}
+      {/* Tiny typing hint below composer - refined */}
       <AnimatePresence>
         {isOtherTyping && (
           <motion.div
@@ -1071,8 +1079,13 @@ export default function Composer(props: ComposerProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.2 }}
-            className="mt-1 text-xs text-gray-400 pl-2"
+            className="mt-2 text-xs text-rose-400 pl-2 font-medium flex items-center gap-1.5"
           >
+            <span className="flex gap-0.5">
+              <span className="w-1 h-1 bg-rose-400 rounded-full animate-bounce"></span>
+              <span className="w-1 h-1 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+              <span className="w-1 h-1 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+            </span>
             typing…
           </motion.div>
         )}
@@ -1089,22 +1102,22 @@ export default function Composer(props: ComposerProps) {
         />
       </div>
 
-      {/* Inline error under composer */}
+      {/* Inline error under composer - refined */}
       <AnimatePresence>
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="mt-2 p-3 bg-danger/10 border border-danger/30 rounded-lg"
+            className="mt-3 p-3.5 bg-red-50 border border-red-200/80 rounded-xl"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-danger text-xs flex-1">{error}</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-red-600 text-xs flex-1 font-medium">{error}</p>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => window.location.reload()}
-                className="text-danger hover:bg-danger/20 text-xs px-2 py-1 h-auto"
+                className="text-red-600 hover:bg-red-100 text-xs px-3 py-1.5 h-auto rounded-lg font-medium"
               >
                 Retry
               </Button>

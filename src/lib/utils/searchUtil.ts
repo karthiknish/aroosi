@@ -41,6 +41,19 @@ export async function fetchProfileSearchResults({
   motherTongue?: string;
   language?: string;
 }): Promise<ProfileSearchResponse> {
+  console.log("[searchUtil] fetchProfileSearchResults called with:", {
+    page,
+    pageSize,
+    city,
+    country,
+    ageMin,
+    ageMax,
+    preferredGender,
+    ethnicity,
+    motherTongue,
+    language,
+  });
+  
   try {
     const params = new URLSearchParams({
       page: String(page ?? 0),
@@ -78,6 +91,7 @@ export async function fetchProfileSearchResults({
     if (language && language !== "any") params.append("language", language);
 
     const url = `/api/search?${params.toString()}`;
+    console.log("[searchUtil] Fetching URL:", url);
 
     // Generate correlation id for tracing; centralized client will forward it
     const correlationId =
@@ -86,8 +100,17 @@ export async function fetchProfileSearchResults({
 
     // Use centralized client to get automatic Authorization and 401 refresh
     const json = await getJson<any>(url, { correlationId });
+    console.log("[searchUtil] API response received:", {
+      hasData: !!json?.data,
+      rawKeys: json ? Object.keys(json) : [],
+    });
 
     const envelope = json?.data ?? json;
+    console.log("[searchUtil] Envelope extracted:", {
+      hasProfiles: !!envelope?.profiles,
+      profilesLength: envelope?.profiles?.length ?? 0,
+      total: envelope?.total,
+    });
 
     const profiles = Array.isArray(envelope?.profiles) ? envelope.profiles : [];
     const total = Number.isFinite(envelope?.total) ? Number(envelope.total) : 0;
@@ -116,6 +139,13 @@ export async function fetchProfileSearchResults({
       correlationId: resolvedCorrelationId,
     };
   } catch (error) {
+    console.error("[searchUtil] Error caught:", {
+      error,
+      message: (error as any)?.message,
+      status: (error as any)?.status,
+      stack: (error as Error)?.stack,
+    });
+    
     // Handle known statuses via client-thrown error with status (attached in client.ts)
     const status = (error as any)?.status as number | undefined;
     // Extract server error payload if present for code detection
@@ -125,7 +155,10 @@ export async function fetchProfileSearchResults({
       if (raw && raw.startsWith("{")) serverBody = JSON.parse(raw);
     } catch {}
     const code = serverBody?.code;
+    console.log("[searchUtil] Error analysis:", { status, code, serverBody });
+    
     if (code === "ONBOARDING_INCOMPLETE") {
+      console.log("[searchUtil] Redirecting due to ONBOARDING_INCOMPLETE");
       showErrorToast("Finish onboarding to start searching.");
       try {
         // Redirect user to home (acts as onboarding entry) instead of dedicated /onboarding route.
@@ -136,18 +169,21 @@ export async function fetchProfileSearchResults({
       return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
     }
     if (status === 429) {
+      console.log("[searchUtil] Rate limited (429)");
       showErrorToast(
         "Search limit reached for your current plan. Please try later or upgrade."
       );
       return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
     }
     if (status === 401) {
+      console.log("[searchUtil] Unauthorized (401)");
       // After centralized client refresh attempt fails, treat as expired session
       showErrorToast("Session expired. Please sign in again.");
       return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
     }
 
     // Provide clearer UX guidance
+    console.log("[searchUtil] Generic error, returning empty results");
     showErrorToast(
       error,
       typeof (error as any)?.message === "string"

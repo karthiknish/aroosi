@@ -85,7 +85,7 @@ export default function ProfileDetailPage() {
         uid?: string;
       })
     | null;
-  const offline = useOffline();
+  const networkStatus = useOffline();
   const { trackUsage } = useUsageTracking(undefined);
   const { isPremiumPlus } = useSubscriptionGuard();
   const id = params?.id as string;
@@ -105,24 +105,101 @@ export default function ProfileDetailPage() {
   const {
     data: profileData,
     isLoading: loadingProfileRemote,
+    isFetching: fetchingProfile,
     error: profileError,
+    refetch: refetchProfile,
   } = useQuery({
     queryKey: ["profileData", userId],
-    queryFn: async () => (userId ? await fetchUserProfile(userId) : null),
+    queryFn: async () => {
+      if (!userId) return null;
+      const result = await fetchUserProfile(userId);
+      // Throw on auth errors to trigger retry logic
+      if (!result.success && result.error?.code === "AUTH_REQUIRED") {
+        const error = new Error(result.error.message || "Authentication not ready");
+        (error as any).code = "AUTH_REQUIRED";
+        throw error;
+      }
+      return result;
+    },
     enabled: !!userId && isLoaded && isAuthenticated && !skipRemoteProfile,
-    retry: false,
+    // Retry on AUTH_REQUIRED errors (auth token not synced to Firestore yet)
+    retry: (failureCount, error) => {
+      // Check if it's an auth timing issue - retry up to 5 times
+      const apiError = error as { code?: string } | undefined;
+      if (apiError?.code === "AUTH_REQUIRED" && failureCount < 5) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 3000),
   });
-  const loadingProfile = skipRemoteProfile ? false : loadingProfileRemote;
+  // Consider loading if fetching or loading initially
+  const loadingProfile = skipRemoteProfile ? false : (loadingProfileRemote || fetchingProfile);
+  
+  // Handle the API response which has shape { success: boolean, data?: Profile, error?: object }
+  const profileApiResponse = profileData as { success?: boolean; data?: any; error?: any } | null;
   const profileRaw = skipRemoteProfile
     ? (currentUserProfile as any)
-    : profileData?.data;
-  const profile: Profile | null =
-    profileRaw &&
-    typeof profileRaw === "object" &&
-    profileRaw !== null &&
-    "profile" in profileRaw
-      ? (profileRaw as { profile: Profile | null }).profile
-      : (profileRaw as Profile | null);
+    : profileApiResponse?.success ? profileApiResponse.data : null;
+  // profileData?.data is already the Profile object from fetchUserProfile
+  // currentUserProfile from auth context is also already the profile object
+  const profile: Profile | null = profileRaw ?? null;
+  
+  // Capture API error for display
+  const profileApiError = profileApiResponse?.success === false ? profileApiResponse.error : null;
+
+  // Auto-retry on auth error after a delay (forces token refresh)
+  useEffect(() => {
+    const isAuthError = (profileError as any)?.code === "AUTH_REQUIRED";
+    if (isAuthError && !fetchingProfile) {
+      const timer = setTimeout(() => {
+        console.log("[ProfileDetail] Auto-retrying after auth error...");
+        refetchProfile();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [profileError, fetchingProfile, refetchProfile]);
+
+  // Debug logging for profile loading
+  useEffect(() => {
+    console.log("[ProfileDetail] Debug state:", {
+      userId,
+      isLoaded,
+      isAuthenticated,
+      isOwnProfile,
+      skipRemoteProfile,
+      loadingProfileRemote,
+      fetchingProfile,
+      loadingProfile,
+      profileError: profileError ? { message: (profileError as Error).message, code: (profileError as any).code } : null,
+      profileApiError, // Log the API-level error
+      profileDataExists: !!profileData,
+      profileDataFull: profileData, // Log the full object
+      profileDataData: profileApiResponse?.data ? "exists" : "null/undefined",
+      profileDataSuccess: profileApiResponse?.success,
+      profileRawExists: !!profileRaw,
+      profileRaw: profileRaw, // Log full profileRaw
+      profileExists: !!profile,
+      profileFullName: profile?.fullName,
+      currentUserProfileExists: !!currentUserProfile,
+    });
+  }, [
+    userId,
+    isLoaded,
+    isAuthenticated,
+    isOwnProfile,
+    skipRemoteProfile,
+    loadingProfileRemote,
+    fetchingProfile,
+    loadingProfile,
+    profileError,
+    profileApiError,
+    profileData,
+    profileApiResponse,
+    profileRaw,
+    profile,
+    currentUserProfile,
+  ]);
   const { images: fetchedImages } = useProfileImages({
     userId,
     enabled: isLoaded && isAuthenticated,
@@ -404,7 +481,7 @@ export default function ProfileDetailPage() {
     staleTime: 60_000,
   });
 
-  if (offline) {
+  if (!networkStatus.isOnline) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <ErrorState />
@@ -412,30 +489,44 @@ export default function ProfileDetailPage() {
     );
   }
 
-  if (profileError) {
+  // Handle AUTH_REQUIRED error specifically - show loading with auto-retry
+  const isAuthError = (profileError as any)?.code === "AUTH_REQUIRED";
+  if (profileError && !isAuthError) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <ErrorState onRetry={() => window.location.reload()} />
+        <ErrorState onRetry={() => refetchProfile()} />
       </div>
     );
   }
 
-  if (loadingProfile) {
+  // Show loading state while auth is initializing, profile is being fetched, or auth token syncing
+  const isInitializing = !isLoaded || (!skipRemoteProfile && !isAuthenticated);
+  if (loadingProfile || isInitializing || isAuthError) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Skeleton className="w-20 h-20 rounded-full" />
           <Skeleton className="h-6 w-40 rounded" />
           <Skeleton className="h-4 w-32 rounded" />
+          {isAuthError && (
+            <button
+              onClick={() => refetchProfile()}
+              className="mt-2 text-sm text-primary hover:underline"
+            >
+              Tap to retry
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
   if (!profile) {
+    // Show more detailed error if we have one from the API
+    const errorMessage = profileApiError?.message || profileApiError?.code || "Profile not found.";
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <ErrorState message="Profile not found." />
+        <ErrorState message={errorMessage} onRetry={() => window.location.reload()} />
       </div>
     );
   }

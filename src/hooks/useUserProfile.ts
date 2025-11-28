@@ -368,6 +368,12 @@ export function useUserProfile() {
             setAuthTokenCookie().catch(() => {});
           }
         }
+        // Force token refresh to ensure Firestore has valid credentials
+        try {
+          await firebaseUser.getIdToken(true);
+        } catch (tokenErr) {
+          console.warn("[useUserProfile] Token refresh failed:", tokenErr);
+        }
         const profile = await fetchUserProfile(firebaseUser.uid);
         setAuthState({
           user: firebaseUser,

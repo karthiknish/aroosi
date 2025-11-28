@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 // (legacy REST utilities no longer needed here)
 import { useAuthContext } from "@/components/UserProfileProvider";
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import {
   collection,
   query,
@@ -20,6 +20,7 @@ import {
   updateDoc,
   Timestamp,
   getDocs,
+  getDoc,
   writeBatch,
 } from "firebase/firestore";
 
@@ -86,7 +87,7 @@ export function useRealTimeMessages({
   conversationId,
   initialMessages = [],
 }: UseRealTimeMessagesProps): UseRealTimeMessagesReturn {
-  const { user: userObj } = useAuthContext();
+  const { user: userObj, isLoading: authLoading } = useAuthContext();
   const userId = userObj?.uid;
   // Normalize conversationId to sorted "userA_userB" if it looks like a two-user chat id
   const convKey = useMemo(() => {
@@ -115,13 +116,111 @@ export function useRealTimeMessages({
   const unsubMessagesRef = useRef<(() => void) | null>(null);
   const unsubTypingRef = useRef<(() => void) | null>(null);
   const unsubVoiceRef = useRef<(() => void) | null>(null);
-  const attemptedConvUpsertRef = useRef<boolean>(false);
+  const conversationEnsuredRef = useRef<boolean>(false); // Track if conversation document has been created
+  const lastConversationRef = useRef<string | null>(null);
+  const authReadyRetryRef = useRef<number>(0); // Track retries for auth propagation
+  const initialDelayAppliedRef = useRef<boolean>(false); // Track if we've applied initial auth delay
 
   const PAGE_SIZE = 50;
+  const AUTH_PROPAGATION_DELAY = 500; // ms to wait for auth token to propagate to Firestore after auth is ready
+
+  // Reset conversation-specific refs whenever the conversation changes
+  useEffect(() => {
+    if (convKey && lastConversationRef.current !== convKey) {
+      lastConversationRef.current = convKey;
+      conversationEnsuredRef.current = false;
+    }
+  }, [convKey]);
+
+  // Helper to ensure conversation document exists (required for Firestore rules)
+  const ensureConversationExists = useCallback(async () => {
+    if (conversationEnsuredRef.current || !userId || !convKey) return;
+    
+    const parts = String(convKey).split("_");
+    if (parts.length !== 2) return;
+    
+    // Verify user is part of the conversation key
+    if (!parts.includes(userId)) {
+      console.warn("useRealTimeMessages: Current user not in conversation key", { userId, convKey });
+      return;
+    }
+    
+    const otherId = parts.find(p => p !== userId);
+    if (!otherId) return;
+    
+    try {
+      const convRef = doc(db, "conversations", convKey);
+      await setDoc(
+        convRef,
+        {
+          participants: [userId, otherId].sort(), // Ensure consistent order
+          updatedAt: Date.now(),
+        },
+        { merge: true }
+      );
+      conversationEnsuredRef.current = true;
+      // Wait a bit for the document write to propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (err) {
+      // Non-fatal - the subscription might still work if rules allow ID-based access
+      console.warn("Failed to ensure conversation exists:", err);
+    }
+  }, [userId, convKey]);
+
+  // Probe conversation readability before starting snapshots to avoid permission errors
+  const ensureConversationReadable = useCallback(async () => {
+    if (!userId || !convKey) return false;
+    const convRef = doc(db, "conversations", convKey);
+    const MAX_ATTEMPTS = 4;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const snap = await getDoc(convRef);
+        if (!snap.exists()) {
+          await ensureConversationExists();
+          await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+          continue;
+        }
+        const data: any = snap.data();
+        if (Array.isArray(data?.participants) && data.participants.includes(userId)) {
+          return true;
+        }
+        // Participants missing or malformed; attempt to repair once
+        if (!conversationEnsuredRef.current) {
+          await ensureConversationExists();
+          continue;
+        }
+        console.warn("Conversation doc missing membership for current user", {
+          convKey,
+          participants: data?.participants,
+          userId,
+        });
+        return false;
+      } catch (err: any) {
+        if (err?.code === "permission-denied") {
+          // Allow time for auth propagation and retry
+          await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+          continue;
+        }
+        console.warn("Conversation readability probe failed", err);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
+    return false;
+  }, [userId, convKey, ensureConversationExists]);
 
   // Firestore real-time subscription for messages with retry on transient errors
   useEffect(() => {
-    if (!userId || !convKey) return;
+    // Wait for auth to finish loading before subscribing
+    if (authLoading || !userId || !convKey) return;
+    
+    // Validate conversation key format and user membership
+    const parts = String(convKey).split("_");
+    if (parts.length !== 2 || !parts.includes(userId)) {
+      console.warn("Invalid conversation key or user not member:", convKey);
+      return;
+    }
+
     setIsConnected(false);
     setError(null);
     const msgsRef = collection(db, "messages");
@@ -135,8 +234,11 @@ export function useRealTimeMessages({
     let retryCount = 0;
     const maxRetries = 5;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let initialDelayTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
     const subscribe = () => {
+      if (cancelled) return;
       // If offline, delay subscription until back online
       if (typeof window !== "undefined" && !navigator.onLine) {
         setError("You are offline. Retrying…");
@@ -147,6 +249,7 @@ export function useRealTimeMessages({
         q,
         (snap) => {
           retryCount = 0; // reset on success
+          authReadyRetryRef.current = 0; // Reset auth propagation retry counter
           setIsConnected(true);
           setError(null);
           const list: MessageData[] = [];
@@ -213,33 +316,28 @@ export function useRealTimeMessages({
           })();
         },
         (err) => {
-          console.error("Firestore messages subscription error", err);
           // Provide human-friendly error text and suggestions
           const code = (err as any)?.code as string | undefined;
           const msg = (err as any)?.message as string | undefined;
+          
+          // Track if this is likely an auth propagation issue (permission-denied on first few attempts)
+          const isAuthPropagationIssue = code === "permission-denied" && authReadyRetryRef.current < 5;
+          
+          // Only log error to console if we're past auth propagation retries
+          if (!isAuthPropagationIssue) {
+            console.error("Firestore messages subscription error", err);
+          }
+          
           if (code === "permission-denied") {
-            setError("Permission denied. Please sign in again.");
-            if (!attemptedConvUpsertRef.current) {
-              attemptedConvUpsertRef.current = true;
-              try {
-                const parts = String(convKey).split("_");
-                if (parts.length === 2 && userId) {
-                  const otherId = parts[0] === userId ? parts[1] : parts[0];
-                  if (otherId && otherId !== userId) {
-                    const convRef = doc(db, "conversations", convKey);
-                    void setDoc(
-                      convRef,
-                      {
-                        participants: [userId, otherId],
-                        updatedAt: Date.now(),
-                      },
-                      { merge: true }
-                    );
-                  }
-                }
-              } catch {
-                /* ignore */
-              }
+            // Don't show error immediately - might be auth propagation delay
+            if (authReadyRetryRef.current < 5) {
+              setError(null); // Suppress error during auth propagation retries
+            } else {
+              setError("Permission denied. Please sign in again.");
+            }
+            // Try to ensure conversation exists on permission error (it's done proactively but may fail)
+            if (!conversationEnsuredRef.current) {
+              void ensureConversationExists();
             }
           } else if (
             code === "failed-precondition" &&
@@ -253,13 +351,19 @@ export function useRealTimeMessages({
             setError("Realtime messages failed");
           }
           setIsConnected(false);
-          // Retry for transient errors (network, unavailable). Exponential backoff.
-          if (retryCount < maxRetries) {
+          
+          // Retry for transient errors (network, unavailable) AND permission-denied (auth propagation)
+          const shouldRetry = retryCount < maxRetries || isAuthPropagationIssue;
+          if (shouldRetry) {
+            if (isAuthPropagationIssue) {
+              authReadyRetryRef.current += 1;
+            }
             retryCount += 1;
-            const base = 1000 * Math.pow(2, retryCount - 1);
-            const jitter = Math.floor(Math.random() * 250);
-            const delay = base + jitter;
-            // retry info suppressed to satisfy lint rules
+            // Use longer delays for permission-denied (auth propagation needs time)
+            const base = isAuthPropagationIssue ? 1500 : 1000;
+            const multiplier = Math.pow(2, Math.min(retryCount - 1, 3)); // Cap at 8x
+            const jitter = Math.floor(Math.random() * 500);
+            const delay = base * multiplier + jitter;
             retryTimer = setTimeout(() => {
               // unsubscribe previous and resubscribe
               try {
@@ -272,62 +376,158 @@ export function useRealTimeMessages({
       );
     };
 
-    subscribe();
+    // Force token refresh to ensure Firestore has the latest auth state, then subscribe
+    const initSubscription = async () => {
+      try {
+        // Force refresh the ID token to ensure Firestore auth is synchronized
+        if (auth.currentUser) {
+          await auth.currentUser.getIdToken(true);
+        }
+        // Small additional delay to ensure token propagation
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Ensure conversation document exists before subscribing
+        // This is required for Firestore rules that check conversation membership
+        await ensureConversationExists();
+        const readable = await ensureConversationReadable();
+        if (!readable) {
+          setError("Unable to load conversation. Please try again.");
+          return;
+        }
+      } catch {
+        // Token refresh failed, but proceed anyway - retry logic will handle permission errors
+      }
+      if (!cancelled) {
+        subscribe();
+      }
+    };
+
+    // Apply initial delay only once per session, then force token refresh
+    if (!initialDelayAppliedRef.current) {
+      initialDelayAppliedRef.current = true;
+      initialDelayTimer = setTimeout(() => {
+        void initSubscription();
+      }, AUTH_PROPAGATION_DELAY);
+    } else {
+      void initSubscription();
+    }
+    
     return () => {
+      cancelled = true;
       unsubMessagesRef.current?.();
       if (retryTimer) clearTimeout(retryTimer);
+      if (initialDelayTimer) clearTimeout(initialDelayTimer);
     };
-  }, [userId, convKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, userId, convKey, ensureConversationReadable]);
 
   // Voice messages subscription (no pagination yet; typically fewer)
   useEffect(() => {
-    if (!userId || !convKey) return;
-    const vRef = collection(db, "voiceMessages");
-    const vq = query(
-      vRef,
-      where("conversationId", "==", convKey)
-      // Note: removed orderBy to avoid composite index requirement
-      // Voice messages will be sorted client-side by createdAt
-    );
-    unsubVoiceRef.current = onSnapshot(
-      vq,
-      (snap) => {
-        const list: MessageData[] = [];
-        snap.forEach((docSnap) => {
-          const d: any = docSnap.data();
-          const createdAt =
-            d.createdAt instanceof Timestamp
-              ? d.createdAt.toMillis()
-              : d.createdAt || Date.now();
-          list.push({
-            _id: docSnap.id,
-            conversationId: d.conversationId,
-            fromUserId: d.fromUserId,
-            toUserId: d.toUserId,
-            text: "",
-            type: "voice",
-            audioStorageId: d.audioStorageId,
-            duration: d.duration,
-            fileSize: d.fileSize,
-            mimeType: d.mimeType,
-            isRead: !!d.readAt,
-            readAt: d.readAt,
-            createdAt,
-            _creationTime: createdAt,
+    // Wait for auth to finish loading before subscribing
+    if (authLoading || !userId || !convKey) return;
+    
+    // Validate conversation key format and user membership
+    const parts = String(convKey).split("_");
+    if (parts.length !== 2 || !parts.includes(userId)) return;
+
+    let voiceRetryCount = 0;
+    let voiceRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    
+    const subscribeVoice = () => {
+      const vRef = collection(db, "voiceMessages");
+      const vq = query(
+        vRef,
+        where("conversationId", "==", convKey)
+        // Note: removed orderBy to avoid composite index requirement
+        // Voice messages will be sorted client-side by createdAt
+      );
+      unsubVoiceRef.current = onSnapshot(
+        vq,
+        (snap) => {
+          voiceRetryCount = 0; // Reset on success
+          const list: MessageData[] = [];
+          snap.forEach((docSnap) => {
+            const d: any = docSnap.data();
+            const createdAt =
+              d.createdAt instanceof Timestamp
+                ? d.createdAt.toMillis()
+                : d.createdAt || Date.now();
+            list.push({
+              _id: docSnap.id,
+              conversationId: d.conversationId,
+              fromUserId: d.fromUserId,
+              toUserId: d.toUserId,
+              text: "",
+              type: "voice",
+              audioStorageId: d.audioStorageId,
+              duration: d.duration,
+              fileSize: d.fileSize,
+              mimeType: d.mimeType,
+              isRead: !!d.readAt,
+              readAt: d.readAt,
+              createdAt,
+              _creationTime: createdAt,
+            });
           });
-        });
-        // Sort by createdAt since we removed orderBy from query to avoid composite index
-        list.sort((a, b) => a.createdAt - b.createdAt);
-        setVoiceMessages(list);
-      },
-      (err) => {
-        console.error("Voice messages subscription error", err);
-      }
-    );
-    return () => {
-      unsubVoiceRef.current?.();
+          // Sort by createdAt since we removed orderBy from query to avoid composite index
+          list.sort((a, b) => a.createdAt - b.createdAt);
+          setVoiceMessages(list);
+        },
+        (err) => {
+          const code = (err as any)?.code as string | undefined;
+          // Only log error if we're past retry attempts
+          if (voiceRetryCount >= 5 || (code !== "permission-denied" && code !== "unavailable")) {
+            console.error("Voice messages subscription error", err);
+          }
+          // Retry on permission-denied (auth propagation) or transient errors
+          if (voiceRetryCount < 5 && (code === "permission-denied" || code === "unavailable")) {
+            voiceRetryCount += 1;
+            const delay = 1500 * Math.pow(2, Math.min(voiceRetryCount - 1, 3)) + Math.random() * 500;
+            voiceRetryTimer = setTimeout(() => {
+              try { unsubVoiceRef.current?.(); } catch {}
+              subscribeVoice();
+            }, delay);
+          }
+        }
+      );
     };
-  }, [userId, convKey]);
+    
+    let cancelled = false;
+    
+    // Force token refresh before subscribing to voice messages
+    const initVoiceSubscription = async () => {
+      try {
+        // Ensure conversation document exists before subscribing
+        await ensureConversationExists();
+        if (auth.currentUser) {
+          await auth.currentUser.getIdToken(true);
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const readable = await ensureConversationReadable();
+        if (!readable) {
+          return;
+        }
+      } catch (e) {
+        // Proceed anyway - retry logic will handle errors
+      }
+      if (!cancelled) {
+        subscribeVoice();
+      }
+    };
+    
+    // Delay voice subscription to allow auth token propagation
+    const voiceInitialTimer = setTimeout(() => {
+      void initVoiceSubscription();
+    }, AUTH_PROPAGATION_DELAY);
+    
+    return () => {
+      cancelled = true;
+      unsubVoiceRef.current?.();
+      if (voiceRetryTimer) clearTimeout(voiceRetryTimer);
+      clearTimeout(voiceInitialTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, userId, convKey, ensureConversationReadable]);
 
   // Merge older + window + voice into messages (ascending by createdAt)
   useEffect(() => {
@@ -349,35 +549,93 @@ export function useRealTimeMessages({
 
   // Firestore typing indicators (ephemeral docs in collection typingIndicators/{conversationId}/users/{userId})
   useEffect(() => {
-    if (!userId || !convKey) return;
-    const typingColl = collection(db, "typingIndicators", convKey, "users");
-    const typingQ = query(typingColl);
-    unsubTypingRef.current = onSnapshot(
-      typingQ,
-      (snap) => {
-        const map: Record<string, boolean> = {};
-        const now = Date.now();
-        snap.forEach((docSnap) => {
-          const d: any = docSnap.data();
-          // expire after 5s
-          if (
-            d.updatedAt &&
-            now - d.updatedAt <= 5000 &&
-            docSnap.id !== userId
-          ) {
-            map[docSnap.id] = !!d.isTyping;
+    // Wait for auth to finish loading before subscribing
+    if (authLoading || !userId || !convKey) return;
+    
+    // Validate conversation key format and user membership
+    const parts = String(convKey).split("_");
+    if (parts.length !== 2 || !parts.includes(userId)) return;
+
+    let typingRetryCount = 0;
+    let typingRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    
+    const subscribeTyping = () => {
+      const typingColl = collection(db, "typingIndicators", convKey, "users");
+      const typingQ = query(typingColl);
+      unsubTypingRef.current = onSnapshot(
+        typingQ,
+        (snap) => {
+          typingRetryCount = 0; // Reset on success
+          const map: Record<string, boolean> = {};
+          const now = Date.now();
+          snap.forEach((docSnap) => {
+            const d: any = docSnap.data();
+            // expire after 5s
+            if (
+              d.updatedAt &&
+              now - d.updatedAt <= 5000 &&
+              docSnap.id !== userId
+            ) {
+              map[docSnap.id] = !!d.isTyping;
+            }
+          });
+          setIsTyping(map);
+        },
+        (err) => {
+          const code = (err as any)?.code as string | undefined;
+          // Only log error if we're past retry attempts
+          if (typingRetryCount >= 5 || (code !== "permission-denied" && code !== "unavailable")) {
+            console.error("Typing indicators subscription error", err);
           }
-        });
-        setIsTyping(map);
-      },
-      (err) => {
-        console.error("Typing indicators subscription error", err);
-      }
-    );
-    return () => {
-      unsubTypingRef.current?.();
+          // Retry on permission-denied (auth propagation) or transient errors
+          if (typingRetryCount < 5 && (code === "permission-denied" || code === "unavailable")) {
+            typingRetryCount += 1;
+            const delay = 1500 * Math.pow(2, Math.min(typingRetryCount - 1, 3)) + Math.random() * 500;
+            typingRetryTimer = setTimeout(() => {
+              try { unsubTypingRef.current?.(); } catch {}
+              subscribeTyping();
+            }, delay);
+          }
+        }
+      );
     };
-  }, [userId, convKey]);
+    
+    let cancelled = false;
+    
+    // Force token refresh before subscribing to typing indicators
+    const initTypingSubscription = async () => {
+      try {
+        // Ensure conversation document exists before subscribing
+        await ensureConversationExists();
+        if (auth.currentUser) {
+          await auth.currentUser.getIdToken(true);
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const readable = await ensureConversationReadable();
+        if (!readable) {
+          return;
+        }
+      } catch (e) {
+        // Proceed anyway - retry logic will handle errors
+      }
+      if (!cancelled) {
+        subscribeTyping();
+      }
+    };
+    
+    // Delay typing subscription to allow auth token propagation
+    const typingInitialTimer = setTimeout(() => {
+      void initTypingSubscription();
+    }, AUTH_PROPAGATION_DELAY);
+    
+    return () => {
+      cancelled = true;
+      unsubTypingRef.current?.();
+      if (typingRetryTimer) clearTimeout(typingRetryTimer);
+      clearTimeout(typingInitialTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, userId, convKey, ensureConversationReadable]);
 
   // (moved above to satisfy dependency order)
 

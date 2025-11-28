@@ -35,13 +35,19 @@ export default function MatchChatPage() {
       );
     },
     enabled: !!otherUserId,
-    retry: 1,
+    retry: 3, // Increase retries for auth propagation timing
+    retryDelay: (attemptIndex) => Math.min(1500 * Math.pow(2, attemptIndex), 8000),
   });
 
   useEffect(() => {
     if (matchError) {
       const msg =
         (matchError as Error)?.message || "Failed to load match profile";
+      // Don't show "Authentication not ready" as a toast - it's usually transient
+      if (msg.toLowerCase().includes("authentication not ready")) {
+        setLoadError(null);
+        return;
+      }
       setLoadError(msg);
       showErrorToast?.(msg);
     } else {

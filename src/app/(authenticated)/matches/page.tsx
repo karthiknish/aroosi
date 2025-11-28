@@ -159,7 +159,7 @@ export default function MatchesPage() {
   const { user, profile } = useAuthContext();
   const userId =
     user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
-  const offline = useOffline();
+  const networkStatus = useOffline();
   const [search, setSearch] = useState("");
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -171,7 +171,7 @@ export default function MatchesPage() {
       !loading &&
       Array.isArray(matches) &&
       matches.length === 0 &&
-      !offline
+      networkStatus.isOnline
     ) {
       setFetchError(
         "No matches to display. If this seems wrong, please try again in a moment."
@@ -179,7 +179,7 @@ export default function MatchesPage() {
     } else {
       setFetchError(null);
     }
-  }, [loading, matches, offline]);
+  }, [loading, matches, networkStatus.isOnline]);
 
   if (!userId)
     return (
@@ -188,10 +188,10 @@ export default function MatchesPage() {
       </div>
     );
 
-  if (offline) {
+  if (!networkStatus.isOnline) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <ErrorState />
+        <ErrorState message="You appear to be offline. Please check your connection." />
       </div>
     );
   }

@@ -32,11 +32,12 @@ import {
   Clock,
   Shield,
   Sparkles,
+  CreditCard,
+  ChevronRight,
 } from "lucide-react";
 import type { SubscriptionPlan } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion } from "framer-motion";
-
 
 function formatTimeRemaining(boostedUntil: number): string {
   const now = Date.now();
@@ -77,7 +78,6 @@ export default function PremiumSettingsPage() {
   const router = useRouter();
   const nextMonthlyResetDate = React.useMemo(() => {
     const d = new Date();
-    // First day of next month, local time
     return new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0, 0);
   }, []);
   const nextResetLabel = React.useMemo(
@@ -98,7 +98,7 @@ export default function PremiumSettingsPage() {
     };
 
     updateTime();
-    const interval = setInterval(updateTime, 60000); // Update every minute
+    const interval = setInterval(updateTime, 60000);
 
     return () => clearInterval(interval);
   }, [profile?.boostedUntil]);
@@ -119,7 +119,6 @@ export default function PremiumSettingsPage() {
   async function handleSave() {
     try {
       setSaving(true);
-      // Cookie-auth via central userProfileApi util
       const result = await updateUserProfile(userId, {
         hideFromFreeUsers: hideProfile,
       });
@@ -141,7 +140,6 @@ export default function PremiumSettingsPage() {
   async function handleBoost() {
     try {
       setBoostLoading(true);
-      // Use central util; surfaces server messages and remaining quota
       const result = await boostProfile(userId);
       if (!result.success) {
         const msg =
@@ -281,7 +279,7 @@ export default function PremiumSettingsPage() {
                 showSuccessToast("Spotlight activated");
                 await refreshProfile();
               } else {
-                showErrorToast(res.message, "Activation failed");
+                showErrorToast(res.message || "Activation failed");
               }
             } catch (e) {
               showErrorToast("Activation failed");
@@ -290,125 +288,115 @@ export default function PremiumSettingsPage() {
     },
   ];
 
-  return (
-    <>
+  const daysRemaining = profile.subscriptionExpiresAt
+    ? Math.max(0, Math.ceil((profile.subscriptionExpiresAt - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
 
-      <div className="relative min-h-screen bg-white overflow-hidden">
-      {/* Decorative pink SVG-like blobs */}
-      <div className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full bg-pink-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-24 w-[30rem] h-[30rem] rounded-full bg-rose-200/30 blur-3xl" />
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-base to-base-dark/20">
+      {/* Subtle decorative backgrounds */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full bg-accent/5 blur-3xl" />
+      </div>
+
+      <div className="relative container mx-auto px-4 py-8 max-w-5xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="mb-8"
         >
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <h2 className="text-xl md:text-2xl font-semibold leading-tight text-neutral-900">
-              Premium Settings
-            </h2>
-            {getSubscriptionBadge(profile.subscriptionPlan as SubscriptionPlan)}
+          <div className="flex items-center gap-3 mb-2">
+            <div className={`p-2.5 rounded-xl ${isPremiumPlus ? "bg-gradient-to-br from-accent to-accent-dark" : "bg-gradient-to-br from-primary to-primary-dark"}`}>
+              {isPremiumPlus ? (
+                <Sparkles className="w-5 h-5 text-white" />
+              ) : (
+                <Crown className="w-5 h-5 text-white" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif font-semibold text-neutral-dark">
+                Premium Settings
+              </h1>
+              <p className="text-sm text-neutral-light">
+                Manage your subscription and features
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-neutral-600 max-w-xl mx-auto">
-            Manage your premium features and preferences
-          </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Subscription Status */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="overflow-hidden shadow-sm border rounded-lg">
-                <CardHeader className="rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Crown className="w-5 h-5 text-pink-600" />
-                    Subscription Status
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Current plan and subscription details
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-5">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      {/* Highlighted current plan badge */}
-                      <div
-                        className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 ${
-                          profile.subscriptionPlan === "premiumPlus"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-neutral-100 text-neutral-800"
-                        }`}
-                      >
-                        {profile.subscriptionPlan === "premiumPlus" ? (
-                          <Rocket className="w-4 h-4" />
+              <Card className="overflow-hidden border-0 shadow-md bg-white">
+                <div className={`h-1.5 ${isPremiumPlus ? "bg-gradient-to-r from-accent via-accent-light to-accent" : "bg-gradient-to-r from-primary via-primary-light to-primary"}`} />
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPremiumPlus ? "bg-accent/10" : "bg-primary/10"}`}>
+                        {isPremiumPlus ? (
+                          <Rocket className="w-6 h-6 text-accent-dark" />
                         ) : (
-                          <Crown className="w-4 h-4" />
+                          <Crown className="w-6 h-6 text-primary-dark" />
                         )}
-                        {profile.subscriptionPlan === "premium"
-                          ? "Premium"
-                          : "Premium Plus"}
                       </div>
-                      <div className="flex flex-col">
-                        {/* Renewal / expiry emphasis */}
-                        <span className="text-sm text-neutral-700">
-                          {profile.subscriptionExpiresAt
-                            ? `Renews ${new Date(profile.subscriptionExpiresAt as number).toLocaleDateString()}`
-                            : "Active subscription"}
-                        </span>
-                        {profile.subscriptionExpiresAt && (
-                          <span className="text-xs text-neutral-500">
-                            {(() => {
-                              const ms =
-                                (profile.subscriptionExpiresAt as number) -
-                                Date.now();
-                              const days = Math.max(
-                                0,
-                                Math.ceil(ms / (1000 * 60 * 60 * 24))
-                              );
-                              return days > 0
-                                ? `${days} day${days > 1 ? "s" : ""} remaining`
-                                : "Renews today";
-                            })()}
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-semibold text-neutral-dark">
+                            {isPremiumPlus ? "Premium Plus" : "Premium"}
                           </span>
-                        )}
+                          <Badge className={`text-[10px] px-1.5 py-0.5 ${isPremiumPlus ? "bg-accent/15 text-accent-dark border-0" : "bg-primary/15 text-primary-dark border-0"}`}>
+                            Active
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-neutral-light">
+                          {profile.subscriptionExpiresAt ? (
+                            <>
+                              Renews {new Date(profile.subscriptionExpiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                              {daysRemaining !== null && daysRemaining > 0 && (
+                                <span className="ml-1.5 text-xs text-neutral">
+                                  ({daysRemaining} days)
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            "Active subscription"
+                          )}
+                        </p>
                       </div>
-
-                      {/* Removed separate Manage billing placement; moved next to Manage Plan on the right */}
                     </div>
 
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => handleNavigate("/subscription")}
-                        className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
-                        title="Switch plans"
+                        className="border-neutral-dark/10 hover:bg-base-dark/50"
                       >
-                        Manage Plan
+                        Change Plan
                       </Button>
-                      {/* Manage billing portal (now next to Manage Plan) */}
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
                         onClick={async () => {
                           try {
-                            const { openBillingPortal } = await import(
-                              "@/lib/utils/stripeUtil"
-                            );
+                            const { openBillingPortal } = await import("@/lib/utils/stripeUtil");
                             await openBillingPortal();
                           } catch (e) {
                             console.error("Manage billing failed", e);
                           }
                         }}
-                        className="inline-flex items-center justify-center rounded-md bg-[#BFA67A] px-4 py-2 text-white hover:bg-[#a69063] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#BFA67A]"
-                        title="Open billing portal"
+                        className="bg-accent hover:bg-accent-dark text-white"
                       >
-                        Manage billing
-                      </button>
+                        <CreditCard className="w-4 h-4 mr-1.5" />
+                        Billing
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -417,39 +405,36 @@ export default function PremiumSettingsPage() {
 
             {/* Premium Features */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="shadow-sm border rounded-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Crown className="w-5 h-5 text-pink-500" />
+              <Card className="border-0 shadow-md bg-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <Crown className="w-5 h-5 text-primary" />
                     Premium Features
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    Features included with your subscription
+                  <CardDescription className="text-xs text-neutral-light">
+                    Included with your subscription
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
+                <CardContent className="pt-2">
+                  <div className="divide-y divide-neutral-dark/5">
                     {premiumFeatures.map((feature, index) => (
-                      <motion.div
+                      <div
                         key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + index * 0.05 }}
-                        className="flex items-center justify-between p-4 rounded-lg hover:shadow-md transition-shadow bg-white"
+                        className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-white rounded-full shadow-sm">
+                          <div className="p-2 rounded-lg bg-base-dark/50">
                             {feature.icon}
                           </div>
                           <div>
-                            <p className="text-xl text-neutral">
+                            <p className="font-medium text-neutral-dark text-sm">
                               {feature.title}
                             </p>
-                            <p className="text-sm text-neutral-600">
+                            <p className="text-xs text-neutral-light">
                               {feature.description}
                             </p>
                           </div>
@@ -459,36 +444,34 @@ export default function PremiumSettingsPage() {
                             <Switch
                               checked={hideProfile}
                               onCheckedChange={setHideProfile}
-                              className="data-[state=checked]:bg-pink-600"
+                              className="data-[state=checked]:bg-primary"
                             />
                           ) : (
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               onClick={feature.action}
-                              className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                              className="text-primary hover:text-primary-dark hover:bg-primary/5"
                             >
-                              Access
+                              <ChevronRight className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                   {hideProfile !== !!profile?.hideFromFreeUsers && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
-                      className="mt-4"
+                      className="mt-4 pt-4 border-t border-neutral-dark/5"
                     >
                       <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
+                        className="w-full bg-primary hover:bg-primary-dark text-white"
                       >
-                        {saving ? (
-                          <LoadingSpinner size={16} className="mr-2" />
-                        ) : null}
+                        {saving && <LoadingSpinner size={16} className="mr-2" />}
                         Save Privacy Settings
                       </Button>
                     </motion.div>
@@ -499,50 +482,36 @@ export default function PremiumSettingsPage() {
 
             {/* Premium Plus Features */}
             <motion.div
-              className="bg-white"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="shadow-sm bg-white border rounded-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Rocket className="w-5 h-5 text-pink-600" />
+              <Card className="border-0 shadow-md bg-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <Rocket className="w-5 h-5 text-accent" />
                     Premium Plus Features
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    {isPremiumPlus
-                      ? "Exclusive for Premium Plus"
-                      : "Upgrade to unlock these"}
+                  <CardDescription className="text-xs text-neutral-light">
+                    {isPremiumPlus ? "Exclusive features" : "Upgrade to unlock"}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
+                <CardContent className="pt-2">
+                  <div className="divide-y divide-neutral-dark/5">
                     {premiumPlusFeatures.map((feature, index) => (
-                      <motion.div
+                      <div
                         key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 + index * 0.05 }}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all ${
-                          feature.available
-                            ? "bg-white hover:shadow-md"
-                            : "bg-gray-50 opacity-60"
-                        }`}
+                        className={`flex items-center justify-between py-4 first:pt-0 last:pb-0 ${!feature.available ? "opacity-50" : ""}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`p-2 rounded-full shadow-sm ${
-                              feature.available ? "bg-white" : "bg-gray-100"
-                            }`}
-                          >
+                          <div className={`p-2 rounded-lg ${feature.available ? "bg-accent/10" : "bg-neutral-dark/5"}`}>
                             {feature.icon}
                           </div>
                           <div>
-                            <p className="text-xl text-neutral">
+                            <p className="font-medium text-neutral-dark text-sm">
                               {feature.title}
                             </p>
-                            <p className="text-sm text-neutral-600">
+                            <p className="text-xs text-neutral-light">
                               {feature.description}
                             </p>
                           </div>
@@ -552,75 +521,65 @@ export default function PremiumSettingsPage() {
                             feature.isBoost ? (
                               feature.isBoosted ? (
                                 <div className="flex items-center gap-2">
-                                  <Badge className="bg-gradient-to-r from-pink-600 to-rose-600 text-white flex items-center gap-1">
-                                    <Zap className="h-3 w-3 fill-current" />
+                                  <Badge className="bg-gradient-to-r from-primary to-primary-dark text-white text-xs">
+                                    <Zap className="h-3 w-3 mr-1 fill-current" />
                                     Boosted
                                   </Badge>
-                                  <Clock className="h-4 w-4 text-gray-500" />
+                                  <Clock className="h-4 w-4 text-neutral-light" />
                                 </div>
                               ) : (
                                 <Button
-                                  variant="default"
                                   size="sm"
                                   onClick={feature.action}
-                                  disabled={
-                                    boostLoading ||
-                                    (profile.boostsRemaining || 0) <= 0
-                                  }
-                                  className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
+                                  disabled={boostLoading || (profile.boostsRemaining || 0) <= 0}
+                                  className="bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary-dark text-white"
                                 >
                                   {boostLoading ? (
-                                    <LoadingSpinner
-                                      size={14}
-                                      className="mr-1"
-                                    />
+                                    <LoadingSpinner size={14} className="mr-1" />
                                   ) : (
                                     <Rocket className="h-4 w-4 mr-1" />
                                   )}
-                                  Boost Now
+                                  Boost
                                 </Button>
                               )
                             ) : (
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={feature.action}
-                                className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                                className="text-accent hover:text-accent-dark hover:bg-accent/5"
                               >
-                                Access
+                                <ChevronRight className="w-4 h-4" />
                               </Button>
                             )
                           ) : (
                             <Button
                               size="sm"
                               onClick={() => handleNavigate("/subscription")}
-                              className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
+                              className="bg-accent hover:bg-accent-dark text-white"
                             >
                               Upgrade
                             </Button>
                           )}
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                   {!isPremiumPlus && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="mt-6 p-5 rounded-lg bg-white border"
-                    >
-                      <p className="text-sm text-neutral-800 mb-3">
-                        Unlock Premium Plus features like profile boost, viewer
-                        tracking, and premium filters.
-                      </p>
-                      <Button
-                        onClick={() => handleNavigate("/subscription")}
-                        className="w-full bg-pink-600 hover:bg-pink-700 text-white"
-                      >
-                        Upgrade to Premium Plus
-                      </Button>
-                    </motion.div>
+                    <div className="mt-4 pt-4 border-t border-neutral-dark/5">
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20">
+                        <p className="text-sm text-neutral-dark mb-3">
+                          Unlock profile boosts, viewer tracking, and advanced filters.
+                        </p>
+                        <Button
+                          onClick={() => handleNavigate("/subscription")}
+                          className="w-full bg-accent hover:bg-accent-dark text-white"
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Upgrade to Premium Plus
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -631,79 +590,61 @@ export default function PremiumSettingsPage() {
           <div className="space-y-6">
             {/* Usage Tracking */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="shadow-sm bg-white border rounded-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <BarChart className="w-5 h-5 text-pink-600" />
-                    Usage Tracking
+              <Card className="border-0 shadow-md bg-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <BarChart className="w-5 h-5 text-primary" />
+                    Usage Analytics
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    Monitor your feature usage and limits
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="font-medium text-gray-800">
-                        View Detailed Analytics
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Track messages, searches, profile views, and more
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleNavigate("/usage")}
-                      className="w-full border-pink-200 hover:bg-pink-50 hover:border-pink-300"
-                    >
-                      <BarChart className="w-4 h-4 mr-2" />
-                      View Usage
-                    </Button>
-                  </div>
+                  <p className="text-sm text-neutral-light mb-4">
+                    Track messages, searches, and profile views.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleNavigate("/usage")}
+                    className="w-full border-neutral-dark/10 hover:bg-base-dark/50"
+                  >
+                    <BarChart className="w-4 h-4 mr-2" />
+                    View Usage
+                  </Button>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Benefits Card */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="shadow-sm border rounded-lg bg-white">
+              <Card className="border-0 shadow-md bg-white">
                 <CardContent className="p-5">
-                  <h3 className="font-medium text-base mb-3 text-neutral-800 flex items-center gap-2">
-                    <Heart className="h-5 w-5 text-pink-500" />
-                    Premium Benefits
+                  <h3 className="font-semibold text-sm mb-3 text-neutral-dark flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-primary" />
+                    Your Benefits
                   </h3>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-3">
-                      <MessageCircle className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
-                        Unlimited messaging with all your matches
-                      </span>
+                  <ul className="space-y-2.5 text-sm">
+                    <li className="flex items-start gap-2.5">
+                      <MessageCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-neutral-light">Unlimited messaging</span>
                     </li>
-                    <li className="flex items-start gap-3">
-                      <Shield className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
-                        Enhanced privacy controls and settings
-                      </span>
+                    <li className="flex items-start gap-2.5">
+                      <Shield className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-neutral-light">Privacy controls</span>
                     </li>
-                    <li className="flex items-start gap-3">
-                      <Rocket className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
-                        Boost your profile for maximum visibility
-                      </span>
+                    <li className="flex items-start gap-2.5">
+                      <Rocket className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-neutral-light">Profile visibility boost</span>
                     </li>
-                    <li className="flex items-start gap-3">
-                      <Eye className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
-                        See who&apos;s interested in your profile
-                      </span>
+                    <li className="flex items-start gap-2.5">
+                      <Eye className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-neutral-light">See who viewed you</span>
                     </li>
                   </ul>
                 </CardContent>
@@ -712,31 +653,33 @@ export default function PremiumSettingsPage() {
 
             {/* Quick Actions */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="shadow-sm border rounded-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="w-5 h-5 text-pink-600" />
+              <Card className="border-0 shadow-md bg-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <Sparkles className="w-5 h-5 text-accent" />
                     Quick Actions
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2">
                   <Button
                     onClick={() => handleNavigate("/subscription")}
                     variant="outline"
-                    className="w-full border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                    className="w-full border-neutral-dark/10 hover:bg-base-dark/50 justify-between"
                   >
                     Manage Subscription
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                   <Button
                     onClick={() => handleNavigate("/pricing")}
                     variant="outline"
-                    className="w-full border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                    className="w-full border-neutral-dark/10 hover:bg-base-dark/50 justify-between"
                   >
                     View All Plans
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                 </CardContent>
               </Card>
@@ -745,6 +688,5 @@ export default function PremiumSettingsPage() {
         </div>
       </div>
     </div>
-    </>
   );
 }

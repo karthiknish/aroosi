@@ -52,20 +52,21 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
           if (process.env.NODE_ENV !== "production") {
-            console.log("fetchJson: attached auth token for", input);
+            console.log("[HTTP Client] Attached auth token for", input);
           }
+        } else {
+          console.warn("[HTTP Client] getIdToken returned null for", input);
         }
-      } else if (process.env.NODE_ENV !== "production") {
+      } else {
         console.warn(
-          "fetchJson: no current user or getIdToken unavailable for",
-          input
+          "[HTTP Client] No Firebase currentUser for request:",
+          input,
+          { hasAuth: !!auth, hasUser: !!user }
         );
       }
     }
   } catch (err) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("fetchJson: failed to attach auth token for", input, err);
-    }
+    console.warn("[HTTP Client] Failed to attach auth token for", input, err);
   }
 
   const resp = await fetch(input, {
@@ -84,6 +85,13 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
     } catch {
       // ignore
     }
+    console.error("[HTTP Client] Request failed:", {
+      status: resp.status,
+      statusText: resp.statusText,
+      method,
+      url: input,
+      responseBody: errText?.substring(0, 500), // Truncate long responses
+    });
     const error = new Error(
       `HTTP ${resp.status} ${resp.statusText} for ${method} ${input}` +
         (errText ? ` :: ${errText}` : "")

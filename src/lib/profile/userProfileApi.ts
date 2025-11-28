@@ -67,10 +67,27 @@ export async function fetchUserProfile(
     };
   }
 
+  console.log("[ProfileAPI] fetchUserProfile called for userId:", userId);
+
   try {
+    // Check if Firebase auth is ready before making Firestore calls
+    const { auth } = await import("@/lib/firebase");
+    if (!auth.currentUser) {
+      console.warn("[ProfileAPI] No authenticated user, skipping fetchUserProfile for:", userId);
+      return {
+        success: false,
+        error: { code: "AUTH_REQUIRED", message: "User not authenticated" },
+      };
+    }
+    
+    console.log("[ProfileAPI] Fetching Firestore doc for userId:", userId);
     const userDoc = await getDoc(doc(db, "users", userId));
+    console.log("[ProfileAPI] Firestore doc exists:", userDoc.exists());
+    
     if (userDoc.exists()) {
       const profileData = userDoc.data() as Partial<Profile>;
+      console.log("[ProfileAPI] Profile data keys:", Object.keys(profileData));
+      console.log("[ProfileAPI] Profile fullName:", profileData.fullName);
       // Ensure required identifiers are present
       const normalized: Profile = {
         // Firestore document key serves as userId linkage
@@ -140,11 +157,26 @@ export async function fetchUserProfile(
       return { success: true, data: null };
     }
   } catch (error: unknown) {
+    // Check if this is a permissions error - don't retry those
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("Missing or insufficient permissions")) {
+      // This is expected during auth initialization - return gracefully without noisy logging
+      if (process.env.NODE_ENV === "development") {
+        console.debug("[ProfileAPI] Auth token not ready yet for:", userId);
+      }
+      return {
+        success: false,
+        error: { code: "AUTH_REQUIRED", message: "Authentication not ready" },
+      };
+    }
+    
     if (retries > 0) {
       /* eslint-disable-next-line no-console */
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfile (${retries} attempts left)...`
       );
+      // Wait a bit before retrying to allow auth to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
       return fetchUserProfile(userId, retries - 1);
     }
     return handleApiError(error, "fetchUserProfile");
@@ -171,6 +203,17 @@ export async function fetchUserProfileImages(
   }
 
   try {
+    // Check if Firebase auth is ready before making Firestore calls
+    const { auth } = await import("@/lib/firebase");
+    if (!auth.currentUser) {
+      console.warn("[ProfileAPI] No authenticated user, skipping fetchUserProfileImages for:", userId);
+      return {
+        success: false,
+        error: { code: "AUTH_REQUIRED", message: "User not authenticated" },
+        data: [],
+      };
+    }
+    
     const userDoc = await getDoc(doc(db, "users", userId));
     if (userDoc.exists()) {
       const profileData = userDoc.data() as any;

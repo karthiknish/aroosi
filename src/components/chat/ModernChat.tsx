@@ -8,6 +8,7 @@ import { useModernChat, type ReportReason } from "@/hooks/useModernChat";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useState } from "react";
 import { canSendVoiceMessage } from "@/lib/utils/messageUtils";
+import { MessageCircle } from "lucide-react";
 
 export type ModernChatProps = {
   conversationId: string;
@@ -90,12 +91,20 @@ function ModernChat({
   return (
     <div
       className={cn(
-        "flex flex-col flex-1 w-full h-full overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200",
+        "flex flex-col flex-1 w-full h-full overflow-hidden rounded-3xl shadow-2xl border border-neutral-200/60 relative",
+        // Refined gradient background - subtle warmth for matrimony context
+        "bg-gradient-to-b from-[#FDFBF9] via-white to-[#FBF8F5]",
         className
       )}
     >
-      {/* Enhanced Header Section */}
-      <div className="relative z-10 border-b border-slate-100 bg-white/80 backdrop-blur-md">
+      {/* Atmospheric ambient glow */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+        <div className="absolute -top-32 -right-32 w-64 h-64 bg-gradient-to-br from-rose-200/20 via-amber-100/15 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-tr from-rose-100/20 to-transparent rounded-full blur-2xl" />
+      </div>
+
+      {/* Refined Header Section */}
+      <div className="relative z-10 border-b border-neutral-100/80 bg-gradient-to-r from-white/95 via-[#FEFCFA]/95 to-white/95 backdrop-blur-xl">
         <ModernChatHeader
           matchUserName={matchUserName}
           matchUserAvatarUrl={matchUserAvatarUrl}
@@ -113,8 +122,16 @@ function ModernChat({
         />
       </div>
 
-      {/* Enhanced Messages Section */}
-      <div className="relative flex-1 bg-slate-50/50">
+      {/* Elevated Messages Section - subtle pattern overlay */}
+      <div className="relative flex-1 bg-gradient-to-b from-neutral-50/30 via-transparent to-neutral-50/20">
+        {/* Subtle fabric-like texture overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.02] pointer-events-none"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.15) 1px, transparent 0)`,
+            backgroundSize: '24px 24px'
+          }}
+        />
         <MessagesList
           scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
           loading={loading}
@@ -154,8 +171,8 @@ function ModernChat({
         />
       </div>
 
-      {/* Enhanced Input Section */}
-      <div className="relative z-10 bg-white border-t border-slate-100">
+      {/* Refined Input Section with subtle gradient */}
+      <div className="relative z-10 bg-gradient-to-t from-white via-[#FEFCFA] to-white/95 border-t border-neutral-100/60">
         <Composer
           inputRef={inputRef as any}
           text={text}
@@ -235,22 +252,25 @@ function ModernChat({
         confirmText="Delete"
       />
 
-      {/* Enhanced loading state */}
+      {/* Refined loading state with elegant animation */}
       {loading && (
-        <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-slate-50/40 to-white/60 backdrop-blur-md flex items-center justify-center z-20 animate-in fade-in duration-300">
-          <div className="flex flex-col items-center gap-4 bg-white/90 rounded-2xl px-8 py-6 shadow-xl border border-slate-200/50">
-            <div className="relative">
-              <div className="w-8 h-8 border-3 border-slate-200 border-t-pink-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-8 h-8 border-3 border-transparent border-l-pink-400 rounded-full animate-spin animation-delay-100"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-[#FDFBF9]/90 to-white/80 backdrop-blur-xl flex items-center justify-center z-20 animate-in fade-in duration-500">
+          <div className="flex flex-col items-center gap-5 bg-white/95 rounded-3xl px-10 py-8 shadow-2xl border border-neutral-100/80">
+            {/* Refined spinner with rose accent */}
+            <div className="relative w-12 h-12">
+              <div className="absolute inset-0 rounded-full border-2 border-neutral-100"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-rose-400 animate-spin"></div>
+              <div className="absolute inset-1 rounded-full border border-transparent border-l-amber-300/60 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+              <MessageCircle className="absolute inset-0 m-auto w-5 h-5 text-rose-400/80" />
             </div>
-            <div className="text-center">
-              <span className="text-sm font-medium text-slate-700">
+            <div className="text-center space-y-2">
+              <span className="text-sm font-semibold tracking-wide text-neutral-700">
                 Loading conversation
               </span>
-              <div className="flex gap-1 mt-2 justify-center">
-                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></div>
-                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce animation-delay-100"></div>
-                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce animation-delay-200"></div>
+              <div className="flex gap-1.5 justify-center">
+                <div className="w-1.5 h-1.5 bg-rose-300 rounded-full animate-bounce"></div>
+                <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-1.5 h-1.5 bg-rose-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
             </div>
           </div>
