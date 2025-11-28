@@ -1,3 +1,10 @@
+import {
+  ReligiousPractice,
+  FamilyValues,
+  MarriageViews,
+  TraditionalValues,
+} from "./cultural";
+
 // Generic fallback Id type so shared types compile both in frontend (Next.js) and Convex.
 // When compiling inside Convex, the generated Id type will shadow this one via module resolution.
 // On the frontend side we don't need the exact branded type, so a simple string alias is sufficient.
@@ -70,6 +77,10 @@ export interface Profile {
   motherTongue?: string;
   religion?: string;
   ethnicity?: string;
+  religiousPractice?: ReligiousPractice;
+  familyValues?: FamilyValues;
+  marriageViews?: MarriageViews;
+  traditionalValues?: TraditionalValues;
 
   /**
    * Array of raw image URLs belonging to the user profile (legacy support).
@@ -119,6 +130,10 @@ export interface ProfileFormValues {
   motherTongue: string;
   religion: string;
   ethnicity: string;
+  religiousPractice?: ReligiousPractice;
+  familyValues?: FamilyValues;
+  marriageViews?: MarriageViews;
+  traditionalValues?: TraditionalValues;
 }
 
 export interface ProfileContextType {
@@ -168,6 +183,10 @@ export interface ProfileEditFormState {
   motherTongue?: string;
   religion?: string;
   ethnicity?: string;
+  religiousPractice?: ReligiousPractice;
+  familyValues?: FamilyValues;
+  marriageViews?: MarriageViews;
+  traditionalValues?: TraditionalValues;
 }
 
 export type SubscriptionPlan = "free" | "premium" | "premiumPlus";

@@ -99,6 +99,35 @@ export const GET = withFirebaseAuth(
         reasons.push("drinking");
       }
 
+      // Cultural alignment
+      const religiousPractice = String(self?.religiousPractice || "").toLowerCase();
+      const tgtReligiousPractice = String(target?.religiousPractice || "").toLowerCase();
+      if (religiousPractice && tgtReligiousPractice && religiousPractice === tgtReligiousPractice) {
+        score += 10;
+        reasons.push("religiousPractice");
+      }
+
+      const familyValues = String(self?.familyValues || "").toLowerCase();
+      const tgtFamilyValues = String(target?.familyValues || "").toLowerCase();
+      if (familyValues && tgtFamilyValues && familyValues === tgtFamilyValues) {
+        score += 10;
+        reasons.push("familyValues");
+      }
+
+      const marriageViews = String(self?.marriageViews || "").toLowerCase();
+      const tgtMarriageViews = String(target?.marriageViews || "").toLowerCase();
+      if (marriageViews && tgtMarriageViews && marriageViews === tgtMarriageViews) {
+        score += 10;
+        reasons.push("marriageViews");
+      }
+
+      const traditionalValues = String(self?.traditionalValues || "").toLowerCase();
+      const tgtTraditionalValues = String(target?.traditionalValues || "").toLowerCase();
+      if (traditionalValues && tgtTraditionalValues && traditionalValues === tgtTraditionalValues) {
+        score += 10;
+        reasons.push("traditionalValues");
+      }
+
       // Clamp score
       if (score > 100) score = 100;
 

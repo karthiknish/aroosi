@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchIcebreakers,
@@ -17,7 +17,12 @@ import {
   ChevronsRight,
   CheckCircle2,
   SkipForward,
+  Sparkles,
+  Copy,
+  Save,
+  Edit2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function IcebreakersPanel() {
   const queryClient = useQueryClient();
@@ -44,7 +49,6 @@ export function IcebreakersPanel() {
       return res;
     },
     onSuccess: async () => {
-      // Ensure server-reflected answered flags are synced
       await queryClient.invalidateQueries({
         queryKey: ["icebreakers", "today"],
       });
@@ -71,38 +75,31 @@ export function IcebreakersPanel() {
   const answeredCount = visibleQuestions.filter(
     (q) => submitted[q.id] || q.answered
   ).length;
-  // Rendering branches moved below hook declarations to satisfy rules-of-hooks
-  let loadingContent: React.ReactElement | null = null;
-  if (isLoading) {
-    loadingContent = (
-      <div className="mt-8">
-        <Skeleton className="h-6 w-48 mb-3" />
-        <div className="space-y-3">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      </div>
-    );
-  } else if (isError) {
-    loadingContent = (
-      <div className="mt-8">
-        <div className="text-sm text-red-600">
-          Failed to load today&apos;s icebreakers.
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-2"
-          onClick={() => refetch()}
-        >
-          Retry
-        </Button>
-      </div>
-    );
-  } else if (questions.length === 0) {
-    loadingContent = null;
-  }
+
+  // Prefill answers
+  useMemo(() => {
+    const map: Record<string, string> = {};
+    const sub: Record<string, boolean> = {};
+    for (const q of questions) {
+      if (q.answer && typeof q.answer === "string") {
+        map[q.id] = q.answer;
+      }
+      if (q.answered) sub[q.id] = true;
+    }
+    if (Object.keys(map).length > 0) {
+      setAnswers((prev) => ({ ...map, ...prev }));
+    }
+    if (Object.keys(sub).length > 0) {
+      setSubmitted((prev) => ({ ...sub, ...prev }));
+    }
+  }, [questions]);
+
+  // Auto-focus
+  useEffect(() => {
+    if (!current) return;
+    const t = setTimeout(() => textareaRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, [current?.id]);
 
   const handleSubmit = async (qid: string) => {
     const val = (answers[qid] || "").trim();
@@ -119,8 +116,10 @@ export function IcebreakersPanel() {
       await mutateAsync({ id: qid, answer: val });
       setSubmitted((s) => ({ ...s, [qid]: true }));
       setEditing((e) => ({ ...e, [qid]: false }));
-      // Advance to next question automatically if available
-      setIndex((i) => Math.min(i + 1, Math.max(total - 1, 0)));
+      // Advance
+      if (index < total - 1) {
+        setTimeout(() => setIndex((i) => i + 1), 300);
+      }
     } finally {
       setSaving((m) => ({ ...m, [qid]: false }));
     }
@@ -129,8 +128,8 @@ export function IcebreakersPanel() {
   const handleSkip = (qid: string) => {
     setHidden((h) => ({ ...h, [qid]: true }));
     showSuccessToast("Skipped for now");
-    // advance to next
-    setIndex((i) => Math.min(i + 1, Math.max(visibleQuestions.length - 2, 0)));
+    // If we skip the last one, index might need adjustment, but usually just stays or goes to next available
+    // Since visibleQuestions changes, current index might point to next one automatically
   };
 
   const handleCopy = async (qid: string) => {
@@ -143,239 +142,251 @@ export function IcebreakersPanel() {
     }
   };
 
-  // Prefill answers with any server-provided saved answer
-  useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const q of questions) {
-      if (q.answer && typeof q.answer === "string") {
-        map[q.id] = q.answer;
-      }
-    }
-    if (Object.keys(map).length > 0) {
-      setAnswers((prev) => ({ ...map, ...prev }));
-    }
-    // also mark submitted for answered ones so UI shows saved state
-    const sub: Record<string, boolean> = {};
-    for (const q of questions) {
-      if (q.answered) sub[q.id] = true;
-    }
-    if (Object.keys(sub).length > 0) {
-      setSubmitted((prev) => ({ ...sub, ...prev }));
-    }
-  }, [questions]);
-
-  // Auto-focus textarea when the current question changes
-  useEffect(() => {
-    if (!current) return;
-    // small timeout to allow UI to settle
-    const t = setTimeout(() => textareaRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-  }, [current?.id]);
-
   const scheduleAutosave = (qid: string) => {
-    const current = (answers[qid] || "").trim();
-    if (!current || current.length < 3) return;
-    if (submitted[qid]) return; // avoid resaving unless editing is enabled
+    const currentVal = (answers[qid] || "").trim();
+    if (!currentVal || currentVal.length < 3) return;
+    if (submitted[qid]) return;
     if (debounceRefs.current[qid]) clearTimeout(debounceRefs.current[qid]!);
     debounceRefs.current[qid] = setTimeout(() => {
       void handleSubmit(qid);
-    }, 800);
+    }, 1500); // Increased debounce for better UX
   };
 
-  // Friendly starters to help users answer faster
-  const starters = useMemo(
-    () => [
-      "I’m passionate about...",
-      "On weekends, you’ll find me...",
-      "My friends describe me as...",
-      "A fun fact about me is...",
-    ],
-    []
-  );
+  const starters = [
+    "I’m passionate about...",
+    "On weekends, you’ll find me...",
+    "My friends describe me as...",
+    "A fun fact about me is...",
+  ];
 
-  if (loadingContent !== null) return loadingContent;
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-2xl mx-auto mt-8 space-y-6">
+        <Skeleton className="h-8 w-48 mx-auto" />
+        <div className="space-y-4 p-6 border rounded-2xl bg-white/50">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-32 w-full" />
+          <div className="flex justify-between">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center mt-12 p-8 bg-red-50 rounded-2xl border border-red-100">
+        <p className="text-red-600 mb-4">Failed to load icebreakers.</p>
+        <Button onClick={() => refetch()} variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
   if (questions.length === 0) return null;
 
+  // Completion state
+  if (!current) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-xl mx-auto mt-8 p-8 text-center bg-white rounded-3xl shadow-sm border border-green-100"
+      >
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 text-green-600" />
+        </div>
+        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">All Caught Up!</h3>
+        <p className="text-gray-600">
+          You&apos;ve answered all the icebreakers for today. Great job showing off your personality!
+        </p>
+      </motion.div>
+    );
+  }
+
+  const isSaved = submitted[current.id] || current.answered;
+  const isEditing = editing[current.id];
+  const canSave = (answers[current.id] || "").trim().length > 0;
+
   return (
-    <section className="mt-8">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-serif font-semibold text-primary-dark text-lg">
-          Today&apos;s icebreakers
-        </h3>
-        <div className="text-xs text-gray-600">
-          {answeredCount}/{total} answered
+    <div className="max-w-2xl mx-auto mt-6">
+      {/* Header & Progress */}
+      <div className="mb-6 flex items-center justify-between px-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+          <Sparkles className="w-4 h-4 text-rose-500" />
+          <span>Question {Math.min(index + 1, total)} of {total}</span>
+        </div>
+        <div className="text-xs font-medium px-2 py-1 bg-rose-50 text-rose-700 rounded-full">
+          {answeredCount} answered
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mb-4">
-        <div
-          className="h-2 bg-rose-500 transition-all"
-          style={{
-            width: total
-              ? `${Math.round((answeredCount / total) * 100)}%`
-              : "0%",
-          }}
+      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mb-8">
+        <motion.div
+          className="h-full bg-gradient-to-r from-rose-400 to-rose-600"
+          initial={{ width: 0 }}
+          animate={{ width: `${(answeredCount / total) * 100}%` }}
+          transition={{ duration: 0.5 }}
         />
       </div>
 
-      {current ? (
+      <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.18 }}
-          className="rounded-lg border border-gray-200 bg-white/80 p-4"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.2 }}
+          className="relative bg-white rounded-3xl shadow-sm border border-gray-200/60 overflow-hidden"
         >
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <p className="text-sm text-gray-800">
-              <span className="text-gray-500 mr-2">
-                Question {Math.min(index + 1, total)} of {total}
-              </span>
+          {/* Card Header */}
+          <div className="p-6 md:p-8 pb-4">
+            <h2 className="text-xl md:text-2xl font-serif font-medium text-gray-900 leading-relaxed">
               {current.text}
-            </p>
-            {(submitted[current.id] || current.answered) &&
-              !editing[current.id] && (
-                <span className="inline-flex items-center text-green-600 text-xs">
-                  <CheckCircle2 className="w-4 h-4 mr-1" /> Saved
-                </span>
-              )}
+            </h2>
+            
+            {isSaved && !isEditing && (
+              <div className="mt-4 flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-lg w-fit text-sm font-medium">
+                <CheckCircle2 className="w-4 h-4" />
+                Answer Saved
+              </div>
+            )}
           </div>
 
-          {/* Starters */}
-          <div className="mb-2 flex flex-wrap gap-2">
-            {starters.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className="text-xs rounded-full border border-gray-300 px-2 py-1 hover:bg-gray-50"
-                onClick={() => {
-                  setAnswers((a) => ({
-                    ...a,
-                    [current.id]: `${(a[current.id] || "").trim()}${(a[current.id] || "").trim() ? " " : ""}${s} `,
-                  }));
-                  // focus textarea so users can continue typing
-                  setTimeout(() => textareaRef.current?.focus(), 30);
+          {/* Card Body */}
+          <div className="px-6 md:px-8 pb-8">
+            {(!isSaved || isEditing) && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {starters.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className="text-xs font-medium text-gray-600 bg-gray-50 hover:bg-rose-50 hover:text-rose-700 border border-gray-200 hover:border-rose-200 rounded-full px-3 py-1.5 transition-colors"
+                    onClick={() => {
+                      setAnswers((a) => ({
+                        ...a,
+                        [current.id]: `${(a[current.id] || "").trim()}${(a[current.id] || "").trim() ? " " : ""}${s} `,
+                      }));
+                      textareaRef.current?.focus();
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="relative">
+              <Textarea
+                ref={textareaRef}
+                value={answers[current.id] || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAnswers((a) => ({ ...a, [current.id]: val }));
+                  if (isSaved) setEditing((ed) => ({ ...ed, [current.id]: true }));
+                  scheduleAutosave(current.id);
                 }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    void handleSubmit(current.id);
+                  }
+                }}
+                placeholder="Type your answer here..."
+                maxLength={500}
+                className={cn(
+                  "min-h-[140px] resize-none text-base leading-relaxed p-4 rounded-xl border-gray-200 focus:border-rose-300 focus:ring-rose-100 transition-all",
+                  isSaved && !isEditing ? "bg-gray-50 text-gray-700" : "bg-white"
+                )}
+                disabled={saving[current.id] || (isSaved && !isEditing)}
+              />
+              <div className="absolute bottom-3 right-3 text-xs text-gray-400 font-medium">
+                {answers[current.id]?.length || 0}/500
+              </div>
+            </div>
 
-          <Textarea
-            ref={textareaRef}
-            value={answers[current.id] || ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              setAnswers((a) => ({ ...a, [current.id]: val }));
-              if (submitted[current.id] || current.answered) {
-                setEditing((ed) => ({ ...ed, [current.id]: true }));
-              }
-              scheduleAutosave(current.id);
-            }}
-            onKeyDown={(e) => {
-              // Cmd/Ctrl + Enter triggers Save
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void handleSubmit(current.id);
-              }
-            }}
-            placeholder="Your answer..."
-            maxLength={500}
-            className="min-h-[100px]"
-            disabled={
-              saving[current.id] ||
-              (!editing[current.id] &&
-                (submitted[current.id] || current.answered))
-            }
-            aria-label={`Answer to: ${current.text}`}
-          />
-          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-            <span>{answers[current.id]?.length || 0}/500</span>
-            <div className="flex items-center gap-2">
-              {/* autosave indicator when debounce scheduled */}
-              {current && debounceRefs.current[current.id] ? (
-                <div className="text-xxs text-gray-400 mr-2">
-                  Autosave scheduled…
-                </div>
-              ) : null}
-              {(submitted[current.id] || current.answered) && (
+            {/* Actions Bar */}
+            <div className="mt-6 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    if (editing[current.id]) {
-                      // If toggling from Edit -> Done, save immediately
-                      void handleSubmit(current.id);
-                    } else {
-                      setEditing((e) => ({ ...e, [current.id]: true }));
-                    }
-                  }}
-                  disabled={saving[current.id]}
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => handleSkip(current.id)}
                 >
-                  {editing[current.id] ? "Done" : "Edit"}
+                  <SkipForward className="w-4 h-4 mr-2" />
+                  Skip
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleCopy(current.id)}
-                disabled={!((answers[current.id] || "").trim().length > 0)}
-              >
-                Copy
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSkip(current.id)}
-              >
-                <SkipForward className="w-4 h-4 mr-1" /> Skip
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => handleSubmit(current.id)}
-                disabled={
-                  mutationPending ||
-                  (!editing[current.id] &&
-                    (submitted[current.id] || current.answered)) ||
-                  !(answers[current.id] || "").trim()
-                }
-              >
-                {saving[current.id] ? "Saving..." : "Save & Continue (⌘↵)"}
-              </Button>
+                
+                {canSave && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={() => handleCopy(current.id)}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {isSaved && !isEditing ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditing((e) => ({ ...e, [current.id]: true }))}
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleSubmit(current.id)}
+                    disabled={!canSave || saving[current.id]}
+                    className="bg-rose-600 hover:bg-rose-700 text-white min-w-[120px]"
+                  >
+                    {saving[current.id] ? (
+                      "Saving..."
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIndex((i) => Math.max(i - 1, 0))}
-              disabled={index === 0}
-            >
-              <ChevronsLeft className="w-4 h-4 mr-1" /> Previous
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                setIndex((i) => Math.min(i + 1, Math.max(total - 1, 0)))
-              }
-              disabled={index >= total - 1}
-            >
-              Next <ChevronsRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
         </motion.div>
-      ) : (
-        <div className="rounded-lg border border-gray-200 bg-white/80 p-6 text-center">
-          <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-2" />
-          <p className="text-sm text-gray-700">
-            All done for today. Great job!
-          </p>
-        </div>
-      )}
-    </section>
+      </AnimatePresence>
+
+      {/* Navigation */}
+      <div className="mt-8 flex items-center justify-between px-4">
+        <Button
+          variant="ghost"
+          className="text-gray-500 hover:text-gray-900"
+          onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+          disabled={index === 0}
+        >
+          <ChevronsLeft className="w-5 h-5 mr-1" />
+          Previous
+        </Button>
+        
+        <Button
+          variant="ghost"
+          className="text-gray-500 hover:text-gray-900"
+          onClick={() => setIndex((i) => Math.min(i + 1, total - 1))}
+          disabled={index >= total - 1}
+        >
+          Next
+          <ChevronsRight className="w-5 h-5 ml-1" />
+        </Button>
+      </div>
+    </div>
   );
 }

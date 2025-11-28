@@ -44,20 +44,21 @@ type Props = {
   // no image props
 };
 
+
 const FormSection: React.FC<{
   title: string;
   children: React.ReactNode;
   gridClassName?: string;
 }> = ({ title, children, gridClassName }) => (
-  <Card className="mb-6 border-0 shadow-md">
-    <CardHeader>
-      <CardTitle className="text-lg md:text-xl font-semibold">
+  <Card className="mb-6 border border-neutral-200/60 shadow-sm rounded-3xl overflow-hidden bg-white/50 backdrop-blur-sm">
+    <CardHeader className="border-b border-neutral-100/80 bg-white/50">
+      <CardTitle className="text-lg md:text-xl font-semibold text-neutral-800">
         {title}
       </CardTitle>
     </CardHeader>
     <CardContent
       className={
-        gridClassName || "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"
+        gridClassName || "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 p-6"
       }
     >
       {children}
@@ -116,6 +117,14 @@ export default function ProfileEditSimpleForm({
         diet: enhancedValidationSchemas.cultural.shape.diet.optional(),
         smoking: enhancedValidationSchemas.cultural.shape.smoking.optional(),
         drinking: enhancedValidationSchemas.cultural.shape.drinking.optional(),
+        religiousPractice:
+          enhancedValidationSchemas.cultural.shape.religiousPractice.optional(),
+        familyValues:
+          enhancedValidationSchemas.cultural.shape.familyValues.optional(),
+        marriageViews:
+          enhancedValidationSchemas.cultural.shape.marriageViews.optional(),
+        traditionalValues:
+          enhancedValidationSchemas.cultural.shape.traditionalValues.optional(),
 
         // Professional - using same validation as profile creation modal
         education:
@@ -608,6 +617,9 @@ export default function ProfileEditSimpleForm({
           ]}
           placeholder="Select drinking preference"
         />
+
+        {/* New Cultural Fields */}
+        <ProfileFormStepCultural form={form} />
       </FormSection>
 
       {/* Education & Career - align with Step 4 */}
@@ -766,13 +778,13 @@ export default function ProfileEditSimpleForm({
       )}
 
       {/* Sticky action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 py-3 px-4 shadow-md">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-neutral-200/60 z-50 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
         <div className="max-w-4xl mx-auto flex justify-end gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel ? onCancel : () => router.back()}
-            className="min-w-[120px]"
+            className="min-w-[120px] rounded-full border-neutral-300 hover:bg-neutral-50"
             disabled={loading}
           >
             Cancel
@@ -780,7 +792,7 @@ export default function ProfileEditSimpleForm({
           <Button
             type="submit"
             disabled={loading || !formState.isDirty}
-            className="min-w-[140px] flex items-center justify-center"
+            className="min-w-[140px] flex items-center justify-center rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
           >
             {loading && <LoadingSpinner size={18} className="mr-2" />}
             Save Changes

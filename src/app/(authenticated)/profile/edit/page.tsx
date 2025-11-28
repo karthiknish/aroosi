@@ -103,6 +103,10 @@ function convertFormValuesToProfile(
     smoking: (formValues.smoking as SmokingDrinking) || "no",
     diet: (formValues.diet as Diet) || "vegetarian",
     physicalStatus: (formValues.physicalStatus as PhysicalStatus) || "normal",
+    religiousPractice: formValues.religiousPractice as any,
+    familyValues: formValues.familyValues as any,
+    marriageViews: formValues.marriageViews as any,
+    traditionalValues: formValues.traditionalValues as any,
     updatedAt: Date.now(),
   };
 }
@@ -152,6 +156,10 @@ function fromProfileFormComponentValues(
     motherTongue: values.motherTongue ?? "",
     religion: values.religion ?? "",
     ethnicity: values.ethnicity ?? "",
+    religiousPractice: values.religiousPractice ?? "",
+    familyValues: values.familyValues ?? "",
+    marriageViews: values.marriageViews ?? "",
+    traditionalValues: values.traditionalValues ?? "",
   };
 }
 
@@ -285,6 +293,10 @@ export default function EditProfilePage() {
       motherTongue: (profileDataState.motherTongue as string) || "",
       religion: (profileDataState.religion as string) || "",
       ethnicity: (profileDataState.ethnicity as string) || "",
+      religiousPractice: (profileDataState.religiousPractice as any) || "",
+      familyValues: (profileDataState.familyValues as any) || "",
+      marriageViews: (profileDataState.marriageViews as any) || "",
+      traditionalValues: (profileDataState.traditionalValues as any) || "",
     };
   }, [profileDataStateString, profileDataState]); // Compare content of profileDataState
 
@@ -453,40 +465,24 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col py-10 px-4 md:px-8 overflow-hidden">
-      {/* Decorative pink circle background */}
-      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
-
-      {/* Page title with pink wavy underline */}
-      <div className="relative w-fit mx-auto mb-8 z-10">
-        <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2 text-left">
-          Edit Profile
-        </h1>
-        <svg
-          viewBox="0 0 200 12"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="absolute left-0 top-full w-[140px] sm:w-[200px] h-[12px]"
-        >
-          <path
-            d="M2 6c40-8 80 8 120 0s38-8 76 0"
-            stroke="#EC4899"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-
-      <div className="flex justify-center z-10">
-        <div className="w-full max-w-3xl bg-white shadow-xl rounded-xl p-6 md:p-8">
-          <ProfileEditSimpleForm
-            initialValues={mapProfileToFormValues(profileData)}
-            onSubmit={handleProfileFormComponentSubmit}
-            loading={updateProfileMutation.status === "pending"}
-            serverError={serverError || undefined}
-            key={profileData._id}
-          />
+    <div className="min-h-screen bg-gradient-to-b from-rose-50/50 via-white to-white pb-24">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+            Edit Profile
+          </h1>
+          <p className="text-neutral-500">
+            Update your profile information to help others get to know you better.
+          </p>
         </div>
+
+        <ProfileEditSimpleForm
+          initialValues={mapProfileToFormValues(profileData)}
+          onSubmit={handleProfileFormComponentSubmit}
+          loading={updateProfileMutation.status === "pending"}
+          serverError={serverError || undefined}
+          key={profileData._id}
+        />
       </div>
     </div>
   );

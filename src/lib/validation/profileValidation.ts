@@ -172,6 +172,10 @@ export const enhancedValidationSchemas = {
     diet: z.string().optional(),
     smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
     drinking: z.enum(["no", "occasionally", "yes", ""]).optional(),
+    religiousPractice: z.string().optional(),
+    familyValues: z.string().optional(),
+    marriageViews: z.string().optional(),
+    traditionalValues: z.string().optional(),
   }),
 
   // Step 4: Education & Career
@@ -299,6 +303,10 @@ export const completeProfileSchema = z.object({
   diet: enhancedValidationSchemas.cultural.shape.diet,
   smoking: enhancedValidationSchemas.cultural.shape.smoking,
   drinking: enhancedValidationSchemas.cultural.shape.drinking,
+  religiousPractice: enhancedValidationSchemas.cultural.shape.religiousPractice,
+  familyValues: enhancedValidationSchemas.cultural.shape.familyValues,
+  marriageViews: enhancedValidationSchemas.cultural.shape.marriageViews,
+  traditionalValues: enhancedValidationSchemas.cultural.shape.traditionalValues,
   annualIncome: enhancedValidationSchemas.education.shape.annualIncome,
   partnerPreferenceAgeMin:
     enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceAgeMin,

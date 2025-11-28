@@ -30,6 +30,7 @@ import {
   Target,
   Building2,
   Eye,
+  Scale,
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,6 +43,12 @@ import { useProfileImages } from "@/hooks/useProfileImages";
 import { useInterestStatus } from "@/hooks/useInterestStatus";
 import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
+import {
+  RELIGIOUS_PRACTICES,
+  FAMILY_VALUES,
+  MARRIAGE_VIEWS,
+  TRADITIONAL_VALUES,
+} from "@/types/cultural";
 import { ErrorState } from "@/components/ui/error-state";
 import { useOffline } from "@/hooks/useOffline";
 // Legacy SafetyActionButton replaced by unified ReportModal (chat parity)
@@ -394,11 +401,15 @@ export default function ProfileDetailPage() {
   }) {
     return (
       <div
-        className={`flex items-center gap-2 mb-1 text-gray-700 ${className}`}
+        className={`flex items-center gap-3 mb-2 text-neutral-700 ${className}`}
       >
-        <span className="text-red-600">{icon}</span>
-        <span className="font-medium">{label}:</span>
-        <span className="text-gray-800">{value ?? "-"}</span>
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+          {icon}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-neutral-500 font-medium uppercase tracking-wider">{label}</span>
+          <span className="text-sm md:text-base font-medium text-neutral-800">{value ?? "-"}</span>
+        </div>
       </div>
     );
   }
@@ -542,17 +553,11 @@ export default function ProfileDetailPage() {
           });
         }}
       />
-      <div className="relative w-full overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
+      <div className="relative w-full min-h-screen overflow-hidden bg-gradient-to-b from-rose-50/50 via-white to-white py-16 px-4 flex items-center justify-center overflow-x-hidden">
         {/* Decorative color pop circles */}
-        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-        {/* Subtle SVG background pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        ></div>
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary/20 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100/30 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        
         <motion.div
           key="profile-card"
           variants={cardVariants}
@@ -561,7 +566,7 @@ export default function ProfileDetailPage() {
           exit="exit"
           className="max-w-4xl w-full mx-auto"
         >
-          <Card className="shadow-xl rounded-2xl overflow-hidden bg-white border-0 z-10">
+          <Card className="shadow-xl rounded-3xl overflow-hidden bg-white/80 backdrop-blur-sm border border-white/50 z-10">
             <CardHeader className="p-0 relative">
               {/* Unified safety controls */}
               {!isOwnProfile && (
@@ -968,163 +973,214 @@ export default function ProfileDetailPage() {
                 </motion.div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mt-8 mb-8">
                 {/* Basic Information */}
-                <div className="space-y-6">
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                    <UserCircle className="w-5 h-5 text-accent" />
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                     Basic Information
                   </h3>
-                  <IconRow
-                    icon={<Calendar className="w-4 h-4" />}
-                    label="Age"
-                    value={
-                      calculateAge(profile?.dateOfBirth || "")?.toString() ||
-                      "-"
-                    }
-                  />
-                  <IconRow
-                    icon={<Ruler className="w-4 h-4" />}
-                    label="Height"
-                    value={formatHeight(profile?.height || "")}
-                  />
-                  <IconRow
-                    icon={<Users className="w-4 h-4" />}
-                    label="Marital Status"
-                    value={formatBoolean(profile?.maritalStatus || "")}
-                  />
-                  <IconRow
-                    icon={<DollarSign className="w-4 h-4" />}
-                    label="Annual Income"
-                    value={formatCurrency(profile?.annualIncome || "")}
-                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<Calendar className="w-4 h-4" />}
+                      label="Age"
+                      value={
+                        calculateAge(profile?.dateOfBirth || "")?.toString() ||
+                        "-"
+                      }
+                    />
+                    <IconRow
+                      icon={<Ruler className="w-4 h-4" />}
+                      label="Height"
+                      value={formatHeight(profile?.height || "")}
+                    />
+                    <IconRow
+                      icon={<Users className="w-4 h-4" />}
+                      label="Marital Status"
+                      value={formatBoolean(profile?.maritalStatus || "")}
+                    />
+                    <IconRow
+                      icon={<DollarSign className="w-4 h-4" />}
+                      label="Annual Income"
+                      value={formatCurrency(profile?.annualIncome || "")}
+                    />
+                  </div>
                 </div>
 
                 {/* Education & Career */}
-                <div className="space-y-6">
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                    <BookOpen className="w-5 h-5 text-accent" />
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                     Education & Career
                   </h3>
-                  <IconRow
-                    icon={<BookOpen className="w-4 h-4" />}
-                    label="Education"
-                    value={profile?.education ?? "-"}
-                  />
-                  <IconRow
-                    icon={<Briefcase className="w-4 h-4" />}
-                    label="Occupation"
-                    value={profile?.occupation ?? "-"}
-                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<BookOpen className="w-4 h-4" />}
+                      label="Education"
+                      value={profile?.education ?? "-"}
+                    />
+                    <IconRow
+                      icon={<Briefcase className="w-4 h-4" />}
+                      label="Occupation"
+                      value={profile?.occupation ?? "-"}
+                    />
+                  </div>
                 </div>
 
                 {/* Location */}
-                <div className="space-y-6">
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                    <MapPin className="w-5 h-5 text-accent" />
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                     Location
                   </h3>
-                  <IconRow
-                    icon={<MapPin className="w-4 h-4" />}
-                    label="City"
-                    value={profile?.city ?? "-"}
-                  />
-                  <IconRow
-                    icon={<MapPin className="w-4 h-4" />}
-                    label="Country"
-                    value={profile?.country ?? "-"}
-                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<MapPin className="w-4 h-4" />}
+                      label="City"
+                      value={profile?.city ?? "-"}
+                    />
+                    <IconRow
+                      icon={<MapPin className="w-4 h-4" />}
+                      label="Country"
+                      value={profile?.country ?? "-"}
+                    />
+                  </div>
                 </div>
 
                 {/* Lifestyle */}
-                <div className="space-y-6">
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                    <HeartIcon className="w-5 h-5 text-accent" />
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                     Lifestyle
                   </h3>
-                  <IconRow
-                    icon={<Utensils className="w-4 h-4" />}
-                    label="Diet"
-                    value={formatBoolean(profile?.diet || "")}
-                  />
-                  <IconRow
-                    icon={<Cigarette className="w-4 h-4" />}
-                    label="Smoking"
-                    value={formatBoolean(profile?.smoking || "")}
-                  />
-                  <IconRow
-                    icon={<Wine className="w-4 h-4" />}
-                    label="Drinking"
-                    value={formatBoolean(profile?.drinking || "")}
-                  />
-                  <IconRow
-                    icon={<Accessibility className="w-4 h-4" />}
-                    label="Physical Status"
-                    value={formatBoolean(profile?.physicalStatus || "")}
-                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<Utensils className="w-4 h-4" />}
+                      label="Diet"
+                      value={formatBoolean(profile?.diet || "")}
+                    />
+                    <IconRow
+                      icon={<Cigarette className="w-4 h-4" />}
+                      label="Smoking"
+                      value={formatBoolean(profile?.smoking || "")}
+                    />
+                    <IconRow
+                      icon={<Wine className="w-4 h-4" />}
+                      label="Drinking"
+                      value={formatBoolean(profile?.drinking || "")}
+                    />
+                    <IconRow
+                      icon={<Accessibility className="w-4 h-4" />}
+                      label="Physical Status"
+                      value={formatBoolean(profile?.physicalStatus || "")}
+                    />
+                  </div>
                 </div>
 
                 {/* Religious Information */}
-                <div className="space-y-6">
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                    <Building2 className="w-5 h-5 text-accent" />
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                     Religious Information
                   </h3>
-                  <IconRow
-                    icon={<Building2 className="w-4 h-4" />}
-                    label="Religion"
-                    value={formatBoolean(profile?.religion || "")}
-                  />
-                  <IconRow
-                    icon={<Users className="w-4 h-4" />}
-                    label="Mother Tongue"
-                    value={formatBoolean(profile?.motherTongue || "")}
-                  />
-                  <IconRow
-                    icon={<Users className="w-4 h-4" />}
-                    label="Ethnicity"
-                    value={formatBoolean(profile?.ethnicity || "")}
-                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<Building2 className="w-4 h-4" />}
+                      label="Religion"
+                      value={formatBoolean(profile?.religion || "")}
+                    />
+                    <IconRow
+                      icon={<Users className="w-4 h-4" />}
+                      label="Mother Tongue"
+                      value={formatBoolean(profile?.motherTongue || "")}
+                    />
+                    <IconRow
+                      icon={<Users className="w-4 h-4" />}
+                      label="Ethnicity"
+                      value={formatBoolean(profile?.ethnicity || "")}
+                    />
+                  </div>
+                </div>
+
+                {/* Cultural Values */}
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                    Cultural Values
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<Building2 className="w-4 h-4" />}
+                      label="Religious Practice"
+                      value={
+                        profile?.religiousPractice
+                          ? RELIGIOUS_PRACTICES[profile.religiousPractice]
+                          : "-"
+                      }
+                    />
+                    <IconRow
+                      icon={<Users className="w-4 h-4" />}
+                      label="Family Values"
+                      value={
+                        profile?.familyValues
+                          ? FAMILY_VALUES[profile.familyValues]
+                          : "-"
+                      }
+                    />
+                    <IconRow
+                      icon={<HeartIcon className="w-4 h-4" />}
+                      label="Marriage Views"
+                      value={
+                        profile?.marriageViews
+                          ? MARRIAGE_VIEWS[profile.marriageViews]
+                          : "-"
+                      }
+                    />
+                    <IconRow
+                      icon={<Scale className="w-4 h-4" />}
+                      label="Traditional Values"
+                      value={
+                        profile?.traditionalValues
+                          ? TRADITIONAL_VALUES[profile.traditionalValues]
+                          : "-"
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Partner Preferences */}
-                <div className="space-y-6">
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                    <Target className="w-5 h-5 text-accent" />
+                <div className="space-y-4">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                     Partner Preferences
                   </h3>
-                  <IconRow
-                    icon={<Calendar className="w-4 h-4" />}
-                    label="Age Range"
-                    value={
-                      profile?.partnerPreferenceAgeMin &&
-                      profile?.partnerPreferenceAgeMax
-                        ? `${profile.partnerPreferenceAgeMin} - ${profile.partnerPreferenceAgeMax}`
-                        : "-"
-                    }
-                  />
-                  <IconRow
-                    icon={<MapPin className="w-4 h-4" />}
-                    label="Preferred Location"
-                    value={formatArrayToString(profile?.partnerPreferenceCity)}
-                  />
-                  <IconRow
-                    icon={<Users className="w-4 h-4" />}
-                    label="Preferred Gender"
-                    value={formatBoolean(profile?.preferredGender || "")}
-                  />
+                  <div className="grid grid-cols-1 gap-3">
+                    <IconRow
+                      icon={<Calendar className="w-4 h-4" />}
+                      label="Age Range"
+                      value={
+                        profile?.partnerPreferenceAgeMin &&
+                        profile?.partnerPreferenceAgeMax
+                          ? `${profile.partnerPreferenceAgeMin} - ${profile.partnerPreferenceAgeMax}`
+                          : "-"
+                      }
+                    />
+                    <IconRow
+                      icon={<MapPin className="w-4 h-4" />}
+                      label="Preferred Location"
+                      value={formatArrayToString(profile?.partnerPreferenceCity)}
+                    />
+                    <IconRow
+                      icon={<Users className="w-4 h-4" />}
+                      label="Preferred Gender"
+                      value={formatBoolean(profile?.preferredGender || "")}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* About Me */}
-              <div className="space-y-6">
-                <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-                  <Info className="w-5 h-5 text-accent" />
+              <div className="space-y-4 mb-8">
+                <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
                   About Me
                 </h3>
-                <div className="flex items-start gap-2 text-neutral">
-                  <Info className="w-4 h-4 mt-0.5 text-accent" />
-                  <span>{profile?.aboutMe ?? "-"}</span>
+                <div className="bg-rose-50/50 p-6 rounded-2xl border border-rose-100/50">
+                  <p className="text-neutral-700 leading-relaxed whitespace-pre-wrap">
+                    {profile?.aboutMe ?? "No description provided."}
+                  </p>
                 </div>
               </div>
 
