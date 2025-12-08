@@ -1,0 +1,39 @@
+  {
+  "project_info": {
+    "project_number": "762041256503",
+    "project_id": "aroosi-project",
+    "storage_bucket": "aroosi-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:762041256503:android:5105c4c27e9e1939ac8db2",
+        "android_client_info": {
+          "package_name": "com.aroosi.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "762041256503-f949ndu5cidrerbt4ng6ddv4cg7rskd8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCJme2CQ949nHabcdj50-sjLM1vXDjoR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "762041256503-f949ndu5cidrerbt4ng6ddv4cg7rskd8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

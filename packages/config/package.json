@@ -1,0 +1,10 @@
+{
+    "name": "@aroosi/config",
+    "version": "1.0.0",
+    "private": true,
+    "main": "./index.js",
+    "exports": {
+        "./typescript": "./typescript.json",
+        "./eslint": "./eslint.js"
+    }
+}

@@ -1,0 +1,61 @@
+{
+    "expo": {
+        "name": "Aroosi",
+        "slug": "aroosi",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "automatic",
+        "newArchEnabled": true,
+        "splash": {
+            "image": "./assets/splash-icon.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#B91C1C"
+        },
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.aroosi.app",
+            "googleServicesFile": "./GoogleService-Info.plist",
+            "infoPlist": {
+                "NSCameraUsageDescription": "Aroosi needs camera access to take profile photos",
+                "NSPhotoLibraryUsageDescription": "Aroosi needs photo library access to select profile photos",
+                "NSPhotoLibraryAddUsageDescription": "Aroosi needs permission to save photos"
+            }
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#B91C1C"
+            },
+            "package": "com.aroosi.app",
+            "googleServicesFile": "./google-services.json",
+            "edgeToEdgeEnabled": true
+        },
+        "web": {
+            "favicon": "./assets/favicon.png",
+            "bundler": "metro"
+        },
+        "plugins": [
+            "@react-native-firebase/app",
+            "@react-native-firebase/auth",
+            "@react-native-firebase/crashlytics",
+            "@react-native-google-signin/google-signin",
+            [
+                "expo-splash-screen",
+                {
+                    "backgroundColor": "#B91C1C",
+                    "image": "./assets/splash-icon.png",
+                    "imageWidth": 200
+                }
+            ]
+        ],
+        "experiments": {
+            "typedRoutes": false
+        },
+        "extra": {
+            "eas": {
+                "projectId": "your-eas-project-id"
+            }
+        }
+    }
+}

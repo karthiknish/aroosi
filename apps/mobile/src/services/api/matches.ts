@@ -1,0 +1,115 @@
+/**
+ * Matches API Service
+ */
+
+import { api } from './client';
+
+export type MatchStatus = 'pending' | 'matched' | 'rejected' | 'expired';
+
+export interface Match {
+    id: string;
+    matchedUserId: string;
+    matchedUser: {
+        id: string;
+        displayName: string | null;
+        photoURL: string | null;
+        age?: number;
+        bio?: string;
+        lastActive?: string;
+    };
+    status: MatchStatus;
+    matchedAt?: string;
+    createdAt: string;
+    lastMessage?: {
+        content: string;
+        createdAt: string;
+        senderId: string;
+    };
+    unreadCount: number;
+}
+
+export interface Like {
+    id: string;
+    userId: string;
+    likedUserId: string;
+    isSuperLike: boolean;
+    createdAt: string;
+}
+
+/**
+ * Get all matches
+ */
+export async function getMatches() {
+    return api.get<Match[]>('/matches');
+}
+
+/**
+ * Get unread matches count
+ */
+export async function getUnreadMatchesCount() {
+    return api.get<{ count: number }>('/matches/unread');
+}
+
+/**
+ * Like a user
+ */
+export async function likeUser(userId: string, isSuperLike = false) {
+    return api.post<{ matched: boolean; matchId?: string }>('/recommendations', {
+        action: 'like',
+        userId,
+        isSuperLike,
+    });
+}
+
+/**
+ * Pass on a user
+ */
+export async function passUser(userId: string) {
+    return api.post<{ success: boolean }>('/recommendations', {
+        action: 'pass',
+        userId,
+    });
+}
+
+/**
+ * Unmatch a user
+ */
+export async function unmatch(matchId: string) {
+    return api.delete(`/matches/${matchId}`);
+}
+
+/**
+ * Report a user
+ */
+export async function reportUser(
+    userId: string,
+    reason: string,
+    description?: string
+) {
+    return api.post('/safety/report', {
+        reportedUserId: userId,
+        reason,
+        description,
+    });
+}
+
+/**
+ * Block a user
+ */
+export async function blockUser(userId: string) {
+    return api.post('/safety/block', { userId });
+}
+
+/**
+ * Unblock a user
+ */
+export async function unblockUser(userId: string) {
+    return api.post('/safety/unblock', { userId });
+}
+
+/**
+ * Get blocked users
+ */
+export async function getBlockedUsers() {
+    return api.get<{ userId: string; blockedAt: string }[]>('/safety/blocked');
+}

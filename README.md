@@ -1,116 +1,105 @@
-# Aroosi: Modern Matrimonial Platform
+# Aroosi Monorepo
 
-A production-grade, privacy-first matrimonial platform. This repository highlights a multi-surface architecture (Next.js web, React Native mobile) with a Firebase/Firestore backend and a unified domain model.
+A monorepo containing the Aroosi dating/matchmaking application with web and mobile apps.
 
-This README is focused on exhibiting the project’s complexity and design rather than installation steps.
-
-## System Overview
-
-- Surfaces
-  - Web: Next.js App Router
-  - Mobile: React Native (Expo)
-- Backend/Data
-  - Firebase Firestore (primary data store), Firebase Auth (ID token), Firebase Storage (images), Cloud Functions / scheduled jobs (future)
-- Identity & Sessions
-  - Cookie-first, HttpOnly JWT (access ~15m) + refresh (~7d) issued/validated server-side with Firestore `refreshVersion`
-  - OAuth (Google) and native email/password
-  - Server-side data access via Firebase Admin SDK (no client tokens forwarded)
-- Observability
-  - Structured logs across routes with scope, correlationId, type, statusCode, durationMs
-  - Middleware decision logging
-- Validation
-  - Zod schemas with transforms/refinements and cross-field guards
-  - E.164 phone normalization and end-to-end enforcement
-- CI/CD
-  - GitHub Actions + Vercel + Firebase indexes deploy script
-  - Environment-driven cookie policies with domain-aware diagnostics
-
-## Architecture Topology
-
-Monorepo highlights:
-- web app (Next.js) with edge middleware, cookie-first auth, SSR-friendly data flows
-- mobile app (Expo) consuming same domain model (not shown here but referenced)
-- shared type modules in `src/types` (Firebase-friendly)
-
-Data access strategy:
-- Server-only Firestore access via Firebase Admin (no direct client queries to privileged collections)
-- No Authorization header forwarding; identity derived from Firebase ID token cookie + verified JWT
-- API routes enforce content-type guards and structured error surfaces
-
-Session lifecycle:
-1) Signin/Signup sets `auth-token` (access) and `refresh-token` cookies.
-2) `/api/auth/me` returns identity; on 401 client attempts `/api/auth/refresh` (CAS increment of `refreshVersion`).
-3) Edge middleware allows hydration paths when refresh cookie exists; blocks protected routes otherwise.
-
-## Recent Features & Changes (2025)
-
-- ProtectedRoute gating (auth, onboarding, profile, plan) unified via declarative props.
-- Toast feedback for all access denials (debounced).
-- Removed legacy `/create-profile` flow; onboarding gating centralised.
-- Completed migration from Convex to Firebase (profiles, usage tracking, subscriptions, messaging, images, analytics, email queue).
-
-## Notable Implementation Details
-
-- Structured Logging: correlationId propagation, timing, status, scoped events.
-- Robust Input Handling: strict JSON content-type guards + Zod validation/transforms (height normalization, adult age checks).
-- Image Pipeline: client upload -> Firebase Storage signed URL -> metadata persistence -> ordering.
-- Onboarding Flow: multi-step wizard with validation snapshots & final atomic profile write.
-- Security: HttpOnly cookies, optional public echo cookie disabled by default, strict SameSite/Domain diagnostics.
-
-## Error Surfaces & User Feedback
-
-- Password policy failures surfaced with rule summary & correlationId.
-- Validation errors produce concise aggregated messages.
-
-## Operational Diagnostics
-
-- Correlation IDs on auth flows and propagated to logs.
-- Rate limiting (Firestore-backed) returns Retry-After.
-- Cookie diagnostics warn once per run with actionable hints.
-
-## Complexity Snapshot
-
-- Multi-surface architecture with shared typings
-- Cookie-first dual token model + CAS refresh versioning
-- Edge middleware gating
-- Structured logging taxonomy
-- Firebase-centric data & storage management
-
-## Engineering Focus Areas
-
-- Authentication & Sessions: Firebase Auth + custom token rotation layer
-- Data Access: Firestore via Admin SDK (no legacy Convex calls)
-- Validation: Zod schemas & normalization
-- Observability: structured logs + correlation IDs
-- Frontend UX: multi-step onboarding, resumable uploads, robust error surfacing
-- CI/CD: Firestore index deployment & environment-aware builds
-
-## Roadmap & Quality
-
-- Expand automated tests for refresh flow, rate limiting, and profile gating
-- Evaluate migration of scheduled jobs to Cloud Functions
-
-This document is intentionally operations- and architecture-forward to convey system complexity without step-by-step install instructions.
-
-## Firebase Admin Credentials (Environment-Only)
-
-Provide credentials exclusively via environment variables (no path-based JSON in production):
-
-Priority order:
-1. `FIREBASE_SERVICE_ACCOUNT` – single-line JSON OR base64 string (if it does not start with `{` it is treated as base64)
-2. `FIREBASE_SERVICE_ACCOUNT_BASE64` – explicit base64 JSON
-3. Application Default Credentials (local fallback only)
-
-Example (compact single line – escape newlines in the private key with `\\n`):
+## Structure
 
 ```
-FIREBASE_SERVICE_ACCOUNT={"type":"service_account","project_id":"your-project","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\\nABC...\\n-----END PRIVATE KEY-----\\n","client_email":"firebase-adminsdk@your-project.iam.gserviceaccount.com"}
+aroosi/
+├── apps/
+│   ├── web/              # Next.js web application
+│   └── mobile/           # Expo React Native iOS app
+├── packages/
+│   ├── shared/           # Shared types, constants, utilities
+│   └── config/           # Shared configs (TypeScript, ESLint)
+├── firebase.json         # Firebase project config
+├── firestore.rules       # Firestore security rules
+└── pnpm-workspace.yaml   # pnpm monorepo config
 ```
 
-If multi-line JSON was accidentally pasted and you see only `{` parsed, base64 encode instead:
+## Quick Start
 
-```
-FIREBASE_SERVICE_ACCOUNT_BASE64=$(base64 -i serviceAccount.json | tr -d '\n')
+### Prerequisites
+
+- Node.js 18+
+- pnpm 8+
+- Xcode (for iOS development)
+- Firebase CLI
+
+### Installation
+
+```bash
+# Install pnpm if you haven't
+npm install -g pnpm
+
+# Install all dependencies
+pnpm install
 ```
 
-Deprecated: `FIREBASE_SERVICE_ACCOUNT_PATH` has been removed to reduce secret sprawl and accidental commits. Delete any usage of it in existing environments.
+### Development
+
+**Web App:**
+```bash
+pnpm dev
+# or
+cd apps/web && pnpm dev
+```
+
+**Mobile App:**
+```bash
+cd apps/mobile
+pnpm start
+```
+
+**iOS Local Build:**
+```bash
+cd apps/mobile
+pnpm ios:build
+pnpm ios:open  # Opens Xcode
+```
+
+## Firebase Setup
+
+1. Copy your `GoogleService-Info.plist` to `apps/mobile/`
+2. Copy your `google-services.json` to `apps/mobile/`
+3. Update the Firebase project ID in `.firebaserc`
+
+## Apps
+
+### Web (`apps/web`)
+- **Framework:** Next.js 16
+- **UI:** React 19, shadcn/ui, Tailwind CSS
+- **Backend:** Firebase (Auth, Firestore, Storage)
+
+### Mobile (`apps/mobile`)
+- **Framework:** Expo SDK 52, React Native
+- **Navigation:** React Navigation 7
+- **State:** Zustand
+- **Backend:** React Native Firebase
+
+## Packages
+
+### Shared (`packages/shared`)
+Common types, constants, and utility functions:
+- User, Match, Message types
+- App constants
+- Helper functions
+
+### Config (`packages/config`)
+Shared configuration files:
+- TypeScript base config
+- ESLint config
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start web development server |
+| `pnpm dev:mobile` | Start mobile Expo server |
+| `pnpm build` | Build web app |
+| `pnpm lint` | Lint all packages |
+| `pnpm type-check` | Type check all packages |
+
+## License
+
+Private

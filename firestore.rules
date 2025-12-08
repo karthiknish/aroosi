@@ -5,14 +5,10 @@ service cloud.firestore {
     function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
     // Safe version that handles missing conversation docs by checking conversation ID format
     function safeInConversation(convId) {
-      // Fast-path: conversation IDs are normalized "userA_userB" strings, so validate membership by format first.
-      let parts = convId.split('_');
-      if (parts.size() == 2 && request.auth.uid in parts) {
-        return true;
-      }
-      // Fallback: conversation doc may use a different format; verify via document read if permitted.
-      let convDoc = get(/databases/$(database)/documents/conversations/$(convId));
-      return convDoc.data != null && (request.auth.uid in convDoc.data.participants);
+      // Check if user is in the conversation ID (format: "userA_userB")
+      return request.auth.uid in convId.split('_') ||
+        (exists(/databases/$(database)/documents/conversations/$(convId)) &&
+         request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants);
     }
 
     match /users/{userId} {
@@ -82,6 +78,15 @@ service cloud.firestore {
     match /recommendations/{recId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid; // only owner can read
       allow write: if false;
+    }
+
+    // User presence tracking - allow authenticated users to manage presence
+    match /presence/{userId} {
+      // Anyone signed in can read presence (for showing online status)
+      allow read: if isSignedIn();
+      // Only the user can update their own presence
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
     }
 
     // Voice messages metadata - restrict to sender/recipient or conversation participants.

@@ -1,0 +1,483 @@
+/**
+ * Chat Screen - Real-time messaging with a match
+ */
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    SafeAreaView,
+    TextInput,
+    TouchableOpacity,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { EmptyState } from '../../components/EmptyState';
+import { useAuthStore } from '../../store';
+import {
+    getMessages,
+    sendMessage,
+    markMessagesAsRead,
+    type Message,
+} from '../../services/api/messages';
+
+interface ChatScreenProps {
+    matchId: string;
+    recipientName: string;
+    recipientPhoto?: string;
+    onBack?: () => void;
+}
+
+export default function ChatScreen({
+    matchId,
+    recipientName,
+    recipientPhoto,
+    onBack
+}: ChatScreenProps) {
+    const { user } = useAuthStore();
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [inputText, setInputText] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const flatListRef = useRef<FlatList>(null);
+
+    // Load messages
+    const loadMessages = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const response = await getMessages(matchId);
+
+            if (response.error) {
+                setError(response.error);
+                return;
+            }
+
+            if (response.data?.messages) {
+                setMessages(response.data.messages.reverse());
+                // Mark as read
+                await markMessagesAsRead(matchId);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load messages');
+        } finally {
+            setLoading(false);
+        }
+    }, [matchId]);
+
+    useEffect(() => {
+        loadMessages();
+    }, [loadMessages]);
+
+    // Send message
+    const handleSend = useCallback(async () => {
+        if (!inputText.trim() || sending) return;
+
+        const messageText = inputText.trim();
+        setInputText('');
+        setSending(true);
+
+        // Optimistically add message
+        const tempMessage: Message = {
+            id: `temp-${Date.now()}`,
+            matchId,
+            senderId: user?.id || '',
+            recipientId: '',
+            type: 'text',
+            content: messageText,
+            createdAt: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, tempMessage]);
+
+        try {
+            const response = await sendMessage(matchId, messageText);
+
+            if (response.data) {
+                // Replace temp message with real one
+                setMessages(prev =>
+                    prev.map(m => m.id === tempMessage.id ? response.data! : m)
+                );
+            }
+        } catch (err) {
+            // Remove temp message on error
+            setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+            setError('Failed to send message');
+        } finally {
+            setSending(false);
+        }
+    }, [inputText, matchId, sending, user?.id]);
+
+    // Format time
+    const formatTime = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    // Format date header
+    const formatDateHeader = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Yesterday';
+        } else {
+            return date.toLocaleDateString([], {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+    };
+
+    // Check if should show date header
+    const shouldShowDateHeader = (index: number) => {
+        if (index === 0) return true;
+        const currentDate = new Date(messages[index].createdAt).toDateString();
+        const prevDate = new Date(messages[index - 1].createdAt).toDateString();
+        return currentDate !== prevDate;
+    };
+
+    // Render message item
+    const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+        const isMe = item.senderId === user?.id;
+        const showDateHeader = shouldShowDateHeader(index);
+
+        return (
+            <View>
+                {showDateHeader && (
+                    <View style={styles.dateHeader}>
+                        <Text style={styles.dateHeaderText}>
+                            {formatDateHeader(item.createdAt)}
+                        </Text>
+                    </View>
+                )}
+                <View style={[
+                    styles.messageBubble,
+                    isMe ? styles.myMessage : styles.theirMessage
+                ]}>
+                    {item.type === 'icebreaker' && (
+                        <View style={styles.icebreakerBadge}>
+                            <Text style={styles.icebreakerIcon}>💡</Text>
+                        </View>
+                    )}
+                    <Text style={[
+                        styles.messageText,
+                        isMe ? styles.myMessageText : styles.theirMessageText
+                    ]}>
+                        {item.content}
+                    </Text>
+                    <Text style={[
+                        styles.messageTime,
+                        isMe ? styles.myMessageTime : styles.theirMessageTime
+                    ]}>
+                        {formatTime(item.createdAt)}
+                    </Text>
+                </View>
+            </View>
+        );
+    };
+
+    // Render loading state
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Text style={styles.backIcon}>←</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>{recipientName}</Text>
+                    <View style={styles.headerRight} />
+                </View>
+                <LoadingSpinner message="Loading messages..." />
+            </SafeAreaView>
+        );
+    }
+
+    return (
+        <SafeAreaView style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <Text style={styles.backIcon}>←</Text>
+                </TouchableOpacity>
+                <View style={styles.headerCenter}>
+                    {recipientPhoto ? (
+                        <Image
+                            source={{ uri: recipientPhoto }}
+                            style={styles.headerAvatar}
+                            contentFit="cover"
+                        />
+                    ) : (
+                        <View style={styles.headerAvatarPlaceholder}>
+                            <Text style={styles.headerAvatarText}>
+                                {recipientName.charAt(0)}
+                            </Text>
+                        </View>
+                    )}
+                    <Text style={styles.headerTitle}>{recipientName}</Text>
+                </View>
+                <TouchableOpacity style={styles.headerRight}>
+                    <Text style={styles.moreIcon}>⋮</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Messages */}
+            <KeyboardAvoidingView
+                style={styles.content}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={90}
+            >
+                {error ? (
+                    <EmptyState
+                        emoji="😕"
+                        title="Couldn't load messages"
+                        message={error}
+                        actionLabel="Try Again"
+                        onAction={loadMessages}
+                    />
+                ) : messages.length === 0 ? (
+                    <EmptyState
+                        emoji="💬"
+                        title="Start the conversation!"
+                        message={`Send a message to ${recipientName} to begin chatting.`}
+                    />
+                ) : (
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        renderItem={renderMessage}
+                        keyExtractor={item => item.id}
+                        contentContainerStyle={styles.messagesList}
+                        showsVerticalScrollIndicator={false}
+                        onContentSizeChange={() =>
+                            flatListRef.current?.scrollToEnd({ animated: false })
+                        }
+                    />
+                )}
+
+                {/* Input Area */}
+                <View style={styles.inputContainer}>
+                    <TouchableOpacity style={styles.attachButton}>
+                        <Text style={styles.attachIcon}>📎</Text>
+                    </TouchableOpacity>
+                    <View style={styles.inputWrapper}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Type a message..."
+                            placeholderTextColor={colors.neutral[400]}
+                            value={inputText}
+                            onChangeText={setInputText}
+                            multiline
+                            maxLength={1000}
+                        />
+                    </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.sendButton,
+                            inputText.trim() && styles.sendButtonActive
+                        ]}
+                        onPress={handleSend}
+                        disabled={!inputText.trim() || sending}
+                    >
+                        <Text style={[
+                            styles.sendIcon,
+                            inputText.trim() && styles.sendIconActive
+                        ]}>
+                            {sending ? '⏳' : '➤'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.background.light,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing[4],
+        paddingVertical: spacing[3],
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.light,
+        backgroundColor: colors.background.light,
+    },
+    backButton: {
+        padding: spacing[2],
+    },
+    backIcon: {
+        fontSize: 24,
+        color: colors.neutral[800],
+    },
+    headerCenter: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: spacing[2],
+    },
+    headerAvatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        marginRight: spacing[2],
+    },
+    headerAvatarPlaceholder: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: colors.primary[100],
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing[2],
+    },
+    headerAvatarText: {
+        fontSize: fontSize.base,
+        fontWeight: fontWeight.semibold,
+        color: colors.primary.DEFAULT,
+    },
+    headerTitle: {
+        fontSize: fontSize.lg,
+        fontWeight: fontWeight.semibold,
+        color: colors.neutral[900],
+    },
+    headerRight: {
+        padding: spacing[2],
+    },
+    moreIcon: {
+        fontSize: 24,
+        color: colors.neutral[600],
+    },
+    content: {
+        flex: 1,
+    },
+    messagesList: {
+        padding: spacing[4],
+        paddingBottom: spacing[2],
+    },
+    dateHeader: {
+        alignItems: 'center',
+        marginVertical: spacing[4],
+    },
+    dateHeaderText: {
+        fontSize: fontSize.xs,
+        color: colors.neutral[400],
+        backgroundColor: colors.neutral[100],
+        paddingHorizontal: spacing[3],
+        paddingVertical: spacing[1],
+        borderRadius: borderRadius.full,
+    },
+    messageBubble: {
+        maxWidth: '80%',
+        padding: spacing[3],
+        borderRadius: borderRadius.xl,
+        marginBottom: spacing[2],
+    },
+    myMessage: {
+        alignSelf: 'flex-end',
+        backgroundColor: colors.primary.DEFAULT,
+        borderBottomRightRadius: 4,
+    },
+    theirMessage: {
+        alignSelf: 'flex-start',
+        backgroundColor: colors.neutral[100],
+        borderBottomLeftRadius: 4,
+    },
+    icebreakerBadge: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: colors.warning,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    icebreakerIcon: {
+        fontSize: 12,
+    },
+    messageText: {
+        fontSize: fontSize.base,
+        lineHeight: fontSize.base * 1.4,
+    },
+    myMessageText: {
+        color: '#FFFFFF',
+    },
+    theirMessageText: {
+        color: colors.neutral[800],
+    },
+    messageTime: {
+        fontSize: fontSize.xs,
+        marginTop: spacing[1],
+    },
+    myMessageTime: {
+        color: 'rgba(255,255,255,0.7)',
+        textAlign: 'right',
+    },
+    theirMessageTime: {
+        color: colors.neutral[400],
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        padding: spacing[3],
+        borderTopWidth: 1,
+        borderTopColor: colors.border.light,
+        backgroundColor: colors.background.light,
+    },
+    attachButton: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    attachIcon: {
+        fontSize: 20,
+    },
+    inputWrapper: {
+        flex: 1,
+        backgroundColor: colors.neutral[100],
+        borderRadius: borderRadius.xl,
+        paddingHorizontal: spacing[3],
+        marginHorizontal: spacing[2],
+        maxHeight: 120,
+    },
+    input: {
+        fontSize: fontSize.base,
+        color: colors.neutral[900],
+        paddingVertical: spacing[2],
+    },
+    sendButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.neutral[200],
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sendButtonActive: {
+        backgroundColor: colors.primary.DEFAULT,
+    },
+    sendIcon: {
+        fontSize: 18,
+        color: colors.neutral[400],
+    },
+    sendIconActive: {
+        color: '#FFFFFF',
+    },
+});
