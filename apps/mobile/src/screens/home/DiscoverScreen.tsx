@@ -45,6 +45,40 @@ const FILTER_OPTIONS = {
         { label: '100 km', value: 100 },
         { label: 'Any', value: undefined },
     ],
+    // Premium filters
+    ethnicities: [
+        { label: 'Any', value: undefined },
+        { label: 'South Asian', value: 'south_asian' },
+        { label: 'Middle Eastern', value: 'middle_eastern' },
+        { label: 'East Asian', value: 'east_asian' },
+        { label: 'African', value: 'african' },
+        { label: 'European', value: 'european' },
+        { label: 'Latin American', value: 'latin_american' },
+        { label: 'Other', value: 'other' },
+    ],
+    motherTongues: [
+        { label: 'Any', value: undefined },
+        { label: 'English', value: 'english' },
+        { label: 'Hindi', value: 'hindi' },
+        { label: 'Urdu', value: 'urdu' },
+        { label: 'Punjabi', value: 'punjabi' },
+        { label: 'Tamil', value: 'tamil' },
+        { label: 'Telugu', value: 'telugu' },
+        { label: 'Bengali', value: 'bengali' },
+        { label: 'Gujarati', value: 'gujarati' },
+        { label: 'Arabic', value: 'arabic' },
+        { label: 'Other', value: 'other' },
+    ],
+    languages: [
+        { label: 'Any', value: undefined },
+        { label: 'English', value: 'english' },
+        { label: 'Hindi', value: 'hindi' },
+        { label: 'Urdu', value: 'urdu' },
+        { label: 'Arabic', value: 'arabic' },
+        { label: 'French', value: 'french' },
+        { label: 'Spanish', value: 'spanish' },
+        { label: 'Other', value: 'other' },
+    ],
 };
 
 export default function DiscoverScreen() {
@@ -56,6 +90,24 @@ export default function DiscoverScreen() {
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState<SearchFilters>({});
     const [error, setError] = useState<string | null>(null);
+    const [isPremium, setIsPremium] = useState(false);
+
+    // Check subscription status on mount
+    useEffect(() => {
+        const checkPremium = async () => {
+            try {
+                const { getSubscriptionStatus } = await import('../../services/api/subscription');
+                const response = await getSubscriptionStatus();
+                if (response.data) {
+                    const plan = response.data.plan?.toLowerCase() || 'free';
+                    setIsPremium(plan === 'premium' || plan === 'premiumplus');
+                }
+            } catch {
+                // Default to non-premium
+            }
+        };
+        checkPremium();
+    }, []);
 
     // Load profiles
     const loadProfiles = useCallback(async (isRefresh = false, query?: string) => {
@@ -342,6 +394,135 @@ export default function DiscoverScreen() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Premium Filters Section */}
+                        <View style={styles.filterSection}>
+                            <View style={styles.premiumHeader}>
+                                <Text style={styles.filterSectionTitle}>Advanced Filters</Text>
+                                {!isPremium && (
+                                    <View style={styles.premiumBadge}>
+                                        <Text style={styles.premiumBadgeText}>⭐ Premium</Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Ethnicity Filter */}
+                            <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                                <Text style={styles.premiumFilterLabel}>
+                                    Ethnicity {!isPremium && '🔒'}
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.filterOptions}>
+                                        {FILTER_OPTIONS.ethnicities.map((option) => (
+                                            <TouchableOpacity
+                                                key={option.label}
+                                                style={[
+                                                    styles.filterOption,
+                                                    (filters as any).ethnicity === option.value &&
+                                                    styles.filterOptionActive,
+                                                    !isPremium && styles.filterOptionDisabled
+                                                ]}
+                                                onPress={() => {
+                                                    if (isPremium) {
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            ethnicity: option.value
+                                                        } as SearchFilters));
+                                                    }
+                                                }}
+                                                disabled={!isPremium}
+                                            >
+                                                <Text style={[
+                                                    styles.filterOptionText,
+                                                    (filters as any).ethnicity === option.value &&
+                                                    styles.filterOptionTextActive
+                                                ]}>
+                                                    {option.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+
+                            {/* Mother Tongue Filter */}
+                            <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                                <Text style={styles.premiumFilterLabel}>
+                                    Mother Tongue {!isPremium && '🔒'}
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.filterOptions}>
+                                        {FILTER_OPTIONS.motherTongues.map((option) => (
+                                            <TouchableOpacity
+                                                key={option.label}
+                                                style={[
+                                                    styles.filterOption,
+                                                    (filters as any).motherTongue === option.value &&
+                                                    styles.filterOptionActive,
+                                                    !isPremium && styles.filterOptionDisabled
+                                                ]}
+                                                onPress={() => {
+                                                    if (isPremium) {
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            motherTongue: option.value
+                                                        } as SearchFilters));
+                                                    }
+                                                }}
+                                                disabled={!isPremium}
+                                            >
+                                                <Text style={[
+                                                    styles.filterOptionText,
+                                                    (filters as any).motherTongue === option.value &&
+                                                    styles.filterOptionTextActive
+                                                ]}>
+                                                    {option.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+
+                            {/* Language Filter */}
+                            <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                                <Text style={styles.premiumFilterLabel}>
+                                    Language {!isPremium && '🔒'}
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.filterOptions}>
+                                        {FILTER_OPTIONS.languages.map((option) => (
+                                            <TouchableOpacity
+                                                key={option.label}
+                                                style={[
+                                                    styles.filterOption,
+                                                    (filters as any).language === option.value &&
+                                                    styles.filterOptionActive,
+                                                    !isPremium && styles.filterOptionDisabled
+                                                ]}
+                                                onPress={() => {
+                                                    if (isPremium) {
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            language: option.value
+                                                        } as SearchFilters));
+                                                    }
+                                                }}
+                                                disabled={!isPremium}
+                                            >
+                                                <Text style={[
+                                                    styles.filterOptionText,
+                                                    (filters as any).language === option.value &&
+                                                    styles.filterOptionTextActive
+                                                ]}>
+                                                    {option.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        </View>
+
                         {/* Clear All */}
                         <TouchableOpacity
                             style={styles.clearAllButton}
@@ -537,5 +718,37 @@ const styles = StyleSheet.create({
     clearAllText: {
         fontSize: fontSize.base,
         color: colors.error,
+    },
+    // Premium filter styles
+    premiumHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: spacing[4],
+    },
+    premiumBadge: {
+        backgroundColor: colors.warning + '20',
+        paddingHorizontal: spacing[2],
+        paddingVertical: spacing[1],
+        borderRadius: borderRadius.md,
+    },
+    premiumBadgeText: {
+        fontSize: fontSize.xs,
+        color: colors.warning,
+        fontWeight: fontWeight.medium,
+    },
+    premiumFilterGroup: {
+        marginBottom: spacing[4],
+    },
+    premiumFilterLocked: {
+        opacity: 0.6,
+    },
+    premiumFilterLabel: {
+        fontSize: fontSize.sm,
+        color: colors.neutral[600],
+        marginBottom: spacing[2],
+    },
+    filterOptionDisabled: {
+        backgroundColor: colors.neutral[100],
     },
 });

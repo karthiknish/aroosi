@@ -98,6 +98,25 @@ export default function ProfileScreen() {
             case 'Subscription':
                 navigation.navigate('Subscription');
                 break;
+            // New engagement screens
+            case 'Quick Picks':
+                navigation.navigate('QuickPicks');
+                break;
+            case 'Shortlists':
+                navigation.navigate('Shortlists');
+                break;
+            case 'Icebreakers':
+                navigation.navigate('Icebreakers');
+                break;
+            case 'Interests':
+                navigation.navigate('Interests');
+                break;
+            case 'Profile Viewers':
+                navigation.navigate('ProfileViewers');
+                break;
+            case 'Blocked Users':
+                navigation.navigate('BlockedUsers');
+                break;
             default:
                 Alert.alert('Coming Soon', `${item} will be available soon!`);
         }
@@ -298,7 +317,58 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Support Menu */}
+                {/* Engagement Menu */}
+                <View style={styles.menuCard}>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => handleMenuPress('Quick Picks')}
+                    >
+                        <Text style={styles.menuIcon}>⚡</Text>
+                        <Text style={styles.menuText}>Quick Picks</Text>
+                        <Text style={styles.menuArrow}>→</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => handleMenuPress('Shortlists')}
+                    >
+                        <Text style={styles.menuIcon}>💝</Text>
+                        <Text style={styles.menuText}>My Shortlist</Text>
+                        <Text style={styles.menuArrow}>→</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => handleMenuPress('Icebreakers')}
+                    >
+                        <Text style={styles.menuIcon}>🚀</Text>
+                        <Text style={styles.menuText}>Icebreaker Questions</Text>
+                        <Text style={styles.menuArrow}>→</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => handleMenuPress('Interests')}
+                    >
+                        <Text style={styles.menuIcon}>💌</Text>
+                        <Text style={styles.menuText}>Interests</Text>
+                        <Text style={styles.menuArrow}>→</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => handleMenuPress('Profile Viewers')}
+                    >
+                        <Text style={styles.menuIcon}>👀</Text>
+                        <Text style={styles.menuText}>Who Viewed Me</Text>
+                        {subscription?.isPremium && (
+                            <View style={styles.menuBadge}>
+                                <Text style={styles.menuBadgeText}>Premium</Text>
+                            </View>
+                        )}
+                        <Text style={styles.menuArrow}>→</Text>
+                    </TouchableOpacity>
+                </View>
                 <View style={styles.menuCard}>
                     <TouchableOpacity
                         style={styles.menuItem}

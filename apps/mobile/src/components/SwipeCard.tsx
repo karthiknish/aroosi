@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
-import type { RecommendedProfile } from '../../services/api/recommendations';
+import { colors, spacing, fontSize, fontWeight, borderRadius } from '../theme';
+import type { RecommendedProfile } from '../services/api/recommendations';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing[8];
@@ -85,7 +85,7 @@ export function SwipeCard({ profile, onLike, onPass, onSuperLike, onInfo }: Swip
 
                     {interests && interests.length > 0 && (
                         <View style={styles.interestsRow}>
-                            {interests.slice(0, 3).map((interest, index) => (
+                            {interests.slice(0, 3).map((interest: string, index: number) => (
                                 <View key={index} style={styles.interestTag}>
                                     <Text style={styles.interestText}>{interest}</Text>
                                 </View>

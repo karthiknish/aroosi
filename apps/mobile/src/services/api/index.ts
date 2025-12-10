@@ -14,3 +14,6 @@ export * from './recommendations';
 export * from './subscription';
 export * from './icebreakers';
 export * from './notifications';
+export * from './engagement';
+export * from './interests';
+export * from './profileViewers';

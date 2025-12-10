@@ -49,6 +49,13 @@ export type ProfileStackParamList = {
     Settings: undefined;
     Preferences: undefined;
     Subscription: undefined;
+    // New engagement screens
+    QuickPicks: undefined;
+    Shortlists: undefined;
+    Icebreakers: undefined;
+    Interests: undefined;
+    ProfileViewers: undefined;
+    BlockedUsers: undefined;
 };
 
 // Main Tab Navigator

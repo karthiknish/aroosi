@@ -25,7 +25,13 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PreferencesScreen from '../screens/profile/PreferencesScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
 import SubscriptionScreen from '../screens/profile/SubscriptionScreen';
+import ProfileViewersScreen from '../screens/profile/ProfileViewersScreen';
+import BlockedUsersScreen from '../screens/profile/BlockedUsersScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
+import QuickPicksScreen from '../screens/engagement/QuickPicksScreen';
+import ShortlistsScreen from '../screens/engagement/ShortlistsScreen';
+import IcebreakersScreen from '../screens/engagement/IcebreakersScreen';
+import InterestsScreen from '../screens/engagement/InterestsScreen';
 
 // Create navigators
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -122,6 +128,37 @@ function ProfileStackNavigator() {
             <ProfileStack.Screen
                 name="Subscription"
                 component={SubscriptionWrapper}
+                options={{ presentation: 'card' }}
+            />
+            {/* New Engagement Screens */}
+            <ProfileStack.Screen
+                name="QuickPicks"
+                component={QuickPicksScreen}
+                options={{ presentation: 'card' }}
+            />
+            <ProfileStack.Screen
+                name="Shortlists"
+                component={ShortlistsScreen}
+                options={{ presentation: 'card' }}
+            />
+            <ProfileStack.Screen
+                name="Icebreakers"
+                component={IcebreakersScreen}
+                options={{ presentation: 'card' }}
+            />
+            <ProfileStack.Screen
+                name="Interests"
+                component={InterestsScreen}
+                options={{ presentation: 'card' }}
+            />
+            <ProfileStack.Screen
+                name="ProfileViewers"
+                component={ProfileViewersScreen}
+                options={{ presentation: 'card' }}
+            />
+            <ProfileStack.Screen
+                name="BlockedUsers"
+                component={BlockedUsersScreen}
                 options={{ presentation: 'card' }}
             />
         </ProfileStack.Navigator>

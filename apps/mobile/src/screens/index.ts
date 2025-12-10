@@ -19,6 +19,14 @@ export { default as EditProfileScreen } from './profile/EditProfileScreen';
 export { default as PreferencesScreen } from './profile/PreferencesScreen';
 export { default as SettingsScreen } from './profile/SettingsScreen';
 export { default as SubscriptionScreen } from './profile/SubscriptionScreen';
+export { default as ProfileViewersScreen } from './profile/ProfileViewersScreen';
+export { default as BlockedUsersScreen } from './profile/BlockedUsersScreen';
 
 // Chat screens
 export { default as ChatScreen } from './chat/ChatScreen';
+
+// Engagement screens
+export { default as QuickPicksScreen } from './engagement/QuickPicksScreen';
+export { default as ShortlistsScreen } from './engagement/ShortlistsScreen';
+export { default as IcebreakersScreen } from './engagement/IcebreakersScreen';
+export { default as InterestsScreen } from './engagement/InterestsScreen';
