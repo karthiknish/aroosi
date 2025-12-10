@@ -20,6 +20,9 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { getProfileById, type UserProfile } from '../../services/api/profile';
 import { likeUser, passUser, reportUser, blockUser } from '../../services/api/matches';
+import { isUserShortlisted, toggleShortlist } from '../../services/api/engagement';
+import { sendInterest, checkInterestStatus } from '../../services/api/interests';
+import { getUserIcebreakerAnswers, type IcebreakerAnswer } from '../../services/api/icebreakers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -38,22 +41,51 @@ export default function ProfileDetailScreen({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+    
+    // Engagement state
+    const [isShortlisted, setIsShortlisted] = useState(false);
+    const [interestStatus, setInterestStatus] = useState<'none' | 'pending' | 'accepted' | 'declined'>('none');
+    const [icebreakerAnswers, setIcebreakerAnswers] = useState<IcebreakerAnswer[]>([]);
+    const [shortlistLoading, setShortlistLoading] = useState(false);
+    const [interestLoading, setInterestLoading] = useState(false);
 
-    // Load profile
+    // Load profile and engagement data
     const loadProfile = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
 
-            const response = await getProfileById(userId);
+            const [profileRes, interestRes, icebreakerRes] = await Promise.all([
+                getProfileById(userId),
+                checkInterestStatus(userId),
+                getUserIcebreakerAnswers(userId),
+            ]);
+            
+            // Also check if user is shortlisted (returns boolean directly)
+            const shortlisted = await isUserShortlisted(userId);
+            setIsShortlisted(shortlisted);
 
-            if (response.error) {
-                setError(response.error);
+            if (profileRes.error) {
+                setError(profileRes.error);
                 return;
             }
 
-            if (response.data) {
-                setProfile(response.data);
+            if (profileRes.data) {
+                setProfile(profileRes.data);
+            }
+            
+            if (interestRes.data) {
+                const status = interestRes.data.status;
+                // Map status to our local type, treating expired as none
+                if (status === 'pending' || status === 'accepted' || status === 'declined') {
+                    setInterestStatus(status);
+                } else {
+                    setInterestStatus('none');
+                }
+            }
+            
+            if (icebreakerRes.data) {
+                setIcebreakerAnswers(icebreakerRes.data);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load profile');
@@ -157,6 +189,46 @@ export default function ProfileDetailScreen({
             ]
         );
     }, [userId, profile?.displayName, onBack]);
+
+    // Handle shortlist toggle
+    const handleShortlist = useCallback(async () => {
+        try {
+            setShortlistLoading(true);
+            await toggleShortlist(userId);
+            setIsShortlisted(prev => !prev);
+            Alert.alert(
+                isShortlisted ? 'Removed' : 'Added to Shortlist',
+                isShortlisted 
+                    ? 'Profile removed from your shortlist.' 
+                    : 'Profile added to your shortlist! You can add notes in the Shortlists screen.'
+            );
+        } catch (err) {
+            Alert.alert('Error', 'Failed to update shortlist');
+        } finally {
+            setShortlistLoading(false);
+        }
+    }, [userId, isShortlisted]);
+
+    // Handle send interest
+    const handleSendInterest = useCallback(async () => {
+        if (interestStatus !== 'none') {
+            Alert.alert('Already Sent', 'You have already sent interest to this person.');
+            return;
+        }
+        
+        try {
+            setInterestLoading(true);
+            const response = await sendInterest(userId);
+            if (response.data?.success) {
+                setInterestStatus('pending');
+                Alert.alert('Interest Sent! 💌', 'Your interest has been sent. You\'ll be notified when they respond.');
+            }
+        } catch (err) {
+            Alert.alert('Error', 'Failed to send interest');
+        } finally {
+            setInterestLoading(false);
+        }
+    }, [userId, interestStatus]);
 
     // Get photos array
     const photos = profile?.photos || (profile?.photoURL ? [profile.photoURL] : []);
@@ -320,7 +392,7 @@ export default function ProfileDetailScreen({
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Interests</Text>
                             <View style={styles.interestsList}>
-                                {profile.interests.map((interest, index) => (
+                                {profile.interests.map((interest: string, index: number) => (
                                     <View key={index} style={styles.interestTag}>
                                         <Text style={styles.interestText}>{interest}</Text>
                                     </View>
@@ -328,6 +400,55 @@ export default function ProfileDetailScreen({
                             </View>
                         </View>
                     )}
+
+                    {/* Icebreaker Answers */}
+                    {icebreakerAnswers.length > 0 && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>🚀 Icebreakers</Text>
+                            {icebreakerAnswers.slice(0, 3).map((answer: IcebreakerAnswer, index: number) => (
+                                <View key={index} style={styles.icebreakerCard}>
+                                    <Text style={styles.icebreakerQuestion}>{answer.question}</Text>
+                                    <Text style={styles.icebreakerAnswer}>{answer.answer}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Engagement Actions */}
+                    <View style={styles.engagementActions}>
+                        <TouchableOpacity
+                            style={[
+                                styles.engagementButton,
+                                isShortlisted && styles.engagementButtonActive,
+                            ]}
+                            onPress={handleShortlist}
+                            disabled={shortlistLoading}
+                        >
+                            <Text style={styles.engagementIcon}>
+                                {isShortlisted ? '💝' : '💛'}
+                            </Text>
+                            <Text style={styles.engagementLabel}>
+                                {shortlistLoading ? '...' : isShortlisted ? 'Saved' : 'Shortlist'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.engagementButton,
+                                interestStatus !== 'none' && styles.engagementButtonActive,
+                            ]}
+                            onPress={handleSendInterest}
+                            disabled={interestLoading || interestStatus !== 'none'}
+                        >
+                            <Text style={styles.engagementIcon}>💌</Text>
+                            <Text style={styles.engagementLabel}>
+                                {interestLoading ? '...' : 
+                                 interestStatus === 'pending' ? 'Sent' :
+                                 interestStatus === 'accepted' ? 'Accepted' :
+                                 'Interest'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {/* Last Active */}
                     {profile.lastActive && (
@@ -600,5 +721,57 @@ const styles = StyleSheet.create({
     likeIcon: {
         fontSize: 32,
         color: '#FFFFFF',
+    },
+    // Icebreaker styles
+    icebreakerCard: {
+        backgroundColor: colors.neutral[50],
+        borderRadius: borderRadius.xl,
+        padding: spacing[4],
+        marginBottom: spacing[3],
+        borderLeftWidth: 3,
+        borderLeftColor: colors.primary.DEFAULT,
+    },
+    icebreakerQuestion: {
+        fontSize: fontSize.sm,
+        color: colors.neutral[600],
+        marginBottom: spacing[2],
+        fontStyle: 'italic',
+    },
+    icebreakerAnswer: {
+        fontSize: fontSize.base,
+        color: colors.neutral[800],
+        lineHeight: fontSize.base * 1.5,
+    },
+    // Engagement action styles
+    engagementActions: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: spacing[4],
+        marginVertical: spacing[4],
+        paddingVertical: spacing[3],
+        borderTopWidth: 1,
+        borderTopColor: colors.border.light,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.light,
+    },
+    engagementButton: {
+        alignItems: 'center',
+        paddingVertical: spacing[2],
+        paddingHorizontal: spacing[4],
+        borderRadius: borderRadius.xl,
+        backgroundColor: colors.neutral[100],
+        minWidth: 90,
+    },
+    engagementButtonActive: {
+        backgroundColor: colors.primary[100],
+    },
+    engagementIcon: {
+        fontSize: 24,
+        marginBottom: spacing[1],
+    },
+    engagementLabel: {
+        fontSize: fontSize.xs,
+        color: colors.neutral[600],
+        fontWeight: fontWeight.medium,
     },
 });

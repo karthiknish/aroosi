@@ -32,6 +32,13 @@ export default function ProfileScreen() {
     const [subscription, setSubscription] = useState<SubscriptionStatusInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    
+    // Profile stats
+    const [stats, setStats] = useState({
+        likes: 0,
+        matches: 0,
+        views: 0,
+    });
 
     // Load profile data
     const loadProfile = useCallback(async (isRefresh = false) => {
@@ -53,6 +60,27 @@ export default function ProfileScreen() {
 
             if (subscriptionRes.data) {
                 setSubscription(subscriptionRes.data);
+            }
+            
+            // Fetch profile stats
+            try {
+                const { getReceivedInterests } = await import('../../services/api/interests');
+                const { getMatches } = await import('../../services/api/matches');
+                const { getProfileViewCount } = await import('../../services/api/profileViewers');
+                
+                const [interestsRes, matchesRes, viewsRes] = await Promise.all([
+                    getReceivedInterests(),
+                    getMatches(),
+                    getProfileViewCount(),
+                ]);
+                
+                setStats({
+                    likes: interestsRes.data?.length || 0,
+                    matches: matchesRes.data?.length || 0,
+                    views: viewsRes.data?.count || 0,
+                });
+            } catch (statsErr) {
+                console.log('Stats fetch failed:', statsErr);
             }
         } catch (err) {
             console.error('Failed to load profile:', err);
@@ -258,17 +286,17 @@ export default function ProfileScreen() {
                 {/* Stats */}
                 <View style={styles.statsCard}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>0</Text>
+                        <Text style={styles.statNumber}>{stats.likes}</Text>
                         <Text style={styles.statLabel}>Likes</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>0</Text>
+                        <Text style={styles.statNumber}>{stats.matches}</Text>
                         <Text style={styles.statLabel}>Matches</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>0</Text>
+                        <Text style={styles.statNumber}>{stats.views}</Text>
                         <Text style={styles.statLabel}>Views</Text>
                     </View>
                 </View>
