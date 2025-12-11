@@ -56,6 +56,8 @@ export type ProfileStackParamList = {
     Interests: undefined;
     ProfileViewers: undefined;
     BlockedUsers: undefined;
+    // Profile detail for viewing other users from various screens
+    ProfileDetail: { userId: string };
 };
 
 // Main Tab Navigator

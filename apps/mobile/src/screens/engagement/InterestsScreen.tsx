@@ -17,7 +17,17 @@ import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import {
@@ -368,6 +378,9 @@ export default function InterestsScreen() {
     );
 }
 
+// Responsive avatar size
+const AVATAR_SIZE = isSmallDevice ? 48 : 56;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -377,25 +390,26 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.background.light,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.primary.DEFAULT,
     },
     title: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     tabs: {
         flexDirection: 'row',
         backgroundColor: colors.background.light,
-        paddingHorizontal: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
     },
@@ -404,16 +418,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
         borderBottomWidth: 2,
         borderBottomColor: 'transparent',
-        gap: spacing[2],
+        gap: moderateScale(8),
     },
     tabActive: {
         borderBottomColor: colors.primary.DEFAULT,
     },
     tabText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
         fontWeight: fontWeight.medium,
     },
@@ -422,25 +436,25 @@ const styles = StyleSheet.create({
     },
     tabBadge: {
         backgroundColor: colors.primary.DEFAULT,
-        paddingHorizontal: spacing[2],
+        paddingHorizontal: moderateScale(8),
         paddingVertical: 2,
         borderRadius: borderRadius.full,
-        minWidth: 20,
+        minWidth: moderateScale(20),
         alignItems: 'center',
     },
     tabBadgeText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: '#FFFFFF',
         fontWeight: fontWeight.bold,
     },
     listContent: {
-        padding: spacing[4],
-        paddingBottom: spacing[8],
+        padding: responsiveValues.screenPadding,
+        paddingBottom: moderateScale(32),
     },
     itemContainer: {
         backgroundColor: colors.background.light,
         borderRadius: borderRadius.xl,
-        marginBottom: spacing[3],
+        marginBottom: responsiveValues.itemSpacing,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -451,26 +465,26 @@ const styles = StyleSheet.create({
     itemContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing[4],
+        padding: responsiveValues.cardPadding,
     },
     avatarContainer: {
-        marginRight: spacing[3],
+        marginRight: moderateScale(12),
     },
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
     },
     avatarPlaceholder: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
         backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         color: colors.primary.DEFAULT,
         fontWeight: fontWeight.bold,
     },
@@ -478,38 +492,38 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     name: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     metaRow: {
         flexDirection: 'row',
-        gap: spacing[3],
-        marginTop: spacing[1],
+        gap: moderateScale(12),
+        marginTop: moderateScale(4),
     },
     location: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     age: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     date: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: colors.neutral[400],
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
     statusContainer: {
-        marginLeft: spacing[2],
+        marginLeft: moderateScale(8),
     },
     statusBadge: {
-        paddingHorizontal: spacing[2],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.md,
     },
     statusText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         fontWeight: fontWeight.medium,
     },
     actionButtons: {
@@ -519,15 +533,16 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
         alignItems: 'center',
+        minHeight: moderateScale(44),
     },
     declineButton: {
         borderRightWidth: 1,
         borderRightColor: colors.border.light,
     },
     declineButtonText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[600],
         fontWeight: fontWeight.medium,
     },
@@ -535,7 +550,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary[50],
     },
     acceptButtonText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.primary.DEFAULT,
         fontWeight: fontWeight.semibold,
     },

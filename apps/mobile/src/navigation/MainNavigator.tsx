@@ -161,6 +161,11 @@ function ProfileStackNavigator() {
                 component={BlockedUsersScreen}
                 options={{ presentation: 'card' }}
             />
+            <ProfileStack.Screen
+                name="ProfileDetail"
+                component={ProfileDetailWrapper}
+                options={{ presentation: 'card' }}
+            />
         </ProfileStack.Navigator>
     );
 }

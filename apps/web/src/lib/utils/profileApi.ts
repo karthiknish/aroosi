@@ -81,21 +81,30 @@ export type ProfileViewer = {
   userId: string;
   fullName?: string | null;
   profileImageUrls?: string[] | null;
+  age?: number | null;
+  city?: string | null;
   viewedAt: number;
+  viewCount?: number;
+  isNew?: boolean;
 };
+
+export type ViewerFilter = "all" | "today" | "week" | "month";
 
 export async function fetchProfileViewers({
   profileId,
   limit,
   offset,
+  filter,
 }: {
   profileId: string;
   limit?: number;
   offset?: number;
-}): Promise<{ viewers: ProfileViewer[]; total?: number }> {
+  filter?: ViewerFilter;
+}): Promise<{ viewers: ProfileViewer[]; total?: number; newCount?: number; hasMore?: boolean }> {
   const params = new URLSearchParams({ profileId });
   if (typeof limit === "number") params.set("limit", String(limit));
   if (typeof offset === "number") params.set("offset", String(offset));
+  if (filter) params.set("filter", filter);
   const res = await fetch(`/api/profile/view?${params.toString()}`, {
     credentials: "include",
   });
@@ -108,11 +117,18 @@ export async function fetchProfileViewers({
     userId: (v?.viewerId ?? v?.userId ?? v?._id ?? "") as string,
     fullName: (v?.fullName ?? null) as string | null,
     profileImageUrls: (v?.profileImageUrls ?? null) as string[] | null,
+    age: (v?.age ?? null) as number | null,
+    city: (v?.city ?? null) as string | null,
     viewedAt: Number(v?.viewedAt ?? v?.createdAt ?? Date.now()),
+    viewCount: v?.viewCount ?? 1,
+    isNew: v?.isNew ?? false,
   }));
   const total =
     typeof json?.total === "number" ? (json.total as number) : undefined;
-  return { viewers: mapped, total };
+  const newCount =
+    typeof json?.newCount === "number" ? (json.newCount as number) : undefined;
+  const hasMore = json?.hasMore ?? false;
+  return { viewers: mapped, total, newCount, hasMore };
 }
 
 export async function fetchProfileViewersCount(

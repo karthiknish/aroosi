@@ -103,6 +103,13 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
 /**
  * GET  /api/profile/view?profileId=xyz
  * Returns the list of viewers for the given profile (Premium Plus owner only).
+ * 
+ * Query params:
+ *   - profileId: required
+ *   - mode: "count" returns only count
+ *   - filter: "today" | "week" | "month" | "all" (default: all)
+ *   - limit: number (default: 50)
+ *   - offset: number (default: 0)
  */
 export const GET = withFirebaseAuth(async (user, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -110,14 +117,17 @@ export const GET = withFirebaseAuth(async (user, request: NextRequest) => {
     const { searchParams } = new URL(request.url);
     const profileId = searchParams.get("profileId");
     const mode = searchParams.get("mode");
-    const limit = parseInt(searchParams.get("limit") || "0", 10);
+    const filter = searchParams.get("filter") || "all";
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
+    
     if (!profileId) {
       return NextResponse.json(
         { success: false, error: "Missing profileId", correlationId },
         { status: 400 }
       );
     }
+    
     // Authorization: users can view their own viewers only
     if (profileId !== user.id) {
       return NextResponse.json(
@@ -125,39 +135,122 @@ export const GET = withFirebaseAuth(async (user, request: NextRequest) => {
         { status: 403 }
       );
     }
+
+    // Calculate time filter cutoff
+    const now = Date.now();
+    let cutoffTime = 0;
+    switch (filter) {
+      case "today":
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        cutoffTime = todayStart.getTime();
+        break;
+      case "week":
+        cutoffTime = now - 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "month":
+        cutoffTime = now - 30 * 24 * 60 * 60 * 1000;
+        break;
+      default:
+        cutoffTime = 0;
+    }
+
+    // Fetch all views for this profile
     const snap = await db
       .collection("profileViews")
       .where("profileId", "==", profileId)
       .orderBy("createdAt", "desc")
       .get();
-    const rows = snap.docs.map((d: any) => d.data() as any);
+    
+    let rows = snap.docs.map((d: any) => d.data() as any);
+    
+    // Apply time filter
+    if (cutoffTime > 0) {
+      rows = rows.filter((r: any) => r.createdAt >= cutoffTime);
+    }
+
+    // Get user's lastSeenViewersAt timestamp
+    const userDoc = await db.collection("users").doc(profileId).get();
+    const userData = userDoc.exists ? (userDoc.data() as any) : {};
+    const lastSeenAt = userData.lastSeenViewersAt || 0;
+
     if (mode === "count") {
+      // Count unique viewers and new viewers
+      const uniqueViewers = new Set(rows.map((r: any) => r.viewerId));
+      const newViewers = rows.filter((r: any) => r.createdAt > lastSeenAt);
+      const uniqueNewViewers = new Set(newViewers.map((r: any) => r.viewerId));
+      
       return NextResponse.json({
         success: true,
-        count: rows.length,
+        count: uniqueViewers.size,
+        newCount: uniqueNewViewers.size,
         correlationId,
       });
     }
+
+    // Deduplicate: group by viewerId, keep most recent, count views
+    const viewerMap = new Map<string, { viewerId: string; viewedAt: number; viewCount: number; isNew: boolean }>();
+    
+    for (const row of rows) {
+      const existing = viewerMap.get(row.viewerId);
+      const isNew = row.createdAt > lastSeenAt;
+      
+      if (!existing) {
+        viewerMap.set(row.viewerId, {
+          viewerId: row.viewerId,
+          viewedAt: row.createdAt,
+          viewCount: 1,
+          isNew,
+        });
+      } else {
+        existing.viewCount++;
+        // Keep the most recent timestamp and update isNew if any view is new
+        if (row.createdAt > existing.viewedAt) {
+          existing.viewedAt = row.createdAt;
+        }
+        if (isNew) {
+          existing.isNew = true;
+        }
+      }
+    }
+
+    // Convert to array and sort by most recent
+    const dedupedViewers = Array.from(viewerMap.values()).sort(
+      (a, b) => b.viewedAt - a.viewedAt
+    );
+
+    const total = dedupedViewers.length;
+    const newCount = dedupedViewers.filter((v) => v.isNew).length;
+
+    // Apply pagination
     const start = Number.isFinite(offset) && offset > 0 ? offset : 0;
     const end = Number.isFinite(limit) && limit > 0 ? start + limit : undefined;
-    const slice = rows.slice(start, end);
-    // Enrich with viewer profile basics
+    const slice = dedupedViewers.slice(start, end);
+
+    // Enrich with viewer profile details
     const viewers = await Promise.all(
-      slice.map(async (r: any) => {
-        const uDoc = await db.collection("users").doc(r.viewerId).get();
-        const u = uDoc.exists ? uDoc.data() : {};
+      slice.map(async (v) => {
+        const uDoc = await db.collection("users").doc(v.viewerId).get();
+        const u = uDoc.exists ? (uDoc.data() as any) : {};
         return {
-          viewerId: r.viewerId,
-          fullName: u?.fullName,
+          viewerId: v.viewerId,
+          fullName: u?.fullName || null,
           profileImageUrls: u?.profileImageUrls || [],
-          viewedAt: r.createdAt,
+          age: u?.age || null,
+          city: u?.city || u?.location?.city || null,
+          viewedAt: v.viewedAt,
+          viewCount: v.viewCount,
+          isNew: v.isNew,
         };
       })
     );
+
     return NextResponse.json({
       success: true,
       viewers,
-      total: rows.length,
+      total,
+      newCount,
+      hasMore: end ? end < total : false,
       correlationId,
     });
   } catch (err: any) {

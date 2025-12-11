@@ -17,7 +17,17 @@ import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { useAuthStore } from '../../store';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { getProfile, type UserProfile } from '../../services/api/profile';
@@ -442,6 +452,10 @@ export default function ProfileScreen() {
     );
 }
 
+// Responsive avatar size
+const AVATAR_SIZE = isSmallDevice ? 100 : 120;
+const EDIT_BADGE_SIZE = isSmallDevice ? 32 : 36;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -451,64 +465,65 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[6],
-        paddingVertical: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(16),
         backgroundColor: colors.background.light,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     title: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     settingsButton: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     settingsIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: spacing[8],
+        paddingBottom: moderateScale(32),
     },
     profileCard: {
         backgroundColor: colors.background.light,
         alignItems: 'center',
-        paddingVertical: spacing[6],
-        paddingHorizontal: spacing[4],
-        marginBottom: spacing[3],
+        paddingVertical: moderateScale(24),
+        paddingHorizontal: responsiveValues.screenPadding,
+        marginBottom: moderateScale(12),
     },
     avatarContainer: {
         position: 'relative',
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
     },
     avatarPlaceholder: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
         backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: 48,
+        fontSize: moderateScale(48),
         color: colors.primary.DEFAULT,
     },
     editAvatarBadge: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: EDIT_BADGE_SIZE,
+        height: EDIT_BADGE_SIZE,
+        borderRadius: EDIT_BADGE_SIZE / 2,
         backgroundColor: colors.primary.DEFAULT,
         justifyContent: 'center',
         alignItems: 'center',
@@ -516,99 +531,102 @@ const styles = StyleSheet.create({
         borderColor: colors.background.light,
     },
     editAvatarIcon: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
     },
     name: {
-        fontSize: fontSize['2xl'],
+        fontSize: responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
-        marginBottom: spacing[1],
+        marginBottom: moderateScale(4),
+        textAlign: 'center',
     },
     location: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
-        marginBottom: spacing[3],
+        marginBottom: moderateScale(12),
     },
     badges: {
         flexDirection: 'row',
-        gap: spacing[2],
-        marginBottom: spacing[4],
+        gap: moderateScale(8),
+        marginBottom: moderateScale(16),
+        flexWrap: 'wrap',
+        justifyContent: 'center',
     },
     badge: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.info + '20',
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
-        gap: spacing[1],
+        gap: moderateScale(4),
     },
     premiumBadge: {
         backgroundColor: colors.warning + '20',
     },
     badgeIcon: {
-        fontSize: 12,
+        fontSize: moderateScale(12),
     },
     badgeText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         fontWeight: fontWeight.medium,
         color: colors.neutral[700],
     },
     editProfileButton: {
         backgroundColor: colors.primary.DEFAULT,
-        paddingHorizontal: spacing[8],
-        paddingVertical: spacing[3],
+        paddingHorizontal: isSmallDevice ? moderateScale(24) : moderateScale(32),
+        paddingVertical: moderateScale(12),
         borderRadius: borderRadius.xl,
     },
     editProfileText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: '#FFFFFF',
     },
     completionCard: {
         backgroundColor: colors.background.light,
-        marginHorizontal: spacing[4],
-        marginBottom: spacing[3],
-        padding: spacing[4],
+        marginHorizontal: responsiveValues.screenPadding,
+        marginBottom: moderateScale(12),
+        padding: responsiveValues.cardPadding,
         borderRadius: borderRadius.xl,
     },
     completionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     completionTitle: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[800],
     },
     completionPercent: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.bold,
         color: colors.primary.DEFAULT,
     },
     progressBar: {
-        height: 8,
+        height: moderateScale(8),
         backgroundColor: colors.neutral[200],
-        borderRadius: 4,
-        marginBottom: spacing[2],
+        borderRadius: moderateScale(4),
+        marginBottom: moderateScale(8),
     },
     progressFill: {
         height: '100%',
         backgroundColor: colors.primary.DEFAULT,
-        borderRadius: 4,
+        borderRadius: moderateScale(4),
     },
     completionHint: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     statsCard: {
         flexDirection: 'row',
         backgroundColor: colors.background.light,
-        marginHorizontal: spacing[4],
-        marginBottom: spacing[3],
-        padding: spacing[4],
+        marginHorizontal: responsiveValues.screenPadding,
+        marginBottom: moderateScale(12),
+        padding: responsiveValues.cardPadding,
         borderRadius: borderRadius.xl,
     },
     statItem: {
@@ -616,12 +634,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     statNumber: {
-        fontSize: fontSize['2xl'],
+        fontSize: responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     statLabel: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     statDivider: {
@@ -630,50 +648,50 @@ const styles = StyleSheet.create({
     },
     menuCard: {
         backgroundColor: colors.background.light,
-        marginHorizontal: spacing[4],
-        marginBottom: spacing[3],
+        marginHorizontal: responsiveValues.screenPadding,
+        marginBottom: moderateScale(12),
         borderRadius: borderRadius.xl,
         overflow: 'hidden',
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[4],
+        paddingHorizontal: responsiveValues.cardPadding,
+        paddingVertical: moderateScale(14),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
     },
     menuIcon: {
-        fontSize: 20,
-        marginRight: spacing[3],
+        fontSize: moderateScale(20),
+        marginRight: moderateScale(12),
     },
     menuText: {
         flex: 1,
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[800],
     },
     menuBadge: {
         backgroundColor: colors.primary[100],
-        paddingHorizontal: spacing[2],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.md,
-        marginRight: spacing[2],
+        marginRight: moderateScale(8),
     },
     menuBadgeText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: colors.primary.DEFAULT,
         fontWeight: fontWeight.medium,
         textTransform: 'capitalize',
     },
     menuArrow: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[400],
     },
     signOutButton: {
-        marginHorizontal: spacing[4],
-        marginTop: spacing[3],
+        marginHorizontal: responsiveValues.screenPadding,
+        marginTop: moderateScale(12),
         backgroundColor: colors.primary[50],
-        paddingVertical: spacing[4],
+        paddingVertical: moderateScale(16),
         borderRadius: borderRadius.xl,
         alignItems: 'center',
         borderWidth: 1,
@@ -681,13 +699,13 @@ const styles = StyleSheet.create({
     },
     signOutText: {
         color: colors.primary.DEFAULT,
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
     },
     version: {
         textAlign: 'center',
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[400],
-        marginTop: spacing[4],
+        marginTop: moderateScale(16),
     },
 });

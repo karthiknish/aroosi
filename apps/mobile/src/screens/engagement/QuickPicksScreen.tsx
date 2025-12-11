@@ -18,7 +18,18 @@ import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    SCREEN_WIDTH,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import {
@@ -29,8 +40,9 @@ import {
 } from '../../services/api/engagement';
 import { getSubscriptionStatus } from '../../services/api/subscription';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+const ACTION_BUTTON_SIZE = isSmallDevice ? 52 : 64;
+const CARD_HORIZONTAL_PADDING = responsiveValues.screenPadding * 2;
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'QuickPicks'>;
 
@@ -375,61 +387,62 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.primary.DEFAULT,
     },
     title: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     counterBadge: {
         backgroundColor: colors.primary[100],
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
     },
     counterText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.primary.DEFAULT,
         fontWeight: fontWeight.medium,
     },
     progressContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[2],
-        gap: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(8),
+        gap: moderateScale(12),
     },
     progressBar: {
         flex: 1,
-        height: 4,
+        height: moderateScale(4),
         backgroundColor: colors.neutral[200],
-        borderRadius: 2,
+        borderRadius: moderateScale(2),
     },
     progressFill: {
         height: '100%',
         backgroundColor: colors.primary.DEFAULT,
-        borderRadius: 2,
+        borderRadius: moderateScale(2),
     },
     progressText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     cardContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
     },
     card: {
-        width: SCREEN_WIDTH - spacing[8],
+        width: SCREEN_WIDTH - CARD_HORIZONTAL_PADDING,
         height: '85%',
         backgroundColor: colors.background.light,
         borderRadius: borderRadius['2xl'],
@@ -456,7 +469,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     placeholderText: {
-        fontSize: 80,
+        fontSize: moderateScale(80),
         color: colors.primary.DEFAULT,
     },
     cardInfo: {
@@ -464,40 +477,40 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        padding: spacing[4],
-        paddingBottom: spacing[6],
+        padding: responsiveValues.screenPadding,
+        paddingBottom: moderateScale(24),
         backgroundColor: 'rgba(0,0,0,0.5)',
     },
     cardName: {
-        fontSize: fontSize['2xl'],
+        fontSize: responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: '#FFFFFF',
     },
     cardLocation: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: 'rgba(255,255,255,0.9)',
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
     overlayLabel: {
         position: 'absolute',
-        top: spacing[8],
+        top: moderateScale(32),
         zIndex: 10,
-        padding: spacing[3],
+        padding: moderateScale(12),
         borderWidth: 3,
         borderRadius: borderRadius.lg,
     },
     likeLabel: {
-        right: spacing[6],
+        right: moderateScale(24),
         borderColor: colors.success,
         transform: [{ rotate: '15deg' }],
     },
     skipLabel: {
-        left: spacing[6],
+        left: moderateScale(24),
         borderColor: colors.error,
         transform: [{ rotate: '-15deg' }],
     },
     overlayText: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         fontWeight: fontWeight.bold,
         color: colors.success,
     },
@@ -507,14 +520,14 @@ const styles = StyleSheet.create({
     actions: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: spacing[8],
-        paddingVertical: spacing[6],
-        paddingBottom: spacing[8],
+        gap: isSmallDevice ? moderateScale(24) : moderateScale(32),
+        paddingVertical: moderateScale(24),
+        paddingBottom: moderateScale(32),
     },
     actionButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: ACTION_BUTTON_SIZE,
+        height: ACTION_BUTTON_SIZE,
+        borderRadius: ACTION_BUTTON_SIZE / 2,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -529,14 +542,14 @@ const styles = StyleSheet.create({
         borderColor: colors.error,
     },
     skipButtonText: {
-        fontSize: 28,
+        fontSize: moderateScale(28),
         color: colors.error,
     },
     likeButton: {
         backgroundColor: colors.primary.DEFAULT,
     },
     likeButtonText: {
-        fontSize: 28,
+        fontSize: moderateScale(28),
         color: '#FFFFFF',
     },
 });

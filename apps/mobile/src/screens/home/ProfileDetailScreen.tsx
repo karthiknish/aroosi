@@ -15,7 +15,20 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+    scaleWidth,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { getProfileById, type UserProfile } from '../../services/api/profile';
@@ -24,7 +37,10 @@ import { isUserShortlisted, toggleShortlist } from '../../services/api/engagemen
 import { sendInterest, checkInterestStatus } from '../../services/api/interests';
 import { getUserIcebreakerAnswers, type IcebreakerAnswer } from '../../services/api/icebreakers';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Responsive photo height
+const PHOTO_HEIGHT = Math.min(SCREEN_WIDTH * 1.25, SCREEN_HEIGHT * 0.6);
+const ACTION_BUTTON_SIZE = isSmallDevice ? 52 : 64;
+const SUPER_LIKE_SIZE = isSmallDevice ? 44 : 56;
 
 interface ProfileDetailScreenProps {
     userId: string;
@@ -499,14 +515,14 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         zIndex: 10,
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
     },
     backButton: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     backIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: colors.neutral[800],
     },
     scrollView: {
@@ -514,39 +530,39 @@ const styles = StyleSheet.create({
     },
     photoContainer: {
         width: SCREEN_WIDTH,
-        height: SCREEN_WIDTH * 1.25,
+        height: PHOTO_HEIGHT,
         position: 'relative',
     },
     floatingBack: {
         position: 'absolute',
-        top: spacing[6],
-        left: spacing[4],
+        top: moderateScale(24),
+        left: responsiveValues.screenPadding,
         zIndex: 10,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: moderateScale(40),
+        height: moderateScale(40),
+        borderRadius: moderateScale(20),
         backgroundColor: 'rgba(255,255,255,0.9)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     floatingBackIcon: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
         color: colors.neutral[800],
     },
     floatingMore: {
         position: 'absolute',
-        top: spacing[6],
-        right: spacing[4],
+        top: moderateScale(24),
+        right: responsiveValues.screenPadding,
         zIndex: 10,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: moderateScale(40),
+        height: moderateScale(40),
+        borderRadius: moderateScale(20),
         backgroundColor: 'rgba(255,255,255,0.9)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     floatingMoreIcon: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
         color: colors.neutral[800],
     },
     photo: {
@@ -569,17 +585,17 @@ const styles = StyleSheet.create({
     },
     photoIndicators: {
         position: 'absolute',
-        top: spacing[3],
-        left: spacing[4],
-        right: spacing[4],
+        top: moderateScale(12),
+        left: responsiveValues.screenPadding,
+        right: responsiveValues.screenPadding,
         flexDirection: 'row',
-        gap: spacing[1],
+        gap: moderateScale(4),
     },
     photoIndicator: {
         flex: 1,
-        height: 3,
+        height: moderateScale(3),
         backgroundColor: 'rgba(255,255,255,0.4)',
-        borderRadius: 2,
+        borderRadius: moderateScale(2),
     },
     photoIndicatorActive: {
         backgroundColor: '#FFFFFF',
@@ -592,7 +608,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     noPhotoEmoji: {
-        fontSize: 80,
+        fontSize: moderateScale(80),
     },
     gradient: {
         position: 'absolute',
@@ -603,72 +619,73 @@ const styles = StyleSheet.create({
     },
     basicInfo: {
         position: 'absolute',
-        left: spacing[4],
-        right: spacing[4],
-        bottom: spacing[4],
+        left: responsiveValues.screenPadding,
+        right: responsiveValues.screenPadding,
+        bottom: responsiveValues.screenPadding,
     },
     nameRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexWrap: 'wrap',
     },
     name: {
-        fontSize: fontSize['3xl'],
+        fontSize: isSmallDevice ? responsiveFontSizes['2xl'] : responsiveFontSizes['3xl'],
         fontWeight: fontWeight.bold,
         color: '#FFFFFF',
     },
     verifiedBadge: {
-        marginLeft: spacing[2],
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        marginLeft: moderateScale(8),
+        width: moderateScale(24),
+        height: moderateScale(24),
+        borderRadius: moderateScale(12),
         backgroundColor: colors.info,
         justifyContent: 'center',
         alignItems: 'center',
     },
     verifiedIcon: {
-        fontSize: 14,
+        fontSize: moderateScale(14),
         color: '#FFFFFF',
         fontWeight: '700',
     },
     location: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: 'rgba(255,255,255,0.9)',
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
     details: {
-        padding: spacing[4],
+        padding: responsiveValues.screenPadding,
     },
     section: {
-        marginBottom: spacing[6],
+        marginBottom: moderateScale(24),
     },
     sectionTitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[800],
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     bioText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[600],
-        lineHeight: fontSize.base * 1.6,
+        lineHeight: responsiveFontSizes.base * 1.6,
     },
     interestsList: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: spacing[2],
+        gap: moderateScale(8),
     },
     interestTag: {
         backgroundColor: colors.primary[100],
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[2],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(8),
         borderRadius: borderRadius.full,
     },
     interestText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.primary.DEFAULT,
     },
     lastActive: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[400],
         textAlign: 'center',
     },
@@ -676,17 +693,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: spacing[4],
-        paddingBottom: spacing[6],
-        gap: spacing[4],
+        paddingVertical: moderateScale(16),
+        paddingBottom: moderateScale(24),
+        gap: isSmallDevice ? moderateScale(12) : moderateScale(16),
         backgroundColor: colors.background.light,
         borderTopWidth: 1,
         borderTopColor: colors.border.light,
     },
     actionButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: ACTION_BUTTON_SIZE,
+        height: ACTION_BUTTON_SIZE,
+        borderRadius: ACTION_BUTTON_SIZE / 2,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -701,54 +718,54 @@ const styles = StyleSheet.create({
         borderColor: colors.error,
     },
     passIcon: {
-        fontSize: 28,
+        fontSize: moderateScale(28),
         color: colors.error,
         fontWeight: '700',
     },
     superLikeButton: {
         backgroundColor: colors.info,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: SUPER_LIKE_SIZE,
+        height: SUPER_LIKE_SIZE,
+        borderRadius: SUPER_LIKE_SIZE / 2,
     },
     superLikeIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: '#FFFFFF',
     },
     likeButton: {
         backgroundColor: colors.success,
     },
     likeIcon: {
-        fontSize: 32,
+        fontSize: moderateScale(32),
         color: '#FFFFFF',
     },
     // Icebreaker styles
     icebreakerCard: {
         backgroundColor: colors.neutral[50],
         borderRadius: borderRadius.xl,
-        padding: spacing[4],
-        marginBottom: spacing[3],
+        padding: responsiveValues.cardPadding,
+        marginBottom: moderateScale(12),
         borderLeftWidth: 3,
         borderLeftColor: colors.primary.DEFAULT,
     },
     icebreakerQuestion: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
         fontStyle: 'italic',
     },
     icebreakerAnswer: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[800],
-        lineHeight: fontSize.base * 1.5,
+        lineHeight: responsiveFontSizes.base * 1.5,
     },
     // Engagement action styles
     engagementActions: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: spacing[4],
-        marginVertical: spacing[4],
-        paddingVertical: spacing[3],
+        gap: isSmallDevice ? moderateScale(8) : moderateScale(16),
+        marginVertical: moderateScale(16),
+        paddingVertical: moderateScale(12),
         borderTopWidth: 1,
         borderTopColor: colors.border.light,
         borderBottomWidth: 1,
@@ -756,21 +773,21 @@ const styles = StyleSheet.create({
     },
     engagementButton: {
         alignItems: 'center',
-        paddingVertical: spacing[2],
-        paddingHorizontal: spacing[4],
+        paddingVertical: moderateScale(8),
+        paddingHorizontal: isSmallDevice ? moderateScale(12) : moderateScale(16),
         borderRadius: borderRadius.xl,
         backgroundColor: colors.neutral[100],
-        minWidth: 90,
+        minWidth: isSmallDevice ? moderateScale(70) : moderateScale(90),
     },
     engagementButtonActive: {
         backgroundColor: colors.primary[100],
     },
     engagementIcon: {
-        fontSize: 24,
-        marginBottom: spacing[1],
+        fontSize: moderateScale(24),
+        marginBottom: moderateScale(4),
     },
     engagementLabel: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: colors.neutral[600],
         fontWeight: fontWeight.medium,
     },

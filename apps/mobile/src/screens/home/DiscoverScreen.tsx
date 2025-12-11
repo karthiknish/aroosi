@@ -18,7 +18,17 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { DiscoverStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { ProfileGridItem } from '../../components/ProfileGridItem';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
@@ -537,27 +547,34 @@ export default function DiscoverScreen() {
     );
 }
 
+// Responsive filter button size
+const FILTER_BUTTON_SIZE = isSmallDevice ? 40 : 48;
+const TOGGLE_WIDTH = moderateScale(50);
+const TOGGLE_HEIGHT = moderateScale(30);
+const TOGGLE_KNOB_SIZE = moderateScale(26);
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.light,
     },
     header: {
-        paddingHorizontal: spacing[6],
-        paddingVertical: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(16),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     title: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     searchContainer: {
         flexDirection: 'row',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
-        gap: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
+        gap: moderateScale(12),
     },
     searchBar: {
         flex: 1,
@@ -565,61 +582,61 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.xl,
-        paddingHorizontal: spacing[3],
+        paddingHorizontal: moderateScale(12),
     },
     searchIcon: {
-        fontSize: 16,
-        marginRight: spacing[2],
+        fontSize: moderateScale(16),
+        marginRight: moderateScale(8),
     },
     searchInput: {
         flex: 1,
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[900],
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
     },
     clearIcon: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
         color: colors.neutral[400],
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     filterButton: {
-        width: 48,
-        height: 48,
+        width: FILTER_BUTTON_SIZE,
+        height: FILTER_BUTTON_SIZE,
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.xl,
         justifyContent: 'center',
         alignItems: 'center',
     },
     filterIcon: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
     },
     activeFilters: {
-        paddingHorizontal: spacing[4],
-        paddingBottom: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingBottom: moderateScale(12),
     },
     filterTag: {
         backgroundColor: colors.primary[100],
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
-        marginRight: spacing[2],
+        marginRight: moderateScale(8),
     },
     filterTagText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.primary.DEFAULT,
     },
     clearFiltersButton: {
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
     },
     clearFiltersText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     gridContent: {
-        paddingHorizontal: spacing[4],
-        paddingTop: spacing[2],
-        paddingBottom: spacing[6],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingTop: moderateScale(8),
+        paddingBottom: moderateScale(24),
     },
     gridRow: {
         justifyContent: 'space-between',
@@ -633,46 +650,46 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(16),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
     },
     modalClose: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
     },
     modalTitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     modalApply: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.primary.DEFAULT,
     },
     modalContent: {
         flex: 1,
-        padding: spacing[4],
+        padding: responsiveValues.screenPadding,
     },
     filterSection: {
-        marginBottom: spacing[6],
+        marginBottom: moderateScale(24),
     },
     filterSectionTitle: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[800],
-        marginBottom: spacing[3],
+        marginBottom: moderateScale(12),
     },
     filterOptions: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: spacing[2],
+        gap: moderateScale(8),
     },
     filterOption: {
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[2],
+        paddingHorizontal: moderateScale(16),
+        paddingVertical: moderateScale(8),
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.full,
     },
@@ -680,7 +697,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary.DEFAULT,
     },
     filterOptionText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
     },
     filterOptionTextActive: {
@@ -692,31 +709,31 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     toggle: {
-        width: 50,
-        height: 30,
+        width: TOGGLE_WIDTH,
+        height: TOGGLE_HEIGHT,
         backgroundColor: colors.neutral[200],
-        borderRadius: 15,
+        borderRadius: TOGGLE_HEIGHT / 2,
         padding: 2,
     },
     toggleActive: {
         backgroundColor: colors.primary.DEFAULT,
     },
     toggleKnob: {
-        width: 26,
-        height: 26,
+        width: TOGGLE_KNOB_SIZE,
+        height: TOGGLE_KNOB_SIZE,
         backgroundColor: '#FFFFFF',
-        borderRadius: 13,
+        borderRadius: TOGGLE_KNOB_SIZE / 2,
     },
     toggleKnobActive: {
-        transform: [{ translateX: 20 }],
+        transform: [{ translateX: TOGGLE_WIDTH - TOGGLE_KNOB_SIZE - 4 }],
     },
     clearAllButton: {
         alignItems: 'center',
-        paddingVertical: spacing[4],
-        marginTop: spacing[4],
+        paddingVertical: moderateScale(16),
+        marginTop: moderateScale(16),
     },
     clearAllText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.error,
     },
     // Premium filter styles
@@ -724,29 +741,29 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     premiumBadge: {
         backgroundColor: colors.warning + '20',
-        paddingHorizontal: spacing[2],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.md,
     },
     premiumBadgeText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: colors.warning,
         fontWeight: fontWeight.medium,
     },
     premiumFilterGroup: {
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     premiumFilterLocked: {
         opacity: 0.6,
     },
     premiumFilterLabel: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     filterOptionDisabled: {
         backgroundColor: colors.neutral[100],

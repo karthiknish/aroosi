@@ -5,7 +5,16 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '../theme';
 
 interface EmptyStateProps {
     emoji?: string;
@@ -45,34 +54,35 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: spacing[6],
+        padding: responsiveValues.screenPadding,
     },
     emoji: {
-        fontSize: 80,
-        marginBottom: spacing[4],
+        fontSize: moderateScale(80),
+        marginBottom: moderateScale(16),
     },
     title: {
-        fontSize: fontSize['2xl'],
+        fontSize: responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: colors.neutral[800],
         textAlign: 'center',
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     message: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
         textAlign: 'center',
-        lineHeight: fontSize.base * 1.6,
-        marginBottom: spacing[6],
+        lineHeight: responsiveFontSizes.base * 1.6,
+        marginBottom: moderateScale(24),
     },
     button: {
         backgroundColor: colors.primary.DEFAULT,
-        paddingHorizontal: spacing[6],
-        paddingVertical: spacing[3],
+        paddingHorizontal: moderateScale(24),
+        paddingVertical: moderateScale(12),
         borderRadius: borderRadius.xl,
+        minHeight: responsiveValues.buttonMedium,
     },
     buttonText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: '#FFFFFF',
     },

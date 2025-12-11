@@ -14,7 +14,16 @@ import {
     Switch,
     Linking,
 } from 'react-native';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '../../theme';
 import { useAuthStore } from '../../store';
 
 interface SettingsScreenProps {
@@ -307,81 +316,83 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.background.light,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     backIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: colors.neutral[800],
     },
     headerTitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     headerRight: {
-        width: 40,
+        width: moderateScale(40),
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: spacing[8],
+        paddingBottom: moderateScale(32),
     },
     section: {
         backgroundColor: colors.background.light,
-        marginBottom: spacing[3],
-        padding: spacing[4],
+        marginBottom: responsiveValues.itemSpacing,
+        padding: responsiveValues.cardPadding,
     },
     sectionTitle: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[500],
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     settingRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
     },
     settingInfo: {
         flex: 1,
-        marginRight: spacing[4],
+        marginRight: moderateScale(16),
     },
     settingTitle: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[800],
-        marginBottom: spacing[1],
+        marginBottom: moderateScale(4),
     },
     settingDescription: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: moderateScale(48),
     },
     menuText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[800],
     },
     menuArrow: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[400],
     },
     dangerText: {
@@ -389,16 +400,16 @@ const styles = StyleSheet.create({
     },
     appInfo: {
         alignItems: 'center',
-        paddingVertical: spacing[6],
+        paddingVertical: moderateScale(24),
     },
     appName: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.bold,
         color: colors.primary.DEFAULT,
     },
     appVersion: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[400],
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
 });

@@ -5,7 +5,13 @@
 
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { colors, spacing, fontSize } from '../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize,
+    moderateScale,
+    responsiveFontSizes,
+} from '../theme';
 
 interface LoadingSpinnerProps {
     message?: string;
@@ -26,11 +32,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: spacing[4],
+        padding: moderateScale(16),
     },
     message: {
-        marginTop: spacing[3],
-        fontSize: fontSize.base,
+        marginTop: moderateScale(12),
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
         textAlign: 'center',
     },

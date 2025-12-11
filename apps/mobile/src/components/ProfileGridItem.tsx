@@ -13,12 +13,26 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    SCREEN_WIDTH,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../theme';
 import type { RecommendedProfile } from '../services/api/recommendations';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ITEM_WIDTH = (SCREEN_WIDTH - spacing[6] * 3) / 2;
+// Calculate grid item size based on screen width - 2 columns with padding
+const GRID_PADDING = responsiveValues.screenPadding;
+const ITEM_GAP = moderateScale(12);
+const ITEM_WIDTH = (SCREEN_WIDTH - (GRID_PADDING * 2) - ITEM_GAP) / 2;
 const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
+const BADGE_SIZE = isSmallDevice ? 20 : 24;
 
 interface ProfileGridItemProps {
     profile: RecommendedProfile;
@@ -92,7 +106,7 @@ const styles = StyleSheet.create({
     container: {
         width: ITEM_WIDTH,
         height: ITEM_HEIGHT,
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     imageContainer: {
         flex: 1,
@@ -112,7 +126,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.neutral[200],
     },
     placeholderEmoji: {
-        fontSize: 40,
+        fontSize: moderateScale(40),
     },
     gradient: {
         position: 'absolute',
@@ -123,31 +137,31 @@ const styles = StyleSheet.create({
     },
     verifiedBadge: {
         position: 'absolute',
-        top: spacing[2],
-        right: spacing[2],
+        top: moderateScale(8),
+        right: moderateScale(8),
         backgroundColor: colors.info,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: BADGE_SIZE,
+        height: BADGE_SIZE,
+        borderRadius: BADGE_SIZE / 2,
         justifyContent: 'center',
         alignItems: 'center',
     },
     verifiedIcon: {
-        fontSize: 14,
+        fontSize: moderateScale(14),
         color: '#FFFFFF',
         fontWeight: '700',
     },
     compatibilityBadge: {
         position: 'absolute',
-        top: spacing[2],
-        left: spacing[2],
+        top: moderateScale(8),
+        left: moderateScale(8),
         backgroundColor: colors.success,
-        paddingHorizontal: spacing[2],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
     },
     compatibilityText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: '#FFFFFF',
         fontWeight: '600',
     },
@@ -156,16 +170,16 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        padding: spacing[3],
+        padding: moderateScale(12),
     },
     name: {
-        fontSize: fontSize.base,
+        fontSize: isSmallDevice ? responsiveFontSizes.sm : responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: '#FFFFFF',
     },
     location: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: 'rgba(255,255,255,0.85)',
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
 });

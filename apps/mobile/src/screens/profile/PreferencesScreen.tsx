@@ -12,7 +12,16 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import {
     getProfile,
@@ -291,6 +300,11 @@ export default function PreferencesScreen({ onBack, onSave }: PreferencesScreenP
     );
 }
 
+// Responsive toggle sizes
+const TOGGLE_WIDTH = moderateScale(50);
+const TOGGLE_HEIGHT = moderateScale(30);
+const TOGGLE_KNOB_SIZE = moderateScale(26);
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -300,32 +314,33 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.background.light,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     backIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: colors.neutral[800],
     },
     headerTitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     headerRight: {
-        width: 60,
+        width: moderateScale(60),
     },
     saveButton: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     saveText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.primary.DEFAULT,
     },
@@ -333,36 +348,36 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: spacing[8],
+        paddingBottom: moderateScale(32),
     },
     section: {
         backgroundColor: colors.background.light,
-        marginBottom: spacing[3],
-        padding: spacing[4],
+        marginBottom: responsiveValues.itemSpacing,
+        padding: responsiveValues.cardPadding,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     sectionTitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     sectionValue: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.medium,
         color: colors.primary.DEFAULT,
     },
     optionsRow: {
         flexDirection: 'row',
-        gap: spacing[2],
+        gap: moderateScale(8),
     },
     optionButton: {
         flex: 1,
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.lg,
         alignItems: 'center',
@@ -371,7 +386,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary.DEFAULT,
     },
     optionText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[600],
     },
     optionTextActive: {
@@ -379,32 +394,32 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight.semibold,
     },
     rangeRow: {
-        gap: spacing[4],
+        gap: moderateScale(16),
     },
     rangePicker: {
-        marginBottom: spacing[3],
+        marginBottom: moderateScale(12),
     },
     rangeLabel: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         fontWeight: fontWeight.medium,
         color: colors.neutral[500],
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     ageScroll: {
         flexGrow: 0,
     },
     ageOption: {
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[2],
+        paddingHorizontal: moderateScale(16),
+        paddingVertical: moderateScale(8),
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.full,
-        marginRight: spacing[2],
+        marginRight: moderateScale(8),
     },
     ageOptionActive: {
         backgroundColor: colors.primary.DEFAULT,
     },
     ageOptionText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
     },
     ageOptionTextActive: {
@@ -414,11 +429,11 @@ const styles = StyleSheet.create({
     distanceOptions: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: spacing[2],
+        gap: moderateScale(8),
     },
     distanceOption: {
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[2],
+        paddingHorizontal: moderateScale(16),
+        paddingVertical: moderateScale(8),
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.full,
     },
@@ -426,7 +441,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary.DEFAULT,
     },
     distanceText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
     },
     distanceTextActive: {
@@ -440,42 +455,42 @@ const styles = StyleSheet.create({
     },
     toggleInfo: {
         flex: 1,
-        marginRight: spacing[4],
+        marginRight: moderateScale(16),
     },
     toggleTitle: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.medium,
         color: colors.neutral[800],
-        marginBottom: spacing[1],
+        marginBottom: moderateScale(4),
     },
     toggleDescription: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },
     toggle: {
-        width: 50,
-        height: 30,
+        width: TOGGLE_WIDTH,
+        height: TOGGLE_HEIGHT,
         backgroundColor: colors.neutral[200],
-        borderRadius: 15,
+        borderRadius: TOGGLE_HEIGHT / 2,
         padding: 2,
     },
     toggleActive: {
         backgroundColor: colors.primary.DEFAULT,
     },
     toggleKnob: {
-        width: 26,
-        height: 26,
+        width: TOGGLE_KNOB_SIZE,
+        height: TOGGLE_KNOB_SIZE,
         backgroundColor: '#FFFFFF',
-        borderRadius: 13,
+        borderRadius: TOGGLE_KNOB_SIZE / 2,
     },
     toggleKnobActive: {
-        transform: [{ translateX: 20 }],
+        transform: [{ translateX: TOGGLE_WIDTH - TOGGLE_KNOB_SIZE - 4 }],
     },
     infoText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
         textAlign: 'center',
-        paddingHorizontal: spacing[6],
-        marginTop: spacing[2],
+        paddingHorizontal: responsiveValues.screenPadding,
+        marginTop: moderateScale(8),
     },
 });

@@ -16,7 +16,17 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MessagesStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { ConversationItem } from '../../components/ConversationItem';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
@@ -254,73 +264,78 @@ export default function MessagesScreen() {
     );
 }
 
+// Responsive avatar sizes
+const MATCH_AVATAR_SIZE = isSmallDevice ? 56 : 64;
+const MATCH_ITEM_WIDTH = isSmallDevice ? 60 : 70;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.light,
     },
     header: {
-        paddingHorizontal: spacing[6],
-        paddingVertical: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(16),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     title: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     searchContainer: {
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.xl,
-        paddingHorizontal: spacing[3],
+        paddingHorizontal: moderateScale(12),
     },
     searchIcon: {
-        fontSize: 16,
-        marginRight: spacing[2],
+        fontSize: moderateScale(16),
+        marginRight: moderateScale(8),
     },
     searchInput: {
         flex: 1,
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[900],
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
     },
     matchesSection: {
-        paddingVertical: spacing[3],
+        paddingVertical: moderateScale(12),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
     },
     matchesSectionTitle: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[500],
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        paddingHorizontal: spacing[4],
-        marginBottom: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        marginBottom: moderateScale(12),
     },
     matchesList: {
-        paddingHorizontal: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
     },
     matchItem: {
         alignItems: 'center',
-        marginRight: spacing[4],
-        width: 70,
+        marginRight: moderateScale(16),
+        width: MATCH_ITEM_WIDTH,
     },
     matchAvatar: {
         position: 'relative',
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     matchAvatarImageContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: MATCH_AVATAR_SIZE,
+        height: MATCH_AVATAR_SIZE,
+        borderRadius: MATCH_AVATAR_SIZE / 2,
         backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
@@ -328,23 +343,23 @@ const styles = StyleSheet.create({
         borderColor: colors.primary.DEFAULT,
     },
     matchAvatarPlaceholder: {
-        fontSize: fontSize['2xl'],
+        fontSize: responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: colors.primary.DEFAULT,
     },
     newMatchBadge: {
         position: 'absolute',
-        bottom: 2,
-        right: 2,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        bottom: moderateScale(2),
+        right: moderateScale(2),
+        width: moderateScale(16),
+        height: moderateScale(16),
+        borderRadius: moderateScale(8),
         backgroundColor: colors.success,
         borderWidth: 2,
         borderColor: colors.background.light,
     },
     matchName: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[700],
         textAlign: 'center',
     },
@@ -354,6 +369,6 @@ const styles = StyleSheet.create({
     separator: {
         height: 1,
         backgroundColor: colors.border.light,
-        marginLeft: spacing[4] + 56 + spacing[3], // avatar width + margin
+        marginLeft: responsiveValues.screenPadding + responsiveValues.avatarSmall + moderateScale(12),
     },
 });

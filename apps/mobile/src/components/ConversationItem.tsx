@@ -11,7 +11,17 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../theme';
 import type { Conversation } from '../services/api/messages';
 
 interface ConversationItemProps {
@@ -116,32 +126,35 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
     );
 }
 
+// Responsive avatar size
+const AVATAR_SIZE = isSmallDevice ? 48 : 56;
+
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.background.light,
     },
     avatarContainer: {
-        marginRight: spacing[3],
+        marginRight: moderateScale(12),
     },
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
     },
     avatarPlaceholder: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
         backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         fontWeight: fontWeight.semibold,
         color: colors.primary.DEFAULT,
     },
@@ -152,19 +165,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: spacing[1],
+        marginBottom: moderateScale(4),
     },
     name: {
         flex: 1,
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[800],
-        marginRight: spacing[2],
+        marginRight: moderateScale(8),
     },
     nameBold: {
         fontWeight: fontWeight.semibold,
     },
     time: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: colors.neutral[400],
     },
     timeUnread: {
@@ -177,25 +190,25 @@ const styles = StyleSheet.create({
     },
     message: {
         flex: 1,
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
-        marginRight: spacing[2],
+        marginRight: moderateScale(8),
     },
     messageUnread: {
         color: colors.neutral[700],
         fontWeight: fontWeight.medium,
     },
     unreadBadge: {
-        minWidth: 20,
-        height: 20,
-        borderRadius: 10,
+        minWidth: moderateScale(20),
+        height: moderateScale(20),
+        borderRadius: moderateScale(10),
         backgroundColor: colors.primary.DEFAULT,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: spacing[1],
+        paddingHorizontal: moderateScale(4),
     },
     unreadCount: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         fontWeight: fontWeight.semibold,
         color: '#FFFFFF',
     },

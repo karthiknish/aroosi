@@ -13,7 +13,15 @@ import {
     RefreshControl,
     ScrollView,
 } from 'react-native';
-import { colors, spacing, fontSize, fontWeight } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '../../theme';
 import { SwipeCard } from '../../components/SwipeCard';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
@@ -241,17 +249,18 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: spacing[6],
-        paddingVertical: spacing[4],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(16),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     logo: {
-        fontSize: 28,
-        marginRight: spacing[2],
+        fontSize: moderateScale(28),
+        marginRight: moderateScale(8),
     },
     title: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         fontWeight: fontWeight.bold,
         color: colors.primary.DEFAULT,
         flex: 1,
@@ -261,7 +270,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     counter: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[400],
     },
     cardContainer: {

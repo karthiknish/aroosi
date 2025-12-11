@@ -13,7 +13,16 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { AuthStackScreenProps } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '../../theme';
 
 export default function WelcomeScreen({ navigation }: AuthStackScreenProps<'Welcome'>) {
     return (
@@ -76,67 +85,69 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: spacing[6],
+        paddingHorizontal: responsiveValues.screenPadding,
         justifyContent: 'space-between',
-        paddingTop: spacing[16],
-        paddingBottom: spacing[8],
+        paddingTop: moderateScale(64),
+        paddingBottom: moderateScale(32),
     },
     brandContainer: {
         alignItems: 'center',
     },
     logo: {
-        fontSize: 80,
-        marginBottom: spacing[4],
+        fontSize: moderateScale(80),
+        marginBottom: moderateScale(16),
     },
     title: {
-        fontSize: fontSize['4xl'],
+        fontSize: responsiveFontSizes['4xl'],
         fontWeight: fontWeight.bold,
         color: '#FFFFFF',
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     subtitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         color: 'rgba(255, 255, 255, 0.8)',
     },
     features: {
         alignItems: 'center',
-        gap: spacing[3],
+        gap: moderateScale(12),
     },
     featureText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: 'rgba(255, 255, 255, 0.9)',
     },
     authButtons: {
-        gap: spacing[3],
+        gap: moderateScale(12),
     },
     primaryButton: {
         backgroundColor: '#FFFFFF',
-        paddingVertical: spacing[4],
+        paddingVertical: moderateScale(16),
         borderRadius: borderRadius.xl,
         alignItems: 'center',
+        minHeight: responsiveValues.buttonMedium,
     },
     primaryButtonText: {
         color: colors.primary[700],
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
     },
     secondaryButton: {
         backgroundColor: 'transparent',
-        paddingVertical: spacing[4],
+        paddingVertical: moderateScale(16),
         borderRadius: borderRadius.xl,
         borderWidth: 2,
         borderColor: 'rgba(255, 255, 255, 0.5)',
         alignItems: 'center',
+        minHeight: responsiveValues.buttonMedium,
     },
     secondaryButtonText: {
         color: '#FFFFFF',
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
     },
     terms: {
         textAlign: 'center',
         color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: fontSize.xs,
-        lineHeight: fontSize.xs * 1.5,
+        fontSize: responsiveFontSizes.xs,
+        lineHeight: responsiveFontSizes.xs * 1.5,
     },
 });

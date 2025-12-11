@@ -15,7 +15,17 @@ import {
     Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { useAuthStore } from '../../store';
@@ -303,6 +313,12 @@ export default function ChatScreen({
     );
 }
 
+// Responsive sizes
+const HEADER_AVATAR_SIZE = isSmallDevice ? 32 : 36;
+const SEND_BUTTON_SIZE = isSmallDevice ? 36 : 40;
+const ATTACH_BUTTON_SIZE = isSmallDevice ? 36 : 40;
+const ICEBREAKER_BADGE_SIZE = isSmallDevice ? 20 : 24;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -311,109 +327,110 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
         backgroundColor: colors.background.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     backIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: colors.neutral[800],
     },
     headerCenter: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: spacing[2],
+        marginLeft: moderateScale(8),
     },
     headerAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        marginRight: spacing[2],
+        width: HEADER_AVATAR_SIZE,
+        height: HEADER_AVATAR_SIZE,
+        borderRadius: HEADER_AVATAR_SIZE / 2,
+        marginRight: moderateScale(8),
     },
     headerAvatarPlaceholder: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: HEADER_AVATAR_SIZE,
+        height: HEADER_AVATAR_SIZE,
+        borderRadius: HEADER_AVATAR_SIZE / 2,
         backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing[2],
+        marginRight: moderateScale(8),
     },
     headerAvatarText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.primary.DEFAULT,
     },
     headerTitle: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     headerRight: {
-        padding: spacing[2],
+        padding: moderateScale(8),
     },
     moreIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: colors.neutral[600],
     },
     content: {
         flex: 1,
     },
     messagesList: {
-        padding: spacing[4],
-        paddingBottom: spacing[2],
+        padding: responsiveValues.screenPadding,
+        paddingBottom: moderateScale(8),
     },
     dateHeader: {
         alignItems: 'center',
-        marginVertical: spacing[4],
+        marginVertical: moderateScale(16),
     },
     dateHeaderText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: colors.neutral[400],
         backgroundColor: colors.neutral[100],
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
     },
     messageBubble: {
         maxWidth: '80%',
-        padding: spacing[3],
+        padding: moderateScale(12),
         borderRadius: borderRadius.xl,
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     myMessage: {
         alignSelf: 'flex-end',
         backgroundColor: colors.primary.DEFAULT,
-        borderBottomRightRadius: 4,
+        borderBottomRightRadius: moderateScale(4),
     },
     theirMessage: {
         alignSelf: 'flex-start',
         backgroundColor: colors.neutral[100],
-        borderBottomLeftRadius: 4,
+        borderBottomLeftRadius: moderateScale(4),
     },
     icebreakerBadge: {
         position: 'absolute',
-        top: -8,
-        right: -8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        top: moderateScale(-8),
+        right: moderateScale(-8),
+        width: ICEBREAKER_BADGE_SIZE,
+        height: ICEBREAKER_BADGE_SIZE,
+        borderRadius: ICEBREAKER_BADGE_SIZE / 2,
         backgroundColor: colors.warning,
         justifyContent: 'center',
         alignItems: 'center',
     },
     icebreakerIcon: {
-        fontSize: 12,
+        fontSize: moderateScale(12),
     },
     messageText: {
-        fontSize: fontSize.base,
-        lineHeight: fontSize.base * 1.4,
+        fontSize: responsiveFontSizes.base,
+        lineHeight: responsiveFontSizes.base * 1.4,
     },
     myMessageText: {
         color: '#FFFFFF',
@@ -422,8 +439,8 @@ const styles = StyleSheet.create({
         color: colors.neutral[800],
     },
     messageTime: {
-        fontSize: fontSize.xs,
-        marginTop: spacing[1],
+        fontSize: responsiveFontSizes.xs,
+        marginTop: moderateScale(4),
     },
     myMessageTime: {
         color: 'rgba(255,255,255,0.7)',
@@ -435,37 +452,37 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        padding: spacing[3],
+        padding: moderateScale(12),
         borderTopWidth: 1,
         borderTopColor: colors.border.light,
         backgroundColor: colors.background.light,
     },
     attachButton: {
-        width: 40,
-        height: 40,
+        width: ATTACH_BUTTON_SIZE,
+        height: ATTACH_BUTTON_SIZE,
         justifyContent: 'center',
         alignItems: 'center',
     },
     attachIcon: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
     },
     inputWrapper: {
         flex: 1,
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.xl,
-        paddingHorizontal: spacing[3],
-        marginHorizontal: spacing[2],
-        maxHeight: 120,
+        paddingHorizontal: moderateScale(12),
+        marginHorizontal: moderateScale(8),
+        maxHeight: moderateScale(120),
     },
     input: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[900],
-        paddingVertical: spacing[2],
+        paddingVertical: moderateScale(8),
     },
     sendButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: SEND_BUTTON_SIZE,
+        height: SEND_BUTTON_SIZE,
+        borderRadius: SEND_BUTTON_SIZE / 2,
         backgroundColor: colors.neutral[200],
         justifyContent: 'center',
         alignItems: 'center',
@@ -474,7 +491,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary.DEFAULT,
     },
     sendIcon: {
-        fontSize: 18,
+        fontSize: moderateScale(18),
         color: colors.neutral[400],
     },
     sendIconActive: {

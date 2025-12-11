@@ -15,7 +15,16 @@ import {
     ScrollView,
 } from 'react-native';
 import type { AuthStackScreenProps } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '../../theme';
 
 export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Register'>) {
     const [name, setName] = useState('');
@@ -147,69 +156,70 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: spacing[6],
-        paddingTop: spacing[4],
-        paddingBottom: spacing[8],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingTop: moderateScale(16),
+        paddingBottom: moderateScale(32),
     },
     header: {
-        marginBottom: spacing[8],
+        marginBottom: moderateScale(32),
     },
     backButton: {
-        marginBottom: spacing[6],
+        marginBottom: moderateScale(24),
     },
     backButtonText: {
-        fontSize: 28,
+        fontSize: moderateScale(28),
         color: colors.neutral[800],
     },
     title: {
-        fontSize: fontSize['3xl'],
+        fontSize: responsiveFontSizes['3xl'],
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     subtitle: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
     },
     form: {
         flex: 1,
     },
     inputContainer: {
-        marginBottom: spacing[4],
+        marginBottom: moderateScale(16),
     },
     label: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         fontWeight: fontWeight.medium,
         color: colors.neutral[700],
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     input: {
         backgroundColor: colors.neutral[100],
         borderRadius: borderRadius.lg,
-        padding: spacing[4],
-        fontSize: fontSize.base,
+        padding: moderateScale(16),
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[900],
         borderWidth: 1,
         borderColor: colors.neutral[200],
     },
     registerButton: {
         backgroundColor: colors.primary.DEFAULT,
-        paddingVertical: spacing[4],
+        paddingVertical: moderateScale(16),
         borderRadius: borderRadius.xl,
         alignItems: 'center',
-        marginTop: spacing[4],
-        marginBottom: spacing[4],
+        marginTop: moderateScale(16),
+        marginBottom: moderateScale(16),
+        minHeight: responsiveValues.buttonMedium,
     },
     registerButtonText: {
         color: '#FFFFFF',
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
     },
     terms: {
         textAlign: 'center',
         color: colors.neutral[500],
-        fontSize: fontSize.sm,
-        lineHeight: fontSize.sm * 1.6,
+        fontSize: responsiveFontSizes.sm,
+        lineHeight: responsiveFontSizes.sm * 1.6,
     },
     termsLink: {
         color: colors.primary.DEFAULT,
@@ -218,15 +228,15 @@ const styles = StyleSheet.create({
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        paddingTop: spacing[6],
+        paddingTop: moderateScale(24),
     },
     footerText: {
         color: colors.neutral[500],
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
     },
     footerLink: {
         color: colors.primary.DEFAULT,
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
     },
 });

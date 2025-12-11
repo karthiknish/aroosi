@@ -20,7 +20,17 @@ import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import {
@@ -342,6 +352,10 @@ export default function ShortlistsScreen() {
     );
 }
 
+// Responsive avatar size
+const AVATAR_SIZE = responsiveValues.avatarSmall;
+const REMOVE_BUTTON_SIZE = isSmallDevice ? 28 : 32;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -351,35 +365,36 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.background.light,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.primary.DEFAULT,
     },
     title: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     count: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
-        minWidth: 50,
+        minWidth: moderateScale(50),
         textAlign: 'right',
     },
     listContent: {
-        padding: spacing[4],
-        paddingBottom: spacing[8],
+        padding: responsiveValues.screenPadding,
+        paddingBottom: moderateScale(32),
     },
     itemContainer: {
         backgroundColor: colors.background.light,
         borderRadius: borderRadius.xl,
-        marginBottom: spacing[3],
+        marginBottom: responsiveValues.itemSpacing,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -390,111 +405,112 @@ const styles = StyleSheet.create({
     itemContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing[4],
+        padding: responsiveValues.cardPadding,
     },
     avatarContainer: {
-        marginRight: spacing[3],
+        marginRight: moderateScale(12),
     },
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
     },
     avatarPlaceholder: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
         backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: fontSize.xl,
+        fontSize: responsiveFontSizes.xl,
         color: colors.primary.DEFAULT,
         fontWeight: fontWeight.bold,
     },
     infoContainer: {
         flex: 1,
+        marginRight: moderateScale(8),
     },
     name: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: colors.neutral[900],
     },
     date: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
     notePreview: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
         fontStyle: 'italic',
     },
     itemActions: {
-        marginLeft: spacing[2],
+        marginLeft: moderateScale(8),
     },
     removeButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: REMOVE_BUTTON_SIZE,
+        height: REMOVE_BUTTON_SIZE,
+        borderRadius: REMOVE_BUTTON_SIZE / 2,
         backgroundColor: colors.error + '15',
         justifyContent: 'center',
         alignItems: 'center',
     },
     removeButtonText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.error,
     },
     noteSection: {
-        padding: spacing[4],
+        padding: responsiveValues.cardPadding,
         paddingTop: 0,
         borderTopWidth: 1,
         borderTopColor: colors.border.light,
     },
     noteLabel: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         fontWeight: fontWeight.medium,
         color: colors.neutral[700],
-        marginBottom: spacing[2],
-        marginTop: spacing[3],
+        marginBottom: moderateScale(8),
+        marginTop: moderateScale(12),
     },
     noteInput: {
         backgroundColor: colors.neutral[50],
         borderRadius: borderRadius.lg,
-        padding: spacing[3],
-        fontSize: fontSize.base,
+        padding: moderateScale(12),
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[900],
-        minHeight: 80,
+        minHeight: moderateScale(80),
         borderWidth: 1,
         borderColor: colors.border.light,
     },
     noteActions: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        gap: spacing[3],
-        marginTop: spacing[3],
+        gap: moderateScale(12),
+        marginTop: moderateScale(12),
     },
     cancelButton: {
-        paddingVertical: spacing[2],
-        paddingHorizontal: spacing[4],
+        paddingVertical: moderateScale(8),
+        paddingHorizontal: moderateScale(16),
     },
     cancelButtonText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[600],
     },
     saveButton: {
         backgroundColor: colors.primary.DEFAULT,
-        paddingVertical: spacing[2],
-        paddingHorizontal: spacing[4],
+        paddingVertical: moderateScale(8),
+        paddingHorizontal: moderateScale(16),
         borderRadius: borderRadius.lg,
     },
     saveButtonDisabled: {
         opacity: 0.6,
     },
     saveButtonText: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: '#FFFFFF',
         fontWeight: fontWeight.medium,
     },

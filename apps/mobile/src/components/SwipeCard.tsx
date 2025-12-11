@@ -13,12 +13,25 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../theme';
 import type { RecommendedProfile } from '../services/api/recommendations';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - spacing[8];
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.65;
+const CARD_WIDTH = SCREEN_WIDTH - (responsiveValues.screenPadding * 2);
+const CARD_HEIGHT = Math.min(SCREEN_HEIGHT * 0.65, 550);
+const ACTION_BUTTON_SIZE = isSmallDevice ? 48 : 56;
+const SMALL_BUTTON_SIZE = isSmallDevice ? 40 : 48;
 
 interface SwipeCardProps {
     profile: RecommendedProfile;
@@ -160,7 +173,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.neutral[200],
     },
     placeholderEmoji: {
-        fontSize: 80,
+        fontSize: moderateScale(80),
     },
     gradient: {
         position: 'absolute',
@@ -174,77 +187,78 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        padding: spacing[4],
+        padding: responsiveValues.screenPadding,
     },
     nameRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing[1],
+        marginBottom: moderateScale(4),
+        flexWrap: 'wrap',
     },
     name: {
-        fontSize: fontSize['2xl'],
+        fontSize: isSmallDevice ? responsiveFontSizes.xl : responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: '#FFFFFF',
     },
     verified: {
-        marginLeft: spacing[2],
-        fontSize: fontSize.lg,
+        marginLeft: moderateScale(8),
+        fontSize: responsiveFontSizes.lg,
         color: colors.info,
         backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: spacing[2],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
     },
     locationRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     locationIcon: {
-        fontSize: fontSize.sm,
-        marginRight: spacing[1],
+        fontSize: responsiveFontSizes.sm,
+        marginRight: moderateScale(4),
     },
     location: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: 'rgba(255,255,255,0.9)',
     },
     bio: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: 'rgba(255,255,255,0.85)',
-        marginBottom: spacing[2],
+        marginBottom: moderateScale(8),
     },
     interestsRow: {
         flexDirection: 'row',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: spacing[1],
+        gap: moderateScale(4),
     },
     interestTag: {
         backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: spacing[3],
-        paddingVertical: spacing[1],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
     },
     interestText: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: '#FFFFFF',
     },
     moreInterests: {
-        fontSize: fontSize.xs,
+        fontSize: responsiveFontSizes.xs,
         color: 'rgba(255,255,255,0.7)',
-        marginLeft: spacing[1],
+        marginLeft: moderateScale(4),
     },
     actionButtons: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: spacing[4],
-        gap: spacing[3],
+        paddingVertical: moderateScale(16),
+        gap: isSmallDevice ? moderateScale(8) : moderateScale(12),
     },
     actionButton: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: ACTION_BUTTON_SIZE,
+        height: ACTION_BUTTON_SIZE,
+        borderRadius: ACTION_BUTTON_SIZE / 2,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -259,37 +273,37 @@ const styles = StyleSheet.create({
         borderColor: colors.error,
     },
     passIcon: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         color: colors.error,
         fontWeight: '700',
     },
     superLikeButton: {
         backgroundColor: colors.info,
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: SMALL_BUTTON_SIZE,
+        height: SMALL_BUTTON_SIZE,
+        borderRadius: SMALL_BUTTON_SIZE / 2,
     },
     superLikeIcon: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
         color: '#FFFFFF',
     },
     likeButton: {
         backgroundColor: colors.success,
     },
     likeIcon: {
-        fontSize: 28,
+        fontSize: moderateScale(28),
         color: '#FFFFFF',
     },
     infoButton: {
         backgroundColor: '#FFFFFF',
         borderWidth: 2,
         borderColor: colors.info,
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: SMALL_BUTTON_SIZE,
+        height: SMALL_BUTTON_SIZE,
+        borderRadius: SMALL_BUTTON_SIZE / 2,
     },
     infoIcon: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
         color: colors.info,
     },
 });

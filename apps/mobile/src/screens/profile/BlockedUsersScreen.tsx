@@ -16,7 +16,17 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../theme';
+import { 
+    colors, 
+    spacing, 
+    fontSize, 
+    fontWeight, 
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+    isSmallDevice,
+} from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { getBlockedUsers, unblockUser } from '../../services/api/matches';
@@ -230,6 +240,9 @@ export default function BlockedUsersScreen() {
     );
 }
 
+// Responsive avatar size
+const AVATAR_SIZE = isSmallDevice ? 40 : 48;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -239,55 +252,56 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
         backgroundColor: colors.background.light,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+        minHeight: responsiveValues.headerHeight,
     },
     backButton: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.primary.DEFAULT,
     },
     title: {
-        fontSize: fontSize.lg,
+        fontSize: responsiveFontSizes.lg,
         fontWeight: fontWeight.bold,
         color: colors.neutral[900],
     },
     count: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
-        minWidth: 50,
+        minWidth: moderateScale(50),
         textAlign: 'right',
     },
     infoBanner: {
         flexDirection: 'row',
         backgroundColor: colors.info + '10',
-        padding: spacing[4],
-        margin: spacing[4],
+        padding: responsiveValues.cardPadding,
+        margin: responsiveValues.screenPadding,
         marginBottom: 0,
         borderRadius: borderRadius.xl,
         borderWidth: 1,
         borderColor: colors.info + '20',
     },
     infoIcon: {
-        fontSize: 16,
-        marginRight: spacing[3],
+        fontSize: moderateScale(16),
+        marginRight: moderateScale(12),
     },
     infoText: {
         flex: 1,
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[600],
-        lineHeight: 20,
+        lineHeight: moderateScale(20),
     },
     listContent: {
-        padding: spacing[4],
-        paddingBottom: spacing[8],
+        padding: responsiveValues.screenPadding,
+        paddingBottom: moderateScale(32),
     },
     itemContainer: {
         backgroundColor: colors.background.light,
         borderRadius: borderRadius.xl,
-        marginBottom: spacing[3],
+        marginBottom: responsiveValues.itemSpacing,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -298,46 +312,46 @@ const styles = StyleSheet.create({
     itemContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing[4],
+        padding: responsiveValues.cardPadding,
     },
     avatarContainer: {
-        marginRight: spacing[3],
+        marginRight: moderateScale(12),
     },
     avatarPlaceholder: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
         backgroundColor: colors.neutral[200],
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: 20,
+        fontSize: moderateScale(20),
     },
     infoContainer: {
         flex: 1,
     },
     userId: {
-        fontSize: fontSize.base,
+        fontSize: responsiveFontSizes.base,
         fontWeight: fontWeight.medium,
         color: colors.neutral[700],
     },
     date: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
-        marginTop: spacing[1],
+        marginTop: moderateScale(4),
     },
     unblockButton: {
         backgroundColor: colors.neutral[100],
-        paddingVertical: spacing[2],
-        paddingHorizontal: spacing[4],
+        paddingVertical: moderateScale(8),
+        paddingHorizontal: moderateScale(16),
         borderRadius: borderRadius.lg,
     },
     unblockButtonDisabled: {
         opacity: 0.6,
     },
     unblockButtonText: {
-        fontSize: fontSize.sm,
+        fontSize: responsiveFontSizes.sm,
         color: colors.neutral[700],
         fontWeight: fontWeight.medium,
     },
