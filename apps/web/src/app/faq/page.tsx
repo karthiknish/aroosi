@@ -311,12 +311,18 @@ export default function FaqPage() {
                               value={`${categoryIndex}-${index}`}
                               className="border border-neutral-200 rounded-lg px-4 hover:border-neutral-300 transition-colors"
                             >
-                              <AccordionTrigger className="text-left hover:no-underline py-4">
-                                <span className="font-medium text-neutral-dark pr-4">
+                              <AccordionTrigger 
+                                className="text-left hover:no-underline py-4"
+                                style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif', fontWeight: 400 }}
+                              >
+                                <span className="pr-4" style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}>
                                   {item.question}
                                 </span>
                               </AccordionTrigger>
-                              <AccordionContent className="text-neutral-light leading-relaxed pb-4">
+                              <AccordionContent 
+                                className="text-neutral-light leading-relaxed pb-4"
+                                style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}
+                              >
                                 {item.answer}
                               </AccordionContent>
                             </AccordionItem>
@@ -329,52 +335,68 @@ export default function FaqPage() {
               )}
             </div>
 
-            {/* Contact CTA */}
+            {/* Still Have Questions - Full width gradient section */}
+          </div>
+        </div>
+
+        <section className="py-16 gradient-secondary relative overflow-hidden mt-16">
+          <div className="absolute inset-0 gradient-secondary z-0"></div>
+          <div
+            className="absolute inset-0 opacity-10 z-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fillOpacity='1' fillRule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          ></div>
+          <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
+          
+          <div className="container mx-auto px-4 lg:px-6 text-center relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-20 text-center"
             >
-              <Card className="bg-gradient-to-r from-primary to-primary-dark p-12 text-white">
-                <div className="max-w-2xl mx-auto">
-                  <div className="mb-6">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MessageSquare className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-white" />
+              </div>
+              <h2 
+                className="text-3xl font-bold mb-4 text-white"
+              
+              >
+                Still have questions?
+              </h2>
+              <p 
+                className="text-lg text-white/90 mb-8 max-w-xl mx-auto"
+                style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}
+              >
+                Can&apos;t find the answer you&apos;re looking for? Our friendly support team is here to help you 24/7.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/contact">
+                  <Button className="bg-white text-secondary-dark hover:bg-white/90 text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5" />
+                      Contact Support
                     </div>
-                    <h2 className="text-3xl font-bold mb-4 font-serif">
-                      Still have questions?
-                    </h2>
-                    <p className="text-xl text-white/90 mb-8">
-                      Can&apos;t find the answer you&apos;re looking for? Our
-                      friendly support team is here to help you 24/7.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link href="/contact">
-                      <Button className="bg-white text-primary hover:bg-neutral-100 text-lg px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="w-5 h-5" />
-                          Contact Support
-                        </div>
-                      </Button>
-                    </Link>
-                    <Link href="/">
-                      <Button
-                        variant="outline"
-                        className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6 rounded-xl"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Heart className="w-5 h-5" />
-                          Get Started
-                        </div>
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </Card>
+                  </Button>
+                </Link>
+                <Link href="/">
+                  <Button
+                    variant="outline"
+                    className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6 rounded-xl"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-5 h-5" />
+                      Get Started
+                    </div>
+                  </Button>
+                </Link>
+              </div>
             </motion.div>
+          </div>
+        </section>
+
+        <div className="relative pb-16 px-4">
+          <div className="max-w-7xl mx-auto">
 
             {/* Popular Topics */}
             <motion.div

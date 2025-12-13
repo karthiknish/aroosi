@@ -360,10 +360,13 @@ export default function PricingPage() {
                   value={`item-${i}`}
                   className="bg-white rounded-xl shadow-sm border-0 px-6 overflow-hidden"
                 >
-                  <AccordionTrigger className="text-left font-medium text-neutral hover:no-underline py-5">
+                  <AccordionTrigger 
+                    className="text-left text-neutral hover:no-underline py-5"
+                    style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif', fontWeight: 400 }}
+                  >
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-neutral-light pb-5">
+                  <AccordionContent className="text-neutral-light pb-5" style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}>
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -373,8 +376,8 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="py-20 gradient-secondary relative overflow-hidden">
+      {/* Still have questions? - Full width gradient section */}
+      <section className="py-16 gradient-secondary relative overflow-hidden">
         <div className="absolute inset-0 gradient-secondary z-0"></div>
         <div
           className="absolute inset-0 opacity-10 z-0"
@@ -382,55 +385,35 @@ export default function PricingPage() {
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fillOpacity='1' fillRule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E")`,
           }}
         ></div>
+        <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
         
         <div className="container mx-auto px-4 lg:px-6 text-center relative z-10">
           <motion.div
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.5 }}
-            variants={fadeIn}
-            className="max-w-2xl mx-auto"
+            viewport={{ once: true, amount: 0.3 }}
+            variants={fadeInUp}
           >
-            <motion.h2 
-              variants={fadeInUp}
-              custom={0}
-              className="font-serif text-3xl lg:text-4xl font-bold text-white mb-4"
+            <h3 className="text-2xl font-bold text-white mb-3">
+              Still have questions?
+            </h3>
+            <p className="text-white/90 mb-6 max-w-xl mx-auto" style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}>
+              Can&apos;t find the answer you&apos;re looking for? Our friendly support team is here to help you 24/7.
+            </p>
+            <Button 
+              asChild 
+              className="bg-white text-secondary-dark hover:bg-white/90 px-8 py-6 rounded-xl shadow-lg"
+              size="lg"
             >
-              Ready to Find Your Perfect Match?
-            </motion.h2>
-            <motion.p 
-              variants={fadeInUp}
-              custom={1}
-              className="text-lg text-white/90 mb-8"
-            >
-              Join thousands of Afghans who have found love through Aroosi.
-            </motion.p>
-            <motion.div 
-              variants={fadeInUp}
-              custom={2}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <Button 
-                asChild 
-                size="lg"
-                className="bg-white text-secondary-dark hover:bg-white/90 px-8 py-6 rounded-xl shadow-lg"
-              >
-                <Link href="/">
-                  Get Started Free
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
-            </motion.div>
-            <motion.p 
-              variants={fadeInUp}
-              custom={3}
-              className="text-white/70 text-sm mt-6"
-            >
-              All prices in GBP (£). Cancel anytime. No hidden fees.
-            </motion.p>
+              <Link href="/contact">
+                Contact Support
+              </Link>
+            </Button>
           </motion.div>
         </div>
       </section>
+
+      
     </div>
   );
 }
