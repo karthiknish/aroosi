@@ -4,12 +4,13 @@
  */
 
 import React, { useEffect } from 'react';
-import { StatusBar, LogBox } from 'react-native';
+import { StatusBar, LogBox, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNavigator } from './navigation';
 import { useAuthStore } from './store';
 import { onAuthStateChanged } from './services/firebase';
 import { initCrashlytics, setUserId, logMessage } from './services/crashlytics';
+import { setupNotifications, useNotificationHandlers } from './services/notificationHandler';
 
 // Suppress specific warnings (for development)
 LogBox.ignoreLogs([
@@ -17,7 +18,19 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
-    const { setUser, setLoading } = useAuthStore();
+    const { setUser, setLoading, isAuthenticated } = useAuthStore();
+
+    // Setup notification handlers
+    useNotificationHandlers((message) => {
+        // Optional: Show in-app notification for foreground messages
+        if (message.notification?.title) {
+            Alert.alert(
+                message.notification.title,
+                message.notification.body || '',
+                [{ text: 'OK' }]
+            );
+        }
+    });
 
     useEffect(() => {
         // Initialize Crashlytics
@@ -47,6 +60,13 @@ export default function App() {
         return unsubscribe;
     }, [setUser, setLoading]);
 
+    // Setup push notifications when authenticated
+    useEffect(() => {
+        if (isAuthenticated) {
+            setupNotifications();
+        }
+    }, [isAuthenticated]);
+
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <StatusBar barStyle="dark-content" />
@@ -54,3 +74,4 @@ export default function App() {
         </GestureHandlerRootView>
     );
 }
+

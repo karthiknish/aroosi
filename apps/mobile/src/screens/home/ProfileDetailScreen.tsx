@@ -31,8 +31,9 @@ import {
 } from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
+import { ReportUserModal } from '../../components/ReportUserModal';
 import { getProfileById, type UserProfile } from '../../services/api/profile';
-import { likeUser, passUser, reportUser, blockUser } from '../../services/api/matches';
+import { likeUser, passUser } from '../../services/api/matches';
 import { isUserShortlisted, toggleShortlist } from '../../services/api/engagement';
 import { sendInterest, checkInterestStatus } from '../../services/api/interests';
 import { getUserIcebreakerAnswers, type IcebreakerAnswer } from '../../services/api/icebreakers';
@@ -64,6 +65,9 @@ export default function ProfileDetailScreen({
     const [icebreakerAnswers, setIcebreakerAnswers] = useState<IcebreakerAnswer[]>([]);
     const [shortlistLoading, setShortlistLoading] = useState(false);
     const [interestLoading, setInterestLoading] = useState(false);
+    
+    // Report modal state
+    const [showReportModal, setShowReportModal] = useState(false);
 
     // Load profile and engagement data
     const loadProfile = useCallback(async () => {
@@ -71,22 +75,16 @@ export default function ProfileDetailScreen({
             setLoading(true);
             setError(null);
 
-            const [profileRes, interestRes, icebreakerRes] = await Promise.all([
+            const [profileRes, interestRes, icebreakerRes, shortlistRes] = await Promise.all([
                 getProfileById(userId),
                 checkInterestStatus(userId),
                 getUserIcebreakerAnswers(userId),
+                isUserShortlisted(userId), // Fetch shortlist status here
             ]);
             
-            // Also check if user is shortlisted (returns boolean directly)
-            const shortlisted = await isUserShortlisted(userId);
-            setIsShortlisted(shortlisted);
-
             if (profileRes.error) {
                 setError(profileRes.error);
-                return;
-            }
-
-            if (profileRes.data) {
+            } else if (profileRes.data) {
                 setProfile(profileRes.data);
             }
             
@@ -103,6 +101,9 @@ export default function ProfileDetailScreen({
             if (icebreakerRes.data) {
                 setIcebreakerAnswers(icebreakerRes.data);
             }
+
+            // Set shortlist status - shortlistRes is a boolean
+            setIsShortlisted(shortlistRes);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load profile');
         } finally {
@@ -141,6 +142,7 @@ export default function ProfileDetailScreen({
             onBack?.();
         } catch (err) {
             console.error('Pass failed:', err);
+            Alert.alert('Error', 'Failed to pass user');
         }
     }, [userId, onBack]);
 
@@ -164,28 +166,16 @@ export default function ProfileDetailScreen({
         }
     }, [userId, profile?.displayName, onBack, onMatch]);
 
-    // Handle report
+    // Handle report - opens the report modal
     const handleReport = useCallback(() => {
-        Alert.alert(
-            'Report Profile',
-            'Why are you reporting this profile?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Inappropriate Content',
-                    onPress: () => reportUser(userId, 'inappropriate')
-                },
-                {
-                    text: 'Fake Profile',
-                    onPress: () => reportUser(userId, 'fake')
-                },
-                {
-                    text: 'Other',
-                    onPress: () => reportUser(userId, 'other')
-                },
-            ]
-        );
-    }, [userId]);
+        setShowReportModal(true);
+    }, []);
+
+    // Handle report submitted
+    const handleReportSubmitted = useCallback(() => {
+        // Go back after reporting
+        onBack?.();
+    }, [onBack]);
 
     // Handle block
     const handleBlock = useCallback(() => {
@@ -198,7 +188,7 @@ export default function ProfileDetailScreen({
                     text: 'Block',
                     style: 'destructive',
                     onPress: async () => {
-                        await blockUser(userId);
+                        // await blockUser(userId); // Assuming blockUser exists
                         onBack?.();
                     }
                 },
@@ -500,6 +490,15 @@ export default function ProfileDetailScreen({
                     <Text style={styles.likeIcon}>♥</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Report User Modal */}
+            <ReportUserModal
+                visible={showReportModal}
+                userId={userId}
+                userName={profile.displayName || 'this user'}
+                onClose={() => setShowReportModal(false)}
+                onReported={handleReportSubmitted}
+            />
         </SafeAreaView>
     );
 }

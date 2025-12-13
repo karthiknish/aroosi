@@ -43,11 +43,11 @@
   --popover-foreground: 0 0% 3.9%;
   --primary: 330 81% 60%;
   --primary-foreground: 0 0% 98%;
-  --secondary: 0 0% 96.1%;
-  --secondary-foreground: 0 0% 9%;
+  --secondary: 201 34% 53%;
+  --secondary-foreground: 0 0% 98%;
   --muted: 0 0% 96.1%;
   --muted-foreground: 0 0% 45.1%;
-  --accent: 0 0% 96.1%;
+  --accent: 39 52% 66%;
   --accent-foreground: 0 0% 9%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
@@ -464,6 +464,23 @@
   }
   .border-danger {
     border-color: var(--color-danger) !important;
+  }
+  
+  /* Gradient utilities - using CSS variables for consistent theming */
+  .gradient-secondary {
+    background: linear-gradient(to right, var(--color-secondary), var(--color-secondary-dark)) !important;
+  }
+  .gradient-secondary-vertical {
+    background: linear-gradient(to bottom, var(--color-secondary), var(--color-secondary-dark)) !important;
+  }
+  .gradient-primary {
+    background: linear-gradient(to right, var(--color-primary), var(--color-primary-dark)) !important;
+  }
+  .gradient-primary-vertical {
+    background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-dark)) !important;
+  }
+  .gradient-accent {
+    background: linear-gradient(to right, var(--color-accent), var(--color-accent-dark)) !important;
   }
 }
   

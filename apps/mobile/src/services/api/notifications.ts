@@ -2,6 +2,7 @@
  * Notifications API Service
  */
 
+import { Platform } from 'react-native';
 import { api } from './client';
 import messaging from '@react-native-firebase/messaging';
 
@@ -41,7 +42,7 @@ export async function registerPushToken() {
         // Register with backend
         const response = await api.post('/push/register', {
             token,
-            platform: 'ios', // TODO: detect platform
+            platform: Platform.OS,
         });
 
         return { success: true, token, ...response };

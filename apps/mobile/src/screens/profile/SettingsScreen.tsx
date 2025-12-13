@@ -55,8 +55,39 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                     text: 'Delete Account',
                     style: 'destructive',
                     onPress: () => {
-                        // TODO: Implement account deletion
-                        Alert.alert('Contact Support', 'Please contact support@aroosi.app to delete your account.');
+                        // Second confirmation for destructive action
+                        Alert.alert(
+                            'Final Confirmation',
+                            'This is your last chance to cancel. Your account, matches, messages, and all data will be permanently deleted.',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                    text: 'Delete Forever',
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                        try {
+                                            const { deleteAccount } = await import('../../services/api/auth');
+                                            const result = await deleteAccount();
+                                            
+                                            if (result.error) {
+                                                Alert.alert('Error', result.error);
+                                            } else {
+                                                // Auth state listener will handle navigation
+                                                Alert.alert(
+                                                    'Account Deleted',
+                                                    'Your account has been successfully deleted.'
+                                                );
+                                            }
+                                        } catch (error) {
+                                            Alert.alert(
+                                                'Error',
+                                                'Failed to delete account. Please try again or contact support@aroosi.app'
+                                            );
+                                        }
+                                    },
+                                },
+                            ]
+                        );
                     },
                 },
             ]

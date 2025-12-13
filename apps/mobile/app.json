@@ -7,6 +7,7 @@
         "icon": "./assets/icon.png",
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,
+        "scheme": "aroosi",
         "splash": {
             "image": "./assets/splash-icon.png",
             "resizeMode": "contain",
@@ -15,11 +16,18 @@
         "ios": {
             "supportsTablet": true,
             "bundleIdentifier": "com.aroosi.app",
+            "buildNumber": "1",
             "googleServicesFile": "./GoogleService-Info.plist",
+            "usesAppleSignIn": true,
+            "associatedDomains": [
+                "applinks:aroosi.app",
+                "applinks:www.aroosi.app"
+            ],
             "infoPlist": {
                 "NSCameraUsageDescription": "Aroosi needs camera access to take profile photos",
                 "NSPhotoLibraryUsageDescription": "Aroosi needs photo library access to select profile photos",
-                "NSPhotoLibraryAddUsageDescription": "Aroosi needs permission to save photos"
+                "NSPhotoLibraryAddUsageDescription": "Aroosi needs permission to save photos",
+                "NSUserTrackingUsageDescription": "This identifier will be used to show you personalized matches"
             }
         },
         "android": {
@@ -28,8 +36,33 @@
                 "backgroundColor": "#B91C1C"
             },
             "package": "com.aroosi.app",
+            "versionCode": 1,
             "googleServicesFile": "./google-services.json",
-            "edgeToEdgeEnabled": true
+            "edgeToEdgeEnabled": true,
+            "intentFilters": [
+                {
+                    "action": "VIEW",
+                    "autoVerify": true,
+                    "data": [
+                        {
+                            "scheme": "https",
+                            "host": "aroosi.app",
+                            "pathPrefix": "/profile"
+                        },
+                        {
+                            "scheme": "https",
+                            "host": "aroosi.app",
+                            "pathPrefix": "/chat"
+                        },
+                        {
+                            "scheme": "https",
+                            "host": "aroosi.app",
+                            "pathPrefix": "/match"
+                        }
+                    ],
+                    "category": ["BROWSABLE", "DEFAULT"]
+                }
+            ]
         },
         "web": {
             "favicon": "./assets/favicon.png",
@@ -40,6 +73,7 @@
             "@react-native-firebase/auth",
             "@react-native-firebase/crashlytics",
             "@react-native-google-signin/google-signin",
+            "expo-apple-authentication",
             [
                 "expo-splash-screen",
                 {

@@ -2,7 +2,7 @@
  * Login Screen
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -13,6 +13,8 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
 import type { AuthStackScreenProps } from '../../navigation/types';
 import { 
@@ -26,31 +28,71 @@ import {
     responsiveFontSizes,
 } from '../../theme';
 import { useAuthStore } from '../../store';
+import { loginWithEmail, loginWithGoogle } from '../../services/api/auth';
+import { loginWithApple, isAppleSignInAvailable } from '../../services/api/appleAuth';
 
 export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'>) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { setUser, setLoading, setError } = useAuthStore();
+    const [isLoading, setIsLoading] = useState(false);
+    const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
+    const { setError } = useAuthStore();
+
+    // Check Apple Sign-In availability on mount
+    useEffect(() => {
+        isAppleSignInAvailable().then(setAppleSignInAvailable);
+    }, []);
 
     const handleLogin = async () => {
         if (!email || !password) {
-            setError('Please fill in all fields');
+            Alert.alert('Error', 'Please fill in all fields');
             return;
         }
 
-        setLoading(true);
+        setIsLoading(true);
         try {
-            // TODO: Implement Firebase auth login
-            // For now, just simulate login
-            setUser({
-                id: '1',
-                email,
-                displayName: 'Test User',
-                photoURL: null,
-                phoneNumber: null,
-            });
+            const result = await loginWithEmail({ email, password });
+            
+            if (result.error) {
+                Alert.alert('Login Failed', result.error);
+            }
+            // Auth state listener in App.tsx will handle navigation
         } catch (error) {
-            setError('Login failed. Please try again.');
+            Alert.alert('Error', 'Login failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setIsLoading(true);
+        try {
+            const result = await loginWithGoogle();
+            
+            if (result.error) {
+                Alert.alert('Login Failed', result.error);
+            }
+            // Auth state listener in App.tsx will handle navigation
+        } catch (error) {
+            Alert.alert('Error', 'Google sign-in failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAppleLogin = async () => {
+        setIsLoading(true);
+        try {
+            const result = await loginWithApple();
+            
+            if (result.error) {
+                Alert.alert('Login Failed', result.error);
+            }
+            // Auth state listener in App.tsx will handle navigation
+        } catch (error) {
+            Alert.alert('Error', 'Apple sign-in failed. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -69,6 +111,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.backButton}
+                            disabled={isLoading}
                         >
                             <Text style={styles.backButtonText}>←</Text>
                         </TouchableOpacity>
@@ -89,6 +132,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoComplete="email"
+                                editable={!isLoading}
                             />
                         </View>
 
@@ -101,22 +145,29 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
+                                editable={!isLoading}
                             />
                         </View>
 
                         <TouchableOpacity
                             style={styles.forgotPassword}
                             onPress={() => navigation.navigate('ForgotPassword')}
+                            disabled={isLoading}
                         >
                             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.loginButton}
+                            style={[styles.loginButton, isLoading && styles.buttonDisabled]}
                             onPress={handleLogin}
                             activeOpacity={0.8}
+                            disabled={isLoading}
                         >
-                            <Text style={styles.loginButtonText}>Sign In</Text>
+                            {isLoading ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.loginButtonText}>Sign In</Text>
+                            )}
                         </TouchableOpacity>
 
                         {/* Divider */}
@@ -128,10 +179,22 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
 
                         {/* Social Login */}
                         <View style={styles.socialButtons}>
-                            <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                                <Text style={styles.socialButtonText}>🍎 Apple</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                            {appleSignInAvailable && (
+                                <TouchableOpacity 
+                                    style={styles.socialButton} 
+                                    activeOpacity={0.8}
+                                    onPress={handleAppleLogin}
+                                    disabled={isLoading}
+                                >
+                                    <Text style={styles.socialButtonText}>🍎 Apple</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity 
+                                style={styles.socialButton} 
+                                activeOpacity={0.8}
+                                onPress={handleGoogleLogin}
+                                disabled={isLoading}
+                            >
                                 <Text style={styles.socialButtonText}>G Google</Text>
                             </TouchableOpacity>
                         </View>
@@ -140,7 +203,10 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                     {/* Footer */}
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>Don't have an account? </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('Register')}
+                            disabled={isLoading}
+                        >
                             <Text style={styles.footerLink}>Sign Up</Text>
                         </TouchableOpacity>
                     </View>
@@ -149,6 +215,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
         </SafeAreaView>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {
@@ -221,6 +288,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: moderateScale(24),
         minHeight: responsiveValues.buttonMedium,
+        justifyContent: 'center',
+    },
+    buttonDisabled: {
+        opacity: 0.6,
     },
     loginButtonText: {
         color: '#FFFFFF',

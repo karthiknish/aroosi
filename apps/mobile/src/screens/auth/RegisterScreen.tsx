@@ -13,6 +13,9 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Alert,
+    ActivityIndicator,
+    Linking,
 } from 'react-native';
 import type { AuthStackScreenProps } from '../../navigation/types';
 import { 
@@ -25,23 +28,62 @@ import {
     responsiveValues,
     responsiveFontSizes,
 } from '../../theme';
+import { registerWithEmail } from '../../services/api/auth';
 
 export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Register'>) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleRegister = async () => {
+        // Validation
         if (!name || !email || !password || !confirmPassword) {
-            // Handle validation
+            Alert.alert('Error', 'Please fill in all fields');
             return;
         }
+        
+        if (password.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters');
+            return;
+        }
+        
         if (password !== confirmPassword) {
-            // Handle password mismatch
+            Alert.alert('Error', 'Passwords do not match');
             return;
         }
-        // TODO: Implement Firebase registration
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            Alert.alert('Error', 'Please enter a valid email address');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const result = await registerWithEmail({
+                email,
+                password,
+                displayName: name,
+            });
+            
+            if (result.error) {
+                Alert.alert('Registration Failed', result.error);
+            }
+            // Auth state listener in App.tsx will handle navigation
+        } catch (error) {
+            Alert.alert('Error', 'Registration failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const openLink = (url: string) => {
+        Linking.openURL(url).catch(() => {
+            Alert.alert('Error', 'Could not open the link');
+        });
     };
 
     return (
@@ -59,6 +101,7 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.backButton}
+                            disabled={isLoading}
                         >
                             <Text style={styles.backButtonText}>←</Text>
                         </TouchableOpacity>
@@ -77,6 +120,7 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
                                 value={name}
                                 onChangeText={setName}
                                 autoCapitalize="words"
+                                editable={!isLoading}
                             />
                         </View>
 
@@ -91,6 +135,7 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoComplete="email"
+                                editable={!isLoading}
                             />
                         </View>
 
@@ -103,6 +148,7 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
+                                editable={!isLoading}
                             />
                         </View>
 
@@ -115,28 +161,47 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
                                 secureTextEntry
+                                editable={!isLoading}
                             />
                         </View>
 
                         <TouchableOpacity
-                            style={styles.registerButton}
+                            style={[styles.registerButton, isLoading && styles.buttonDisabled]}
                             onPress={handleRegister}
                             activeOpacity={0.8}
+                            disabled={isLoading}
                         >
-                            <Text style={styles.registerButtonText}>Create Account</Text>
+                            {isLoading ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.registerButtonText}>Create Account</Text>
+                            )}
                         </TouchableOpacity>
 
                         <Text style={styles.terms}>
                             By creating an account, you agree to our{' '}
-                            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-                            <Text style={styles.termsLink}>Privacy Policy</Text>
+                            <Text 
+                                style={styles.termsLink}
+                                onPress={() => openLink('https://aroosi.app/terms')}
+                            >
+                                Terms of Service
+                            </Text>{' '}and{' '}
+                            <Text 
+                                style={styles.termsLink}
+                                onPress={() => openLink('https://aroosi.app/privacy')}
+                            >
+                                Privacy Policy
+                            </Text>
                         </Text>
                     </View>
 
                     {/* Footer */}
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>Already have an account? </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('Login')}
+                            disabled={isLoading}
+                        >
                             <Text style={styles.footerLink}>Sign In</Text>
                         </TouchableOpacity>
                     </View>
@@ -145,6 +210,7 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
         </SafeAreaView>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {
@@ -209,6 +275,10 @@ const styles = StyleSheet.create({
         marginTop: moderateScale(16),
         marginBottom: moderateScale(16),
         minHeight: responsiveValues.buttonMedium,
+        justifyContent: 'center',
+    },
+    buttonDisabled: {
+        opacity: 0.6,
     },
     registerButtonText: {
         color: '#FFFFFF',

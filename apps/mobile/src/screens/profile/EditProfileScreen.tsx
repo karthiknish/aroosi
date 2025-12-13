@@ -12,8 +12,12 @@ import {
     TextInput,
     TouchableOpacity,
     Alert,
+    ActivityIndicator,
+    ActionSheetIOS,
+    Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { launchCamera, launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
 import { 
     colors, 
     spacing, 
@@ -28,6 +32,8 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import {
     getProfile,
     updateProfile,
+    uploadProfilePhoto,
+    deleteProfilePhoto,
     type UserProfile,
     type ProfileUpdateData,
 } from '../../services/api/profile';
@@ -41,6 +47,7 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
     // Form state
     const [displayName, setDisplayName] = useState('');
@@ -49,6 +56,7 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     const [city, setCity] = useState('');
     const [interests, setInterests] = useState<string[]>([]);
     const [newInterest, setNewInterest] = useState('');
+    const [photos, setPhotos] = useState<(string | null)[]>([null, null, null, null, null, null]);
 
     // Load profile
     const loadProfile = useCallback(async () => {
@@ -64,9 +72,16 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
                 setAge(p.age?.toString() || '');
                 setCity(p.location?.city || '');
                 setInterests(p.interests || []);
+                
+                // Initialize photos array
+                const photoArray: (string | null)[] = [null, null, null, null, null, null];
+                p.photos?.forEach((photo, index) => {
+                    if (index < 6) photoArray[index] = photo;
+                });
+                setPhotos(photoArray);
             }
         } catch (err) {
-            console.error('Failed to load profile:', err);
+            Alert.alert('Error', 'Failed to load profile');
         } finally {
             setLoading(false);
         }
@@ -75,6 +90,119 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     useEffect(() => {
         loadProfile();
     }, [loadProfile]);
+
+    // Handle photo selection
+    const handlePhotoPress = useCallback((index: number) => {
+        const hasPhoto = photos[index] !== null;
+        
+        const options = hasPhoto 
+            ? ['Take Photo', 'Choose from Library', 'Delete Photo', 'Cancel']
+            : ['Take Photo', 'Choose from Library', 'Cancel'];
+        
+        const destructiveIndex = hasPhoto ? 2 : undefined;
+        const cancelIndex = hasPhoto ? 3 : 2;
+
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options,
+                    destructiveButtonIndex: destructiveIndex,
+                    cancelButtonIndex: cancelIndex,
+                },
+                (buttonIndex) => {
+                    if (buttonIndex === 0) {
+                        openCamera(index);
+                    } else if (buttonIndex === 1) {
+                        openGallery(index);
+                    } else if (hasPhoto && buttonIndex === 2) {
+                        handleDeletePhoto(index);
+                    }
+                }
+            );
+        } else {
+            // Android - use simple Alert
+            Alert.alert(
+                'Photo Options',
+                'Choose an option',
+                hasPhoto ? [
+                    { text: 'Take Photo', onPress: () => openCamera(index) },
+                    { text: 'Choose from Library', onPress: () => openGallery(index) },
+                    { text: 'Delete Photo', style: 'destructive', onPress: () => handleDeletePhoto(index) },
+                    { text: 'Cancel', style: 'cancel' },
+                ] : [
+                    { text: 'Take Photo', onPress: () => openCamera(index) },
+                    { text: 'Choose from Library', onPress: () => openGallery(index) },
+                    { text: 'Cancel', style: 'cancel' },
+                ]
+            );
+        }
+    }, [photos]);
+
+    // Open camera
+    const openCamera = async (index: number) => {
+        const result = await launchCamera({
+            mediaType: 'photo',
+            quality: 0.8,
+            maxWidth: 1080,
+            maxHeight: 1080,
+        });
+        handleImageResult(result, index);
+    };
+
+    // Open gallery
+    const openGallery = async (index: number) => {
+        const result = await launchImageLibrary({
+            mediaType: 'photo',
+            quality: 0.8,
+            maxWidth: 1080,
+            maxHeight: 1080,
+        });
+        handleImageResult(result, index);
+    };
+
+    // Handle image picker result
+    const handleImageResult = async (result: ImagePickerResponse, index: number) => {
+        if (result.didCancel || result.errorCode || !result.assets?.[0]?.uri) {
+            return;
+        }
+
+        const imageUri = result.assets[0].uri;
+        setUploadingIndex(index);
+
+        try {
+            const response = await uploadProfilePhoto(imageUri, index);
+            
+            if (response.photoUrl) {
+                const newPhotos = [...photos];
+                newPhotos[index] = response.photoUrl;
+                setPhotos(newPhotos);
+            } else if (response.error) {
+                Alert.alert('Error', response.error);
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Failed to upload photo');
+        } finally {
+            setUploadingIndex(null);
+        }
+    };
+
+    // Delete photo
+    const handleDeletePhoto = async (index: number) => {
+        const photoUrl = photos[index];
+        if (!photoUrl) return;
+
+        setUploadingIndex(index);
+        try {
+            await deleteProfilePhoto(photoUrl);
+            const newPhotos = [...photos];
+            newPhotos[index] = null;
+            setPhotos(newPhotos);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to delete photo');
+        } finally {
+            setUploadingIndex(null);
+        }
+    };
 
     // Save profile
     const handleSave = useCallback(async () => {
@@ -118,6 +246,7 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     const removeInterest = useCallback((interest: string) => {
         setInterests(prev => prev.filter(i => i !== interest));
     }, []);
+
 
     if (loading) {
         return (
@@ -166,16 +295,27 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
                             <TouchableOpacity
                                 key={index}
                                 style={styles.photoSlot}
+                                onPress={() => handlePhotoPress(index)}
+                                disabled={uploadingIndex !== null}
                             >
-                                {profile?.photos?.[index] ? (
+                                {uploadingIndex === index ? (
+                                    <View style={styles.photoPlaceholder}>
+                                        <ActivityIndicator color={colors.primary.DEFAULT} />
+                                    </View>
+                                ) : photos[index] ? (
                                     <Image
-                                        source={{ uri: profile.photos[index] }}
+                                        source={{ uri: photos[index]! }}
                                         style={styles.photo}
                                         contentFit="cover"
                                     />
                                 ) : (
                                     <View style={styles.photoPlaceholder}>
                                         <Text style={styles.addPhotoIcon}>+</Text>
+                                    </View>
+                                )}
+                                {index === 0 && photos[index] && (
+                                    <View style={styles.mainPhotoBadge}>
+                                        <Text style={styles.mainPhotoText}>Main</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -458,5 +598,19 @@ const styles = StyleSheet.create({
         fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
         marginTop: moderateScale(8),
+    },
+    mainPhotoBadge: {
+        position: 'absolute',
+        bottom: moderateScale(4),
+        left: moderateScale(4),
+        backgroundColor: colors.primary.DEFAULT,
+        paddingHorizontal: moderateScale(6),
+        paddingVertical: moderateScale(2),
+        borderRadius: borderRadius.sm,
+    },
+    mainPhotoText: {
+        fontSize: responsiveFontSizes.xs,
+        color: '#FFFFFF',
+        fontWeight: fontWeight.medium,
     },
 });

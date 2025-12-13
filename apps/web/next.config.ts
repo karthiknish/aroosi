@@ -92,9 +92,11 @@ const nextConfig: NextConfig = {
     return config;
   },
   turbopack: {
+    // In a monorepo, Turbopack must be rooted at the workspace
+    // so it can access the shared `node_modules` directory.
+    root: path.resolve(__dirname, "../.."),
     resolveAlias: {
       "@": path.resolve(__dirname, "src"),
-      // Removed legacy "@convex" alias
     },
   },
   // Add headers for better Safari compatibility

@@ -30,46 +30,62 @@ export default function HowItWorksPage() {
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/10 rounded-full blur-2xl" />
         </div>
 
-        <div className="relative pt-32">
+        <div className="relative">
           {/* Hero Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-20"
-          >
-            <h1
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-primary leading-tight font-serif"
-            >
-              How Aroosi Works
-            </h1>
-            <p className="text-lg sm:text-xl text-neutral-light mb-8 max-w-3xl mx-auto leading-relaxed">
-              Aroosi makes finding your ideal life partner simple, safe, and
-              meaningful. Here&apos;s how you can start your journey to finding
-              love.
-            </p>
-            <div className="flex justify-center space-x-8 text-sm text-neutral mb-8">
-              <span className="flex items-center gap-1">
-                <CheckCircle className="w-4 h-4 text-success" />
-                Quick & Easy Setup
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="w-4 h-4 text-success" />
-                Safe & Secure
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="w-4 h-4 text-success" />
-                Afghan Community
-              </span>
+          <section className="relative py-20 lg:py-32 overflow-hidden gradient-secondary">
+            {/* Decorative background patterns */}
+            <div className="absolute inset-0 gradient-secondary z-0"></div>
+            <div
+              className="absolute inset-0 opacity-10 z-0"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fillOpacity='1' fillRule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E")`,
+              }}
+            ></div>
+
+            {/* Pink color pop circle */}
+            <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
+
+            <div className="container mx-auto px-4 lg:px-6 relative z-10">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-center"
+              >
+                <h1
+                  className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight font-serif"
+                >
+                  How Aroosi Works
+                </h1>
+                <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
+                  Aroosi makes finding your ideal life partner simple, safe, and
+                  meaningful. Here&apos;s how you can start your journey to finding
+                  love.
+                </p>
+                <div className="flex flex-wrap justify-center gap-6 text-sm text-white/80 mb-8">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                    Quick & Easy Setup
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                    Safe & Secure
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                    Afghan Community
+                  </span>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
+          </section>
 
           {/* Steps Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-20"
+            className="mb-20 py-20 px-4"
           >
             <div className="text-center mb-16">
               <h2
@@ -373,7 +389,7 @@ export default function HowItWorksPage() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="relative"
           >
-            <section className="py-16 md:py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark px-4 md:px-0">
+            <section className="py-16 md:py-20 relative overflow-hidden gradient-secondary px-4 md:px-0">
               {/* Decorative pattern overlay */}
               <div
                 className="absolute inset-0 opacity-10 z-10"

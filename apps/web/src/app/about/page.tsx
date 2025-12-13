@@ -18,18 +18,18 @@ export default function AboutPage() {
       <div className="flex flex-col bg-base-light">
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden bg-primary/5">
+        <section className="relative py-20 lg:py-32 overflow-hidden gradient-secondary">
           {/* Decorative background patterns */}
-          <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-primary/10 z-0"></div>
+          <div className="absolute inset-0 gradient-secondary z-0"></div>
           <div
-            className="absolute inset-0 opacity-[0.03] z-0"
+            className="absolute inset-0 opacity-10 z-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23006E5C' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fillOpacity='1' fillRule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E")`,
             }}
           ></div>
 
           {/* Pink color pop circle */}
-          <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-30 z-0"></div>
+          <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
 
           <div className="container mx-auto px-4 lg:px-6 relative z-10">
             <motion.div
@@ -596,10 +596,10 @@ export default function AboutPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark">
+        <section className="py-20 relative overflow-hidden gradient-secondary">
           {/* Pink color pop circle */}
           <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-dark"></div>
+          <div className="absolute inset-0 gradient-secondary"></div>
 
           {/* Decorative patterns */}
           <div

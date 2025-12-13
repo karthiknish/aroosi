@@ -52,6 +52,7 @@ export interface ProfileUpdateData {
         country?: string;
     };
     interests?: string[];
+    onboardingComplete?: boolean;
 }
 
 /**

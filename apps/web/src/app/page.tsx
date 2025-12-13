@@ -608,10 +608,10 @@ export default function HomePage() {
           </section>
 
           {/* CTA Section */}
-          <section className="py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark">
+          <section className="py-20 relative overflow-hidden gradient-secondary">
             {/* Pink color pop circle */}
             <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-dark"></div>
+            <div className="absolute inset-0 gradient-secondary"></div>
 
             {/* Decorative patterns */}
             <div

@@ -6,6 +6,10 @@
 export { default as WelcomeScreen } from './auth/WelcomeScreen';
 export { default as LoginScreen } from './auth/LoginScreen';
 export { default as RegisterScreen } from './auth/RegisterScreen';
+export { default as ForgotPasswordScreen } from './auth/ForgotPasswordScreen';
+
+// Onboarding screens
+export { default as OnboardingScreen } from './onboarding/OnboardingScreen';
 
 // Home screens
 export { default as HomeScreen } from './home/HomeScreen';
@@ -30,3 +34,4 @@ export { default as QuickPicksScreen } from './engagement/QuickPicksScreen';
 export { default as ShortlistsScreen } from './engagement/ShortlistsScreen';
 export { default as IcebreakersScreen } from './engagement/IcebreakersScreen';
 export { default as InterestsScreen } from './engagement/InterestsScreen';
+
