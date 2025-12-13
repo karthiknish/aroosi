@@ -125,8 +125,8 @@ function ModernChat({
         />
       </div>
 
-      {/* Elevated Messages Section - subtle pattern overlay */}
-      <div className="relative flex-1 min-h-0 overflow-hidden bg-gradient-to-b from-neutral-50/30 via-transparent to-neutral-50/20">
+      {/* Elevated Messages Section - enable scrolling */}
+      <div className="relative flex-1 min-h-0 bg-gradient-to-b from-neutral-50/30 via-transparent to-neutral-50/20">
         {/* Subtle fabric-like texture overlay */}
         <div
           className="absolute inset-0 opacity-[0.02] pointer-events-none"

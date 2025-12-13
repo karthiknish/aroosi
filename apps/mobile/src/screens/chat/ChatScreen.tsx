@@ -13,6 +13,8 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Platform,
+    RefreshControl,
+    ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { 
@@ -53,6 +55,7 @@ export default function ChatScreen({
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
@@ -71,7 +74,8 @@ export default function ChatScreen({
             }
 
             if (response.data?.messages) {
-                setMessages(response.data.messages.reverse());
+                // Keep messages in chronological order - newest first for inverted FlatList
+                setMessages(response.data.messages);
                 // Mark as read
                 await markMessagesAsRead(matchId);
             }
@@ -150,12 +154,13 @@ export default function ChatScreen({
         }
     };
 
-    // Check if should show date header
+    // Check if should show date header (for inverted list - compare with next item)
     const shouldShowDateHeader = (index: number) => {
-        if (index === 0) return true;
+        // In inverted list, index 0 is newest, so show header when date changes from next (older) message
+        if (index === messages.length - 1) return true; // Always show for oldest message
         const currentDate = new Date(messages[index].createdAt).toDateString();
-        const prevDate = new Date(messages[index - 1].createdAt).toDateString();
-        return currentDate !== prevDate;
+        const nextDate = new Date(messages[index + 1].createdAt).toDateString();
+        return currentDate !== nextDate;
     };
 
     // Render message item
@@ -270,8 +275,19 @@ export default function ChatScreen({
                         keyExtractor={item => item.id}
                         contentContainerStyle={styles.messagesList}
                         showsVerticalScrollIndicator={false}
-                        onContentSizeChange={() =>
-                            flatListRef.current?.scrollToEnd({ animated: false })
+                        inverted
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={async () => {
+                                    setRefreshing(true);
+                                    await loadMessages();
+                                    setRefreshing(false);
+                                }}
+                                tintColor={colors.primary.DEFAULT}
+                                colors={[colors.primary.DEFAULT]}
+                                progressViewOffset={20}
+                            />
                         }
                     />
                 )}

@@ -602,25 +602,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Helper to get signed URL for a storage path or raw URL
+    // ALWAYS regenerates fresh signed URLs to avoid expired token issues
     const getAccessibleImageUrl = async (urlOrPath: string): Promise<string> => {
       if (!urlOrPath) return "";
-
-      // If it's already a signed URL (has X-Goog-Signature), return as-is
-      if (urlOrPath.includes("X-Goog-Signature")) return urlOrPath;
 
       // If it's a relative API path (like /api/storage/...), return as-is
       if (urlOrPath.startsWith("/api/")) return urlOrPath;
 
-      // If it's a direct GCS URL without signature, we need to sign it
+      const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+        `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
+
+      // If it's a GCS URL (with or without signature), extract path and regenerate
       if (urlOrPath.includes("storage.googleapis.com")) {
-        // Extract the storage path from the URL
-        const match = urlOrPath.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
+        // Strip query params first (signed URLs have ?GoogleAccessId=...&Expires=...&Signature=...)
+        const urlWithoutQuery = urlOrPath.split("?")[0];
+        const match = urlWithoutQuery.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
         if (match && match[1]) {
           const storagePath = decodeURIComponent(match[1]);
           try {
-            const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
-              process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-              `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
             const file = adminStorage.bucket(bucketName).file(storagePath);
             const [signedUrl] = await file.getSignedUrl({
               action: "read",
@@ -634,12 +634,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // If it looks like a storage path (users/uid/...), sign it
-      if (urlOrPath.startsWith("users/")) {
+      // If it looks like a storage path (users/uid/... or profileImages/...), sign it
+      if (urlOrPath.startsWith("users/") || urlOrPath.startsWith("profileImages/")) {
         try {
-          const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
-            process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-            `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
           const file = adminStorage.bucket(bucketName).file(urlOrPath);
           const [signedUrl] = await file.getSignedUrl({
             action: "read",
@@ -648,7 +645,7 @@ export async function GET(request: NextRequest) {
           return signedUrl;
         } catch {
           // Fall back to constructing a public URL
-          return `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com/${urlOrPath}`;
+          return `https://storage.googleapis.com/${bucketName}/${urlOrPath}`;
         }
       }
 

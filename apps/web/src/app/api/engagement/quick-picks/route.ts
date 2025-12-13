@@ -71,15 +71,31 @@ async function ensureQuickPicks(userId: string, dayKey?: string) {
   } catch { }
 
   // Build query for candidates - filter by gender if preference set
-  let query = db.collection("users").orderBy("updatedAt", "desc").limit(200);
-  if (preferredGender && preferredGender !== "any") {
-    query = db.collection("users")
-      .where("gender", "==", preferredGender)
+  // Wrap in try/catch to handle missing composite index gracefully
+  let usersSnap: FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>;
+  try {
+    if (preferredGender && preferredGender !== "any") {
+      // This query requires a composite index (gender + updatedAt)
+      usersSnap = await db.collection("users")
+        .where("gender", "==", preferredGender)
+        .orderBy("updatedAt", "desc")
+        .limit(200)
+        .get();
+    } else {
+      usersSnap = await db.collection("users")
+        .orderBy("updatedAt", "desc")
+        .limit(200)
+        .get();
+    }
+  } catch (indexError: any) {
+    // Fallback: if composite index missing, just get recent users without gender filter
+    console.warn("[quick-picks] Index error, falling back to unfiltered query:", indexError?.message?.substring(0, 100));
+    usersSnap = await db.collection("users")
       .orderBy("updatedAt", "desc")
-      .limit(200);
+      .limit(200)
+      .get();
   }
 
-  const usersSnap = await query.get();
   const candidates: string[] = [];
   usersSnap.docs.forEach(
     (

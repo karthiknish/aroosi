@@ -376,7 +376,7 @@ export default function MessagesList(props: MessagesListProps) {
 
   return (
     <div
-      className="flex-1 relative min-h-[50vh]"
+      className="relative flex flex-col h-full min-h-0"
       aria-label="Conversation messages"
       role="log"
       aria-live="polite"
@@ -472,7 +472,7 @@ export default function MessagesList(props: MessagesListProps) {
       </AnimatePresence>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto px-4 py-5 space-y-2 chat-scrollbar focus:outline-none"
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-2 chat-scrollbar focus:outline-none"
         role="region"
         aria-label="Messages scroll area"
       >

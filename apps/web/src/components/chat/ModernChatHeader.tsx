@@ -85,9 +85,6 @@ export default function ModernChatHeader({
                 <AvatarImage
                   src={matchUserAvatarUrl}
                   alt={matchUserName || "User"}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
                   className="object-cover"
                 />
               ) : null}

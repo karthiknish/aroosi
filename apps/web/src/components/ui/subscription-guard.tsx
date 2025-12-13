@@ -34,13 +34,11 @@ export function SubscriptionGuard({
 }: SubscriptionGuardProps) {
   const { profile: rawProfile } = useAuthContext();
   const profile = rawProfile as { subscriptionPlan?: SubscriptionPlan } | null;
-  console.log("SubscriptionGuard profile:", profile);
   const router = useRouter();
 
   if (!profile) return null;
 
   const featureCheck = isFeatureAvailable(profile.subscriptionPlan, feature);
-  console.log("SubscriptionGuard featureCheck:", featureCheck);
 
   if (featureCheck.available) {
     return <div className={className}>{children}</div>;

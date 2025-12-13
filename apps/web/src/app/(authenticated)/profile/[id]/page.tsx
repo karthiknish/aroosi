@@ -74,6 +74,7 @@ import {
   blockUserUtil,
   handleErrorUtil,
 } from "@/lib/chat/utils";
+import { buildProfileImageUrl } from "@/lib/images/profileImageUtils";
 
 export default function ProfileDetailPage() {
   const params = useParams();
@@ -208,7 +209,11 @@ export default function ProfileDetailPage() {
   const { images: fetchedImages } = useProfileImages({
     userId,
     enabled: isLoaded && isAuthenticated,
-    preferInlineUrls: profile?.profileImageUrls,
+    // When profileImageUrls exist, still normalize them so next/image doesn't
+    // try to fetch stale signed URLs directly.
+    preferInlineUrls: Array.isArray(profile?.profileImageUrls)
+      ? profile!.profileImageUrls.map((u) => buildProfileImageUrl(String(u)))
+      : profile?.profileImageUrls,
   });
   const localCurrentUserImageOrder: string[] = useMemo(() => {
     if (isOwnProfile && profile && (profile as any).profileImageIds) {
@@ -217,7 +222,11 @@ export default function ProfileDetailPage() {
     return [];
   }, [isOwnProfile, profile]);
   const imagesToShow: string[] = useMemo(() => {
-    if (profile?.profileImageUrls?.length) return profile.profileImageUrls;
+    if (profile?.profileImageUrls?.length) {
+      return profile.profileImageUrls
+        .map((u) => buildProfileImageUrl(String(u)))
+        .filter(Boolean);
+    }
     if (isOwnProfile && localCurrentUserImageOrder.length) {
       const lookup = new Map(
         fetchedImages.map((i) => [i.storageId || i.url, i.url])
@@ -226,7 +235,9 @@ export default function ProfileDetailPage() {
         .map((id) => lookup.get(id) || "")
         .filter(Boolean) as string[];
     }
-    return fetchedImages.map((i) => i.url).filter(Boolean);
+    return fetchedImages
+      .map((i) => buildProfileImageUrl(String(i.url || "")))
+      .filter(Boolean);
   }, [
     profile?.profileImageUrls,
     isOwnProfile,

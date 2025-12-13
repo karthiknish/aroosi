@@ -79,7 +79,7 @@ export default function MatchChatPage() {
 
   return (
     <>
-      <div className="relative min-h-screen">
+      <div className="relative h-screen overflow-hidden">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
         <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
@@ -90,28 +90,31 @@ export default function MatchChatPage() {
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         ></div>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="h-screen pt-6 flex flex-col">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 h-full flex flex-col">
+          <div className="pt-6 pb-6 flex flex-col flex-1 min-h-0">
             {/* Optional back link */}
             <button
               onClick={() => router.push("/matches")}
-              className="text-primary mb-4"
+              className="text-primary mb-4 text-left flex-shrink-0"
             >
               ← Back
             </button>
             {loadError && (
-              <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 flex-shrink-0">
                 {loadError}
               </div>
             )}
-            {/* Chat component */}
-            <ModernChat
-              conversationId={conversationId}
-              currentUserId={userId}
-              matchUserId={otherUserId}
-              matchUserName={matchProfile?.fullName || ""}
-              matchUserAvatarUrl={matchAvatar || ""}
-            />
+            {/* Chat component - takes remaining space */}
+            <div className="flex-1 min-h-0">
+              <ModernChat
+                conversationId={conversationId}
+                currentUserId={userId}
+                matchUserId={otherUserId}
+                matchUserName={matchProfile?.fullName || ""}
+                matchUserAvatarUrl={matchAvatar || ""}
+                className="h-full"
+              />
+            </div>
           </div>
         </div>
       </div>

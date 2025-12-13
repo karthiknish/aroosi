@@ -103,12 +103,23 @@ export async function GET(req: NextRequest) {
         const urls: string[] = Array.isArray(data.profileImageUrls)
           ? data.profileImageUrls
           : [];
-        images = ids.length
-          ? ids.map((id: string, i: number) => ({ id, url: urls[i] || null }))
-          : urls.map((url: string, i: number) => ({
-            id: `${resolvedUserId}_${i}`,
+        
+        // Build images array with storageId for fresh URL signing
+        if (ids.length > 0) {
+          // We have explicit storageIds - use them
+          images = ids.map((id: string, i: number) => ({ 
+            id, 
+            storageId: id, 
+            url: urls[i] || null 
+          }));
+        } else if (urls.length > 0) {
+          // Only have URLs - storageId will be extracted from URL later by parseStorageFromUrl
+          images = urls.map((url: string, i: number) => ({
+            id: `${resolvedUserId}_${i}`, // synthetic id for reference only
+            storageId: null, // will be parsed from URL
             url,
           }));
+        }
         log("Fetched profile images", { count: images.length });
       } catch (queryError) {
         log("Error in getProfileImages query", {
@@ -135,6 +146,45 @@ export async function GET(req: NextRequest) {
     log("Request completed successfully", { duration: `${duration}ms` });
 
     // Normalize: guarantee each image has a url. If missing, construct from bucket + storageId/id.
+    const parseStorageFromUrl = (rawUrl: string): { bucket?: string; storageId?: string } => {
+      if (!rawUrl || typeof rawUrl !== "string") return {};
+      try {
+        // GCS public/signed URL format: https://storage.googleapis.com/{bucket}/{objectPath}?...
+        if (rawUrl.startsWith("https://storage.googleapis.com/")) {
+          // Strip query params first (signed URLs have ?GoogleAccessId=...&Expires=...&Signature=...)
+          const urlWithoutQuery = rawUrl.split("?")[0];
+          const rest = urlWithoutQuery.replace("https://storage.googleapis.com/", "");
+          const [bucket, ...pathParts] = rest.split("/");
+          const storageId = pathParts.join("/");
+          return {
+            bucket: bucket || undefined,
+            storageId: storageId ? decodeURIComponent(storageId) : undefined,
+          };
+        }
+
+        // Firebase download URL format:
+        // https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedObjectPath}?alt=media&token=...
+        if (rawUrl.startsWith("https://firebasestorage.googleapis.com/")) {
+          const u = new URL(rawUrl);
+          const parts = u.pathname.split("/").filter(Boolean);
+          const bIdx = parts.indexOf("b");
+          const oIdx = parts.indexOf("o");
+          const bucket = bIdx !== -1 ? parts[bIdx + 1] : undefined;
+          const encodedObject = oIdx !== -1 ? parts[oIdx + 1] : undefined;
+          const storageId = encodedObject ? decodeURIComponent(encodedObject) : undefined;
+          return { bucket, storageId };
+        }
+
+        // Sometimes a raw storage path is stored: users/{uid}/profile-images/...
+        if (rawUrl.startsWith("users/")) {
+          return { storageId: rawUrl };
+        }
+      } catch {
+        // ignore parse failures
+      }
+      return {};
+    };
+
     // Be defensive: adminStorage.bucket() will throw if no default bucket was configured when
     // initializing firebase-admin. Prefer explicit env vars or derived project bucket names.
     const adminMod = await import("@/lib/firebaseAdmin");
@@ -172,22 +222,25 @@ export async function GET(req: NextRequest) {
 
     const normalized = await Promise.all(
       (images as any[]).map(async (img) => {
-        const storageId = img.storageId || img.id || null;
-        let url = img.url || null;
+        let url: string | null = img.url || null;
 
-        // If the URL is a direct GCS URL (which is now private), ignore it so we generate a signed URL.
-        // We keep URLs that might already be signed (have query params) or are from other sources.
-        if (
-          url &&
-          url.includes("storage.googleapis.com") &&
-          !url.includes("X-Goog-Signature")
-        ) {
-          url = null;
-        }
+        // Derive bucket + object path from URL when possible.
+        const fromUrl = url ? parseStorageFromUrl(url) : {};
 
-        if (!url && storageId && bucketName) {
+        // Prefer explicit storageId fields; otherwise use parsed storageId from url.
+        // IMPORTANT: do NOT fall back to synthetic ids like "{userId}_0" as storage paths.
+        const rawId = img.storageId || null;
+        const fallbackId = typeof img.id === "string" && img.id.startsWith("users/") ? img.id : null;
+        const storageId: string | null = rawId || fallbackId || (fromUrl.storageId || null);
+
+        // Prefer bucket parsed from URL, else env-derived bucketName.
+        const effectiveBucket = (fromUrl.bucket as string | undefined) || bucketName;
+
+        // ALWAYS regenerate signed URLs if we have a valid storageId
+        // Stored URLs may have expired signatures
+        if (storageId && effectiveBucket) {
           try {
-            const file = adminStorage.bucket(bucketName).file(storageId);
+            const file = adminStorage.bucket(effectiveBucket).file(storageId);
             // Generate a signed URL valid for 1 hour
             const [signedUrl] = await file.getSignedUrl({
               action: "read",
@@ -200,11 +253,17 @@ export async function GET(req: NextRequest) {
                 `[${requestId}] Failed to sign URL for ${storageId}:`,
                 e
               );
-            // Fallback to public URL if signing fails
-            url = `https://storage.googleapis.com/${bucketName}/${storageId}`;
+            // Keep original URL as fallback (may still work if it's a public URL)
+            // If no original URL, construct public URL
+            if (!url) {
+              url = `https://storage.googleapis.com/${effectiveBucket}/${storageId}`;
+            }
           }
         }
-        return { _id: storageId || img.id, id: storageId || img.id, storageId, url };
+
+        // Preserve stable identifiers
+        const idOut = storageId || img.id;
+        return { _id: idOut, id: idOut, storageId, url };
       })
     );
     return NextResponse.json(

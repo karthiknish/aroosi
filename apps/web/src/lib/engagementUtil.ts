@@ -95,27 +95,32 @@ export type QuickPickProfile = {
 export async function getQuickPicks(
   dayKey?: string
 ): Promise<{ userIds: string[]; profiles: QuickPickProfile[] }> {
-  const url = dayKey
-    ? `/api/engagement/quick-picks?day=${encodeURIComponent(dayKey)}`
-    : "/api/engagement/quick-picks";
-  const res = await getJson<any>(url);
+  try {
+    const url = dayKey
+      ? `/api/engagement/quick-picks?day=${encodeURIComponent(dayKey)}`
+      : "/api/engagement/quick-picks";
+    const res = await getJson<any>(url);
 
-  // Handle wrapped response format: { success: true, data: { userIds, profiles } }
-  const envelope = res?.data ?? res;
-  const userIds = Array.isArray(envelope?.userIds) ? envelope.userIds : [];
-  const rawProfiles = Array.isArray(envelope?.profiles) ? envelope.profiles : [];
+    // Handle wrapped response format: { success: true, data: { userIds, profiles } }
+    const envelope = res?.data ?? res;
+    const userIds = Array.isArray(envelope?.userIds) ? envelope.userIds : [];
+    const rawProfiles = Array.isArray(envelope?.profiles) ? envelope.profiles : [];
 
-  // Transform profiles to have imageUrl from profileImageUrls
-  const profiles: QuickPickProfile[] = rawProfiles.map((p: any) => ({
-    userId: p.userId || p._id || p.id,
-    fullName: p.fullName || null,
-    city: p.city || null,
-    imageUrl: Array.isArray(p.profileImageUrls) && p.profileImageUrls.length > 0
-      ? p.profileImageUrls[0]
-      : (p.imageUrl || null),
-  }));
+    // Transform profiles to have imageUrl from profileImageUrls
+    const profiles: QuickPickProfile[] = rawProfiles.map((p: any) => ({
+      userId: p.userId || p._id || p.id,
+      fullName: p.fullName || null,
+      city: p.city || null,
+      imageUrl: Array.isArray(p.profileImageUrls) && p.profileImageUrls.length > 0
+        ? p.profileImageUrls[0]
+        : (p.imageUrl || null),
+    }));
 
-  return { userIds, profiles };
+    return { userIds, profiles };
+  } catch {
+    // Return empty data on error to prevent page crashes
+    return { userIds: [], profiles: [] };
+  }
 }
 
 export async function actOnQuickPick(

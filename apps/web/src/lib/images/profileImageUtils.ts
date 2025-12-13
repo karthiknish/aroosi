@@ -41,7 +41,10 @@ export function buildProfileImageUrl(idOrPath: string): string {
           const parts = u.pathname.split("/").filter(Boolean);
           if (parts.length >= 2) {
             const storagePath = decodeURIComponent(parts.slice(1).join("/"));
-            if (storagePath.startsWith("users/"))
+            if (
+              storagePath.startsWith("users/") ||
+              storagePath.startsWith("profileImages/")
+            )
               return `/api/storage/${storagePath}`;
           }
         }
@@ -50,32 +53,14 @@ export function buildProfileImageUrl(idOrPath: string): string {
           const m = u.pathname.match(/\/v0\/b\/[^/]+\/o\/(.+)$/);
           if (m?.[1]) {
             const storagePath = decodeURIComponent(m[1]);
-            if (storagePath.startsWith("users/"))
+            if (
+              storagePath.startsWith("users/") ||
+              storagePath.startsWith("profileImages/")
+            )
               return `/api/storage/${storagePath}`;
           }
         }
       } catch {}
-      // Fix cases like https://storage.googleapis.com/your-project.firebasestorage.app/...
-      // (Do NOT mutate the bucket domain if user intentionally uses .firebasestorage.app)
-      if (
-        /storage\.googleapis\.com\/.+\.firebasestorage\.app\//i.test(idOrPath)
-      ) {
-        return idOrPath.replace(
-          /(storage\.googleapis\.com\/[^/]+)\.firebasestorage\.app\//i,
-          (_m, p1) => `${p1}.appspot.com/`
-        );
-      }
-      // Fix firebase REST style with malformed bucket
-      if (
-        /firebasestorage\.googleapis\.com\/v0\/b\/.+\.firebasestorage\.app\//i.test(
-          idOrPath
-        )
-      ) {
-        return idOrPath.replace(
-          /(firebasestorage\.googleapis\.com\/v0\/b\/[^/]+)\.firebasestorage\.app\//i,
-          (_m, p1) => `${p1}.appspot.com/`
-        );
-      }
     } catch {}
     return idOrPath;
   }
@@ -83,7 +68,9 @@ export function buildProfileImageUrl(idOrPath: string): string {
   if (!bucket) return idOrPath; // can't build better
 
   // Prefer proxy for storage paths we control
-  if (idOrPath.startsWith("users/")) return `/api/storage/${idOrPath}`;
+  if (idOrPath.startsWith("users/") || idOrPath.startsWith("profileImages/")) {
+    return `/api/storage/${idOrPath}`;
+  }
 
   const direct = `https://storage.googleapis.com/${bucket}/${idOrPath}`;
   const firebaseRest = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(idOrPath)}?alt=media`;
@@ -97,6 +84,39 @@ function sanitizeLegacyAbsoluteUrl(url: string): string {
   try {
     if (!/^(https?:)/i.test(url)) return url;
     const out = url;
+
+    // If the URL already contains a signed query string, proxy it so we never
+    // depend on long-lived signed URLs stored in Firestore.
+    if (/(\bGoogleAccessId=|\bSignature=|\bExpires=|\bX-Goog-Signature=)/i.test(out)) {
+      try {
+        const u = new URL(out);
+        if (/^storage\.googleapis\.com$/i.test(u.hostname)) {
+          const parts = u.pathname.split("/").filter(Boolean);
+          if (parts.length >= 2) {
+            const storagePath = decodeURIComponent(parts.slice(1).join("/"));
+            if (
+              storagePath.startsWith("users/") ||
+              storagePath.startsWith("profileImages/")
+            ) {
+              return `/api/storage/${storagePath}`;
+            }
+          }
+        }
+        if (/^firebasestorage\.googleapis\.com$/i.test(u.hostname)) {
+          const m = u.pathname.match(/\/v0\/b\/[^/]+\/o\/(.+)$/);
+          if (m?.[1]) {
+            const storagePath = decodeURIComponent(m[1]);
+            if (
+              storagePath.startsWith("users/") ||
+              storagePath.startsWith("profileImages/")
+            ) {
+              return `/api/storage/${storagePath}`;
+            }
+          }
+        }
+      } catch {}
+    }
+
     // Fix malformed bucket domain
     // Do NOT rewrite .firebasestorage.app domains anymore.
     // If it's a direct GCS URL, rebuild into REST primary (#alt=direct)
@@ -104,6 +124,16 @@ function sanitizeLegacyAbsoluteUrl(url: string): string {
     if (m) {
       const bucket = m[1];
       const path = m[2];
+      // Prefer proxy when the object is in known profile folders
+      try {
+        const storagePath = decodeURIComponent(path);
+        if (
+          storagePath.startsWith("users/") ||
+          storagePath.startsWith("profileImages/")
+        ) {
+          return `/api/storage/${storagePath}`;
+        }
+      } catch {}
       return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(
         path
       )}?alt=media#alt=${encodeURIComponent(out)}`;

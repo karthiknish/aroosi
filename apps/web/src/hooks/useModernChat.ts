@@ -54,7 +54,8 @@ export function useModernChat({
   // Shim previous shape
   const connectionStatus: "connected" | "connecting" | "disconnected" =
     connectionStatusBool ? "connected" : "connecting"; // simple mapping
-  const loading = false; // onSnapshot handles streaming; could add local flag
+  // Show loading skeleton while not connected AND no messages yet
+  const loading = !connectionStatusBool && messages.length === 0;
   const loadingOlder = false; // pagination not yet implemented in Firestore hook
   const hasMore = false; // TODO: implement pagination via startAfter
   const fetchOlder = async () => undefined; // placeholder
@@ -230,8 +231,24 @@ export function useModernChat({
     []
   );
 
+  // Track if we've done the initial scroll
+  const didInitialScrollRef = useRef(false);
+
   useEffect(() => {
-    if (isNearBottom) scrollToBottom();
+    // Initial scroll to bottom when messages first load
+    if (messages.length > 0 && !didInitialScrollRef.current) {
+      didInitialScrollRef.current = true;
+      // Use multiple RAF to ensure DOM is fully painted
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom();
+        });
+      });
+    }
+    // Also scroll when near bottom and messages change
+    if (isNearBottom && didInitialScrollRef.current) {
+      scrollToBottom();
+    }
   }, [messages, isNearBottom, scrollToBottom]);
 
   // Local scroll handler delegating to util

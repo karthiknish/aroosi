@@ -737,19 +737,31 @@ export async function fetchUserProfileImagesViaApi(
   }
 
   try {
-    const result = await getJson<{
-      profileImageUrls?: string[];
-      profileImages?: Array<{ url: string }>;
-    }>(`/api/profile-detail/${userId}/images`);
+    const result = await getJson<any>(`/api/profile-detail/${userId}/images`);
 
+    // Back-compat: some endpoints may return a raw array of URLs
     if (Array.isArray(result)) {
-      return { success: true, data: result };
+      return { success: true, data: result as string[] };
     }
 
-    const images =
-      result?.profileImageUrls ||
-      result?.profileImages?.map((img) => img.url) ||
-      [];
+    // Current API: { success: true, userProfileImages: [{ url, storageId, ... }], ... }
+    if (result?.success && Array.isArray(result?.userProfileImages)) {
+      const urls = (result.userProfileImages as any[])
+        .map((img) => img?.url)
+        .filter((u) => typeof u === "string" && u.length > 0);
+      return { success: true, data: urls };
+    }
+
+    // Legacy shapes
+    const images: string[] =
+      (Array.isArray(result?.profileImageUrls) ? result.profileImageUrls : null) ||
+      (Array.isArray(result?.profileImages)
+        ? result.profileImages.map((img: any) => img?.url).filter(Boolean)
+        : null) ||
+      (Array.isArray(result?.data?.profileImageUrls)
+        ? result.data.profileImageUrls
+        : []);
+
     return { success: true, data: images };
   } catch (error) {
     // Gracefully handle 404: treat as no images without noisy toast

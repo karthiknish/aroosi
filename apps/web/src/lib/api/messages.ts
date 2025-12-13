@@ -3,7 +3,7 @@
  * Keeps backward compatibility for existing imports.
  */
 import { matchMessagesAPI, type MatchMessage, type ApiResponse } from "@/lib/api/matchMessages";
-import { postJson, getJson } from "@/lib/http/client";
+import { fetchJson, postJson, getJson } from "@/lib/http/client";
 import { showErrorToast } from "@/lib/ui/toast";
 
 export type Message = MatchMessage;
@@ -159,12 +159,16 @@ export const uploadMessageImage = async (
     formData.append("fileName", file.name);
     formData.append("contentType", file.type || "application/octet-stream");
 
-    const result = await postJson<{
+    // IMPORTANT: do NOT set Content-Type manually for FormData.
+    // The browser will set multipart boundaries; setting JSON headers breaks parsing.
+    const result = await fetchJson<{
       success?: boolean;
       messageId?: string;
       error?: string;
       resetTime?: number;
-    }>("/api/messages/upload-image", formData, {
+    }>("/api/messages/upload-image", {
+      method: "POST",
+      body: formData,
       signal,
     });
 

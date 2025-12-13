@@ -78,29 +78,28 @@ function MatchCard({
             {/* Profile Info */}
             <div className="flex-1 min-w-0">
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-lg sm:text-xl text-neutral-dark truncate group-hover:text-primary transition-colors font-serif">
-                    {match.fullName || "Unknown"}
-                  </h3>
-                  <span className="text-xs text-neutral-400 hidden sm:block">
-                    Matched
-                  </span>
-                </div>
+                <h3 className="font-bold text-lg sm:text-xl text-neutral-dark truncate group-hover:text-primary transition-colors font-serif">
+                  {match.fullName || "Unknown"}
+                </h3>
 
                 <div className="flex items-center gap-4 text-sm text-neutral-500">
                   <div className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-secondary" />
+                    <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
                     <span className="truncate max-w-[100px] sm:max-w-xs">
                       {match.city || "Location hidden"}
                     </span>
                   </div>
                   
                   {match.occupation && (
-                    <div className="flex items-center gap-1 hidden sm:flex">
-                      <Users className="w-3.5 h-3.5 text-secondary" />
+                    <div className="hidden sm:flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
                       <span className="truncate max-w-[150px]">{match.occupation}</span>
                     </div>
                   )}
+                  
+                  <span className="text-xs text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full hidden sm:inline-block flex-shrink-0">
+                    Matched
+                  </span>
                 </div>
                 
                 <p className="text-sm text-neutral-400 truncate mt-1">
