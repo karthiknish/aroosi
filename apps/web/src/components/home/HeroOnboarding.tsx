@@ -107,12 +107,7 @@ function HeroOnboardingInner() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [heroErrors, setHeroErrors] = useState<Record<string, string>>({});
 
-  // Auto-open modal if authenticated but profile incomplete
-  React.useEffect(() => {
-    if (isAuthenticated && profile && !isOnboardingEssentialComplete(profile)) {
-      setShowProfileModal(true);
-    }
-  }, [isAuthenticated, profile]);
+  // Note: Auto-open modal logic removed since logged-in users are redirected away from this component
 
   const fieldLabels: Record<keyof OnboardingData, string> = {
     profileFor: "This profile is for",

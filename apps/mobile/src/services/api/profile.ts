@@ -124,6 +124,11 @@ export async function updatePreferences(preferences: UserPreferences) {
 /**
  * Upload profile photo
  */
+export interface UploadPhotoResponse {
+    url: string;
+    imageId?: string;
+}
+
 export async function uploadProfilePhoto(imageUri: string, index: number) {
     // Create form data for image upload
     const formData = new FormData();
@@ -134,7 +139,7 @@ export async function uploadProfilePhoto(imageUri: string, index: number) {
     } as any);
     formData.append('index', String(index));
 
-    return api.post('/profile-images/upload', formData);
+    return api.post<UploadPhotoResponse>('/profile-images/upload', formData);
 }
 
 /**

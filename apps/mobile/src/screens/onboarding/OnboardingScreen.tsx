@@ -458,7 +458,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
                             style={styles.input}
                             value={height}
                             onChangeText={setHeight}
-                            placeholder="e.g. 5'10\" (178cm)"
+                            placeholder={'e.g. 5\'10" (178cm)'}
                             placeholderTextColor={colors.neutral[400]}
                         />
 

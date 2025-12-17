@@ -16,11 +16,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 function OnboardingSlot() {
-  const { isLoaded, isAuthenticated, profile } = useAuth();
+  const { isLoaded, isAuthenticated } = useAuth();
   if (!isLoaded) return null;
   
-  // If authenticated and profile is complete, hide onboarding
-  if (isAuthenticated && profile && isOnboardingEssentialComplete(profile)) {
+  // Hide onboarding for all authenticated users
+  if (isAuthenticated) {
     return null;
   }
 
