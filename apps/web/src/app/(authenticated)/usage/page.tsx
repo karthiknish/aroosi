@@ -173,7 +173,7 @@ export default function UsagePage() {
             <h1 className="text-3xl font-bold tracking-tight text-neutral-dark">Usage & Analytics</h1>
             <p className="text-neutral-light mt-1">Track your activity and plan usage limits.</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-neutral-light bg-white px-3 py-1.5 rounded-full border shadow-sm">
+          <div className="flex items-center gap-2 text-sm text-neutral-light bg-base-light px-3 py-1.5 rounded-full border shadow-sm">
             <Calendar className="h-4 w-4" />
             <span>Last 30 Days</span>
           </div>
@@ -226,7 +226,7 @@ export default function UsagePage() {
               <CardContent>
                 <div className="h-[250px] w-full">
                   {isLoading ? (
-                    <div className="h-full w-full bg-slate-100 animate-pulse rounded-lg" />
+                    <div className="h-full w-full bg-neutral/10 animate-pulse rounded-lg" />
                   ) : (
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                       <PieChart>
@@ -264,7 +264,7 @@ export default function UsagePage() {
               <CardContent>
                 <div className="h-[300px] w-full">
                   {isLoading ? (
-                    <div className="h-full w-full bg-slate-100 animate-pulse rounded-lg" />
+                    <div className="h-full w-full bg-neutral/10 animate-pulse rounded-lg" />
                   ) : (
                     <ChartContainer config={chartConfig} className="h-[300px] w-full">
                       <BarChart data={chartData.daily} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -316,20 +316,20 @@ export default function UsagePage() {
                     {isLoading ? (
                       Array.from({ length: 5 }).map((_, i) => (
                         <TableRow key={i}>
-                          <TableCell><div className="h-4 w-24 bg-slate-100 rounded animate-pulse" /></TableCell>
-                          <TableCell><div className="h-4 w-32 bg-slate-100 rounded animate-pulse" /></TableCell>
-                          <TableCell className="text-right"><div className="h-4 w-16 bg-slate-100 rounded animate-pulse ml-auto" /></TableCell>
+                          <TableCell><div className="h-4 w-24 bg-neutral/10 rounded animate-pulse" /></TableCell>
+                          <TableCell><div className="h-4 w-32 bg-neutral/10 rounded animate-pulse" /></TableCell>
+                          <TableCell className="text-right"><div className="h-4 w-16 bg-neutral/10 rounded animate-pulse ml-auto" /></TableCell>
                         </TableRow>
                       ))
                     ) : paginatedHistory.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={3} className="text-center py-8 text-neutral-light">
                           No activity recorded yet.
                         </TableCell>
                       </TableRow>
                     ) : (
                       paginatedHistory.map((item, i) => {
-                        const config = FEATURE_CONFIG[item.feature] || { label: item.feature, icon: <Activity className="h-4 w-4" />, color: "text-slate-500" };
+                        const config = FEATURE_CONFIG[item.feature] || { label: item.feature, icon: <Activity className="h-4 w-4" />, color: "text-neutral-light" };
                         return (
                           <TableRow key={i}>
                             <TableCell>
@@ -358,7 +358,7 @@ export default function UsagePage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <div className="text-sm text-slate-500">
+                    <div className="text-sm text-neutral-light">
                       Page {page} of {totalPages}
                     </div>
                     <div className="flex gap-2">

@@ -78,14 +78,14 @@ export default function MyShortlistsPage() {
         <CardContent className="p-4">
           <h1 className="text-xl font-semibold mb-4">My Shortlists</h1>
           {entries.length === 0 ? (
-            <div className="text-sm text-neutral-600">No shortlists yet.</div>
+            <div className="text-sm text-neutral">No shortlists yet.</div>
           ) : (
             <ul className="space-y-4">
               {entries.map((e) => (
                 <li key={e.userId} className="border rounded p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-100">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral/10">
                         {Array.isArray(e.profileImageUrls) &&
                         e.profileImageUrls[0] ? (
                           <Image
@@ -106,7 +106,7 @@ export default function MyShortlistsPage() {
                             {e.fullName || e.userId}
                           </Link>
                         </div>
-                        <div className="text-xs text-neutral-500">
+                        <div className="text-xs text-neutral-light">
                           {new Date(e.createdAt).toLocaleString()}
                         </div>
                       </div>

@@ -101,7 +101,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
 
         <div className="container mx-auto max-w-4xl px-4 relative z-10">
           {/* Card wrapper */}
-          <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl border border-primary/10 shadow-xl p-6 md:p-10">
+          <div className="relative bg-base-light/90 backdrop-blur-sm rounded-3xl border border-primary/10 shadow-lg p-6 md:p-10">
             {/* Small decorative pops inside card */}
             <div className="pointer-events-none absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/30 rounded-full opacity-70" />
             <div className="pointer-events-none absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-accent/20 to-accent/30 rounded-full opacity-60" />
@@ -115,7 +115,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
                   className="relative inline-block text-3xl md:text-4xl font-bold tracking-tight text-foreground mb-2"
                 >
                   {post.title}
-                  {/* Pink wavy underline */}
+                  {/* Primary wavy underline */}
                   <svg
                     className="absolute -bottom-2 left-0 w-full"
                     height="6"
@@ -125,7 +125,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
                   >
                     <path
                       d="M0 3C50 0.5 150 0.5 200 3"
-                      stroke="#FDA4AF"
+                      stroke="hsl(var(--primary))"
                       strokeWidth="5"
                       strokeLinecap="round"
                     />

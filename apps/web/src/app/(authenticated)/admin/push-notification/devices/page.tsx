@@ -141,14 +141,14 @@ export default function AdminDevicesPage() {
               </option>
             ))}
           </select>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-neutral">
             {templates.length} templates
           </span>
         </div>
 
         <div className="overflow-x-auto border rounded-md">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-neutral/5 text-neutral-dark">
               <tr>
                 <th className="text-left p-2">Email</th>
                 <th className="text-left p-2">Send Test</th>
@@ -163,7 +163,7 @@ export default function AdminDevicesPage() {
                     {r.email ? (
                       <button
                         type="button"
-                        className="underline underline-offset-2 text-pink-600 hover:text-pink-700"
+                        className="underline underline-offset-2 text-primary hover:text-primary-dark"
                         onClick={() => {
                           setSearch(r.email!);
                           setPage(1);
@@ -209,7 +209,7 @@ export default function AdminDevicesPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td className="p-4 text-center text-gray-500" colSpan={6}>
+                  <td className="p-4 text-center text-neutral" colSpan={6}>
                     {loading ? "Loading..." : "No devices found"}
                   </td>
                 </tr>
@@ -219,7 +219,7 @@ export default function AdminDevicesPage() {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-500">Total: {total}</div>
+          <div className="text-xs text-neutral">Total: {total}</div>
           <div className="flex items-center gap-2">
             <Button
               size="sm"

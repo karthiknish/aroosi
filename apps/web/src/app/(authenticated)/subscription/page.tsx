@@ -213,9 +213,9 @@ export default function SubscriptionPage() {
               className="space-y-6 xl:col-span-2 order-2 xl:order-1"
             >
               {/* Current Subscription Card */}
-              <Card className="overflow-hidden shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="overflow-hidden shadow-lg border-0 bg-base-light/80 backdrop-blur-sm">
                 <div className="bg-gradient-to-r from-primary to-primary-dark p-1">
-                  <CardHeader className="bg-white rounded-t-lg">
+                  <CardHeader className="bg-base-light rounded-t-lg">
                     <CardTitle className="flex items-center gap-2 text-xl font-serif">
                       <Crown className="h-5 w-5 text-primary" />
                       Current Subscription
@@ -231,7 +231,7 @@ export default function SubscriptionPage() {
               </Card>
 
               {/* Usage Statistics */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border-0 bg-base-light/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-xl font-serif">
                     <Zap className="h-5 w-5 text-secondary" />
@@ -244,7 +244,7 @@ export default function SubscriptionPage() {
               </Card>
 
               {/* Quick Actions */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border-0 bg-base-light/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-xl font-serif">
                     <Sparkles className="h-5 w-5 text-accent" />
@@ -328,11 +328,11 @@ export default function SubscriptionPage() {
                         } ${
                           isCurrentPlan
                             ? "bg-success/5"
-                            : "bg-white/80 backdrop-blur-sm"
+                            : "bg-base-light/80 backdrop-blur-sm"
                         }`}
                       >
                         {plan.popular && (
-                          <div className="absolute -top-1 -right-8 bg-gradient-to-r from-primary to-primary-dark text-white text-xs font-bold px-8 py-1 transform rotate-12">
+                          <div className="absolute -top-1 -right-8 bg-gradient-to-r from-primary to-primary-dark text-base-light text-xs font-bold px-8 py-1 transform rotate-12">
                             POPULAR
                           </div>
                         )}
@@ -356,7 +356,7 @@ export default function SubscriptionPage() {
                             <div
                               className={`inline-flex p-3 rounded-full ${plan.gradient} mb-4`}
                             >
-                              <Icon className="h-8 w-8 text-white" />
+                              <Icon className="h-8 w-8 text-base-light" />
                             </div>
                             <h3 className="text-2xl font-bold text-neutral-dark mb-2 font-serif">
                               {plan.name}
@@ -400,7 +400,7 @@ export default function SubscriptionPage() {
                                   plan.id as "premium" | "premiumPlus"
                                 )
                               }
-                              className={`w-full ${plan.gradient} text-white hover:opacity-90 transition-opacity`}
+                              className={`w-full ${plan.gradient} text-base-light hover:opacity-90 transition-opacity`}
                               disabled={upgradePending}
                             >
                               Upgrade to {plan.name}

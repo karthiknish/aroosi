@@ -82,7 +82,7 @@ export default function MatchChatPage() {
       <div className="relative h-screen overflow-hidden">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
         {/* Subtle SVG background pattern */}
         <div
           className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
@@ -100,7 +100,7 @@ export default function MatchChatPage() {
               ← Back
             </button>
             {loadError && (
-              <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 flex-shrink-0">
+              <div className="mb-4 text-sm text-danger bg-danger/5 border border-danger/20 rounded-md px-3 py-2 flex-shrink-0">
                 {loadError}
               </div>
             )}

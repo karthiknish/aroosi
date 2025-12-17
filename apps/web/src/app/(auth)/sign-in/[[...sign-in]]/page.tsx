@@ -72,7 +72,7 @@ export default function SignInPage() {
       <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/20 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
         {/* Subtle SVG background pattern */}
         <div
           className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
@@ -87,7 +87,7 @@ export default function SignInPage() {
               <h1 className="text-3xl sm:text-4xl font-serif font-bold text-primary mb-2">
                 Sign In
               </h1>
-              {/* Pink wavy SVG underline */}
+              {/* Primary wavy SVG underline */}
               <svg
                 className="absolute -bottom-2 left-0 w-full"
                 height="6"
@@ -97,7 +97,7 @@ export default function SignInPage() {
               >
                 <path
                   d="M0 3C50 0.5 150 0.5 200 3"
-                  stroke="#FDA4AF"
+                  stroke="hsl(var(--primary))"
                   strokeWidth="5"
                   strokeLinecap="round"
                 />
@@ -108,7 +108,7 @@ export default function SignInPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="bg-white/90 rounded-2xl shadow-xl p-8"
+            className="bg-base-light/90 rounded-2xl shadow-lg p-8"
           >
             {/* Inline server error display */}
             {/* Error message will be injected via state managed here */}

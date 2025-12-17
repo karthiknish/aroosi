@@ -13,11 +13,11 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm">
-        <h1 className="text-3xl font-bold text-slate-900 mb-3">
+      <div className="bg-base-light rounded-xl p-8 border border-neutral/20 shadow-sm">
+        <h1 className="text-3xl font-bold text-neutral-dark mb-3">
           Welcome back, Admin
         </h1>
-        <p className="text-slate-600 text-lg max-w-2xl">
+        <p className="text-neutral text-lg max-w-2xl">
           Here's what's happening on your platform today. You have {stats?.approvalsPending || 0} pending approvals and {stats?.contactMessages || 0} new messages.
         </p>
       </div>
@@ -25,10 +25,10 @@ export default function AdminPage() {
       {/* Statistics Grid */}
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-neutral-dark">
             Platform Overview
           </h2>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-neutral">
             Last updated: {new Date().toLocaleTimeString()}
           </span>
         </div>

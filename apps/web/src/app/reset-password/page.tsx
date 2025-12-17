@@ -123,7 +123,7 @@ function ResetPasswordInner() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
-          className="bg-white/90 rounded-2xl shadow-xl p-8"
+          className="bg-base-light/90 rounded-2xl shadow-lg p-8"
         >
           <div className="mb-4 text-sm text-neutral-light">
             Enter the reset code from your email, then choose a new password.

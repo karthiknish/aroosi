@@ -92,7 +92,7 @@ export default function BlockedUsersPage() {
                 <Shield className="h-5 w-5 text-info" />
               </div>
               <div>
-                <h3 className="font-medium text-info-dark">
+                <h3 className="font-medium text-neutral-dark">
                   Need help staying safe?
                 </h3>
                 <p className="text-sm text-info">

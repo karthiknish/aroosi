@@ -23,7 +23,7 @@ export default function NotFound() {
           Sorry, we couldn&apos;t find the page you&apos;re looking for.
         </p>
         <Link href="/">
-          <span className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-lg shadow transition">
+          <span className="inline-block bg-primary hover:bg-primary-dark text-base-light font-semibold px-6 py-3 rounded-lg shadow transition">
             Go to Homepage
           </span>
         </Link>

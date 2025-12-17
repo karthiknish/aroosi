@@ -47,14 +47,14 @@ export default function BannedPage() {
           </p>
           <div>
             <label htmlFor="reason" className="block text-sm font-medium text-neutral-dark mb-1">Subject</label>
-            <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Briefly summarize your appeal" className="border-neutral-200 focus:border-primary" />
+            <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Briefly summarize your appeal" className="border-neutral/20 focus:border-primary" />
           </div>
           <div>
             <label htmlFor="details" className="block text-sm font-medium text-neutral-dark mb-1">Details</label>
-            <Textarea id="details" value={details} onChange={(e) => setDetails(e.target.value)} rows={6} placeholder="Provide any relevant context or evidence" className="border-neutral-200 focus:border-primary" />
+            <Textarea id="details" value={details} onChange={(e) => setDetails(e.target.value)} rows={6} placeholder="Provide any relevant context or evidence" className="border-neutral/20 focus:border-primary" />
           </div>
           <div>
-            <Button onClick={submitAppeal} disabled={submitting || !reason.trim() || !details.trim()} className="w-full bg-primary hover:bg-primary-dark text-white">
+            <Button onClick={submitAppeal} disabled={submitting || !reason.trim() || !details.trim()} className="w-full bg-primary hover:bg-primary-dark text-base-light">
               {submitting ? "Submitting..." : "Submit Appeal"}
             </Button>
           </div>

@@ -577,7 +577,7 @@ export default function ProfileDetailPage() {
           exit="exit"
           className="max-w-4xl w-full mx-auto"
         >
-          <Card className="shadow-xl rounded-3xl overflow-hidden bg-white/80 backdrop-blur-sm border border-white/50 z-10">
+          <Card className="shadow-xl rounded-3xl overflow-hidden bg-base-light/80 backdrop-blur-sm border border-base-light/50 z-10">
             <CardHeader className="p-0 relative">
               {/* Unified safety controls */}
               {!isOwnProfile && (
@@ -585,7 +585,7 @@ export default function ProfileDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowReportModal(true)}
-                    className="bg-white/95 hover:bg-white text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="bg-base-light/95 hover:bg-base-light text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     Safety
                   </button>
@@ -593,7 +593,7 @@ export default function ProfileDetailPage() {
                     <button
                       type="button"
                       onClick={handleUnblockUser}
-                      className="bg-white/95 hover:bg-white text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="bg-base-light/95 hover:bg-base-light text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       Unblock
                     </button>
@@ -613,7 +613,7 @@ export default function ProfileDetailPage() {
                     {/* Left Arrow */}
                     {imagesToShow.length > 1 && (
                       <button
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-base-light/80 hover:bg-base-light rounded-full p-2 shadow"
                         onClick={() =>
                           setCurrentImageIdx((idx) => Math.max(0, idx - 1))
                         }
@@ -621,7 +621,7 @@ export default function ProfileDetailPage() {
                         aria-label="Previous image"
                         type="button"
                       >
-                        <ChevronLeft className="w-6 h-6 text-gray-700" />
+                        <ChevronLeft className="w-6 h-6 text-neutral" />
                       </button>
                     )}
                     <Image
@@ -645,13 +645,13 @@ export default function ProfileDetailPage() {
                       }}
                     />
                     {/* Mobile overlay (Tinder-style) */}
-                    <div className="md:hidden absolute inset-x-0 bottom-0 pt-24 pb-5 px-4 bg-gradient-to-t from-black/75 via-black/25 to-transparent flex flex-col gap-2 text-white">
+                    <div className="md:hidden absolute inset-x-0 bottom-0 pt-24 pb-5 px-4 bg-gradient-to-t from-black/75 via-black/25 to-transparent flex flex-col gap-2 text-base-light">
                       <div className="flex items-end justify-between">
                         <div className="flex flex-col gap-1">
                           <h1 className="text-2xl font-semibold drop-shadow flex items-center gap-2">
                             {profile?.fullName || "-"}
                             {compatData?.score != null && (
-                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-warning text-white">
+                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-warning text-base-light">
                                 {compatData.score}%
                               </span>
                             )}
@@ -674,10 +674,10 @@ export default function ProfileDetailPage() {
                                 ? "withdraw-mobile"
                                 : "express-mobile"
                             }
-                            className={`flex items-center justify-center rounded-full w-14 h-14 shadow-lg border backdrop-blur bg-white/90 active:scale-95 transition ${
+                            className={`flex items-center justify-center rounded-full w-14 h-14 shadow-lg border backdrop-blur bg-base-light/90 active:scale-95 transition ${
                               alreadySentInterest
                                 ? "border-primary/20 text-primary"
-                                : "bg-primary text-white border-primary"
+                                : "bg-primary text-base-light border-primary"
                             }`}
                             variants={buttonVariants}
                             initial="hidden"
@@ -736,7 +736,7 @@ export default function ProfileDetailPage() {
                     {/* Right Arrow */}
                     {imagesToShow.length > 1 && (
                       <button
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-base-light/80 hover:bg-base-light rounded-full p-2 shadow"
                         onClick={() =>
                           setCurrentImageIdx((idx) =>
                             Math.min(imagesToShow.length - 1, idx + 1)
@@ -746,7 +746,7 @@ export default function ProfileDetailPage() {
                         aria-label="Next image"
                         type="button"
                       >
-                        <ChevronRight className="w-6 h-6 text-gray-700" />
+                        <ChevronRight className="w-6 h-6 text-neutral" />
                       </button>
                     )}
                   </motion.div>
@@ -759,7 +759,7 @@ export default function ProfileDetailPage() {
                     exit="exit"
                     className="w-full aspect-[4/5] md:aspect-[4/3] md:max-h-[520px]"
                   >
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <div className="w-full h-full flex items-center justify-center bg-neutral/10">
                       <Image
                         src="/placeholder.jpg"
                         alt="Profile placeholder"
@@ -902,8 +902,8 @@ export default function ProfileDetailPage() {
                     ))}
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-sm text-accent-600 mb-2 font-nunito">
-                  <Calendar className="w-4 h-4 text-accent-200" />
+                <div className="flex items-center gap-2 text-sm text-accent mb-2 font-nunito">
+                  <Calendar className="w-4 h-4 text-accent-light" />
                   <span>
                     Age: {calculateAge(profile?.dateOfBirth || "") || "-"}
                   </span>
@@ -1219,7 +1219,7 @@ export default function ProfileDetailPage() {
                         className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 font-nunito text-lg font-semibold ${
                           alreadySentInterest
                             ? "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
-                            : "bg-primary hover:bg-primary-dark text-white"
+                            : "bg-primary hover:bg-primary-dark text-base-light"
                         }`}
                         variants={buttonVariants}
                         initial="hidden"
@@ -1265,7 +1265,7 @@ export default function ProfileDetailPage() {
                         >
                           {mutationPending ? (
                             <svg
-                              className="w-10 h-10 animate-spin text-white"
+                              className="w-10 h-10 animate-spin text-base-light"
                               viewBox="0 0 24 24"
                             >
                               <circle
@@ -1288,7 +1288,7 @@ export default function ProfileDetailPage() {
                               <HeartOff className="w-10 h-10 fill-primary text-primary" />
                             </div>
                           ) : (
-                            <Heart className="w-10 h-10 text-white" />
+                            <Heart className="w-10 h-10 text-base-light" />
                           )}
                         </motion.span>
                       </motion.button>
@@ -1298,7 +1298,7 @@ export default function ProfileDetailPage() {
                   ["mutual", "accepted"].includes(
                     interestStatusData?.status || ""
                   ) && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-full shadow font-semibold">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-success text-base-light rounded-full shadow font-semibold">
                       <svg
                         className="w-5 h-5"
                         viewBox="0 0 24 24"

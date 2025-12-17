@@ -100,10 +100,10 @@ export function NotificationForm({
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
       {/* Left Column: Form */}
       <div className="xl:col-span-7 space-y-6">
-        <Card className="border-0 shadow-lg bg-white">
-          <CardHeader className="pb-6 border-b border-slate-100">
+        <Card className="border-0 shadow-lg bg-base-light">
+          <CardHeader className="pb-6 border-b border-neutral/10">
             <CardTitle className="flex items-center gap-3 text-xl">
-              <div className="p-2 bg-pink-500 rounded-xl shadow-sm">
+              <div className="p-2 bg-primary rounded-xl shadow-sm">
                 <Send className="h-5 w-5 text-white" />
               </div>
               Compose Notification
@@ -111,9 +111,9 @@ export function NotificationForm({
           </CardHeader>
           <CardContent className="space-y-8 pt-6">
             {/* Safety Notice */}
-            <div className="rounded-xl bg-blue-50 text-blue-800 p-4 border border-blue-100 flex items-start gap-3">
-              <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                <AlertTriangle className="h-4 w-4 text-blue-600" />
+            <div className="rounded-xl bg-info/10 text-info-dark p-4 border border-info/20 flex items-start gap-3">
+              <div className="p-1.5 bg-info/20 rounded-lg mt-0.5">
+                <AlertTriangle className="h-4 w-4 text-info" />
               </div>
               <div className="text-sm">
                 <span className="font-semibold block mb-1">Safety Mode Active</span>
@@ -123,22 +123,22 @@ export function NotificationForm({
 
             {/* Quick Start Section */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-800 font-semibold">
-                <Zap className="h-4 w-4 text-amber-500" />
+              <div className="flex items-center gap-2 text-neutral-dark font-semibold">
+                <Zap className="h-4 w-4 text-warning" />
                 <h3>Quick Start Templates</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-neutral/5 p-4 rounded-xl border border-neutral/10">
                 <div className="space-y-2">
                   <Label
                     htmlFor="template-category"
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-xs font-semibold text-neutral uppercase tracking-wider"
                   >
                     Category
                   </Label>
                   <select
                     id="template-category"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                    className="w-full border border-neutral/20 rounded-lg px-3 py-2 bg-base-light text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                   >
@@ -150,7 +150,7 @@ export function NotificationForm({
                   </select>
                 </div>
                 <div className="md:col-span-2 space-y-2">
-                  <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <Label className="text-xs font-semibold text-neutral uppercase tracking-wider">
                     Presets
                   </Label>
                   <div className="flex flex-wrap gap-2">
@@ -159,7 +159,7 @@ export function NotificationForm({
                         key={p.name}
                         size="sm"
                         variant="outline"
-                        className="bg-white hover:bg-pink-50 hover:border-pink-200 hover:text-pink-700 transition-all text-xs h-9"
+                        className="bg-base-light hover:bg-primary/5 hover:border-primary/20 hover:text-primary-dark transition-all text-xs h-9"
                         onClick={() => {
                           setTitle(p.title);
                           setMessage(p.message);
@@ -177,8 +177,8 @@ export function NotificationForm({
             </div>
 
             <div className="space-y-6">
-              <div className="flex items-center gap-2 text-slate-800 font-semibold border-t border-slate-100 pt-6">
-                <Bell className="h-4 w-4 text-pink-500" />
+              <div className="flex items-center gap-2 text-neutral-dark font-semibold border-t border-neutral/10 pt-6">
+                <Bell className="h-4 w-4 text-primary" />
                 <h3>Content</h3>
               </div>
 
@@ -186,9 +186,9 @@ export function NotificationForm({
                 {/* Essential Fields */}
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="push-title" className="text-sm font-semibold text-slate-700 flex items-center justify-between">
-                      <span>Title <span className="text-red-500">*</span></span>
-                      <span className={`text-xs font-normal ${title.length > 65 ? "text-red-500" : "text-slate-400"}`}>
+                    <Label htmlFor="push-title" className="text-sm font-semibold text-neutral-dark flex items-center justify-between">
+                      <span>Title <span className="text-danger">*</span></span>
+                      <span className={`text-xs font-normal ${title.length > 65 ? "text-danger" : "text-neutral/60"}`}>
                         {title.length}/65
                       </span>
                     </Label>
@@ -198,14 +198,14 @@ export function NotificationForm({
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="Enter notification title"
                       maxLength={65}
-                      className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all font-medium"
+                      className="border-neutral/20 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-medium"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="push-message" className="text-sm font-semibold text-slate-700 flex items-center justify-between">
-                      <span>Message <span className="text-red-500">*</span></span>
-                      <span className={`text-xs font-normal ${message.length > 240 ? "text-red-500" : "text-slate-400"}`}>
+                    <Label htmlFor="push-message" className="text-sm font-semibold text-neutral-dark flex items-center justify-between">
+                      <span>Message <span className="text-danger">*</span></span>
+                      <span className={`text-xs font-normal ${message.length > 240 ? "text-danger" : "text-neutral/60"}`}>
                         {message.length}/240
                       </span>
                     </Label>
@@ -216,21 +216,21 @@ export function NotificationForm({
                       rows={4}
                       placeholder="Enter notification message"
                       maxLength={240}
-                      className="border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all resize-none"
+                      className="border-neutral/20 focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-none"
                     />
                   </div>
                 </div>
 
                 {/* Optional Fields */}
-                <div className="space-y-4 p-5 bg-slate-50 rounded-xl border border-slate-100">
-                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
-                    <Settings className="h-4 w-4 text-slate-400" />
+                <div className="space-y-4 p-5 bg-neutral/5 rounded-xl border border-neutral/10">
+                  <h4 className="text-sm font-semibold text-neutral-dark flex items-center gap-2 mb-2">
+                    <Settings className="h-4 w-4 text-neutral/40" />
                     Additional Options
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
-                      <Label htmlFor="push-url" className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                      <Label htmlFor="push-url" className="text-xs font-medium text-neutral uppercase tracking-wider flex items-center gap-1">
                         <LinkIcon className="h-3 w-3" /> Action URL
                       </Label>
                       <Input
@@ -238,12 +238,12 @@ export function NotificationForm({
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         placeholder="https://aroosi.com/..."
-                        className="bg-white border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        className="bg-base-light border-neutral/20 focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="push-image" className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                      <Label htmlFor="push-image" className="text-xs font-medium text-neutral uppercase tracking-wider flex items-center gap-1">
                         <ImageIcon className="h-3 w-3" /> Image URL
                       </Label>
                       <Input
@@ -251,7 +251,7 @@ export function NotificationForm({
                         value={imageUrl}
                         onChange={(e) => setImageUrl(e.target.value)}
                         placeholder="https://aroosi.com/images/..."
-                        className="bg-white border-slate-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        className="bg-base-light border-neutral/20 focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                       />
                     </div>
                   </div>
@@ -260,15 +260,15 @@ export function NotificationForm({
                 {/* Advanced Data */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+                    <h4 className="text-sm font-semibold text-neutral-dark flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-warning rounded-full"></div>
                       Advanced Configuration
                     </h4>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 p-4 border border-slate-100 rounded-xl">
+                  <div className="grid grid-cols-1 gap-4 p-4 border border-neutral/10 rounded-xl">
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <Label className="text-xs font-medium text-neutral uppercase tracking-wider">
                         Custom Data (JSON)
                       </Label>
                       <Textarea
@@ -276,12 +276,12 @@ export function NotificationForm({
                         onChange={(e) => setDataJson(e.target.value)}
                         rows={3}
                         placeholder='{"type":"new_message","conversationId":"..."}'
-                        className="font-mono text-xs bg-slate-50 border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                        className="font-mono text-xs bg-neutral/5 border-neutral/20 focus:ring-2 focus:ring-warning focus:border-warning transition-all"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <Label className="text-xs font-medium text-neutral uppercase tracking-wider">
                         Action Buttons (JSON)
                       </Label>
                       <Textarea
@@ -289,7 +289,7 @@ export function NotificationForm({
                         onChange={(e) => setButtonsJson(e.target.value)}
                         rows={2}
                         placeholder='[{"id":"view","text":"View","icon":"👁️"}]'
-                        className="font-mono text-xs bg-slate-50 border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                        className="font-mono text-xs bg-neutral/5 border-neutral/20 focus:ring-2 focus:ring-warning focus:border-warning transition-all"
                       />
                     </div>
                   </div>
@@ -298,19 +298,19 @@ export function NotificationForm({
             </div>
 
             {/* Audience Configuration */}
-            <div className="space-y-6 border-t border-slate-100 pt-6">
-              <div className="flex items-center gap-2 text-slate-800 font-semibold">
-                <Users className="h-4 w-4 text-indigo-500" />
+            <div className="space-y-6 border-t border-neutral/10 pt-6">
+              <div className="flex items-center gap-2 text-neutral-dark font-semibold">
+                <Users className="h-4 w-4 text-secondary" />
                 <h3>Audience & Targeting</h3>
               </div>
 
               <div className="grid grid-cols-1 gap-6">
                 {/* Target Segments */}
                 <div className="space-y-3">
-                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <Label className="text-xs font-medium text-neutral uppercase tracking-wider">
                     Include Segments
                   </Label>
-                  <div className="flex flex-wrap gap-2 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100">
+                  <div className="flex flex-wrap gap-2 p-4 bg-secondary/5 rounded-xl border border-secondary/20">
                     {[
                       "Subscribed Users",
                       "Active Users",
@@ -324,8 +324,8 @@ export function NotificationForm({
                           size="sm"
                           className={`transition-all ${
                             active 
-                              ? "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent shadow-sm" 
-                              : "bg-white hover:bg-indigo-50 text-slate-600 border-slate-200"
+                              ? "bg-secondary hover:bg-secondary-dark text-white border-transparent shadow-sm" 
+                              : "bg-base-light hover:bg-secondary/10 text-neutral border-neutral/20"
                           }`}
                           onClick={() =>
                             setSegments((prev: string[]) =>
@@ -344,10 +344,10 @@ export function NotificationForm({
 
                 {/* Exclude Segments */}
                 <div className="space-y-3">
-                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <Label className="text-xs font-medium text-neutral uppercase tracking-wider">
                     Exclude Segments
                   </Label>
-                  <div className="flex flex-wrap gap-2 p-4 bg-red-50/30 rounded-xl border border-red-100">
+                  <div className="flex flex-wrap gap-2 p-4 bg-danger/5 rounded-xl border border-danger/20">
                     {["Dormant", "Churn Risk"].map((seg) => {
                       const active = excludedSegments.includes(seg);
                       return (
@@ -357,8 +357,8 @@ export function NotificationForm({
                           size="sm"
                           className={`transition-all ${
                             active 
-                              ? "bg-red-600 hover:bg-red-700 text-white border-transparent shadow-sm" 
-                              : "bg-white hover:bg-red-50 text-slate-600 border-slate-200"
+                              ? "bg-danger hover:bg-danger-dark text-white border-transparent shadow-sm" 
+                              : "bg-base-light hover:bg-danger/10 text-neutral border-neutral/20"
                           }`}
                           onClick={() =>
                             setExcludedSegments((prev: string[]) =>
@@ -384,21 +384,21 @@ export function NotificationForm({
       <div className="xl:col-span-5 space-y-6">
         <div className="sticky top-6 space-y-6">
           {/* Send Actions Card */}
-          <Card className="border-0 shadow-lg bg-white overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-pink-500 to-purple-600"></div>
+          <Card className="border-0 shadow-lg bg-base-light overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-primary to-secondary"></div>
             <CardContent className="p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800">Send Configuration</h3>
-                <Badge variant={dryRun ? "outline" : "default"} className={dryRun ? "text-slate-500" : "bg-pink-500"}>
+                <h3 className="font-semibold text-neutral-dark">Send Configuration</h3>
+                <Badge variant={dryRun ? "outline" : "default"} className={dryRun ? "text-neutral" : "bg-primary"}>
                   {dryRun ? "Preview Mode" : "Live Mode"}
                 </Badge>
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="flex items-center justify-between p-3 bg-neutral/5 rounded-lg border border-neutral/10">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium text-slate-700">Dry Run</Label>
-                    <p className="text-xs text-slate-500">Simulate without sending</p>
+                    <Label className="text-sm font-medium text-neutral-dark">Dry Run</Label>
+                    <p className="text-xs text-neutral">Simulate without sending</p>
                   </div>
                   <Switch
                     checked={dryRun}
@@ -407,15 +407,15 @@ export function NotificationForm({
                 </div>
 
                 {!dryRun && (
-                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between p-3 bg-danger/10 rounded-lg border border-danger/20 animate-in fade-in slide-in-from-top-2">
                     <div className="space-y-0.5">
-                      <Label className="text-sm font-medium text-red-700">Confirm Live Send</Label>
-                      <p className="text-xs text-red-500">Required for production</p>
+                      <Label className="text-sm font-medium text-danger-dark">Confirm Live Send</Label>
+                      <p className="text-xs text-danger">Required for production</p>
                     </div>
                     <Switch
                       checked={confirmLive}
                       onCheckedChange={setConfirmLive}
-                      className="data-[state=checked]:bg-red-600"
+                      className="data-[state=checked]:bg-danger"
                     />
                   </div>
                 )}
@@ -430,8 +430,8 @@ export function NotificationForm({
                   }
                   className={`w-full h-12 text-base transition-all duration-300 ${
                     dryRun
-                      ? "bg-slate-800 hover:bg-slate-900 text-white shadow-lg shadow-slate-200"
-                      : "bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white shadow-lg shadow-pink-200"
+                      ? "bg-neutral-dark hover:bg-neutral-darker text-white shadow-lg shadow-neutral/20"
+                      : "bg-gradient-to-r from-primary-dark to-secondary hover:from-primary-darker hover:to-secondary-dark text-white shadow-lg shadow-primary/20"
                   }`}
                 >
                   {sending ? (

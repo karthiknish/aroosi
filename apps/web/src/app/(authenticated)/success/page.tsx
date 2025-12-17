@@ -47,10 +47,10 @@ export default function ProfileCreationSuccessPage() {
   // Show loading state while auth is checking
   if (!isLoaded || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-rose-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Preparing your experience...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-neutral">Preparing your experience...</p>
         </div>
       </div>
     );
@@ -64,10 +64,10 @@ export default function ProfileCreationSuccessPage() {
   return (
     <>
 
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center relative overflow-hidden bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center relative overflow-hidden bg-gradient-to-br from-primary/5 via-base-light to-accent/5">
       {/* Decorative elements matching sign-in page */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
       {/* Confetti */}
       {showConfetti && dimensions.width > 0 && dimensions.height > 0 && (
         <Confetti
@@ -93,8 +93,8 @@ export default function ProfileCreationSuccessPage() {
           }}
           className="relative mx-auto mb-8 flex items-center justify-center"
         >
-          <div className="w-32 h-32 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-xl">
-            <UserCheck className="text-white" size={64} />
+          <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-xl">
+            <UserCheck className="text-base-light" size={64} />
           </div>
 
           {/* Floating sparkles */}
@@ -108,7 +108,7 @@ export default function ProfileCreationSuccessPage() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute -top-4 -right-4 text-yellow-400"
+            className="absolute -top-4 -right-4 text-warning"
           >
             <Sparkles size={24} />
           </motion.div>
@@ -124,7 +124,7 @@ export default function ProfileCreationSuccessPage() {
               ease: "easeInOut",
               delay: 0.5,
             }}
-            className="absolute -bottom-4 -left-4 text-yellow-400"
+            className="absolute -bottom-4 -left-4 text-warning"
           >
             <Sparkles size={24} />
           </motion.div>
@@ -135,7 +135,7 @@ export default function ProfileCreationSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent leading-[1.7]"
+          className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent leading-[1.7]"
         >
           Welcome to Aroosi!
         </motion.h1>
@@ -145,7 +145,7 @@ export default function ProfileCreationSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="text-gray-600 text-lg mb-2"
+          className="text-neutral text-lg mb-2"
         >
           Your profile has been successfully created
         </motion.p>
@@ -155,7 +155,7 @@ export default function ProfileCreationSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="text-gray-500 mb-10 leading-relaxed max-w-md mx-auto"
+          className="text-neutral/80 mb-10 leading-relaxed max-w-md mx-auto"
         >
           You&apos;re now part of our community of like-minded individuals.
           Start exploring profiles and connecting with others who share your
@@ -169,7 +169,7 @@ export default function ProfileCreationSuccessPage() {
           transition={{ delay: 1 }}
         >
           <Button
-            className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white px-8 py-4 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+            className="bg-gradient-to-r from-primary to-accent hover:from-primary-dark hover:to-accent-dark text-base-light px-8 py-4 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
             onClick={() => router.push("/search")}
             size="lg"
           >
@@ -185,25 +185,25 @@ export default function ProfileCreationSuccessPage() {
           transition={{ delay: 1.2 }}
           className="mt-12 grid grid-cols-3 gap-4 max-w-md mx-auto"
         >
-          <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
-            <div className="text-2xl font-bold text-pink-600">New</div>
-            <div className="text-xs text-gray-500">Just launched</div>
+          <div className="bg-base-light/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-primary">New</div>
+            <div className="text-xs text-neutral">Just launched</div>
           </div>
-          <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
-            <div className="text-2xl font-bold text-pink-600">95%</div>
-            <div className="text-xs text-gray-500">Match Rate</div>
+          <div className="bg-base-light/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-primary">95%</div>
+            <div className="text-xs text-neutral">Match Rate</div>
           </div>
-          <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
-            <div className="text-2xl font-bold text-pink-600">24/7</div>
-            <div className="text-xs text-gray-500">Support</div>
+          <div className="bg-base-light/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
+            <div className="text-2xl font-bold text-primary">24/7</div>
+            <div className="text-xs text-neutral">Support</div>
           </div>
         </motion.div>
       </div>
 
       {/* Decorative elements */}
-      <div className="absolute top-10 left-10 w-24 h-24 rounded-full bg-pink-200/30 blur-xl"></div>
-      <div className="absolute bottom-10 right-10 w-32 h-32 rounded-full bg-rose-200/30 blur-xl"></div>
-      <div className="absolute top-1/3 right-20 w-16 h-16 rounded-full bg-pink-300/20 blur-lg"></div>
+      <div className="absolute top-10 left-10 w-24 h-24 rounded-full bg-primary/10 blur-xl"></div>
+      <div className="absolute bottom-10 right-10 w-32 h-32 rounded-full bg-accent/10 blur-xl"></div>
+      <div className="absolute top-1/3 right-20 w-16 h-16 rounded-full bg-primary/10 blur-lg"></div>
     </div>
     </>
   );

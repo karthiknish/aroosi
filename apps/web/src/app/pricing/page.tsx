@@ -85,21 +85,21 @@ export default function PricingPage() {
             className="text-center max-w-3xl mx-auto"
           >
             <motion.div variants={fadeInUp} custom={0}>
-              <Badge className="bg-white/20 text-white font-nunito px-4 py-1.5 rounded-full mb-6">
+              <Badge className="bg-base-light/20 text-base-light font-nunito px-4 py-1.5 rounded-full mb-6">
                 Pricing Plans
               </Badge>
             </motion.div>
             <motion.h1 
               variants={fadeInUp} 
               custom={1}
-              className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-6"
+              className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-base-light mb-6"
             >
               Simple, Transparent Pricing
             </motion.h1>
             <motion.p 
               variants={fadeInUp} 
               custom={2}
-              className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto"
+              className="text-lg md:text-xl text-base-light/90 max-w-2xl mx-auto"
             >
               Choose the plan that fits your journey to finding love.
               Upgrade, downgrade, or cancel anytime. No hidden fees.
@@ -132,15 +132,15 @@ export default function PricingPage() {
                   className={isPopular ? "md:-mt-4 md:mb-4" : ""}
                 >
                   <Card 
-                    className={`relative border-0 shadow-xl flex flex-col h-full transition-all duration-300 hover:shadow-2xl ${
+                    className={`relative border-0 shadow-lg flex flex-col h-full transition-all duration-300 hover:shadow-xl ${
                       isPopular 
-                        ? "ring-2 ring-primary bg-white" 
-                        : "bg-white/90 backdrop-blur-sm hover:-translate-y-1"
+                        ? "ring-2 ring-primary bg-base-light" 
+                        : "bg-base-light/90 backdrop-blur-sm hover:-translate-y-1"
                     }`}
                   >
                     {isPopular && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-primary text-white px-4 py-1.5 text-sm font-medium shadow-lg">
+                        <Badge className="bg-primary text-base-light px-4 py-1.5 text-sm font-medium shadow-lg">
                           <Sparkles className="w-3 h-3 mr-1 inline" />
                           Most Popular
                         </Badge>
@@ -164,7 +164,7 @@ export default function PricingPage() {
                           {Icon}
                         </div>
                         <div>
-                          <CardTitle className="text-2xl font-bold text-neutral">
+                          <CardTitle className="text-2xl font-bold text-neutral-dark">
                             {plan.name}
                           </CardTitle>
                         </div>
@@ -177,7 +177,7 @@ export default function PricingPage() {
                     <CardContent className="flex-grow space-y-6 pb-6">
                       {/* Price */}
                       <div className="flex items-baseline gap-2">
-                        <span className={`text-5xl font-bold ${isPopular ? "text-primary" : "text-neutral"}`}>
+                        <span className={`text-5xl font-bold ${isPopular ? "text-primary" : "text-neutral-dark"}`}>
                           {formatPrice(plan.price)}
                         </span>
                         {plan.price > 0 && (
@@ -200,7 +200,7 @@ export default function PricingPage() {
                                 <X className="w-3 h-3 text-neutral-light" />
                               </div>
                             )}
-                            <span className={`text-sm ${feature.included ? "text-neutral" : "text-neutral-light/60"}`}>
+                            <span className={`text-sm ${feature.included ? "text-neutral-dark" : "text-neutral-light/60"}`}>
                               {feature.text}
                             </span>
                           </div>
@@ -213,10 +213,10 @@ export default function PricingPage() {
                         asChild 
                         className={`w-full h-12 text-base font-medium rounded-xl transition-all ${
                           isPopular 
-                            ? "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 hover:shadow-xl" 
+                            ? "bg-primary hover:bg-primary-dark text-base-light shadow-lg shadow-primary/25 hover:shadow-xl" 
                             : plan.id === "free"
-                            ? "bg-neutral/10 hover:bg-neutral/20 text-neutral border-0"
-                            : "bg-secondary hover:bg-secondary-dark text-white"
+                            ? "bg-neutral/10 hover:bg-neutral/20 text-neutral-dark border-0"
+                            : "bg-secondary hover:bg-secondary-dark text-base-light"
                         }`}
                         size="lg"
                       >
@@ -246,7 +246,7 @@ export default function PricingPage() {
             variants={fadeIn}
             className="text-center mb-16"
           >
-            <h2 className="font-serif text-3xl lg:text-4xl font-bold text-neutral mb-4 relative inline-block">
+            <h2 className="font-serif text-3xl lg:text-4xl font-bold text-neutral-dark mb-4 relative inline-block">
               Why Upgrade?
               <svg
                 className="absolute -bottom-2 left-0 w-full"
@@ -257,7 +257,7 @@ export default function PricingPage() {
               >
                 <path
                   d="M0 3C50 0.5 150 0.5 200 3"
-                  stroke="#FDA4AF"
+                  stroke="hsl(var(--primary))"
                   strokeWidth="5"
                   strokeLinecap="round"
                 />
@@ -296,12 +296,12 @@ export default function PricingPage() {
                 key={feature.title}
                 variants={fadeInUp}
                 custom={i}
-                className="text-center p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                className="text-center p-8 bg-base-light rounded-2xl shadow-lg hover:shadow-xl transition-all"
               >
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   {feature.icon}
                 </div>
-                <h3 className="font-serif text-xl font-bold text-neutral mb-2">
+                <h3 className="font-serif text-xl font-bold text-neutral-dark mb-2">
                   {feature.title}
                 </h3>
                 <p className="text-neutral-light">
@@ -327,7 +327,7 @@ export default function PricingPage() {
               <HelpCircle className="w-6 h-6 text-secondary" />
               <span className="text-secondary font-medium">Got Questions?</span>
             </div>
-            <h2 className="font-serif text-3xl lg:text-4xl font-bold text-neutral mb-4 relative inline-block">
+            <h2 className="font-serif text-3xl lg:text-4xl font-bold text-neutral-dark mb-4 relative inline-block">
               Frequently Asked Questions
               <svg
                 className="absolute -bottom-2 left-0 w-full"
@@ -338,7 +338,7 @@ export default function PricingPage() {
               >
                 <path
                   d="M0 3C50 0.5 150 0.5 200 3"
-                  stroke="#FDA4AF"
+                  stroke="hsl(var(--primary))"
                   strokeWidth="5"
                   strokeLinecap="round"
                 />
@@ -358,10 +358,10 @@ export default function PricingPage() {
                 <AccordionItem
                   key={i}
                   value={`item-${i}`}
-                  className="bg-white rounded-xl shadow-sm border-0 px-6 overflow-hidden"
+                  className="bg-base-light rounded-xl shadow-sm border-0 px-6 overflow-hidden"
                 >
                   <AccordionTrigger 
-                    className="text-left text-neutral hover:no-underline py-5"
+                    className="text-left text-neutral-dark hover:no-underline py-5"
                     style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif', fontWeight: 400 }}
                   >
                     {faq.question}
@@ -394,15 +394,15 @@ export default function PricingPage() {
             viewport={{ once: true, amount: 0.3 }}
             variants={fadeInUp}
           >
-            <h3 className="text-2xl font-bold text-white mb-3">
+            <h3 className="text-2xl font-bold text-base-light mb-3">
               Still have questions?
             </h3>
-            <p className="text-white/90 mb-6 max-w-xl mx-auto" style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}>
+            <p className="text-base-light/90 mb-6 max-w-xl mx-auto" style={{ fontFamily: 'var(--font-nunito), system-ui, sans-serif' }}>
               Can&apos;t find the answer you&apos;re looking for? Our friendly support team is here to help you 24/7.
             </p>
             <Button 
               asChild 
-              className="bg-white text-secondary-dark hover:bg-white/90 px-8 py-6 rounded-xl shadow-lg"
+              className="bg-base-light text-secondary-dark hover:bg-base-light/90 px-8 py-6 rounded-xl shadow-lg"
               size="lg"
             >
               <Link href="/contact">

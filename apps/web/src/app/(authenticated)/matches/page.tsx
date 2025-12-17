@@ -42,7 +42,7 @@ function MatchCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
     >
-      <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white rounded-2xl overflow-hidden">
+      <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-base-light rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           <div className="flex items-center p-4 sm:p-6 gap-4 sm:gap-6">
             {/* Profile Image */}
@@ -54,7 +54,7 @@ function MatchCard({
                     alt={match.fullName || "Avatar"}
                     width={80}
                     height={80}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300 ring-2 ring-white"
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300 ring-2 ring-base-light"
                   />
                   {(match.unread ?? 0) > 0 ? (
                     <motion.div
@@ -62,14 +62,14 @@ function MatchCard({
                       animate={{ scale: 1 }}
                       className="absolute -top-1 -right-1"
                     >
-                      <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-white text-[10px] leading-none font-bold shadow-lg px-1 border-2 border-white">
+                      <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-base-light text-[10px] leading-none font-bold shadow-lg px-1 border-2 border-base-light">
                         {match.unread > 9 ? "9+" : match.unread}
                       </span>
                     </motion.div>
                   ) : null}
                 </div>
               ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-secondary-light to-accent-light flex items-center justify-center shadow-md ring-2 ring-white">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-secondary-light to-accent-light flex items-center justify-center shadow-md ring-2 ring-base-light">
                   <UserCircle className="w-10 h-10 text-secondary" />
                 </div>
               )}
@@ -114,7 +114,7 @@ function MatchCard({
             <div className="flex-shrink-0">
               <Link href={`/matches/${match.userId}`}>
                 <Button
-                  className="bg-primary/10 hover:bg-primary text-primary hover:text-white border-0 shadow-none hover:shadow-lg transition-all duration-300 rounded-full w-10 h-10 sm:w-auto sm:h-10 sm:px-6 p-0 flex items-center justify-center"
+                  className="bg-primary/10 hover:bg-primary text-primary hover:text-base-light border-0 shadow-none hover:shadow-lg transition-all duration-300 rounded-full w-10 h-10 sm:w-auto sm:h-10 sm:px-6 p-0 flex items-center justify-center"
                 >
                   <MessageCircle className="w-5 h-5 sm:mr-2" />
                   <span className="hidden sm:inline">Chat</span>
@@ -231,7 +231,7 @@ export default function MatchesPage() {
             className="text-center mb-8"
           >
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 bg-primary rounded-2xl text-white shadow-lg">
+              <div className="p-3 bg-primary rounded-2xl text-base-light shadow-lg">
                 <Heart className="w-8 h-8" />
               </div>
               <h1 className="text-4xl font-bold text-primary font-serif">
@@ -247,7 +247,7 @@ export default function MatchesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-primary/10 shadow-sm"
+            className="bg-base-light/80 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-primary/10 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">

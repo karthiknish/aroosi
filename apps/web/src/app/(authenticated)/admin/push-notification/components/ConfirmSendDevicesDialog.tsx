@@ -57,12 +57,12 @@ export function ConfirmSendDevicesDialog({
             </div>
           </div>
 
-          <div className="bg-green-50 p-3 rounded-lg">
+          <div className="bg-success/5 p-3 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <Smartphone className="h-4 w-4 text-green-600" />
-              <span className="font-medium text-green-800">Player IDs</span>
+              <Smartphone className="h-4 w-4 text-success" />
+              <span className="font-medium text-success">Player IDs</span>
             </div>
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-success/80">
               {pendingPlayerIds.length} device IDs will be used for targeting
             </p>
           </div>

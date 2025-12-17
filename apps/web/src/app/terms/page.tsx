@@ -13,7 +13,7 @@ export default function TermsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
+          className="max-w-3xl mx-auto bg-base-light p-6 sm:p-8 md:p-10 rounded-xl shadow-lg"
         >
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-primary mb-4">
@@ -85,7 +85,7 @@ export default function TermsPage() {
               <div className="flex justify-center mt-8">
                 <Link 
                   href="/"
-                  className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark transition-colors"
+                  className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-base-light bg-primary hover:bg-primary-dark transition-colors"
                 >
                   Return to Home
                 </Link>

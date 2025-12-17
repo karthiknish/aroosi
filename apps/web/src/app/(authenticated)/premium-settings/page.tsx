@@ -174,13 +174,13 @@ export default function PremiumSettingsPage() {
     switch (plan) {
       case "premium":
         return (
-          <Badge className="bg-gradient-to-r from-primary to-primary-dark text-white flex items-center">
+          <Badge className="bg-gradient-to-r from-primary to-primary-dark text-base-light flex items-center">
             <Crown className="w-3 h-3 mr-1" /> Premium
           </Badge>
         );
       case "premiumPlus":
         return (
-          <Badge className="bg-gradient-to-r from-accent to-accent-dark text-white flex items-center">
+          <Badge className="bg-gradient-to-r from-accent to-accent-dark text-base-light flex items-center">
             <Rocket className="w-3 h-3 mr-1" /> Premium Plus
           </Badge>
         );
@@ -293,7 +293,7 @@ export default function PremiumSettingsPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-base to-base-dark/20">
+    <div className="min-h-screen bg-gradient-to-b from-base-light to-base-dark/20">
       {/* Subtle decorative backgrounds */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl" />
@@ -310,9 +310,9 @@ export default function PremiumSettingsPage() {
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2.5 rounded-xl ${isPremiumPlus ? "bg-gradient-to-br from-accent to-accent-dark" : "bg-gradient-to-br from-primary to-primary-dark"}`}>
               {isPremiumPlus ? (
-                <Sparkles className="w-5 h-5 text-white" />
+                <Sparkles className="w-5 h-5 text-base-light" />
               ) : (
-                <Crown className="w-5 h-5 text-white" />
+                <Crown className="w-5 h-5 text-base-light" />
               )}
             </div>
             <div>
@@ -335,7 +335,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="overflow-hidden border-0 shadow-md bg-white">
+              <Card className="overflow-hidden border-0 shadow-md bg-base-light">
                 <div className={`h-1.5 ${isPremiumPlus ? "bg-gradient-to-r from-accent via-accent-light to-accent" : "bg-gradient-to-r from-primary via-primary-light to-primary"}`} />
                 <CardContent className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -352,7 +352,7 @@ export default function PremiumSettingsPage() {
                           <span className="font-semibold text-neutral-dark">
                             {isPremiumPlus ? "Premium Plus" : "Premium"}
                           </span>
-                          <Badge className={`text-[10px] px-1.5 py-0.5 ${isPremiumPlus ? "bg-accent/15 text-accent-dark border-0" : "bg-primary/15 text-primary-dark border-0"}`}>
+                          <Badge className={`text-[10px] px-1.5 py-0.5 ${isPremiumPlus ? "bg-accent/10 text-accent-dark border-0" : "bg-primary/10 text-primary-dark border-0"}`}>
                             Active
                           </Badge>
                         </div>
@@ -392,7 +392,7 @@ export default function PremiumSettingsPage() {
                             console.error("Manage billing failed", e);
                           }
                         }}
-                        className="bg-accent hover:bg-accent-dark text-white"
+                        className="bg-accent hover:bg-accent-dark text-base-light"
                       >
                         <CreditCard className="w-4 h-4 mr-1.5" />
                         Billing
@@ -409,7 +409,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="border-0 shadow-md bg-white">
+              <Card className="border-0 shadow-md bg-base-light">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <Crown className="w-5 h-5 text-primary" />
@@ -469,7 +469,7 @@ export default function PremiumSettingsPage() {
                       <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="w-full bg-primary hover:bg-primary-dark text-white"
+                        className="w-full bg-primary hover:bg-primary-dark text-base-light"
                       >
                         {saving && <LoadingSpinner size={16} className="mr-2" />}
                         Save Privacy Settings
@@ -486,7 +486,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="border-0 shadow-md bg-white">
+              <Card className="border-0 shadow-md bg-base-light">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <Rocket className="w-5 h-5 text-accent" />
@@ -521,7 +521,7 @@ export default function PremiumSettingsPage() {
                             feature.isBoost ? (
                               feature.isBoosted ? (
                                 <div className="flex items-center gap-2">
-                                  <Badge className="bg-gradient-to-r from-primary to-primary-dark text-white text-xs">
+                                  <Badge className="bg-gradient-to-r from-primary to-primary-dark text-base-light text-xs">
                                     <Zap className="h-3 w-3 mr-1 fill-current" />
                                     Boosted
                                   </Badge>
@@ -532,7 +532,7 @@ export default function PremiumSettingsPage() {
                                   size="sm"
                                   onClick={feature.action}
                                   disabled={boostLoading || (profile.boostsRemaining || 0) <= 0}
-                                  className="bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary-dark text-white"
+                                  className="bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary-dark text-base-light"
                                 >
                                   {boostLoading ? (
                                     <LoadingSpinner size={14} className="mr-1" />
@@ -556,7 +556,7 @@ export default function PremiumSettingsPage() {
                             <Button
                               size="sm"
                               onClick={() => handleNavigate("/subscription")}
-                              className="bg-accent hover:bg-accent-dark text-white"
+                              className="bg-accent hover:bg-accent-dark text-base-light"
                             >
                               Upgrade
                             </Button>
@@ -573,7 +573,7 @@ export default function PremiumSettingsPage() {
                         </p>
                         <Button
                           onClick={() => handleNavigate("/subscription")}
-                          className="w-full bg-accent hover:bg-accent-dark text-white"
+                          className="w-full bg-accent hover:bg-accent-dark text-base-light"
                         >
                           <Sparkles className="w-4 h-4 mr-2" />
                           Upgrade to Premium Plus
@@ -594,7 +594,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="border-0 shadow-md bg-white">
+              <Card className="border-0 shadow-md bg-base-light">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <BarChart className="w-5 h-5 text-primary" />
@@ -623,7 +623,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="border-0 shadow-md bg-white">
+              <Card className="border-0 shadow-md bg-base-light">
                 <CardContent className="p-5">
                   <h3 className="font-semibold text-sm mb-3 text-neutral-dark flex items-center gap-2">
                     <Heart className="h-4 w-4 text-primary" />
@@ -657,7 +657,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="border-0 shadow-md bg-white">
+              <Card className="border-0 shadow-md bg-base-light">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <Sparkles className="w-5 h-5 text-accent" />

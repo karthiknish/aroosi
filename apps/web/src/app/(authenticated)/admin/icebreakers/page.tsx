@@ -139,12 +139,12 @@ function IcebreakerRow({
   };
 
   return (
-    <TableRow className="group hover:bg-slate-50/80 transition-colors">
+    <TableRow className="group hover:bg-neutral/5 transition-colors">
       <TableCell className="w-12">
         <Switch
           checked={q.active}
           onCheckedChange={(v) => handleSave("active", v)}
-          className="data-[state=checked]:bg-pink-500"
+          className="data-[state=checked]:bg-primary"
         />
       </TableCell>
       <TableCell>
@@ -153,11 +153,11 @@ function IcebreakerRow({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onBlur={() => handleSave("text", text)}
-            className="border-transparent bg-transparent hover:bg-white hover:border-slate-200 focus:bg-white focus:border-pink-500 transition-all pr-8 font-medium text-slate-700"
+            className="border-transparent bg-transparent hover:bg-base-light hover:border-neutral/20 focus:bg-base-light focus:border-primary transition-all pr-8 font-medium text-neutral-dark"
           />
           {isSaving && (
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
-              <Loader2 className="h-3 w-3 animate-spin text-pink-500" />
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
             </div>
           )}
         </div>
@@ -168,7 +168,7 @@ function IcebreakerRow({
           onChange={(e) => setCategory(e.target.value)}
           onBlur={() => handleSave("category", category || null)}
           placeholder="Category"
-          className="border-transparent bg-transparent hover:bg-white hover:border-slate-200 focus:bg-white focus:border-pink-500 transition-all text-sm text-slate-600"
+          className="border-transparent bg-transparent hover:bg-base-light hover:border-neutral/20 focus:bg-base-light focus:border-primary transition-all text-sm text-neutral"
         />
       </TableCell>
       <TableCell className="w-28">
@@ -180,7 +180,7 @@ function IcebreakerRow({
           }
           onBlur={() => handleSave("weight", weight === "" ? null : weight)}
           placeholder="0"
-          className="border-transparent bg-transparent hover:bg-white hover:border-slate-200 focus:bg-white focus:border-pink-500 transition-all text-right text-sm text-slate-600"
+          className="border-transparent bg-transparent hover:bg-base-light hover:border-neutral/20 focus:bg-base-light focus:border-primary transition-all text-right text-sm text-neutral"
         />
       </TableCell>
       <TableCell className="w-16 text-right">
@@ -189,7 +189,7 @@ function IcebreakerRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+              className="h-8 w-8 text-neutral hover:text-danger hover:bg-danger/5 opacity-0 group-hover:opacity-100 transition-all"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -201,7 +201,7 @@ function IcebreakerRow({
                 Are you sure you want to delete this question? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
-            <div className="bg-slate-50 p-4 rounded-lg text-sm italic text-slate-600 my-2 border border-slate-100">
+            <div className="bg-neutral/5 p-4 rounded-lg text-sm italic text-neutral my-2 border border-neutral/10">
               "{q.text}"
             </div>
             <DialogFooter>
@@ -345,38 +345,38 @@ export default function AdminIcebreakersPage() {
       {/* Header & Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Icebreakers</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold tracking-tight text-neutral-dark">Icebreakers</h1>
+          <p className="text-neutral mt-1">
             Manage conversation starters to help users connect.
           </p>
         </div>
         <div className="flex gap-4">
-          <Card className="px-4 py-2 bg-white shadow-sm border-slate-200">
-            <div className="text-xs font-medium text-slate-500 uppercase">Total</div>
-            <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+          <Card className="px-4 py-2 bg-base-light shadow-sm border-neutral/20">
+            <div className="text-xs font-medium text-neutral uppercase">Total</div>
+            <div className="text-2xl font-bold text-neutral-dark">{stats.total}</div>
           </Card>
-          <Card className="px-4 py-2 bg-white shadow-sm border-slate-200">
-            <div className="text-xs font-medium text-slate-500 uppercase">Active</div>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+          <Card className="px-4 py-2 bg-base-light shadow-sm border-neutral/20">
+            <div className="text-xs font-medium text-neutral uppercase">Active</div>
+            <div className="text-2xl font-bold text-success">{stats.active}</div>
           </Card>
-          <Card className="px-4 py-2 bg-white shadow-sm border-slate-200">
-            <div className="text-xs font-medium text-slate-500 uppercase">Categories</div>
-            <div className="text-2xl font-bold text-purple-600">{stats.categories}</div>
+          <Card className="px-4 py-2 bg-base-light shadow-sm border-neutral/20">
+            <div className="text-xs font-medium text-neutral uppercase">Categories</div>
+            <div className="text-2xl font-bold text-secondary">{stats.categories}</div>
           </Card>
         </div>
       </div>
 
       {/* Add New Section */}
-      <Card className={cn("border-2 border-dashed shadow-none transition-all duration-300", isAddExpanded ? "bg-white border-pink-200" : "bg-slate-50/50 border-slate-200")}>
+      <Card className={cn("border-2 border-dashed shadow-none transition-all duration-300", isAddExpanded ? "bg-base-light border-primary/20" : "bg-neutral/5 border-neutral/20")}>
         <CardHeader className="pb-3 cursor-pointer" onClick={() => setIsAddExpanded(!isAddExpanded)}>
           <CardTitle className="text-lg font-medium flex items-center justify-between">
-            <div className="flex items-center gap-2 text-slate-700">
-              <div className={cn("p-1 rounded-full transition-colors", isAddExpanded ? "bg-pink-100 text-pink-600" : "bg-slate-200 text-slate-500")}>
+            <div className="flex items-center gap-2 text-neutral-dark">
+              <div className={cn("p-1 rounded-full transition-colors", isAddExpanded ? "bg-primary/10 text-primary" : "bg-neutral/10 text-neutral")}>
                 <Plus className="h-4 w-4" />
               </div>
               Add New Question
             </div>
-            <Button variant="ghost" size="sm" className="text-xs text-slate-500">
+            <Button variant="ghost" size="sm" className="text-xs text-neutral">
               {isAddExpanded ? "Cancel" : "Expand"}
             </Button>
           </CardTitle>
@@ -385,7 +385,7 @@ export default function AdminIcebreakersPage() {
           <CardContent className="animate-in slide-in-from-top-2 fade-in duration-200">
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1 w-full space-y-1.5">
-                <label htmlFor="new-q" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <label htmlFor="new-q" className="text-xs font-semibold text-neutral uppercase tracking-wider">
                   Question Text
                 </label>
                 <Input
@@ -393,12 +393,12 @@ export default function AdminIcebreakersPage() {
                   value={newText}
                   onChange={(e) => setNewText(e.target.value)}
                   placeholder="e.g., What's your ideal weekend?"
-                  className="bg-white border-slate-200 focus:border-pink-500 focus:ring-pink-500"
+                  className="bg-base-light border-neutral/20 focus:border-primary focus:ring-primary"
                   autoFocus
                 />
               </div>
               <div className="w-full sm:w-48 space-y-1.5">
-                <label htmlFor="new-cat" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <label htmlFor="new-cat" className="text-xs font-semibold text-neutral uppercase tracking-wider">
                   Category
                 </label>
                 <Input
@@ -406,7 +406,7 @@ export default function AdminIcebreakersPage() {
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="e.g. Fun"
-                  className="bg-white border-slate-200 focus:border-pink-500 focus:ring-pink-500"
+                  className="bg-base-light border-neutral/20 focus:border-primary focus:ring-primary"
                   list="categories-list"
                 />
                 <datalist id="categories-list">
@@ -414,7 +414,7 @@ export default function AdminIcebreakersPage() {
                 </datalist>
               </div>
               <div className="w-full sm:w-28 space-y-1.5">
-                <label htmlFor="new-weight" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <label htmlFor="new-weight" className="text-xs font-semibold text-neutral uppercase tracking-wider">
                   Weight
                 </label>
                 <Input
@@ -427,7 +427,7 @@ export default function AdminIcebreakersPage() {
                     )
                   }
                   placeholder="0"
-                  className="bg-white border-slate-200 focus:border-pink-500 focus:ring-pink-500"
+                  className="bg-base-light border-neutral/20 focus:border-primary focus:ring-primary"
                 />
               </div>
               <Button
@@ -441,7 +441,7 @@ export default function AdminIcebreakersPage() {
                   });
                 }}
                 disabled={mCreate.isPending}
-                className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white"
+                className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-base-light"
               >
                 {mCreate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Question"}
               </Button>
@@ -451,22 +451,22 @@ export default function AdminIcebreakersPage() {
       </Card>
 
       {/* Filters & Table */}
-      <Card className="border-0 shadow-lg bg-white overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <Card className="border-0 shadow-lg bg-base-light overflow-hidden">
+        <div className="p-4 border-b border-neutral/10 bg-neutral/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral" />
               <Input
                 placeholder="Search questions..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                className="pl-9 bg-white border-slate-200"
+                className="pl-9 bg-base-light border-neutral/20"
               />
             </div>
             <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[140px] bg-white border-slate-200">
+              <SelectTrigger className="w-[140px] bg-base-light border-neutral/20">
                 <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-slate-400" />
+                  <Filter className="h-3.5 w-3.5 text-neutral" />
                   <SelectValue placeholder="Category" />
                 </div>
               </SelectTrigger>
@@ -479,7 +479,7 @@ export default function AdminIcebreakersPage() {
             </Select>
           </div>
           
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-sm text-neutral">
             <span>{filteredData.length} questions</span>
           </div>
         </div>
@@ -487,7 +487,7 @@ export default function AdminIcebreakersPage() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-100">
+              <TableRow className="bg-neutral/5 hover:bg-neutral/5 border-b border-neutral/10">
                 <TableHead className="w-12 text-center">
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleSort("active")}>
                     <div className="sr-only">Active</div>
@@ -495,19 +495,19 @@ export default function AdminIcebreakersPage() {
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button variant="ghost" size="sm" className="-ml-3 h-8 gap-1 font-semibold text-slate-700" onClick={() => handleSort("text")}>
+                  <Button variant="ghost" size="sm" className="-ml-3 h-8 gap-1 font-semibold text-neutral-dark" onClick={() => handleSort("text")}>
                     Question
                     {sortField === "text" && <ArrowUpDown className="h-3 w-3" />}
                   </Button>
                 </TableHead>
                 <TableHead className="w-40">
-                  <Button variant="ghost" size="sm" className="-ml-3 h-8 gap-1 font-semibold text-slate-700" onClick={() => handleSort("category")}>
+                  <Button variant="ghost" size="sm" className="-ml-3 h-8 gap-1 font-semibold text-neutral-dark" onClick={() => handleSort("category")}>
                     Category
                     {sortField === "category" && <ArrowUpDown className="h-3 w-3" />}
                   </Button>
                 </TableHead>
                 <TableHead className="w-28 text-right">
-                  <Button variant="ghost" size="sm" className="-mr-3 h-8 gap-1 font-semibold text-slate-700" onClick={() => handleSort("weight")}>
+                  <Button variant="ghost" size="sm" className="-mr-3 h-8 gap-1 font-semibold text-neutral-dark" onClick={() => handleSort("weight")}>
                     Weight
                     {sortField === "weight" && <ArrowUpDown className="h-3 w-3" />}
                   </Button>
@@ -529,7 +529,7 @@ export default function AdminIcebreakersPage() {
               ) : isError ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-12">
-                    <div className="flex flex-col items-center gap-2 text-red-500">
+                    <div className="flex flex-col items-center gap-2 text-danger">
                       <AlertTriangle className="h-8 w-8" />
                       <p>Failed to load questions</p>
                       <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -540,12 +540,12 @@ export default function AdminIcebreakersPage() {
                 </TableRow>
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-16 text-slate-400">
+                  <TableCell colSpan={5} className="text-center py-16 text-neutral">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-2">
-                        <MessageSquare className="h-6 w-6 text-slate-300" />
+                      <div className="h-12 w-12 rounded-full bg-neutral/5 flex items-center justify-center mb-2">
+                        <MessageSquare className="h-6 w-6 text-neutral" />
                       </div>
-                      <p className="font-medium text-slate-600">No icebreakers found</p>
+                      <p className="font-medium text-neutral-dark">No icebreakers found</p>
                       <p className="text-sm">Try adjusting your filters or add a new question.</p>
                     </div>
                   </TableCell>
@@ -566,8 +566,8 @@ export default function AdminIcebreakersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t border-slate-100 bg-slate-50/50">
-            <div className="text-sm text-slate-500">
+          <div className="flex items-center justify-between p-4 border-t border-neutral/10 bg-neutral/5">
+            <div className="text-sm text-neutral">
               Page {page} of {totalPages}
             </div>
             <div className="flex gap-2">

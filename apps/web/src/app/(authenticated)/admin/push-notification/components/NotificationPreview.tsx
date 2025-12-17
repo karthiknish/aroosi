@@ -32,7 +32,7 @@ export function NotificationPreview({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+        <div className="flex items-center gap-2 text-sm font-medium text-neutral">
           <Smartphone className="h-4 w-4" />
           Preview
         </div>
@@ -82,7 +82,7 @@ export function NotificationPreview({
               <div className="bg-white/90 backdrop-blur-md rounded-2xl p-3 shadow-lg text-left animate-in slide-in-from-top-4 duration-500">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 bg-pink-500 rounded-md flex items-center justify-center">
+                    <div className="w-5 h-5 bg-primary rounded-md flex items-center justify-center">
                       <Bell className="h-3 w-3 text-white" />
                     </div>
                     <span className="text-[10px] font-semibold text-gray-900 uppercase tracking-wide">AROOSI</span>
@@ -144,26 +144,26 @@ export function NotificationPreview({
       </div>
 
       {/* Metadata Card */}
-      <Card className="bg-slate-50 border-slate-200">
-        <CardContent className="p-4 space-y-3 text-xs text-slate-600">
-          <div className="flex justify-between border-b border-slate-200 pb-2">
+      <Card className="bg-neutral/5 border-neutral/20">
+        <CardContent className="p-4 space-y-3 text-xs text-neutral">
+          <div className="flex justify-between border-b border-neutral/20 pb-2">
             <span className="font-medium">Audience Size</span>
             <span>{maxAudience.toLocaleString()} users (est)</span>
           </div>
-          <div className="flex justify-between border-b border-slate-200 pb-2">
+          <div className="flex justify-between border-b border-neutral/20 pb-2">
             <span className="font-medium">Segments</span>
             <span className="text-right max-w-[150px] truncate">{segments.join(", ")}</span>
           </div>
-          <div className="flex justify-between border-b border-slate-200 pb-2">
+          <div className="flex justify-between border-b border-neutral/20 pb-2">
             <span className="font-medium">Mode</span>
-            <span className={dryRun ? "text-blue-600 font-medium" : "text-pink-600 font-medium"}>
+            <span className={dryRun ? "text-info font-medium" : "text-primary font-medium"}>
               {dryRun ? "Dry Run (Preview)" : "Live Production"}
             </span>
           </div>
           {url && (
             <div className="pt-1">
               <span className="font-medium block mb-1">Deep Link</span>
-              <code className="bg-slate-100 px-2 py-1 rounded block truncate text-slate-500">
+              <code className="bg-neutral/10 px-2 py-1 rounded block truncate text-neutral">
                 {url}
               </code>
             </div>
@@ -174,7 +174,7 @@ export function NotificationPreview({
       {previewData && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-sm text-slate-700">Payload JSON</h4>
+            <h4 className="font-medium text-sm text-neutral-dark">Payload JSON</h4>
             <Button
               size="sm"
               variant="ghost"
@@ -185,7 +185,7 @@ export function NotificationPreview({
               Copy
             </Button>
           </div>
-          <pre className="text-[10px] bg-slate-900 text-slate-50 p-3 rounded-lg overflow-auto max-h-48 font-mono">
+          <pre className="text-[10px] bg-neutral-darker text-base-light p-3 rounded-lg overflow-auto max-h-48 font-mono">
             {JSON.stringify(previewData, null, 2)}
           </pre>
         </div>

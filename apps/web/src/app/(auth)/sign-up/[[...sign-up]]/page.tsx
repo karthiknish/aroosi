@@ -28,7 +28,7 @@ export default function SignUpPage() {
         <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/10 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
 
         <div className="relative z-10 w-full max-w-md mx-auto text-center">
-          <div className="bg-white/90 rounded-2xl shadow-xl p-8">
+          <div className="bg-base-light/90 rounded-2xl shadow-lg p-8">
             <h1 className="text-2xl font-bold mb-4">Redirecting...</h1>
             <p className="mb-4">
               We&apos;re redirecting you to complete your profile.

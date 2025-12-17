@@ -397,8 +397,8 @@ export default function EditProfilePage() {
   if (isLoadingProfile) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <LoadingSpinner size={32} colorClassName="text-pink-600" />
-        <span className="ml-3 text-pink-700 font-semibold">
+        <LoadingSpinner size={32} colorClassName="text-primary" />
+        <span className="ml-3 text-primary-dark font-semibold">
           Loading profile...
         </span>
       </div>
@@ -409,8 +409,8 @@ export default function EditProfilePage() {
   if (!profileData && isSignedIn && !isProfileError) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <LoadingSpinner size={32} colorClassName="text-pink-600" />
-        <span className="ml-3 text-pink-700 font-semibold">
+        <LoadingSpinner size={32} colorClassName="text-primary" />
+        <span className="ml-3 text-primary-dark font-semibold">
           Loading profile data...
         </span>
       </div>
@@ -420,7 +420,7 @@ export default function EditProfilePage() {
   if (!profileData) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <span className="ml-3 text-pink-700 font-semibold">
+        <span className="ml-3 text-primary-dark font-semibold">
           Failed to load profile.
         </span>
       </div>
@@ -431,13 +431,13 @@ export default function EditProfilePage() {
   if (isProfileError) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+        <div className="bg-danger/10 border-l-4 border-danger p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              {/* <XCircle className="h-5 w-5 text-red-500" /> */}
+              {/* <XCircle className="h-5 w-5 text-danger" /> */}
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-danger">
                 {profileError instanceof Error
                   ? profileError.message
                   : "Failed to load profile data"}
@@ -452,11 +452,11 @@ export default function EditProfilePage() {
   // Not signed in state
   if (!isSignedIn && typeof window !== "undefined") {
     return (
-      <div className="flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
-        <h2 className="text-2xl font-bold text-neutral-800 mb-2">
+      <div className="flex flex-col items-center justify-center bg-neutral/10 p-4 text-center">
+        <h2 className="text-2xl font-bold text-neutral-dark mb-2">
           Please Sign In
         </h2>
-        <p className="text-neutral-600 mb-6">
+        <p className="text-neutral mb-6">
           You need to be signed in to view this page.
         </p>
         <Button onClick={() => router.push("/sign-in")}>Sign In</Button>
@@ -465,13 +465,13 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50/50 via-white to-white pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 via-base-light to-base-light pb-24">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+          <h1 className="text-3xl font-bold text-neutral-dark mb-2">
             Edit Profile
           </h1>
-          <p className="text-neutral-500">
+          <p className="text-neutral-light">
             Update your profile information to help others get to know you better.
           </p>
         </div>

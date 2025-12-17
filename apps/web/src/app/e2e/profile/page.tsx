@@ -33,7 +33,7 @@ function InterestE2ETestPageInner() {
       <button
         onClick={handleClick}
         disabled={status === "loading"}
-        className="p-4 rounded-full shadow-lg bg-primary text-white"
+        className="p-4 rounded-full shadow-lg bg-primary text-base-light"
       >
         {sent ? (
           <HeartOff className="w-8 h-8" />

@@ -718,20 +718,20 @@ export default function PushNotificationAdminPage() {
   // Confirmation modal for 'Send to selected users'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-base-light to-neutral/5">
       <div className="max-w-7xl mx-auto space-y-8 p-6">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-8 bg-white rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-8 bg-base-light rounded-2xl shadow-sm border border-neutral/20">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-pink-500 rounded-xl">
-                <Bell className="h-6 w-6 text-white" />
+              <div className="p-2 bg-primary rounded-xl">
+                <Bell className="h-6 w-6 text-base-light" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-3xl font-bold text-neutral-dark">
                   Push Notifications
                 </h1>
-                <p className="text-slate-600">
+                <p className="text-neutral">
                   Manage and send push notifications to users
                 </p>
               </div>
@@ -742,8 +742,8 @@ export default function PushNotificationAdminPage() {
               <Bell className="h-3 w-3" />
               OneSignal
             </Badge>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <div className="flex items-center gap-2 text-sm text-neutral">
+              <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
               Service Active
             </div>
           </div>
@@ -753,38 +753,38 @@ export default function PushNotificationAdminPage() {
         <AnalyticsDashboard analytics={analytics} />
 
         {/* Main Navigation */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-base-light rounded-2xl shadow-sm border border-neutral/20 overflow-hidden">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as any)}
             className="w-full"
           >
-            <div className="border-b border-slate-200 bg-slate-50/50">
+            <div className="border-b border-neutral/20 bg-neutral/5">
               <TabsList className="grid w-full grid-cols-4 bg-transparent h-14 p-1">
                 <TabsTrigger
                   value="compose"
-                  className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-900 data-[state=active]:border data-[state=active]:border-slate-200 rounded-lg transition-all"
+                  className="gap-2 data-[state=active]:bg-base-light data-[state=active]:shadow-md data-[state=active]:text-neutral-dark data-[state=active]:border data-[state=active]:border-neutral/20 rounded-lg transition-all"
                 >
                   <Send className="h-4 w-4" />
                   <span className="hidden sm:inline">Compose</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="devices"
-                  className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-900 data-[state=active]:border data-[state=active]:border-slate-200 rounded-lg transition-all"
+                  className="gap-2 data-[state=active]:bg-base-light data-[state=active]:shadow-md data-[state=active]:text-neutral-dark data-[state=active]:border data-[state=active]:border-neutral/20 rounded-lg transition-all"
                 >
                   <Smartphone className="h-4 w-4" />
                   <span className="hidden sm:inline">Devices</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="test"
-                  className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-900 data-[state=active]:border data-[state=active]:border-slate-200 rounded-lg transition-all"
+                  className="gap-2 data-[state=active]:bg-base-light data-[state=active]:shadow-md data-[state=active]:text-neutral-dark data-[state=active]:border data-[state=active]:border-neutral/20 rounded-lg transition-all"
                 >
                   <TestTube className="h-4 w-4" />
                   <span className="hidden sm:inline">Test</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="templates"
-                  className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-900 data-[state=active]:border data-[state=active]:border-slate-200 rounded-lg transition-all"
+                  className="gap-2 data-[state=active]:bg-base-light data-[state=active]:shadow-md data-[state=active]:text-neutral-dark data-[state=active]:border data-[state=active]:border-neutral/20 rounded-lg transition-all"
                 >
                   <Copy className="h-4 w-4" />
                   <span className="hidden sm:inline">Templates</span>

@@ -44,7 +44,7 @@ export default function AdminLayoutClient({
   // Show loading state while checking auth
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-neutral/5">
         <LoadingSpinner size={32} />
       </div>
     );
@@ -56,7 +56,7 @@ export default function AdminLayoutClient({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-neutral/5 flex">
       {/* Sidebar */}
       <AdminSidebar 
         collapsed={sidebarCollapsed}

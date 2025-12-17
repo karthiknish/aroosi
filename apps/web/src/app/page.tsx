@@ -78,7 +78,7 @@ export default function HomePage() {
               }}
             ></div>
             {/* Dark overlay for better text readability */}
-            <div className="absolute inset-0 bg-black/50 z-0"></div>
+            <div className="absolute inset-0 bg-neutral-dark/50 z-0"></div>
             <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
             {/* Main content container */}
             <div className="relative z-10 w-full max-w-7xl mx-auto px-4 lg:px-8 pt-8 pb-4">
@@ -91,7 +91,7 @@ export default function HomePage() {
                     transition={{ duration: 0.6 }}
                   >
                     <h1
-                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal text-white font-serif leading-snug"
+                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal text-base-light font-serif leading-snug"
                     >
                       Connect with Afghans Worldwide
                     </h1>
@@ -101,7 +101,7 @@ export default function HomePage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.2 }}
-                    className="font-nunito text-lg sm:text-xl text-white/90 leading-relaxed"
+                    className="font-nunito text-lg sm:text-xl text-base-light/90 leading-relaxed"
                   >
                     Join thousands of Afghan singles who are finding their
                     soulmate through Aroosi. Our trusted platform connects
@@ -145,7 +145,7 @@ export default function HomePage() {
                   <motion.h2
                     variants={fadeInUp}
                     custom={0}
-                    className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative"
+                    className="font-serif text-2xl lg:text-3xl font-bold text-neutral-dark relative"
                   >
                     How Aroosi Works
                     <svg
@@ -214,7 +214,7 @@ export default function HomePage() {
                     viewport={{ once: true, amount: 0.2 }}
                     custom={i}
                   >
-                    <Card className="text-center p-8 border-primary/10 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10">
+                    <Card className="text-center p-8 border-primary/10 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-base-light relative z-10">
                       <CardContent className="space-y-4">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto relative">
                           {card.icon}
@@ -258,7 +258,7 @@ export default function HomePage() {
                     <motion.h2
                       variants={fadeInUp}
                       custom={0}
-                      className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative inline-block"
+                      className="font-serif text-2xl lg:text-3xl font-bold text-neutral-dark relative inline-block"
                     >
                       Why Choose Aroosi?
                       <svg
@@ -316,14 +316,14 @@ export default function HomePage() {
                         key={feature.title}
                         variants={fadeInUp}
                         custom={i}
-                        className="flex items-start space-x-4 p-4 rounded-lg hover:bg-primary-light/30 transition-colors"
+                        className="flex items-start space-x-4 p-4 rounded-lg hover:bg-primary/10 transition-colors"
                       >
                         <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
                           {feature.icon}
                         </div>
                         <div>
                           <h3
-                            className="font-serif text-xl font-semibold text-neutral"
+                            className="font-serif text-xl font-semibold text-neutral-dark"
                           >
                             {feature.title}
                           </h3>
@@ -344,7 +344,7 @@ export default function HomePage() {
                   className="relative"
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(hsl(var(--primary))_1px,transparent_1px)] [background-size:16px_16px] opacity-20"></div>
-                  <div className="relative z-10 rounded-2xl overflow-hidden shadow-xl">
+                  <div className="relative z-10 rounded-2xl overflow-hidden shadow-lg">
                     <div className="absolute inset-0 bg-gradient-to-tr from-accent-dark/10 to-primary-dark/10 mix-blend-overlay"></div>
                     <Image
                       src="https://images.squarespace-cdn.com/content/v1/5c2db4029772aebeba129860/1688023879574-KW15CNT3DTPOTX4452WY/3b06c423-c529-4892-bdb0-fe879ec9824a.jpeg"
@@ -363,7 +363,7 @@ export default function HomePage() {
 
                   {/* Decorative elements */}
                   <div className="absolute -top-6 -left-6 w-24 h-24 bg-primary/10 rounded-full opacity-50 -z-10"></div>
-                  <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-primary-light rounded-full opacity-50 -z-10"></div>
+                  <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-primary/20 rounded-full opacity-50 -z-10"></div>
                 </motion.div>
               </div>
             </div>
@@ -394,7 +394,7 @@ export default function HomePage() {
                     <motion.h2
                       variants={fadeInUp}
                       custom={0}
-                      className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
+                      className="font-serif text-2xl lg:text-3xl font-bold text-neutral-dark"
                     >
                       Afghan Community Values
                     </motion.h2>
@@ -423,7 +423,7 @@ export default function HomePage() {
                     and community. Here&apos;s how we honor what matters most to
                     you.
                   </motion.p>
-                  <div className="rounded-2xl overflow-hidden shadow-xl mt-8">
+                  <div className="rounded-2xl overflow-hidden shadow-lg mt-8">
                     <Image
                       src="https://i.pinimg.com/1200x/58/05/b5/5805b5cb758ff6ea4e0c7c78c8abb85f.jpg"
                       alt="Afghan community values"
@@ -461,7 +461,7 @@ export default function HomePage() {
                       key={item.title}
                       variants={fadeInUp}
                       custom={i}
-                      className="flex flex-col items-center text-center p-6 rounded-lg bg-white shadow-lg hover:shadow-xl transition-all"
+                      className="flex flex-col items-center text-center p-6 rounded-lg bg-base-light shadow-lg hover:shadow-xl transition-all"
                     >
                       <div className="mb-4">{item.icon}</div>
                       <h3
@@ -504,7 +504,7 @@ export default function HomePage() {
                   <motion.h2
                     variants={fadeInUp}
                     custom={0}
-                    className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
+                    className="font-serif text-2xl lg:text-3xl font-bold text-neutral-dark"
                   >
                     Success Stories
                   </motion.h2>
@@ -566,9 +566,9 @@ export default function HomePage() {
                     viewport={{ once: true, amount: 0.2 }}
                     custom={i}
                   >
-                    <Card className="p-6 border-primary/10 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary-light rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-primary-light rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Card className="p-6 border-primary/10 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 bg-base-light relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-primary/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                       <CardContent className="space-y-4 relative z-10">
                         <div className="flex items-center space-x-4">
@@ -634,7 +634,7 @@ export default function HomePage() {
               style={{ opacity: 0.2 }}
             >
               <Heart
-                className="h-8 w-8 text-white animate-float"
+                className="h-8 w-8 text-base-light animate-float"
                 style={{ animationDelay: "0s" }}
               />
             </motion.div>
@@ -646,7 +646,7 @@ export default function HomePage() {
               style={{ opacity: 0.2 }}
             >
               <Heart
-                className="h-12 w-12 text-white animate-float"
+                className="h-12 w-12 text-base-light animate-float"
                 style={{ animationDelay: "1s" }}
               />
             </motion.div>
@@ -658,7 +658,7 @@ export default function HomePage() {
               style={{ opacity: 0.2 }}
             >
               <Heart
-                className="h-10 w-10 text-white animate-float"
+                className="h-10 w-10 text-base-light animate-float"
                 style={{ animationDelay: "2s" }}
               />
             </motion.div>
@@ -670,7 +670,7 @@ export default function HomePage() {
               style={{ opacity: 0.2 }}
             >
               <Heart
-                className="h-6 w-6 text-white animate-float"
+                className="h-6 w-6 text-base-light animate-float"
                 style={{ animationDelay: "3s" }}
               />
             </motion.div>
@@ -687,16 +687,16 @@ export default function HomePage() {
                   <motion.h2
                     variants={fadeInUp}
                     custom={0}
-                    className="font-serif text-2xl lg:text-3xl font-bold text-white"
+                    className="font-serif text-2xl lg:text-3xl font-bold text-base-light"
                   >
                     Ready to Find Your Life Partner?
                   </motion.h2>
-                  <div className="absolute -bottom-2 left-0 right-0 h-1 bg-white opacity-30"></div>
+                  <div className="absolute -bottom-2 left-0 right-0 h-1 bg-base-light opacity-30"></div>
                 </div>
                 <motion.p
                   variants={fadeInUp}
                   custom={0.1}
-                  className="font-nunito text-lg text-white"
+                  className="font-nunito text-lg text-base-light"
                 >
                   Join thousands of Afghans who have found love through Aroosi.
                   Your perfect Afghan match is waiting for you.
@@ -707,7 +707,7 @@ export default function HomePage() {
                   custom={0.2}
                   className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                 >
-                  <Button asChild className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
+                  <Button asChild className="bg-base-light text-primary-dark hover:bg-primary/10 font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
                     <Link href="/">Get Started Free</Link>
                   </Button>
                 </motion.div>
@@ -718,26 +718,26 @@ export default function HomePage() {
                   className="flex items-center justify-center space-x-4"
                 >
                   <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-                      <CheckCircle className="h-3 w-3 text-white" />
+                    <div className="w-5 h-5 bg-base-light/20 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-3 w-3 text-base-light" />
                     </div>
-                    <span className="font-nunito text-sm text-white">
+                    <span className="font-nunito text-sm text-base-light">
                       Free to join
                     </span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-                      <CheckCircle className="h-3 w-3 text-white" />
+                    <div className="w-5 h-5 bg-base-light/20 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-3 w-3 text-base-light" />
                     </div>
-                    <span className="font-nunito text-sm text-white">
+                    <span className="font-nunito text-sm text-base-light">
                       No hidden fees
                     </span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-                      <CheckCircle className="h-3 w-3 text-white" />
+                    <div className="w-5 h-5 bg-base-light/20 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-3 w-3 text-base-light" />
                     </div>
-                    <span className="font-nunito text-sm text-white">
+                    <span className="font-nunito text-sm text-base-light">
                       Cancel anytime
                     </span>
                   </div>

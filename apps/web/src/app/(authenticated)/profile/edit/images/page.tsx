@@ -549,8 +549,8 @@ export default function EditProfileImagesPage() {
   if (profileLoading || imagesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-base-light">
-        <LoadingSpinner size={32} colorClassName="text-pink-600" />
-        <span className="ml-3 text-pink-700 font-semibold">Loading...</span>
+        <LoadingSpinner size={32} colorClassName="text-primary" />
+        <span className="ml-3 text-primary-dark font-semibold">Loading...</span>
       </div>
     );
   }
@@ -564,13 +564,13 @@ export default function EditProfileImagesPage() {
     );
   }
   return (
-    <div className="relative flex items-start justify-center min-h-screen bg-white p-4 overflow-hidden">
-      {/* Decorative pink circle */}
-      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
+    <div className="relative flex items-start justify-center min-h-screen bg-base-light p-4 overflow-hidden">
+      {/* Decorative primary circle */}
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-primary/30 rounded-full opacity-30 blur-3xl" />
 
-      <Card className="w-full bg-white max-w-3xl z-10 shadow-xl">
+      <Card className="w-full bg-base-light max-w-3xl z-10 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-neutral">
+          <CardTitle className="text-2xl font-semibold text-neutral-dark">
             Edit Profile Photos
           </CardTitle>
         </CardHeader>
@@ -590,7 +590,7 @@ export default function EditProfileImagesPage() {
               if (!img.storageId) {
                 if (st?.status === "uploading") {
                   return (
-                    <span className={`${base} bg-pink-600 text-white`}>
+                    <span className={`${base} bg-primary text-base-light`}>
                       {st.progress}%
                     </span>
                   );
@@ -599,7 +599,7 @@ export default function EditProfileImagesPage() {
                   return (
                     <button
                       type="button"
-                      className={`${base} bg-red-600 text-white hover:bg-red-700`}
+                      className={`${base} bg-danger text-base-light hover:bg-danger/90`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setUploadStates((prev) => ({
@@ -614,20 +614,20 @@ export default function EditProfileImagesPage() {
                 }
                 if (st?.status === "canceled") {
                   return (
-                    <span className={`${base} bg-gray-400 text-white`}>
+                    <span className={`${base} bg-neutral-light text-neutral-dark`}>
                       Canceled
                     </span>
                   );
                 }
                 if (st?.status === "success") {
                   return (
-                    <span className={`${base} bg-emerald-600 text-white`}>
+                    <span className={`${base} bg-success text-base-light`}>
                       Uploaded
                     </span>
                   );
                 }
                 return (
-                  <span className={`${base} bg-neutral text-white`}>
+                  <span className={`${base} bg-neutral text-base-light`}>
                     Pending
                   </span>
                 );
@@ -709,7 +709,7 @@ export default function EditProfileImagesPage() {
                       {st.status === "uploading" && (
                         <div className="w-12 h-1 bg-neutral/20 rounded overflow-hidden">
                           <div
-                            className="h-full bg-pink-600 transition-all"
+                            className="h-full bg-primary transition-all"
                             style={{ width: `${st.progress}%` }}
                           />
                         </div>
@@ -717,7 +717,7 @@ export default function EditProfileImagesPage() {
                       {st.status === "error" && (
                         <button
                           type="button"
-                          className="text-[10px] text-red-600 underline"
+                          className="text-[10px] text-danger underline"
                           onClick={() =>
                             setUploadStates((prev) => ({
                               ...prev,
@@ -743,12 +743,12 @@ export default function EditProfileImagesPage() {
                         </span>
                       )}
                       {st.status === "success" && (
-                        <span className="text-[10px] text-emerald-600">
+                        <span className="text-[10px] text-success">
                           Done
                         </span>
                       )}
                       {st.status === "error" && (
-                        <span className="text-[10px] text-red-600">Failed</span>
+                        <span className="text-[10px] text-danger">Failed</span>
                       )}
                     </div>
                   </div>

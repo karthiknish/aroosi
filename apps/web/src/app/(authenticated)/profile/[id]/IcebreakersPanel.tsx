@@ -163,7 +163,7 @@ export function IcebreakersPanel() {
     return (
       <div className="w-full max-w-2xl mx-auto mt-8 space-y-6">
         <Skeleton className="h-8 w-48 mx-auto" />
-        <div className="space-y-4 p-6 border rounded-2xl bg-white/50">
+        <div className="space-y-4 p-6 border rounded-2xl bg-base-light/50">
           <Skeleton className="h-6 w-3/4" />
           <Skeleton className="h-32 w-full" />
           <div className="flex justify-between">
@@ -194,7 +194,7 @@ export function IcebreakersPanel() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-xl mx-auto mt-8 p-8 text-center bg-white rounded-3xl shadow-sm border border-success/20"
+        className="max-w-xl mx-auto mt-8 p-8 text-center bg-base-light rounded-3xl shadow-sm border border-success/20"
       >
         <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8 text-success" />
@@ -240,7 +240,7 @@ export function IcebreakersPanel() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
-          className="relative bg-white rounded-3xl shadow-sm border border-neutral/20 overflow-hidden"
+          className="relative bg-base-light rounded-3xl shadow-sm border border-neutral/20 overflow-hidden"
         >
           {/* Card Header */}
           <div className="p-6 md:p-8 pb-4">
@@ -299,7 +299,7 @@ export function IcebreakersPanel() {
                 maxLength={500}
                 className={cn(
                   "min-h-[140px] resize-none text-base leading-relaxed p-4 rounded-xl border-neutral/20 focus:border-primary/30 focus:ring-primary/10 transition-all",
-                  isSaved && !isEditing ? "bg-neutral/5 text-neutral-dark" : "bg-white"
+                  isSaved && !isEditing ? "bg-neutral/5 text-neutral-dark" : "bg-base-light"
                 )}
                 disabled={saving[current.id] || (isSaved && !isEditing)}
               />
@@ -347,7 +347,7 @@ export function IcebreakersPanel() {
                   <Button
                     onClick={() => handleSubmit(current.id)}
                     disabled={!canSave || saving[current.id]}
-                    className="bg-primary hover:bg-primary-dark text-white min-w-[120px]"
+                    className="bg-primary hover:bg-primary-dark text-base-light min-w-[120px]"
                   >
                     {saving[current.id] ? (
                       "Saving..."

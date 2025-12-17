@@ -103,7 +103,7 @@ export default function ProfileViewersPage() {
             <div className="flex items-center gap-3">
               <CardTitle>Who viewed your profile</CardTitle>
               {newCount > 0 && (
-                <Badge variant="default" className="bg-primary text-white">
+                <Badge variant="default" className="bg-primary text-base-light">
                   {newCount} new
                 </Badge>
               )}

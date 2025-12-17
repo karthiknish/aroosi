@@ -53,26 +53,26 @@ export default function HowItWorksPage() {
                 className="text-center"
               >
                 <h1
-                  className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight font-serif"
+                  className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-base-light leading-tight font-serif"
                 >
                   How Aroosi Works
                 </h1>
-                <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
+                <p className="text-lg sm:text-xl text-base-light/90 mb-8 max-w-3xl mx-auto leading-relaxed">
                   Aroosi makes finding your ideal life partner simple, safe, and
                   meaningful. Here&apos;s how you can start your journey to finding
                   love.
                 </p>
-                <div className="flex flex-wrap justify-center gap-6 text-sm text-white/80 mb-8">
+                <div className="flex flex-wrap justify-center gap-6 text-sm text-base-light/80 mb-8">
                   <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-white" />
+                    <CheckCircle className="w-4 h-4 text-base-light" />
                     Quick & Easy Setup
                   </span>
                   <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-white" />
+                    <CheckCircle className="w-4 h-4 text-base-light" />
                     Safe & Secure
                   </span>
                   <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-white" />
+                    <CheckCircle className="w-4 h-4 text-base-light" />
                     Afghan Community
                   </span>
                 </div>
@@ -107,7 +107,7 @@ export default function HowItWorksPage() {
                 transition={{ duration: 0.5 }}
                 className="relative"
               >
-                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg">
                   <div className="absolute inset-0 bg-primary/5" />
                   <CardHeader className="pt-8 pb-4 text-center relative">
                     <div className="flex justify-center mb-4">
@@ -139,7 +139,7 @@ export default function HowItWorksPage() {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="relative"
               >
-                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg">
                   <div className="absolute inset-0 bg-secondary/5" />
                   <CardHeader className="pt-8 pb-4 text-center relative">
                     <div className="flex justify-center mb-4">
@@ -170,7 +170,7 @@ export default function HowItWorksPage() {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="relative"
               >
-                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg">
                   <div className="absolute inset-0 bg-accent/5" />
                   <CardHeader className="pt-8 pb-4 text-center relative">
                     <div className="flex justify-center mb-4">
@@ -217,7 +217,7 @@ export default function HowItWorksPage() {
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg group">
                 <div className="absolute inset-0 bg-primary/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -237,7 +237,7 @@ export default function HowItWorksPage() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg group">
                 <div className="absolute inset-0 bg-success/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -257,7 +257,7 @@ export default function HowItWorksPage() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg group">
                 <div className="absolute inset-0 bg-secondary/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -277,7 +277,7 @@ export default function HowItWorksPage() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg group">
                 <div className="absolute inset-0 bg-primary/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -319,7 +319,7 @@ export default function HowItWorksPage() {
             </div>
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg">
                 <div className="absolute inset-0 bg-success/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -339,7 +339,7 @@ export default function HowItWorksPage() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg">
                 <div className="absolute inset-0 bg-secondary/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -359,7 +359,7 @@ export default function HowItWorksPage() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-base-light/80 backdrop-blur-sm border-0 shadow-lg">
                 <div className="absolute inset-0 bg-primary/5" />
                 <CardHeader className="pt-8 pb-4 text-center relative">
                   <div className="flex justify-center mb-4">
@@ -408,7 +408,7 @@ export default function HowItWorksPage() {
                 style={{ opacity: 0.2 }}
               >
                 <Heart
-                  className="h-8 w-8 text-white animate-float"
+                  className="h-8 w-8 text-base-light animate-float"
                   style={{ animationDelay: "0s" }}
                 />
               </motion.div>
@@ -420,7 +420,7 @@ export default function HowItWorksPage() {
                 style={{ opacity: 0.2 }}
               >
                 <Heart
-                  className="h-12 w-12 text-white animate-float"
+                  className="h-12 w-12 text-base-light animate-float"
                   style={{ animationDelay: "1s" }}
                 />
               </motion.div>
@@ -432,7 +432,7 @@ export default function HowItWorksPage() {
                 style={{ opacity: 0.2 }}
               >
                 <Heart
-                  className="h-10 w-10 text-white animate-float"
+                  className="h-10 w-10 text-base-light animate-float"
                   style={{ animationDelay: "2s" }}
                 />
               </motion.div>
@@ -444,16 +444,16 @@ export default function HowItWorksPage() {
                 style={{ opacity: 0.2 }}
               >
                 <Heart
-                  className="h-6 w-6 text-white animate-float"
+                  className="h-6 w-6 text-base-light animate-float"
                   style={{ animationDelay: "3s" }}
                 />
               </motion.div>
 
               <div className="container mx-auto px-4 lg:px-6 text-center relative z-20">
-                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 font-serif">
+                <h2 className="text-3xl sm:text-4xl font-bold text-base-light mb-6 font-serif">
                   Ready to Find Your Perfect Match?
                 </h2>
-                <p className="text-lg sm:text-xl text-white mb-8 max-w-2xl mx-auto">
+                <p className="text-lg sm:text-xl text-base-light mb-8 max-w-2xl mx-auto">
                   Join thousands of Afghan singles who have found love through
                   Aroosi. Your journey starts with a single click.
                 </p>
@@ -461,7 +461,7 @@ export default function HowItWorksPage() {
                   <Link href="/">
                     <Button
                       size="lg"
-                      className="bg-white text-secondary-dark hover:bg-secondary/10 text-lg px-8 py-4 rounded-xl shadow-lg transition-all duration-300 hover:scale-105"
+                      className="bg-base-light text-secondary-dark hover:bg-secondary/10 text-lg px-8 py-4 rounded-xl shadow-lg transition-all duration-300 hover:scale-105"
                     >
                       Start Your Journey
                       <ArrowRight className="ml-2 h-5 w-5" />
@@ -471,7 +471,7 @@ export default function HowItWorksPage() {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-2 border-white text-white hover:bg-white hover:text-secondary-dark text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105"
+                      className="border-2 border-base-light text-base-light hover:bg-base-light hover:text-secondary-dark text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105"
                     >
                       View Pricing
                     </Button>
