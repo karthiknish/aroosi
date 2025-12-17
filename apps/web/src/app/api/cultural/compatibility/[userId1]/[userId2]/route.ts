@@ -170,8 +170,8 @@ function generateRecommendations(compatibility: CulturalCompatibilityScore): str
 
 // GET /api/cultural/compatibility/:userId1/:userId2
 export async function GET(req: NextRequest, context: { params: Promise<{ userId1: string; userId2: string }> }) {
-  return withFirebaseAuth(async (user, request) => {
-    const { userId1, userId2 } = await context.params;
+  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ userId1: string; userId2: string }> }) => {
+    const { userId1, userId2 } = await ctx.params;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`cultural_compat_${user.id}`, 100, 60000);

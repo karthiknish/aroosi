@@ -4,10 +4,9 @@ import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import { db } from "@/lib/firebaseAdmin";
 
 export const GET = withFirebaseAuth(
-  async (user: AuthenticatedUser, req: NextRequest) => {
+  async (user: AuthenticatedUser, req: NextRequest, { params }: { params: Promise<{ userId: string }> }) => {
     // Extract target userId from URL (dynamic segment)
-    const url = new URL(req.url);
-    const targetUserId = url.pathname.split("/").pop();
+    const { userId: targetUserId } = await params;
     if (!targetUserId) return errorResponse("Missing userId", 400);
 
     const authedUserId = user.id;

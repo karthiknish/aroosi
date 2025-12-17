@@ -10,8 +10,8 @@ import {
 
 // PUT /api/cultural/supervised-conversation/:id - Update a supervised conversation
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  return withFirebaseAuth(async (user, request) => {
-    const { id: conversationId } = await context.params;
+  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ id: string }> }) => {
+    const { id: conversationId } = await ctx.params;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`supervised_conv_put_${user.id}`, 50, 60000);

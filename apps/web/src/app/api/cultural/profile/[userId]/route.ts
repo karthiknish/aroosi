@@ -63,8 +63,8 @@ async function createOrUpdateCulturalProfile(
 
 // GET /api/cultural/profile/:userId
 export async function GET(req: NextRequest, context: { params: Promise<{ userId: string }> }) {
-  return withFirebaseAuth(async (user, request) => {
-    const { userId } = await context.params;
+  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ userId: string }> }) => {
+    const { userId } = await ctx.params;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`cultural_profile_get_${user.id}`, 100, 60000);
@@ -98,8 +98,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ userId:
 
 // POST /api/cultural/profile/:userId
 export async function POST(req: NextRequest, context: { params: Promise<{ userId: string }> }) {
-  return withFirebaseAuth(async (user, request) => {
-    const { userId } = await context.params;
+  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ userId: string }> }) => {
+    const { userId } = await ctx.params;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`cultural_profile_post_${user.id}`, 50, 60000);

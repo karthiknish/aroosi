@@ -77,10 +77,14 @@ export function __setGetAuthenticatedUserForTests(fn: GetUserFn) {
 }
 
 // Utility to protect API routes with Firebase authentication
-export function withFirebaseAuth(
-  handler: (user: AuthenticatedUser, request: NextRequest) => Promise<Response>
+export function withFirebaseAuth<T = any>(
+  handler: (
+    user: AuthenticatedUser,
+    request: NextRequest,
+    context: T
+  ) => Promise<Response>
 ) {
-  return async (request: NextRequest) => {
+  return async (request: NextRequest, context: T) => {
     try {
       const user = await getUserFn(request);
       if (!user) {
@@ -91,7 +95,9 @@ export function withFirebaseAuth(
           { status: 401, headers: { "Content-Type": "application/json" } }
         );
       }
-      return handler(user, request);
+      // If context is provided (Next.js 15+ dynamic route params), pass it.
+      // Otherwise, just pass user and request.
+      return handler(user, request, context);
     } catch (error) {
       console.error("Error in withFirebaseAuth:", error);
       return new Response(JSON.stringify({ error: "Internal server error" }), {
