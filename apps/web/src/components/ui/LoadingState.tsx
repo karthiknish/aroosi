@@ -31,11 +31,11 @@ export function LoadingState({
       <div 
         data-testid="loading-spinner"
         className={cn(
-          "animate-spin rounded-full border-2 border-gray-300 border-t-primary mb-4",
+          "animate-spin rounded-full border-2 border-neutral/20 border-t-primary mb-4",
           sizeClasses[size]
         )}
       />
-      <p className="text-gray-600">{message}</p>
+      <p className="text-neutral-light">{message}</p>
     </div>
   );
 }

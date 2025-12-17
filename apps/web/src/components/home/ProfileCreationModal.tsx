@@ -63,8 +63,8 @@ export function ProfileCreationModal({
   } = useProfileCreationController({ isOpen, onClose, initialData, router });
 
   const required = (label: string) => (
-    <span>
-      {label} <span className="text-red-500">*</span>
+    <span className="font-sans">
+      {label} <span className="text-danger">*</span>
     </span>
   );
 
@@ -92,7 +92,7 @@ export function ProfileCreationModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
-        className="max-w-2xl w-full p-0 overflow-hidden bg-white/95 backdrop-blur-xl shadow-2xl border-0 sm:rounded-2xl ring-1 ring-black/5"
+        className="max-w-2xl w-full p-0 overflow-hidden bg-base-light/80 backdrop-blur-xl shadow-2xl border-0 sm:rounded-3xl ring-1 ring-neutral/5"
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
@@ -106,12 +106,12 @@ export function ProfileCreationModal({
       >
         <div className="relative flex flex-col h-[85vh] sm:h-auto sm:max-h-[85vh]">
           {isSubmitting && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm gap-4">
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-base-light/80 backdrop-blur-md gap-4">
               <div
                 className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
                 aria-label="Submitting profile"
               />
-              <p className="text-sm font-medium text-primary animate-pulse">
+              <p className="text-sm font-medium text-primary animate-pulse font-sans">
                 {hasSubmittedProfile
                   ? "Finalizing your profile..."
                   : "Submitting..."}
@@ -120,10 +120,10 @@ export function ProfileCreationModal({
           )}
           
           {/* Header with Progress */}
-          <div className="relative bg-white/50 backdrop-blur-md border-b border-gray-100 p-6 pb-6 z-10">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gray-100">
+          <div className="relative bg-base-light/40 backdrop-blur-md border-b border-neutral/10 p-6 pb-6 z-10">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-neutral/10">
               <motion.div
-                className="h-full bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_100%] animate-gradient-x"
+                className="h-full bg-gradient-to-r from-primary via-secondary to-primary bg-[length:200%_100%] animate-gradient-x"
                 initial={{ width: 0 }}
                 animate={{ width: `${(step / totalSteps) * 100}%` }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -131,14 +131,14 @@ export function ProfileCreationModal({
             </div>
 
             <div className="mt-2">
-              <DialogTitle id="profile-modal-title" className="text-2xl font-bold text-gray-900 tracking-tight">
+              <DialogTitle id="profile-modal-title" className="text-2xl font-serif font-bold text-neutral-dark tracking-tight">
                 {step === 7 ? "Create Account" : "Complete Your Profile"}
               </DialogTitle>
               <div className="flex items-center justify-between mt-1">
-                <p id="profile-modal-desc" className="text-gray-500 text-sm">
+                <p id="profile-modal-desc" className="text-neutral-light text-sm font-sans">
                   {step < 5 ? "Tell us a bit more about yourself" : "Almost there!"}
                 </p>
-                <span className="text-xs font-medium px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                <span className="text-xs font-medium px-3 py-1 bg-primary/10 text-primary rounded-full font-sans">
                   Step {step} of {totalSteps}
                 </span>
               </div>
@@ -238,13 +238,13 @@ export function ProfileCreationModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center z-10">
+          <div className="p-6 border-t border-neutral/10 bg-neutral/5 backdrop-blur-sm flex justify-between items-center z-10">
             {step > 2 ? (
               <Button
                 variant="ghost"
                 onClick={handleBack}
                 disabled={false}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
+                className="flex items-center gap-2 text-neutral hover:text-neutral-dark hover:bg-neutral/10 rounded-xl font-sans"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
@@ -276,11 +276,11 @@ export function ProfileCreationModal({
                   await handleNext();
                 }}
                 disabled={stepValidation.isValidating}
-                className="bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300 px-8"
+                className="bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300 px-8 rounded-xl font-sans"
               >
                 {stepValidation.isValidating ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-base-light/30 border-t-base-light rounded-full animate-spin" />
                     Validating...
                   </span>
                 ) : (

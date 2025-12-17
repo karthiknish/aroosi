@@ -14,37 +14,46 @@ export default {
         serif: ["var(--font-serif)", "serif"],
       },
       colors: {
-        // Custom theme colors using CSS variables (Tailwind 4 format)
+        // Custom theme colors using HSL variables for full Tailwind support (opacity, etc.)
         primary: {
-          DEFAULT: "#EC4899", // Fallback + CSS variable
-          light: "#F9A8D4",
-          dark: "#BE185D",
+          DEFAULT: "hsl(var(--primary))",
+          light: "hsl(var(--primary-light))",
+          dark: "hsl(var(--primary-dark))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "#5F92AC",
-          light: "#A2C4DB",
-          dark: "#3E647A",
+          DEFAULT: "hsl(var(--secondary))",
+          light: "hsl(var(--secondary-light))",
+          dark: "hsl(var(--secondary-dark))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
         accent: {
-          DEFAULT: "#D6B27C",
-          light: "#EDD6A4",
-          dark: "#B28E5F",
+          DEFAULT: "hsl(var(--accent))",
+          light: "hsl(var(--accent-light))",
+          dark: "hsl(var(--accent-dark))",
+          foreground: "hsl(var(--accent-foreground))",
         },
         base: {
-          DEFAULT: "#F9F7F5",
-          light: "#FFFFFF",
-          dark: "#E7E3DF",
+          DEFAULT: "hsl(var(--base))",
+          light: "hsl(var(--base-light))",
+          dark: "hsl(var(--base-dark))",
         },
         neutral: {
-          DEFAULT: "#4A4A4A",
-          light: "#7A7A7A",
-          dark: "#2D2D2D",
+          DEFAULT: "hsl(var(--neutral))",
+          light: "hsl(var(--neutral-light))",
+          dark: "hsl(var(--neutral-dark))",
         },
         success: {
-          DEFAULT: "#7BA17D",
+          DEFAULT: "hsl(var(--success))",
         },
         danger: {
-          DEFAULT: "#B45E5E",
+          DEFAULT: "hsl(var(--danger))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
         },
         // shadcn/ui colors using HSL variables
         background: "hsl(var(--background))",

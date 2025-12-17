@@ -1,85 +1,37 @@
 import { NextRequest } from "next/server";
 import {
+  createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  errorResponsePublic,
-} from "@/lib/apiResponse";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit"; // (retained for potential future re-enable)
-import { z } from "zod";
-import { requireSession } from "@/app/api/_utils/auth";
+  ApiContext,
+  validateQueryParams
+} from "@/lib/api/handler";
+import { searchSchema } from "@/lib/api/schemas";
 import { db, COLLECTIONS, adminStorage } from "@/lib/firebaseAdmin";
 import { FieldPath, Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
-// Logging removed per request
 
-// type Gender = "any" | "male" | "female" | "other";
-
-// Sanitized bounded string: trims, strips risky chars, 2..50
-const SanStr = z
-  .string()
-  .trim()
-  .transform((v: string) => v.replace(/[<>'"&]/g, ""))
-  .pipe(z.string().min(2).max(50));
-
-const QuerySchema = z.object({
-  city: SanStr.optional(),
-  country: SanStr.optional(),
-  ethnicity: SanStr.optional(),
-  motherTongue: SanStr.optional(),
-  language: SanStr.optional(),
-  preferredGender: z.enum(["any", "male", "female", "non-binary", "other"]).optional(),
-  ageMin: z.coerce.number().int().min(18).max(120).optional(),
-  ageMax: z.coerce.number().int().min(18).max(120).optional(),
-  page: z.coerce.number().int().min(0).max(100).default(0),
-  pageSize: z.coerce.number().int().min(1).max(50).default(12),
-  cursor: z.string().min(1).max(200).optional(), // base64 or 'createdAt|id'
-});
-
-export async function GET(request: NextRequest) {
+export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
   try {
-    const cid =
-      request.headers.get("x-correlation-id") ||
-      (typeof crypto !== "undefined" && (crypto as any).randomUUID
-        ? (crypto as any).randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-
-    // Firebase cookie-based session
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      return session.errorResponse;
-    }
-    const userId = String(session.userId);
-    const viewerProfile = session.profile;
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const viewerProfile = (ctx.user as any).profile || (ctx.user as any);
     const viewerPlan = viewerProfile?.subscriptionPlan || "free";
 
     // Ensure we have a valid user profile
     if (!viewerProfile) {
-      return errorResponse("User profile not found. Please complete your profile.", 404);
+      return errorResponse("User profile not found. Please complete your profile.", 404, { correlationId: ctx.correlationId });
     }
 
-    // onboarding completion requirement removed
-
-    // Burst limiter
-    const burstLimit = checkApiRateLimit(`search:${userId}`, 60, 60_000);
-    if (!burstLimit.allowed) {
-      return errorResponse("Rate limit exceeded. Please slow down.", 429);
-    }
-
-    // Parse & validate
-    const { searchParams } = new URL(request.url);
-    const paramsObj = Object.fromEntries(searchParams.entries());
-    const parsed = QuerySchema.safeParse(paramsObj);
-
-    if (!parsed.success) {
-      // Humanize first validation issue for user-friendly feedback
-      const issue = parsed.error.issues[0];
+    // Parse & validate query params
+    const validationResult = validateQueryParams(ctx.request, searchSchema);
+    if (!validationResult.success) {
+      const issue = validationResult.errors[0];
       let friendly = "Invalid search filters";
       if (issue) {
         const path = issue.path.join(".");
         if (path === "ageMin" && issue.code === "too_small") {
           friendly = "Minimum age must be at least 18.";
         } else if (path === "ageMax" && issue.code === "too_small") {
-          friendly = "Maximum age must be at least 18."; // theoretical; max has same min constraint
+          friendly = "Maximum age must be at least 18.";
         } else if (path === "ageMin" && issue.code === "too_big") {
           friendly = "Minimum age is too large.";
         } else if (path === "ageMax" && issue.code === "too_big") {
@@ -92,31 +44,32 @@ export async function GET(request: NextRequest) {
           friendly = "Invalid preferred gender value.";
         }
       }
-      return errorResponsePublic(friendly, 400, { code: "VALIDATION_ERROR" });
+      return errorResponse(friendly, 400, { correlationId: ctx.correlationId, code: "VALIDATION_ERROR" });
     }
+
     const {
       city,
       country,
       ethnicity,
       motherTongue,
       language,
-      preferredGender, // now used to filter target profile gender (viewer preference)
+      preferredGender,
       ageMin,
       ageMax,
       page,
       pageSize,
       cursor,
-    } = parsed.data;
+    } = validationResult.data;
 
     if (
       typeof ageMin === "number" &&
       typeof ageMax === "number" &&
       ageMin > ageMax
     ) {
-      return errorResponsePublic(
+      return errorResponse(
         "Minimum age cannot be greater than maximum age",
         400,
-        { code: "AGE_RANGE_INVALID" }
+        { correlationId: ctx.correlationId, code: "AGE_RANGE_INVALID" }
       );
     }
 
@@ -129,24 +82,18 @@ export async function GET(request: NextRequest) {
       viewerPlan === "premium_plus" ||
       viewerPlan === "premiumPlus";
     if (hasPremiumParams && !hasAdvancedFilters) {
-      return errorResponsePublic(
+      return errorResponse(
         "Advanced filters require a Premium subscription",
         403,
-        { code: "UPGRADE_REQUIRED" }
+        { correlationId: ctx.correlationId, code: "UPGRADE_REQUIRED" }
       );
     }
-
-    // NOTE: Previously enforced per-minute subscription feature rate limiting here.
-    // We now rely on: (1) burst limiter above, (2) daily usageEvents quota via can-use endpoint when invoked elsewhere.
-    // This removal prevents stacking 429 sources and lets search remain responsive while still guarded against abuse.
 
     // Build base Firestore query
     const isAny = (v?: string) =>
       typeof v === "string" ? v.trim().toLowerCase() === "any" : false;
     let base: Query = db.collection(COLLECTIONS.USERS);
 
-    // City now handled as case-insensitive substring filter AFTER fetch to allow partial matches.
-    // (Previously exact equality in Firestore. This change broadens match capability.)
     const cityFilter = city && !isAny(city) ? city.toLowerCase() : undefined;
     if (country && !isAny(country)) base = base.where("country", "==", country);
     if (ethnicity && !isAny(ethnicity))
@@ -154,79 +101,43 @@ export async function GET(request: NextRequest) {
     if (motherTongue && !isAny(motherTongue))
       base = base.where("motherTongue", "==", motherTongue);
     if (language && !isAny(language))
-      base = base.where("language", "==", language); // field stored as 'language' if present
-    // Age filtering now handled in-memory using derived age from dateOfBirth (supports profiles lacking precomputed age field).
-    // We intentionally skip Firestore inequality filters on 'age' to avoid excluding documents missing 'age'.
-    // Apply preferred gender filter: when viewer specifies a preference other than 'any'
+      base = base.where("language", "==", language);
+    
     if (preferredGender && preferredGender !== "any") {
       base = base.where("gender", "==", preferredGender);
     }
 
-    // Determine if we have inequality filters (Firestore requires first orderBy on that field)
-    const hasAgeInequality = false; // we removed direct Firestore age inequality filters (see note above)
-
-    // Ordering strategy: prioritize currently boosted profiles first (boostedUntil in future), then
-    // answeredIcebreakersCount (engagement), then recency (createdAt), then doc id for deterministic pagination.
-    // Firestore ordering uses boostedUntil DESC so that future timestamps (active boosts) appear first and
-    // null / missing values sink to the bottom naturally. Expired boosts (timestamps in the past) will order
-    // below active boosts but above nulls – acceptable; we do a lightweight in-memory adjustment later to
-    // demote expired entries if needed.
     let query: Query;
-    const includeAnsweredOrdering = true; // feature flag – set false to revert quickly if needed
-    const includeBoostOrdering = true; // new flag for boosted priority
-    if (hasAgeInequality) {
-      if (includeAnsweredOrdering) {
+    const includeAnsweredOrdering = true;
+    const includeBoostOrdering = true;
+    
+    if (includeAnsweredOrdering) {
+      if (includeBoostOrdering) {
         query = base
-          .orderBy("age", "asc")
-          .orderBy(
-            includeBoostOrdering ? "boostedUntil" : "answeredIcebreakersCount",
-            includeBoostOrdering ? "desc" : "desc"
-          )
-          .orderBy(
-            includeBoostOrdering ? "answeredIcebreakersCount" : "createdAt",
-            "desc"
-          )
+          .orderBy("boostedUntil", "desc")
+          .orderBy("answeredIcebreakersCount", "desc")
           .orderBy("createdAt", "desc")
           .orderBy(FieldPath.documentId(), "desc");
       } else {
         query = base
-          .orderBy("age", "asc")
-          .orderBy(
-            includeBoostOrdering ? "boostedUntil" : "createdAt",
-            includeBoostOrdering ? "desc" : "desc"
-          )
+          .orderBy("answeredIcebreakersCount", "desc")
           .orderBy("createdAt", "desc")
           .orderBy(FieldPath.documentId(), "desc");
       }
     } else {
-      if (includeAnsweredOrdering) {
-        if (includeBoostOrdering) {
-          query = base
-            .orderBy("boostedUntil", "desc")
-            .orderBy("answeredIcebreakersCount", "desc")
-            .orderBy("createdAt", "desc")
-            .orderBy(FieldPath.documentId(), "desc");
-        } else {
-          query = base
-            .orderBy("answeredIcebreakersCount", "desc")
-            .orderBy("createdAt", "desc")
-            .orderBy(FieldPath.documentId(), "desc");
-        }
+      if (includeBoostOrdering) {
+        query = base
+          .orderBy("boostedUntil", "desc")
+          .orderBy("createdAt", "desc")
+          .orderBy(FieldPath.documentId(), "desc");
       } else {
-        if (includeBoostOrdering) {
-          query = base
-            .orderBy("boostedUntil", "desc")
-            .orderBy("createdAt", "desc")
-            .orderBy(FieldPath.documentId(), "desc");
-        } else {
-          query = base
-            .orderBy("createdAt", "desc")
-            .orderBy(FieldPath.documentId(), "desc");
-        }
+        query = base
+          .orderBy("createdAt", "desc")
+          .orderBy(FieldPath.documentId(), "desc");
       }
     }
 
-    // Aggregate count BEFORE pagination (use base query to avoid startAfter)
+    // Aggregate count BEFORE pagination
     let total = 0;
     try {
       const countSnap = await (base as any).count().get();
@@ -235,14 +146,7 @@ export async function GET(request: NextRequest) {
       // ignore count failure
     }
 
-    // Cursor pagination preferred when cursor provided; else fallback to offset for initial integration
     if (cursor) {
-      // Decode cursor formats (backwards compatible):
-      //   createdAt|docId (legacy, no age inequality, pre-answered ordering)
-      //   age|createdAt|docId (legacy with age inequality, pre-answered ordering)
-      //   answered|createdAt|docId (new, no age inequality, with answered ordering)
-      //   boosted|answered|createdAt|docId (new with boost + answered ordering)
-      //   age|answered|createdAt|docId (new, with age inequality & answered ordering)
       let ageCursor: number | null = null;
       let answeredCursor: number | null = null;
       let createdAtCursor: number | null = null;
@@ -251,114 +155,53 @@ export async function GET(request: NextRequest) {
         const decoded = decodeURIComponent(cursor);
         const parts = decoded.split("|");
         if (parts.length === 4) {
-          if (hasAgeInequality) {
-            // age|answered|createdAt|docId
-            ageCursor = Number(parts[0]);
-            answeredCursor = Number(parts[1]);
-            createdAtCursor = Number(parts[2]);
-            docIdCursor = parts[3];
-          } else {
-            // boosted|answered|createdAt|docId
-            // treat first as boostedUntil (not strictly needed for startAfter but keep format future-proof)
-            // We'll only use answered|createdAt|docId for startAfter because boostedUntil may fluctuate.
-            answeredCursor = Number(parts[1]);
-            createdAtCursor = Number(parts[2]);
-            docIdCursor = parts[3];
-          }
+          answeredCursor = Number(parts[1]);
+          createdAtCursor = Number(parts[2]);
+          docIdCursor = parts[3];
         } else if (parts.length === 3) {
-          if (hasAgeInequality) {
-            // legacy age|createdAt|docId
-            ageCursor = Number(parts[0]);
-            createdAtCursor = Number(parts[1]);
-            docIdCursor = parts[2];
-          } else {
-            // answered|createdAt|docId (new without age inequality)
-            answeredCursor = Number(parts[0]);
-            createdAtCursor = Number(parts[1]);
-            docIdCursor = parts[2];
-          }
+          answeredCursor = Number(parts[0]);
+          createdAtCursor = Number(parts[1]);
+          docIdCursor = parts[2];
         } else if (parts.length === 2) {
-          // legacy createdAt|docId
           createdAtCursor = Number(parts[0]);
           docIdCursor = parts[1];
         }
       } catch {
-        // malformed cursor ignored (treat as first page)
+        // malformed cursor ignored
       }
-      if (hasAgeInequality) {
-        if (includeAnsweredOrdering) {
-          if (
-            ageCursor !== null &&
-            !Number.isNaN(ageCursor) &&
-            answeredCursor !== null &&
-            !Number.isNaN(answeredCursor) &&
-            createdAtCursor !== null &&
-            !Number.isNaN(createdAtCursor) &&
+      
+      if (includeAnsweredOrdering) {
+        if (
+          answeredCursor !== null &&
+          !Number.isNaN(answeredCursor) &&
+          createdAtCursor !== null &&
+          !Number.isNaN(createdAtCursor) &&
+          docIdCursor
+        ) {
+          query = query.startAfter(
+            answeredCursor,
+            createdAtCursor,
             docIdCursor
-          ) {
-            query = query.startAfter(
-              ageCursor,
-              answeredCursor,
-              createdAtCursor,
-              docIdCursor
-            );
-          } else if (
-            // fall back to legacy 3-part cursor if provided
-            ageCursor !== null &&
-            !Number.isNaN(ageCursor) &&
-            createdAtCursor !== null &&
-            !Number.isNaN(createdAtCursor) &&
-            docIdCursor
-          ) {
-            query = query.startAfter(ageCursor, createdAtCursor, docIdCursor);
-          }
-        } else {
-          if (
-            ageCursor !== null &&
-            !Number.isNaN(ageCursor) &&
-            createdAtCursor !== null &&
-            !Number.isNaN(createdAtCursor) &&
-            docIdCursor
-          ) {
-            query = query.startAfter(ageCursor, createdAtCursor, docIdCursor);
-          }
+          );
+        } else if (
+          createdAtCursor !== null &&
+          !Number.isNaN(createdAtCursor) &&
+          docIdCursor
+        ) {
+          query = query.startAfter(createdAtCursor, docIdCursor);
         }
       } else {
-        if (includeAnsweredOrdering) {
-          if (
-            answeredCursor !== null &&
-            !Number.isNaN(answeredCursor) &&
-            createdAtCursor !== null &&
-            !Number.isNaN(createdAtCursor) &&
-            docIdCursor
-          ) {
-            query = query.startAfter(
-              answeredCursor,
-              createdAtCursor,
-              docIdCursor
-            );
-          } else if (
-            createdAtCursor !== null &&
-            !Number.isNaN(createdAtCursor) &&
-            docIdCursor
-          ) {
-            // legacy 2-part
-            query = query.startAfter(createdAtCursor, docIdCursor);
-          }
-        } else {
-          if (
-            createdAtCursor !== null &&
-            !Number.isNaN(createdAtCursor) &&
-            docIdCursor
-          ) {
-            query = query.startAfter(createdAtCursor, docIdCursor);
-          }
+        if (
+          createdAtCursor !== null &&
+          !Number.isNaN(createdAtCursor) &&
+          docIdCursor
+        ) {
+          query = query.startAfter(createdAtCursor, docIdCursor);
         }
       }
       query = query.limit(pageSize);
     } else {
       if (page > 0) {
-        // Fallback legacy offset (note: costly at scale; prefer cursor path)
         query = query.offset(page * pageSize);
       }
       query = query.limit(pageSize);
@@ -383,10 +226,9 @@ export async function GET(request: NextRequest) {
       docs: any[];
       scanned: number;
     }> {
-      const FALLBACK_SCAN_LIMIT = 400; // slightly higher for better result coverage
+      const FALLBACK_SCAN_LIMIT = 400;
       const fallbackQuery = db
         .collection(COLLECTIONS.USERS)
-        // onboarding completion filter removed
         .orderBy("createdAt", "desc")
         .orderBy(FieldPath.documentId(), "desc")
         .limit(FALLBACK_SCAN_LIMIT);
@@ -399,7 +241,6 @@ export async function GET(request: NextRequest) {
       );
       let filtered = all.filter((d: { [key: string]: any }) => {
         const computeAge = (): number | null => {
-          // Prioritize deriving from dateOfBirth (handles Firestore Timestamp / seconds form)
           const dob = d.dateOfBirth;
           let dt: Date | null = null;
           if (dob) {
@@ -423,7 +264,6 @@ export async function GET(request: NextRequest) {
             }
           }
           if (!dt) {
-            // Fallback: attempt numeric/string 'age'
             if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
             if (typeof d.age === "string") {
               const num = parseInt(d.age, 10);
@@ -432,10 +272,10 @@ export async function GET(request: NextRequest) {
             return null;
           }
           const now = Date.now();
-          if (dt.getTime() > now) return null; // future DOB invalid
+          if (dt.getTime() > now) return null;
           const ageMs = now - dt.getTime();
           const derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
-          if (derived < 0 || derived > 150) return null; // sanity bounds
+          if (derived < 0 || derived > 150) return null;
           return derived;
         };
         if (
@@ -482,20 +322,20 @@ export async function GET(request: NextRequest) {
     let primaryBoostOrderingApplied = false;
     try {
       docs = await runPrimaryQuery();
-      primaryAnsweredOrderingApplied = includeAnsweredOrdering; // we attempted it and query succeeded
+      primaryAnsweredOrderingApplied = includeAnsweredOrdering;
       primaryBoostOrderingApplied = includeBoostOrdering;
     } catch (err: any) {
       if (isIndexMissing(err)) {
         const fb = await runFallbackScan();
         docs = fb.docs;
-        if (!total) total = fb.scanned; // approximate
+        if (!total) total = fb.scanned;
         primaryAnsweredOrderingApplied = false;
       } else {
-        throw err; // bubble to outer catch -> 500
+        throw err;
       }
     }
 
-    // Apply city substring filtering for primary query path (fallback already handled it)
+    // Apply city substring filtering
     if (cityFilter) {
       docs = docs.filter(
         (d: any) =>
@@ -505,17 +345,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Apply city substring filtering for primary query path (fallback already handled it)
-    if (cityFilter) {
-      docs = docs.filter(
-        (d: any) =>
-          d.city &&
-          typeof d.city === "string" &&
-          d.city.toLowerCase().includes(cityFilter)
-      );
-    }
-
-    // Extra age filtering pass for primary query results when age constraints active
+    // Extra age filtering pass
     if (typeof ageMin === "number" || typeof ageMax === "number") {
       const derive = (d: any): number | null => {
         const dob = d.dateOfBirth;
@@ -570,11 +400,10 @@ export async function GET(request: NextRequest) {
       typeof ageMin === "number" ||
       typeof ageMax === "number"
     ) {
-      // Recalculate approximate total when using substring filter or if total unset
       total = docs.length + (cursor ? 0 : page * pageSize);
     }
 
-    // Apply in-memory weighting ONLY if Firestore ordering by answeredIcebreakersCount was not applied
+    // Apply in-memory weighting
     if (!primaryBoostOrderingApplied || !primaryAnsweredOrderingApplied) {
       try {
         docs.sort((a: any, b: any) => {
@@ -583,7 +412,7 @@ export async function GET(request: NextRequest) {
             typeof a.boostedUntil === "number" && a.boostedUntil > nowTs;
           const bBoostActive =
             typeof b.boostedUntil === "number" && b.boostedUntil > nowTs;
-          if (aBoostActive !== bBoostActive) return aBoostActive ? -1 : 1; // active boosts first
+          if (aBoostActive !== bBoostActive) return aBoostActive ? -1 : 1;
           const ac =
             typeof a.answeredIcebreakersCount === "number"
               ? a.answeredIcebreakersCount
@@ -592,30 +421,24 @@ export async function GET(request: NextRequest) {
             typeof b.answeredIcebreakersCount === "number"
               ? b.answeredIcebreakersCount
               : 0;
-          if (bc !== ac) return bc - ac; // higher engagement first
+          if (bc !== ac) return bc - ac;
           const aCreated = typeof a.createdAt === "number" ? a.createdAt : 0;
           const bCreated = typeof b.createdAt === "number" ? b.createdAt : 0;
-          if (bCreated !== aCreated) return bCreated - aCreated; // newer first
+          if (bCreated !== aCreated) return bCreated - aCreated;
           return 0;
         });
       } catch { }
     }
 
-    // Helper to get signed URL for a storage path or raw URL
-    // ALWAYS regenerates fresh signed URLs to avoid expired token issues
     const getAccessibleImageUrl = async (urlOrPath: string): Promise<string> => {
       if (!urlOrPath) return "";
-
-      // If it's a relative API path (like /api/storage/...), return as-is
       if (urlOrPath.startsWith("/api/")) return urlOrPath;
 
       const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
         `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
 
-      // If it's a GCS URL (with or without signature), extract path and regenerate
       if (urlOrPath.includes("storage.googleapis.com")) {
-        // Strip query params first (signed URLs have ?GoogleAccessId=...&Expires=...&Signature=...)
         const urlWithoutQuery = urlOrPath.split("?")[0];
         const match = urlWithoutQuery.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
         if (match && match[1]) {
@@ -624,32 +447,28 @@ export async function GET(request: NextRequest) {
             const file = adminStorage.bucket(bucketName).file(storagePath);
             const [signedUrl] = await file.getSignedUrl({
               action: "read",
-              expires: Date.now() + 60 * 60 * 1000, // 1 hour
+              expires: Date.now() + 60 * 60 * 1000,
             });
             return signedUrl;
           } catch {
-            // Fall back to original URL if signing fails
             return urlOrPath;
           }
         }
       }
 
-      // If it looks like a storage path (users/uid/... or profileImages/...), sign it
       if (urlOrPath.startsWith("users/") || urlOrPath.startsWith("profileImages/")) {
         try {
           const file = adminStorage.bucket(bucketName).file(urlOrPath);
           const [signedUrl] = await file.getSignedUrl({
             action: "read",
-            expires: Date.now() + 60 * 60 * 1000, // 1 hour
+            expires: Date.now() + 60 * 60 * 1000,
           });
           return signedUrl;
         } catch {
-          // Fall back to constructing a public URL
           return `https://storage.googleapis.com/${bucketName}/${urlOrPath}`;
         }
       }
 
-      // Return as-is for other URL formats (https://, etc.)
       return urlOrPath;
     };
 
@@ -657,7 +476,6 @@ export async function GET(request: NextRequest) {
       docs
         .filter((d) => !d.banned && !d.hiddenFromSearch)
         .map(async (d) => {
-          // Process profile image URLs to make them accessible
           const rawUrls: string[] = d.profileImageUrls || [];
           const accessibleUrls = await Promise.all(
             rawUrls.slice(0, 5).map((url: string) => getAccessibleImageUrl(url))
@@ -684,7 +502,6 @@ export async function GET(request: NextRequest) {
         })
     );
 
-    // Build next cursor if more potential results
     let nextCursor: string | undefined = undefined;
     if (docs.length === pageSize) {
       const last = docs[docs.length - 1];
@@ -692,15 +509,7 @@ export async function GET(request: NextRequest) {
         typeof last?.answeredIcebreakersCount === "number"
           ? last.answeredIcebreakersCount
           : 0;
-      if (hasAgeInequality) {
-        if (last?.age != null && last?.createdAt) {
-          if (includeAnsweredOrdering) {
-            nextCursor = `${encodeURIComponent(`${last.age}|${lastAnswered}|${last.createdAt}|${last.id}`)}`;
-          } else {
-            nextCursor = `${encodeURIComponent(`${last.age}|${last.createdAt}|${last.id}`)}`;
-          }
-        }
-      } else if (last?.createdAt) {
+      if (last?.createdAt) {
         if (includeAnsweredOrdering && includeBoostOrdering) {
           const lastBoost =
             typeof last.boostedUntil === "number" ? last.boostedUntil : 0;
@@ -719,7 +528,7 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       nextCursor,
-      correlationId: cid,
+      correlationId: ctx.correlationId,
       searchParams: {
         city,
         country,
@@ -730,9 +539,11 @@ export async function GET(request: NextRequest) {
         motherTongue,
         language,
       },
-    });
+    }, 200, ctx.correlationId);
   } catch (error) {
     console.error("Firestore search API error", error);
-    return errorResponse("Search service temporarily unavailable", 500);
+    return errorResponse("Search service temporarily unavailable", 500, { correlationId: ctx.correlationId });
   }
-}
+}, {
+  rateLimit: { identifier: "search", maxRequests: 60 }
+});

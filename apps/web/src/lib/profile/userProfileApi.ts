@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { showErrorToast } from "@/lib/ui/toast";
 import { getJson } from "@/lib/http/client";
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 
 // Types for API responses
 // Import centralized types
@@ -67,116 +68,30 @@ export async function fetchUserProfile(
     };
   }
 
-  console.log("[ProfileAPI] fetchUserProfile called for userId:", userId);
-
   try {
-    // Check if Firebase auth is ready before making Firestore calls
-    const { auth } = await import("@/lib/firebase");
-    if (!auth.currentUser) {
-      console.warn("[ProfileAPI] No authenticated user, skipping fetchUserProfile for:", userId);
+    // Use the API endpoint for fetching profile
+    const response = await fetchWithFirebaseAuth(`/api/profile?userId=${userId}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: { code: "AUTH_REQUIRED", message: "User not authenticated" },
+        error: {
+          code: "API_ERROR",
+          message: errorData.message || `Failed to fetch profile (${response.status})`,
+        },
       };
     }
-    
-    console.log("[ProfileAPI] Fetching Firestore doc for userId:", userId);
-    const userDoc = await getDoc(doc(db, "users", userId));
-    console.log("[ProfileAPI] Firestore doc exists:", userDoc.exists());
-    
-    if (userDoc.exists()) {
-      const profileData = userDoc.data() as Partial<Profile>;
-      console.log("[ProfileAPI] Profile data keys:", Object.keys(profileData));
-      console.log("[ProfileAPI] Profile fullName:", profileData.fullName);
-      // Ensure required identifiers are present
-      const normalized: Profile = {
-        // Firestore document key serves as userId linkage
-        userId: (profileData.userId as any) || (userId as any),
-        _id:
-          (profileData._id as any) ||
-          (profileData.userId as any) ||
-          (userId as any),
-        email: profileData.email || "",
-        role: profileData.role,
-        profileFor: (profileData as any).profileFor || "self",
-        fullName: profileData.fullName || "",
-        dateOfBirth: profileData.dateOfBirth || "",
-        gender: (profileData.gender as any) || "other",
-        city: profileData.city || "",
-        country: profileData.country || "",
-        phoneNumber: profileData.phoneNumber || "",
-        aboutMe: profileData.aboutMe || "",
-        height: profileData.height || "",
-        maritalStatus: (profileData.maritalStatus as any) || "single",
-        education: profileData.education || "",
-        occupation: profileData.occupation || "",
-        annualIncome: profileData.annualIncome || "",
-        diet: (profileData.diet as any) || "",
-        smoking: (profileData.smoking as any) || "no",
-        drinking: (profileData.drinking as any) || "no",
-        physicalStatus: (profileData.physicalStatus as any) || "normal",
-        // Default minimum preferred partner age to 18 (legal adulthood) instead of 0/undefined
-        partnerPreferenceAgeMin: (() => {
-          const raw = (profileData as any).partnerPreferenceAgeMin;
-          const num = typeof raw === "string" ? parseInt(raw, 10) : raw;
-          // If parsed number invalid or below 18, fallback
-          if (typeof num !== "number" || isNaN(num) || num < 18) return 18;
-          return num;
-        })(),
-        partnerPreferenceAgeMax:
-          (profileData.partnerPreferenceAgeMax as any) || 0,
-        partnerPreferenceCity: (profileData.partnerPreferenceCity as any) || [],
-        partnerPreferenceReligion: profileData.partnerPreferenceReligion,
-        preferredGender: (profileData.preferredGender as any) || "any",
-        profileImageIds: profileData.profileImageIds || [],
-        profileImageUrls: profileData.profileImageUrls || [],
-        isApproved: profileData.isApproved,
-        hideFromFreeUsers: profileData.hideFromFreeUsers,
-        banned: !!profileData.banned,
-        createdAt: profileData.createdAt || Date.now(),
-        updatedAt: profileData.updatedAt || Date.now(),
-        _creationTime: profileData._creationTime,
-        subscriptionPlan: profileData.subscriptionPlan,
-        subscriptionExpiresAt: profileData.subscriptionExpiresAt,
-        boostsRemaining: profileData.boostsRemaining,
-        boostsMonth: profileData.boostsMonth,
-        hasSpotlightBadge: profileData.hasSpotlightBadge,
-        spotlightBadgeExpiresAt: profileData.spotlightBadgeExpiresAt,
-        boostedUntil: profileData.boostedUntil,
-        motherTongue: profileData.motherTongue,
-        religion: profileData.religion,
-        ethnicity: profileData.ethnicity,
-        images: (profileData as any).images,
-        interests: profileData.interests,
-      };
-      return {
-        success: true,
-        data: normalized,
-      };
-    } else {
-      return { success: true, data: null };
-    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result.profile || result.data || null,
+    };
   } catch (error: unknown) {
-    // Check if this is a permissions error - don't retry those
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.includes("Missing or insufficient permissions")) {
-      // This is expected during auth initialization - return gracefully without noisy logging
-      if (process.env.NODE_ENV === "development") {
-        console.debug("[ProfileAPI] Auth token not ready yet for:", userId);
-      }
-      return {
-        success: false,
-        error: { code: "AUTH_REQUIRED", message: "Authentication not ready" },
-      };
-    }
-    
     if (retries > 0) {
-      /* eslint-disable-next-line no-console */
-      console.warn(
-        `[ProfileAPI] Retrying fetchUserProfile (${retries} attempts left)...`
-      );
-      // Wait a bit before retrying to allow auth to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
       return fetchUserProfile(userId, retries - 1);
     }
     return handleApiError(error, "fetchUserProfile");
@@ -203,105 +118,33 @@ export async function fetchUserProfileImages(
   }
 
   try {
-    // Check if Firebase auth is ready before making Firestore calls
-    const { auth } = await import("@/lib/firebase");
-    if (!auth.currentUser) {
-      console.warn("[ProfileAPI] No authenticated user, skipping fetchUserProfileImages for:", userId);
+    const response = await fetchWithFirebaseAuth(`/api/profile-detail/${userId}/images`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: true, data: [] };
+      }
+      const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: { code: "AUTH_REQUIRED", message: "User not authenticated" },
-        data: [],
+        error: {
+          code: "API_ERROR",
+          message: errorData.message || `Failed to fetch images (${response.status})`,
+        },
       };
     }
-    
-    const userDoc = await getDoc(doc(db, "users", userId));
-    if (userDoc.exists()) {
-      const profileData = userDoc.data() as any;
 
-      const imagesRaw: any[] =
-        profileData.profileImages || // legacy array of objects
-        profileData.profileImageUrls?.map((url: string) => ({ url })) ||
-        profileData.profileImageIds?.map((id: string) => ({ storageId: id })) ||
-        [];
+    const result = await response.json();
+    const images = (result.userProfileImages || result.data || []).map((img: any) => ({
+      url: img.url || "",
+      storageId: img.storageId || img.id || "",
+    }));
 
-      // IMPORTANT: Do NOT import firebase-admin (server-only) here; this module is used client-side.
-      // Derive bucket name from public env or heuristics instead.
-      const bucketFromEnv =
-        (process as any)?.env?.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-        (typeof window !== "undefined"
-          ? (window as any)?.__NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-          : undefined);
-      // Attempt to infer from any existing profileImageUrls if env missing
-      let inferredBucket: string | undefined = bucketFromEnv;
-      if (!inferredBucket) {
-        const sampleUrl: string | undefined = (
-          profileData.profileImageUrls || []
-        ).find((u: string) => /https:\/\/storage.googleapis.com\//.test(u));
-        if (sampleUrl) {
-          const m = sampleUrl.match(
-            /https:\/\/storage.googleapis.com\/([^/]+)\//
-          );
-          // eslint-disable-next-line prefer-destructuring
-          if (m) inferredBucket = m[1];
-        }
-      }
-      // Fallback: derive from project id if available
-      if (!inferredBucket) {
-        const projectId =
-          (process as any)?.env?.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
-        if (projectId) inferredBucket = `${projectId}.appspot.com`;
-      }
-      const bucketName = inferredBucket || ""; // empty string if truly unknown (repair skipped)
-      const needsRepair: { index: number; canonical: string }[] = [];
-      const normalized = imagesRaw
-        .filter((img: any) => img && (img.url || img.storageId))
-        .map((img: any, index: number) => {
-          const storageId =
-            (img.storageId as string) || (img.id as string) || "";
-          let url = (img.url as string) || "";
-          const canonical = storageId
-            ? `https://storage.googleapis.com/${bucketName}/${storageId}`
-            : "";
-          if (storageId && bucketName) {
-            // Repair if url missing or host not storage.googleapis.com (only if we know bucket)
-            if (!url || !/^https:\/\/storage\.googleapis\.com\//.test(url)) {
-              url = canonical;
-              needsRepair.push({ index, canonical });
-            }
-          }
-          return { url, storageId };
-        });
-      // If any repairs needed, patch Firestore arrays quietly (best-effort)
-      if (bucketName && needsRepair.length > 0) {
-        try {
-          const docRef = doc(db, "users", userId);
-          // Reconstruct arrays ensuring index alignment with profileImageIds
-          const fixedUrls = normalized.map((n) => n.url);
-          await setDoc(
-            docRef,
-            { profileImageUrls: fixedUrls, updatedAt: Date.now() },
-            { merge: true }
-          );
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn("[ProfileAPI] Failed to persist repaired image URLs", e);
-        }
-      }
-
-      return { success: true, data: normalized };
-    } else {
-      console.log(
-        "[ProfileAPI] User document does not exist for userId:",
-        userId
-      );
-      return { success: true, data: [] };
-    }
+    return { success: true, data: images };
   } catch (error) {
     if (retries > 0) {
-      /* eslint-disable-next-line no-console */
-      console.warn(
-        `[ProfileAPI] Retrying fetchUserProfileImages (${retries} attempts left)...`
-      );
       return fetchUserProfileImages(userId, retries - 1);
     }
     const apiError = handleApiError(error, "fetchUserProfileImages");
@@ -330,36 +173,30 @@ export async function updateUserProfile(
     };
   }
 
-  if (!updates || Object.keys(updates).length === 0) {
-    /* eslint-disable-next-line no-console */
-    console.error("[ProfileAPI] No updates provided to updateUserProfile");
-    return {
-      success: false,
-      error: { code: "VALIDATION_ERROR", message: "No updates provided" },
-    };
-  }
-
   try {
-    const userRef = doc(db, "users", userId);
-    const updateData = {
-      ...updates,
-      updatedAt: Date.now(),
-    };
+    const response = await fetchWithFirebaseAuth("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
 
-    await updateDoc(userRef, updateData);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: {
+          code: "API_ERROR",
+          message: errorData.message || `Failed to update profile (${response.status})`,
+        },
+      };
+    }
 
-    // Fetch updated profile
-    const updatedProfile = await fetchUserProfile(userId);
+    const result = await response.json();
     return {
       success: true,
-      data: updatedProfile.data,
+      data: result.profile || result.data || null,
     };
   } catch (error) {
     if (retries > 0) {
-      /* eslint-disable-next-line no-console */
-      console.warn(
-        `[ProfileAPI] Retrying updateUserProfile (${retries} attempts left)...`
-      );
       return updateUserProfile(userId, updates, retries - 1);
     }
     return handleApiError(error, "updateUserProfile");
@@ -389,85 +226,30 @@ export async function submitProfile(
     };
   }
 
-  if (!values) {
-    /* eslint-disable-next-line no-console */
-    console.error("[ProfileAPI] No values provided to submitProfile");
-    return {
-      success: false,
-      error: { code: "VALIDATION_ERROR", message: "No profile data provided" },
-    };
-  }
-
-  const sanitize = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
-    const clean: Partial<T> = {};
-    Object.entries(obj).forEach(([k, v]) => {
-      const keep =
-        v !== undefined &&
-        v !== null &&
-        !(typeof v === "string" && v.trim() === "") &&
-        !(Array.isArray(v) && v.length === 0);
-      if (keep) {
-        clean[k as keyof T] = v as T[keyof T];
-      }
-    });
-    return clean;
-  };
-
-  const profileData = sanitize({
-    fullName: values.fullName,
-    dateOfBirth: values.dateOfBirth,
-    gender: values.gender,
-    profileFor: values.profileFor,
-    city: values.city,
-    country: values.country,
-    height: values.height,
-    maritalStatus: values.maritalStatus,
-    physicalStatus: values.physicalStatus || "normal",
-    diet: values.diet,
-    smoking: (values.smoking as "no" | "occasionally" | "yes" | "") || "no",
-    drinking: values.drinking || "no",
-    motherTongue: values.motherTongue,
-    religion: values.religion,
-    ethnicity: values.ethnicity,
-    education: values.education,
-    occupation: values.occupation,
-    annualIncome: values.annualIncome,
-    phoneNumber: values.phoneNumber,
-    email: values.email,
-    preferredGender: values.preferredGender,
-    partnerPreferenceAgeMin: values.partnerPreferenceAgeMin,
-    partnerPreferenceAgeMax: values.partnerPreferenceAgeMax,
-    partnerPreferenceCity: values.partnerPreferenceCity,
-    aboutMe: values.aboutMe,
-    profileImageIds: values.profileImageIds || [],
-  });
-
-  const requestData = {
-    ...profileData,
-    // isOnboardingComplete is derived separately; do not set here
-    updatedAt: Date.now(),
-  };
-
-  if (mode === "create") {
-    (requestData as any).createdAt = Date.now();
-  }
-
   try {
-    const userRef = doc(db, "users", userId);
-    await setDoc(userRef, requestData, { merge: true });
+    const response = await fetchWithFirebaseAuth("/api/profile", {
+      method: mode === "create" ? "POST" : "PATCH",
+      body: JSON.stringify(values),
+    });
 
-    // Fetch updated profile
-    const updatedProfile = await fetchUserProfile(userId);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: {
+          code: "API_ERROR",
+          message: errorData.message || `Failed to submit profile (${response.status})`,
+        },
+      };
+    }
+
+    const result = await response.json();
     return {
       success: true,
-      data: updatedProfile.data,
+      data: result.profile || result.data || null,
     };
   } catch (error) {
     if (retries > 0) {
-      /* eslint-disable-next-line no-console */
-      console.warn(
-        `[ProfileAPI] Retrying submitProfile (${retries} attempts left)...`
-      );
       return submitProfile(userId, values, mode, retries - 1);
     }
     return handleApiError(error, "submitProfile");

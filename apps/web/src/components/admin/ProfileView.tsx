@@ -62,7 +62,7 @@ export default function ProfileView({
   // Handle missing or invalid profile
   if (!safeProfile) {
     return (
-      <div className="p-4 text-red-500 text-sm">
+      <div className="p-4 text-danger text-sm">
         Error: Profile information is missing or invalid.
       </div>
     );
@@ -71,7 +71,7 @@ export default function ProfileView({
   // Handle error state for images
   if (images === null) {
     return (
-      <div className="p-4 text-red-500 text-sm">
+      <div className="p-4 text-danger text-sm">
         Error loading images. Please try again later.
       </div>
     );
@@ -93,8 +93,8 @@ export default function ProfileView({
   // If there is a profile image, wait for it to load before rendering the rest
   if (profileImage && !imageLoaded && !imageError) {
     return (
-      <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white flex flex-col items-center justify-center min-h-[300px]">
-        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white relative flex items-center justify-center">
+      <div className="w-full max-w-2xl p-6 border border-neutral/10 rounded-lg shadow-sm bg-base-light flex flex-col items-center justify-center min-h-[300px]">
+        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-base-light relative flex items-center justify-center">
           {profileImage ? (
             <>
               <Image
@@ -109,18 +109,18 @@ export default function ProfileView({
                 }}
               />
               {!imageLoaded && !imageError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-600" />
+                <div className="absolute inset-0 flex items-center justify-center bg-base-light/60 z-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
                 </div>
               )}
             </>
           ) : (
-            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-              <User className="w-16 h-16 text-gray-400" />
+            <div className="w-full h-full bg-neutral/5 flex items-center justify-center">
+              <User className="w-16 h-16 text-neutral-light" />
             </div>
           )}
         </div>
-        <div className="mt-4 text-gray-400">Loading profile image...</div>
+        <div className="mt-4 text-neutral-light">Loading profile image...</div>
       </div>
     );
   }
@@ -128,7 +128,7 @@ export default function ProfileView({
   const imagesGrid = displayImages.map((img, index) => (
     <div
       key={img.url}
-      className={`relative w-20 h-20 rounded-lg overflow-hidden border mr-2 ${
+      className={`relative w-20 h-20 rounded-lg overflow-hidden border border-neutral/10 mr-2 ${
         index === 0 ? "ring-2 ring-primary" : ""
       }`}
     >
@@ -155,7 +155,7 @@ export default function ProfileView({
     imagesGrid.push(
       <div
         key="placeholder"
-        className="relative w-20 h-20 rounded-lg overflow-hidden border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400"
+        className="relative w-20 h-20 rounded-lg overflow-hidden border border-dashed border-neutral/20 bg-neutral/5 flex items-center justify-center text-neutral-light"
       >
         <span>No Image</span>
       </div>
@@ -163,11 +163,11 @@ export default function ProfileView({
   }
 
   return (
-    <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white">
+    <div className="w-full max-w-2xl p-6 border border-neutral/10 rounded-lg shadow-sm bg-base-light">
       {/* Profile image and details row */}
       <div className="flex flex-col sm:flex-row gap-6 mb-6">
         {/* Profile image */}
-        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white relative flex items-center justify-center">
+        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-base-light relative flex items-center justify-center">
           {profileImage ? (
             <>
               <Image
@@ -182,20 +182,20 @@ export default function ProfileView({
                 }}
               />
               {!imageLoaded && !imageError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-600" />
+                <div className="absolute inset-0 flex items-center justify-center bg-base-light/60 z-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
                 </div>
               )}
             </>
           ) : (
-            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-              <User className="w-16 h-16 text-gray-400" />
+            <div className="w-full h-full bg-neutral/5 flex items-center justify-center">
+              <User className="w-16 h-16 text-neutral-light" />
             </div>
           )}
         </div>
         {/* Profile details */}
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-1">
+          <h2 className="text-2xl font-bold text-neutral-dark flex items-center gap-1">
             {profiledata.fullName || "No Name"}
             {/* Premium badge via centralized helper */}
             {isPremium(profiledata.subscriptionPlan) ? (
@@ -203,21 +203,21 @@ export default function ProfileView({
             ) : null}
           </h2>
           {profiledata.aboutMe && (
-            <p className="mt-1 text-gray-600">{profiledata.aboutMe}</p>
+            <p className="mt-1 text-neutral-light">{profiledata.aboutMe}</p>
           )}
         </div>
       </div>
       {/* Images grid */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-700">Profile Photos</h3>
+        <h3 className="text-sm font-medium text-neutral-dark">Profile Photos</h3>
         <div className="flex flex-wrap gap-2">{imagesGrid}</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 mt-2 gap-x-8 gap-y-3">
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <User className="w-3.5 h-3.5 text-gray-400" />
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <User className="w-3.5 h-3.5 text-neutral-light/60" />
 
-            <span className="font-medium text-gray-700">
+            <span className="font-medium text-neutral-dark">
               {profiledata.gender
                 ? profiledata.gender.charAt(0).toUpperCase() +
                   profiledata.gender.slice(1)
@@ -226,78 +226,78 @@ export default function ProfileView({
           </span>
         </div>
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <Cake className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">{age}</span>
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <Cake className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">{age}</span>
           </span>
         </div>
         {profiledata.dateOfBirth && (
           <div>
-            <span className="text-md text-gray-500 flex items-center gap-1">
-              <Cake className="w-3.5 h-3.5 text-gray-400" />
-              <span className="font-medium text-gray-700">
+            <span className="text-md text-neutral-light flex items-center gap-1">
+              <Cake className="w-3.5 h-3.5 text-neutral-light/60" />
+              <span className="font-medium text-neutral-dark">
                 {new Date(profiledata.dateOfBirth).toLocaleDateString()}
               </span>
             </span>
           </div>
         )}
         <div>
-          <span className=" text-md text-gray-500 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className=" text-md text-neutral-light flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.city || "-"}
             </span>
           </span>
         </div>
 
         <div>
-          <span className=" text-md text-gray-500 flex items-center gap-1">
-            <HeartHandshake className="w-3.5 h-3.5 text-gray-400" />
+          <span className=" text-md text-neutral-light flex items-center gap-1">
+            <HeartHandshake className="w-3.5 h-3.5 text-neutral-light/60" />
           </span>
         </div>
         <div>
-          <span className=" text-md text-gray-500 flex items-center gap-1">
-            <HandHelping className="w-3.5 h-3.5 text-gray-400" />
+          <span className=" text-md text-neutral-light flex items-center gap-1">
+            <HandHelping className="w-3.5 h-3.5 text-neutral-light/60" />
           </span>
         </div>
 
         <div>
-          <span className=" text-md text-gray-500 flex items-center gap-1">
-            <Ruler className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className=" text-md text-neutral-light flex items-center gap-1">
+            <Ruler className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.height || "-"}
             </span>
           </span>
         </div>
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <PersonStanding className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <PersonStanding className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.maritalStatus || "-"}
             </span>
           </span>
         </div>
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <GraduationCap className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <GraduationCap className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.education || "-"}
             </span>
           </span>
         </div>
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <Briefcase className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <Briefcase className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.occupation || "-"}
             </span>
           </span>
         </div>
 
         <div>
-          <span className=" text-md text-gray-500 flex items-center gap-1">
-            <Phone className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className=" text-md text-neutral-light flex items-center gap-1">
+            <Phone className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.phoneNumber || "-"}
             </span>
           </span>
@@ -305,9 +305,9 @@ export default function ProfileView({
 
         {/* New Cultural Fields */}
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <Languages className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <Languages className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.motherTongue
                 ? profiledata.motherTongue.charAt(0).toUpperCase() +
                   profiledata.motherTongue.slice(1).replace("-", " ")
@@ -316,9 +316,9 @@ export default function ProfileView({
           </span>
         </div>
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <Heart className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <Heart className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.religion
                 ? profiledata.religion.charAt(0).toUpperCase() +
                   profiledata.religion.slice(1)
@@ -327,9 +327,9 @@ export default function ProfileView({
           </span>
         </div>
         <div>
-          <span className="text-md text-gray-500 flex items-center gap-1">
-            <Globe className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
+          <span className="text-md text-neutral-light flex items-center gap-1">
+            <Globe className="w-3.5 h-3.5 text-neutral-light/60" />
+            <span className="font-medium text-neutral-dark">
               {profiledata.ethnicity
                 ? profiledata.ethnicity.charAt(0).toUpperCase() +
                   profiledata.ethnicity.slice(1)
@@ -339,16 +339,16 @@ export default function ProfileView({
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-neutral-light/60">
           Created: {new Date(profiledata.createdAt).toLocaleDateString()}
         </span>
         {profiledata.updatedAt && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-neutral-light/60">
             Updated: {new Date(profiledata.updatedAt).toLocaleDateString()}
           </span>
         )}
         {profiledata.banned && (
-          <span className="text-xs text-red-500 font-semibold ml-2">
+          <span className="text-xs text-danger font-semibold ml-2">
             BANNED
           </span>
         )}
@@ -373,41 +373,41 @@ export function ProfileMinifiedView({ profile }: { profile: Profile }) {
     }
   }
   return (
-    <div className="flex items-center gap-4 p-3 border rounded-lg bg-white shadow-sm">
+    <div className="flex items-center gap-4 p-3 border border-neutral/10 rounded-lg bg-base-light shadow-sm">
       {/* Gender icon */}
-      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100">
+      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-neutral/5">
         {profile.gender === "male" && (
-          <Users className="w-5 h-5 text-pink-500" />
+          <Users className="w-5 h-5 text-primary" />
         )}
         {profile.gender === "female" && (
-          <Users className="w-5 h-5 text-pink-500" />
+          <Users className="w-5 h-5 text-primary" />
         )}
         {profile.gender === "other" && (
-          <Users className="w-5 h-5 text-gray-400" />
+          <Users className="w-5 h-5 text-neutral-light" />
         )}
-        {!profile.gender && <Users className="w-5 h-5 text-gray-300" />}
+        {!profile.gender && <Users className="w-5 h-5 text-neutral-light/60" />}
       </div>
       <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1 items-center">
-        <div className="flex items-center gap-1 text-gray-700 text-sm">
-          <MapPin className="w-4 h-4 text-gray-400" />
+        <div className="flex items-center gap-1 text-neutral-dark text-sm">
+          <MapPin className="w-4 h-4 text-neutral-light" />
           {profile.city || "-"}
         </div>
-        <div className="flex items-center gap-1 text-gray-700 text-sm">
-          <Cake className="w-4 h-4 text-gray-400" />
+        <div className="flex items-center gap-1 text-neutral-dark text-sm">
+          <Cake className="w-4 h-4 text-neutral-light" />
           {age}
         </div>
-        <div className="flex items-center gap-1 text-gray-700 text-xs">
-          <Briefcase className="w-4 h-4 text-gray-400" />
+        <div className="flex items-center gap-1 text-neutral-dark text-xs">
+          <Briefcase className="w-4 h-4 text-neutral-light" />
           {profile.occupation || "-"}
         </div>
-        <div className="flex items-center gap-1 text-gray-700 text-xs">
-          <GraduationCap className="w-4 h-4 text-gray-400" />
+        <div className="flex items-center gap-1 text-neutral-dark text-xs">
+          <GraduationCap className="w-4 h-4 text-neutral-light" />
           {profile.education || "-"}
         </div>
-        <div className="flex items-center gap-1 text-gray-700 text-xs">
-          <Heart className="w-4 h-4 text-pink-400" />
+        <div className="flex items-center gap-1 text-neutral-dark text-xs">
+          <Heart className="w-4 h-4 text-primary/60" />
         </div>
-        <div className="flex items-center gap-1 text-gray-700 text-xs">
+        <div className="flex items-center gap-1 text-neutral-dark text-xs">
           <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
           {profile.maritalStatus || "-"}
         </div>

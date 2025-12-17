@@ -74,28 +74,28 @@ export default function BlockedUsersPage() {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Shield className="h-6 w-6 text-red-500" />
+          <Shield className="h-6 w-6 text-danger" />
           Blocked Users
         </h1>
-        <p className="text-gray-600">
+        <p className="text-neutral-light">
           Manage users you&apos;ve blocked. Blocked users cannot send you
           messages or see your profile.
         </p>
       </div>
 
       {/* Safety Guidelines Link */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-info/10 border-info/20">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Shield className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 bg-info/20 rounded-full flex items-center justify-center">
+                <Shield className="h-5 w-5 text-info" />
               </div>
               <div>
-                <h3 className="font-medium text-blue-900">
+                <h3 className="font-medium text-info-dark">
                   Need help staying safe?
                 </h3>
-                <p className="text-sm text-blue-700">
+                <p className="text-sm text-info">
                   Learn about our safety features and get tips for online
                   dating.
                 </p>
@@ -141,7 +141,7 @@ export default function BlockedUsersPage() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
                   {/* Profile Image */}
-                  <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                  <div className="h-12 w-12 bg-neutral/10 rounded-full flex items-center justify-center overflow-hidden">
                     {blockedUser.blockedProfile?.profileImageUrl ? (
                       <img
                         src={blockedUser.blockedProfile.profileImageUrl}
@@ -149,24 +149,24 @@ export default function BlockedUsersPage() {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <Users className="h-6 w-6 text-gray-400" />
+                      <Users className="h-6 w-6 text-neutral-light" />
                     )}
                   </div>
 
                   {/* User Info */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
+                    <h3 className="font-medium text-neutral-dark truncate">
                       {blockedUser.blockedProfile?.fullName ||
                         blockedUser.blockedUserId ||
                         "Unknown User"}
                     </h3>
-                    <p className="text-sm text-gray-500 flex flex-col">
+                    <p className="text-sm text-neutral-light flex flex-col">
                       <span>
                         Blocked on{" "}
                         {new Date(blockedUser.createdAt).toLocaleDateString()}
                       </span>
                       {blockedUser.isBlockedBy && (
-                        <span className="text-red-600 font-medium">
+                        <span className="text-danger font-medium">
                           You are blocked by this user
                         </span>
                       )}
@@ -179,11 +179,11 @@ export default function BlockedUsersPage() {
                     size="sm"
                     onClick={() => handleUnblock(blockedUser.blockedUserId)}
                     disabled={unblockUserMutation.isPending}
-                    className="text-green-600 border-green-300 hover:bg-green-50"
+                    className="text-success border-success/30 hover:bg-success/10"
                   >
                     {unblockUserMutation.isPending ? (
                       <>
-                        <div className="animate-spin h-4 w-4 mr-2 border-2 border-green-600 border-t-transparent rounded-full" />
+                        <div className="animate-spin h-4 w-4 mr-2 border-2 border-success border-t-transparent rounded-full" />
                         Unblocking...
                       </>
                     ) : (
@@ -213,7 +213,7 @@ export default function BlockedUsersPage() {
       )}
 
       {/* Info Card */}
-      <Card className="bg-gray-50">
+      <Card className="bg-neutral/5">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -221,7 +221,7 @@ export default function BlockedUsersPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-neutral">
             <h4 className="font-medium mb-2">When you block someone:</h4>
             <ul className="space-y-1 list-disc list-inside">
               <li>They can&apos;t send you messages or interests</li>
@@ -230,7 +230,7 @@ export default function BlockedUsersPage() {
               <li>They won&apos;t know they&apos;ve been blocked</li>
             </ul>
           </div>
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-neutral">
             <h4 className="font-medium mb-2">When you unblock someone:</h4>
             <ul className="space-y-1 list-disc list-inside">
               <li>They can contact you again</li>

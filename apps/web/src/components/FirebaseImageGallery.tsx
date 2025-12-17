@@ -88,7 +88,7 @@ export function FirebaseImageGallery({
 
   if (images.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-neutral-light">
         No images uploaded yet
       </div>
     );
@@ -104,11 +104,11 @@ export function FirebaseImageGallery({
               alt={image.fileName}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
+            <div className="absolute inset-0 bg-neutral-dark/0 hover:bg-neutral-dark/30 transition-all duration-200 flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
               <Button
                 size="sm"
                 variant="secondary"
-                className="bg-white/80 hover:bg-white"
+                className="bg-base-light/80 hover:bg-base-light"
                 onClick={() => window.open(image.url, "_blank")}
               >
                 <Eye className="h-4 w-4" />
@@ -117,7 +117,7 @@ export function FirebaseImageGallery({
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="bg-red-500/80 hover:bg-red-500"
+                  className="bg-danger/80 hover:bg-danger"
                   onClick={() => handleDelete(image.storageId)}
                   disabled={deletingId === image.storageId}
                 >
@@ -131,9 +131,9 @@ export function FirebaseImageGallery({
             </div>
           </div>
           <CardContent className="p-2">
-            <p className="text-xs text-gray-500 truncate">{image.fileName}</p>
+            <p className="text-xs text-neutral-light truncate">{image.fileName}</p>
             {image.uploadedAt && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-neutral-light/70">
                 {new Date(image.uploadedAt).toLocaleDateString()}
               </p>
             )}

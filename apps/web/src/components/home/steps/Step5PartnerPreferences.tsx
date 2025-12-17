@@ -24,9 +24,9 @@ export function Step5PartnerPreferences(props: {
     <div className="space-y-8">
       {/* Preferences Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <Heart className="w-4 h-4" />
-            <h3>Partner Preferences</h3>
+            <h3 className="text-lg">Partner Preferences</h3>
         </div>
 
         <ValidatedSelect
@@ -43,16 +43,17 @@ export function Step5PartnerPreferences(props: {
             ]}
             placeholder="Select preferred gender"
             required
+            className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
         />
 
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-                <Label className="text-gray-700 font-medium">Age Range</Label>
+        <div className="bg-neutral/5 backdrop-blur-sm p-6 rounded-2xl border border-neutral/10 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+                <Label className="text-neutral-dark font-medium font-sans">Age Range</Label>
                 <div className="text-right">
-                    <span className="text-lg font-bold text-primary">
+                    <span className="text-2xl font-serif font-bold text-primary">
                         {minAge} - {maxAge}
                     </span>
-                    <span className="text-xs text-gray-500 ml-1">years</span>
+                    <span className="text-xs text-neutral-light ml-1 font-sans">years</span>
                 </div>
             </div>
             <Slider
@@ -66,7 +67,7 @@ export function Step5PartnerPreferences(props: {
                 }}
                 className="py-2"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
+            <div className="flex justify-between text-xs text-neutral-light mt-3 px-1 font-sans">
                 <span>18</span>
                 <span>70</span>
             </div>
@@ -75,9 +76,9 @@ export function Step5PartnerPreferences(props: {
 
       {/* Location Preferences */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <MapPin className="w-4 h-4" />
-            <h3>Location Preferences</h3>
+            <h3 className="text-lg">Location Preferences</h3>
         </div>
 
         <ValidatedInput
@@ -102,7 +103,7 @@ export function Step5PartnerPreferences(props: {
             }}
             placeholder="e.g. London, Kabul, Dubai"
             hint="Enter cities separated by commas"
-            className="bg-white"
+            className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
         />
       </div>
     </div>

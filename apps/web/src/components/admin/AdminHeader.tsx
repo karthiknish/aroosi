@@ -55,7 +55,7 @@ export function AdminHeader({
   const breadcrumbs = getBreadcrumbs(currentPath);
 
   return (
-    <header className="bg-white border-b shadow-sm px-6 py-4">
+    <header className="bg-base-light border-b shadow-sm px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Left side - Title and Breadcrumbs */}
         <div className="flex items-center space-x-4">
@@ -69,16 +69,16 @@ export function AdminHeader({
           </Button>
 
           <div>
-            <h1 className="text-xl font-semibold text-neutral-900">
+            <h1 className="text-xl font-semibold text-neutral-dark">
               {getPageTitle(currentPath)}
             </h1>
-            <nav className="flex items-center space-x-1 text-sm text-neutral-500">
+            <nav className="flex items-center space-x-1 text-sm text-neutral-light">
               {breadcrumbs.map((crumb, index) => (
                 <div key={crumb.href} className="flex items-center">
                   {index > 0 && <span className="mx-2">/</span>}
                   <button
                     onClick={() => router.push(crumb.href)}
-                    className="hover:text-pink-600 transition-colors"
+                    className="hover:text-primary transition-colors"
                   >
                     {crumb.label}
                   </button>
@@ -103,7 +103,7 @@ export function AdminHeader({
             <PopoverTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-pink-100 text-pink-700">
+                  <AvatarFallback className="bg-primary/10 text-primary">
                     {profile?.fullName?.charAt(0) || "A"}
                   </AvatarFallback>
                 </Avatar>
@@ -113,7 +113,7 @@ export function AdminHeader({
               <div className="flex items-center justify-start gap-2 p-3 border-b">
                 <div className="flex flex-col space-y-1 leading-none">
                   <p className="font-medium text-sm">{profile?.fullName}</p>
-                  <p className="w-[200px] truncate text-xs text-neutral-500">
+                  <p className="w-[200px] truncate text-xs text-neutral-light">
                     {profile?.email}
                   </p>
                 </div>
@@ -145,7 +145,7 @@ export function AdminHeader({
                 <div className="border-t mx-1 my-1"></div>
                 <Button
                   variant="ghost"
-                  className="w-full justify-start px-3 py-2 h-auto text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="w-full justify-start px-3 py-2 h-auto text-danger hover:bg-danger/5"
                   onClick={() => signOut()}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

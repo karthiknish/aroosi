@@ -132,14 +132,14 @@ export function SearchFilters({
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7 }}
-        className="flex flex-wrap gap-3 justify-center mb-10 bg-white/80 rounded-xl shadow p-4"
+        className="flex flex-wrap gap-3 justify-center mb-10 bg-base-light/80 backdrop-blur-sm rounded-xl shadow-sm border border-neutral/10 p-4"
       >
         <Input
           type="text"
           placeholder="City"
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          className="w-40 bg-white rounded-lg shadow-sm font-nunito"
+          className="w-40 bg-base-light rounded-lg shadow-sm"
         />
         <div className="w-44">
           <SearchableSelect
@@ -147,7 +147,7 @@ export function SearchFilters({
             value={country}
             onValueChange={setCountry}
             placeholder="Country"
-            className="bg-white"
+            className="bg-base-light"
           />
         </div>
         <Input
@@ -157,7 +157,7 @@ export function SearchFilters({
           placeholder="Min Age"
           value={ageMin || ""}
           onChange={(e) => setAgeMin(e.target.value)}
-          className="w-24 bg-white rounded-lg shadow-sm font-nunito"
+          className="w-24 bg-base-light rounded-lg shadow-sm"
         />
         <Input
           type="number"
@@ -166,18 +166,18 @@ export function SearchFilters({
           placeholder="Max Age"
           value={ageMax || ""}
           onChange={(e) => setAgeMax(e.target.value)}
-          className="w-24 bg-white rounded-lg shadow-sm font-nunito"
+          className="w-24 bg-base-light rounded-lg shadow-sm"
         />
         {/* Premium-only filters */}
         {isPremiumUser ? (
           <>
             <Select value={ethnicity} onValueChange={setEthnicity}>
-              <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm">
                 <SelectValue placeholder="Ethnicity" />
               </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto bg-white">
+              <SelectContent className="max-h-60 overflow-y-auto bg-base-light">
                 {ethnicityOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt} className="font-nunito">
+                  <SelectItem key={opt} value={opt}>
                     {opt === "any" ? "Any Ethnicity" : opt}
                   </SelectItem>
                 ))}
@@ -185,12 +185,12 @@ export function SearchFilters({
             </Select>
 
             <Select value={motherTongue} onValueChange={setMotherTongue}>
-              <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm">
                 <SelectValue placeholder="Mother Tongue" />
               </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto bg-white">
+              <SelectContent className="max-h-60 overflow-y-auto bg-base-light">
                 {motherTongueOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt} className="font-nunito">
+                  <SelectItem key={opt} value={opt}>
                     {opt === "any" ? "Any Mother Tongue" : opt}
                   </SelectItem>
                 ))}
@@ -198,12 +198,12 @@ export function SearchFilters({
             </Select>
 
             <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm">
                 <SelectValue placeholder="Language" />
               </SelectTrigger>
-              <SelectContent className="max-h-60 overflow-y-auto bg-white">
+              <SelectContent className="max-h-60 overflow-y-auto bg-base-light">
                 {languageOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt} className="font-nunito">
+                  <SelectItem key={opt} value={opt}>
                     {opt === "any" ? "Any Language" : opt}
                   </SelectItem>
                 ))}
@@ -213,7 +213,7 @@ export function SearchFilters({
         ) : (
           <div className="flex items-center gap-2 text-xs text-neutral-light">
             <span>Upgrade to Premium for advanced search filters</span>
-            <Button size="sm" variant="outline" onClick={onUpgrade}>
+            <Button size="sm" variant="outline" onClick={onUpgrade} className="border-primary text-primary hover:bg-primary/5">
               Upgrade
             </Button>
           </div>

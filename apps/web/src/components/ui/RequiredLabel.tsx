@@ -13,7 +13,7 @@ type RequiredLabelProps<T extends ElementType = "span"> = {
 export function RequiredLabel<T extends ElementType = "span">({
   children,
   className = "",
-  indicatorClassName = "text-red-500",
+  indicatorClassName = "text-danger",
   as,
   id,
 }: RequiredLabelProps<T>) {

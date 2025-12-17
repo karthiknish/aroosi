@@ -22,9 +22,9 @@ export function Step3CulturalLifestyle(props: {
     <div className="space-y-8">
       {/* Cultural Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <Globe className="w-4 h-4" />
-            <h3>Cultural Background</h3>
+            <h3 className="text-lg">Cultural Background</h3>
         </div>
         
         <div className="grid gap-4">
@@ -36,6 +36,7 @@ export function Step3CulturalLifestyle(props: {
                 onValueChange={(v) => onChange("motherTongue", v)}
                 options={MOTHER_TONGUE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                 placeholder="Select language"
+                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
 
             <ValidatedSelect
@@ -46,6 +47,7 @@ export function Step3CulturalLifestyle(props: {
                 onValueChange={(v) => onChange("religion", v)}
                 options={RELIGION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                 placeholder="Select religion"
+                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
 
             <ValidatedSelect
@@ -56,15 +58,16 @@ export function Step3CulturalLifestyle(props: {
                 onValueChange={(v) => onChange("ethnicity", v)}
                 options={ETHNICITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                 placeholder="Select ethnicity"
+                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
         </div>
       </div>
 
       {/* Lifestyle Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <Wine className="w-4 h-4" />
-            <h3>Lifestyle Choices</h3>
+            <h3 className="text-lg">Lifestyle Choices</h3>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
@@ -81,7 +84,7 @@ export function Step3CulturalLifestyle(props: {
                 { value: "other", label: "Other" },
                 ]}
                 placeholder="Select diet"
-                className="col-span-2"
+                className="col-span-2 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
 
             <ValidatedSelect
@@ -96,6 +99,7 @@ export function Step3CulturalLifestyle(props: {
                 { value: "yes", label: "Yes" },
                 ]}
                 placeholder="Select preference"
+                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
 
             <ValidatedSelect
@@ -110,6 +114,7 @@ export function Step3CulturalLifestyle(props: {
                 { value: "yes", label: "Yes" },
                 ]}
                 placeholder="Select preference"
+                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
         </div>
       </div>

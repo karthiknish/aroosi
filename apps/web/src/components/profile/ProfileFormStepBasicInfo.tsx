@@ -41,7 +41,7 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
     />
     <div className="mb-4">
       <Label htmlFor="height">
-        Height <span className="text-primary">*</span>
+        Height <span className="text-danger">*</span>
       </Label>
       <div className="mt-2">
         <Controller
@@ -69,7 +69,7 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
                   className="w-full"
                 />
                 {form.formState.errors.height && (
-                  <p className="text-sm text-red-600 mt-1">
+                  <p className="text-sm text-danger mt-1">
                     {form.formState.errors.height.message as string}
                   </p>
                 )}

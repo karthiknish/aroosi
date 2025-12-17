@@ -19,7 +19,7 @@ export default function TermsPage() {
             <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-primary mb-4">
               Terms and Conditions
             </h1>
-            <p className="text-neutral-500">
+            <p className="text-neutral-light">
               Last updated: November 28, 2025
             </p>
           </div>
@@ -77,7 +77,7 @@ export default function TermsPage() {
               or location.
             </p>
 
-            <div className="mt-12 pt-8 border-t border-gray-100">
+            <div className="mt-12 pt-8 border-t border-neutral/10">
               <p className="mb-4">
                 If you have any questions about these Terms, please contact us at{" "}
                 <a href="mailto:contact@aroosi.app">contact@aroosi.app</a>.

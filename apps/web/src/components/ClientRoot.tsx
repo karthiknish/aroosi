@@ -50,10 +50,10 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
         position="bottom-right"
         toastOptions={{
           style: {
-            background: "rgba(20,20,20,0.85)",
-            color: "#f5f5f5",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "0.75rem",
+            background: "hsl(var(--neutral-dark) / 0.9)",
+            color: "hsl(var(--base-light))",
+            border: "1px solid hsl(var(--base-light) / 0.1)",
+            borderRadius: "var(--radius)",
             fontSize: "14px",
             fontWeight: "500",
             padding: "14px 18px",

@@ -55,9 +55,9 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={field} className="text-sm font-medium text-gray-700">
+      <Label htmlFor={field} className="text-sm font-medium text-neutral">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-danger ml-1">*</span>}
       </Label>
 
       <div className="relative">
@@ -67,8 +67,8 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
             className={cn(
               "transition-colors duration-200",
               showError &&
-                "border-red-500 focus:border-red-500 focus:ring-red-500",
-              showSuccess && "border-green-500 focus:border-green-500",
+                "border-danger focus:border-danger focus:ring-danger",
+              showSuccess && "border-success focus:border-success",
               className
             )}
             aria-invalid={showError ? true : false}
@@ -78,7 +78,7 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
           >
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
-          <SelectContent className="bg-white">
+          <SelectContent className="bg-base-light">
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -90,10 +90,10 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
         {/* Validation status icons */}
         <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex items-center space-x-1 pointer-events-none">
           {isValidating && (
-            <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+            <Loader2 className="h-4 w-4 text-neutral-light animate-spin" />
           )}
-          {showSuccess && <CheckCircle className="h-4 w-4 text-green-500" />}
-          {showError && <AlertCircle className="h-4 w-4 text-red-500" />}
+          {showSuccess && <CheckCircle className="h-4 w-4 text-success" />}
+          {showError && <AlertCircle className="h-4 w-4 text-danger" />}
         </div>
       </div>
 
@@ -101,7 +101,7 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
       {showError && (
         <div
           id={`${field}-error`}
-          className="flex items-center space-x-1 text-sm text-red-600"
+          className="flex items-center space-x-1 text-sm text-danger"
           role="alert"
           aria-live="polite"
         >
@@ -112,7 +112,7 @@ export const ValidatedSelect: React.FC<ValidatedSelectProps> = ({
 
       {/* Hint text */}
       {hint && !showError && (
-        <div id={`${field}-hint`} className="text-sm text-gray-500">
+        <div id={`${field}-hint`} className="text-sm text-neutral-light">
           {hint}
         </div>
       )}

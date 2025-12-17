@@ -12,13 +12,13 @@ export default function PrivacyPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
+          className="max-w-3xl mx-auto bg-base p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
         >
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-primary mb-4">
               Privacy Policy
             </h1>
-            <p className="text-neutral-500">
+            <p className="text-neutral-light">
               Last updated: November 28, 2025
             </p>
           </div>
@@ -172,7 +172,7 @@ export default function PrivacyPage() {
               <a href="mailto:contact@aroosi.app">contact@aroosi.app</a>.
             </p>
 
-            <div className="mt-12 pt-8 border-t border-gray-100 flex justify-center">
+            <div className="mt-12 pt-8 border-t border-neutral/10 flex justify-center">
               <Link 
                 href="/"
                 className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark transition-colors"

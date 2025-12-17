@@ -41,7 +41,7 @@ export function SearchableSelect<T extends string>(
           aria-expanded={open}
           className={cn(
             // Ensure the chevron stays inside and text clips properly
-            "w-full justify-between overflow-hidden rounded-md border border-input bg-white px-3 py-2",
+            "w-full justify-between overflow-hidden rounded-md border border-input bg-base-light px-3 py-2",
             // Constrain height to align with inputs and prevent icon overflow
             "h-10",
             // Make sure inner content doesn't bleed outside
@@ -53,7 +53,7 @@ export function SearchableSelect<T extends string>(
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-base-light">
         <div className="p-2">
           <Input
             placeholder="Search..."
@@ -71,8 +71,8 @@ export function SearchableSelect<T extends string>(
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm bg-white hover:bg-gray-100",
-                  opt.value === value && "bg-gray-100 font-medium"
+                  "flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm bg-base-light hover:bg-neutral/10",
+                  opt.value === value && "bg-neutral/10 font-medium"
                 )}
               >
                 <span className="truncate pr-2">{opt.label}</span>

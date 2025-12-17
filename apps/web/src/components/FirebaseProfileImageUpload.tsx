@@ -92,13 +92,13 @@ export function FirebaseProfileImageUpload({
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center justify-center w-full">
-            <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100">
+            <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer border-neutral/20 hover:border-neutral/40 bg-neutral/5 hover:bg-neutral/10">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-8 h-8 mb-4 text-gray-500" />
-                <p className="mb-2 text-sm text-gray-500">
+                <Upload className="w-8 h-8 mb-4 text-neutral-light" />
+                <p className="mb-2 text-sm text-neutral-light">
                   <span className="font-semibold">Click to upload</span> or drag and drop
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-neutral-light">
                   PNG, JPG, GIF up to 5MB
                 </p>
               </div>
@@ -135,9 +135,9 @@ export function FirebaseProfileImageUpload({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Uploading...</span>
-                <span className="text-sm text-gray-500">{progress}%</span>
+                <span className="text-sm text-neutral-light">{progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-neutral/10 rounded-full h-2">
                 <div 
                   className="bg-primary h-2 rounded-full transition-all duration-300" 
                   style={{ width: `${progress}%` }}
@@ -147,7 +147,7 @@ export function FirebaseProfileImageUpload({
           )}
 
           {error && (
-            <div className="text-sm text-red-500 p-2 bg-red-50 rounded">
+            <div className="text-sm text-danger p-2 bg-danger/5 rounded">
               {error}
             </div>
           )}

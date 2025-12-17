@@ -40,9 +40,9 @@ export function DeliveryStatus({ status, className, isCurrentUser = false }: Del
       case "delivered":
         return "text-white/70";
       case "read":
-        return "text-emerald-300";
+        return "text-success";
       case "failed":
-        return "text-red-300";
+        return "text-danger";
       default:
         return "text-white/50";
     }

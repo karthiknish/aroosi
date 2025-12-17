@@ -54,6 +54,16 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     const [bio, setBio] = useState('');
     const [age, setAge] = useState('');
     const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [country, setCountry] = useState('');
+    const [education, setEducation] = useState('');
+    const [occupation, setOccupation] = useState('');
+    const [income, setIncome] = useState('');
+    const [height, setHeight] = useState('');
+    const [maritalStatus, setMaritalStatus] = useState('');
+    const [religion, setReligion] = useState('');
+    const [sect, setSect] = useState('');
+    const [motherTongue, setMotherTongue] = useState('');
     const [interests, setInterests] = useState<string[]>([]);
     const [newInterest, setNewInterest] = useState('');
     const [photos, setPhotos] = useState<(string | null)[]>([null, null, null, null, null, null]);
@@ -67,10 +77,20 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
             if (response.data) {
                 const p = response.data;
                 setProfile(p);
-                setDisplayName(p.displayName || '');
-                setBio(p.bio || '');
+                setDisplayName(p.displayName || p.fullName || '');
+                setBio(p.bio || p.aboutMe || '');
                 setAge(p.age?.toString() || '');
                 setCity(p.location?.city || '');
+                setState(p.location?.state || '');
+                setCountry(p.location?.country || '');
+                setEducation(p.education || '');
+                setOccupation(p.occupation || '');
+                setIncome(p.income || '');
+                setHeight(p.height || '');
+                setMaritalStatus(p.maritalStatus || '');
+                setReligion(p.religion || '');
+                setSect(p.sect || '');
+                setMotherTongue(p.motherTongue || '');
                 setInterests(p.interests || []);
                 
                 // Initialize photos array
@@ -211,9 +231,23 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
 
             const updateData: ProfileUpdateData = {
                 displayName: displayName.trim(),
+                fullName: displayName.trim(), // Keep in sync
                 bio: bio.trim(),
+                aboutMe: bio.trim(), // Keep in sync
                 age: age ? parseInt(age, 10) : undefined,
-                location: city ? { city: city.trim() } : undefined,
+                location: { 
+                    city: city.trim(),
+                    state: state.trim(),
+                    country: country.trim(),
+                },
+                education: education.trim(),
+                occupation: occupation.trim(),
+                income: income.trim(),
+                height: height.trim(),
+                maritalStatus,
+                religion: religion.trim(),
+                sect: sect.trim(),
+                motherTongue: motherTongue.trim(),
                 interests,
             };
 
@@ -231,7 +265,7 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
         } finally {
             setSaving(false);
         }
-    }, [displayName, bio, age, city, interests, onSave]);
+    }, [displayName, bio, age, city, state, country, education, occupation, income, height, maritalStatus, religion, sect, motherTongue, interests, onSave]);
 
     // Add interest
     const addInterest = useCallback(() => {
@@ -364,6 +398,136 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
                             placeholder="Where you live"
                             placeholderTextColor={colors.neutral[400]}
                             maxLength={100}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Country</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={country}
+                            onChangeText={setCountry}
+                            placeholder="e.g. United Kingdom"
+                            placeholderTextColor={colors.neutral[400]}
+                            maxLength={100}
+                        />
+                    </View>
+                </View>
+
+                {/* Professional Info */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Professional Info</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Education</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={education}
+                            onChangeText={setEducation}
+                            placeholder="Highest degree"
+                            placeholderTextColor={colors.neutral[400]}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Occupation</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={occupation}
+                            onChangeText={setOccupation}
+                            placeholder="Your job title"
+                            placeholderTextColor={colors.neutral[400]}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Annual Income</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={income}
+                            onChangeText={setIncome}
+                            placeholder="e.g. £50k - £70k"
+                            placeholderTextColor={colors.neutral[400]}
+                        />
+                    </View>
+                </View>
+
+                {/* Physical & Personal */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Physical & Personal</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Height</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={height}
+                            onChangeText={setHeight}
+                            placeholder="e.g. 5'10\" (178cm)"
+                            placeholderTextColor={colors.neutral[400]}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Marital Status</Text>
+                        <TouchableOpacity 
+                            style={styles.pickerButton}
+                            onPress={() => {
+                                const options = ['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce', 'Cancel'];
+                                if (Platform.OS === 'ios') {
+                                    ActionSheetIOS.showActionSheetWithOptions(
+                                        { options, cancelButtonIndex: 4 },
+                                        (index) => { if (index < 4) setMaritalStatus(options[index]); }
+                                    );
+                                } else {
+                                    Alert.alert('Marital Status', 'Choose an option', 
+                                        options.slice(0, 4).map(o => ({ text: o, onPress: () => setMaritalStatus(o) }))
+                                        .concat([{ text: 'Cancel', style: 'cancel' }])
+                                    );
+                                }
+                            }}
+                        >
+                            <Text style={[styles.pickerText, !maritalStatus && styles.placeholderText]}>
+                                {maritalStatus || 'Select status'}
+                            </Text>
+                            <Text style={styles.pickerIcon}>▼</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Religious & Cultural */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Religious & Cultural</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Religion</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={religion}
+                            onChangeText={setReligion}
+                            placeholder="e.g. Islam"
+                            placeholderTextColor={colors.neutral[400]}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Sect / Caste</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={sect}
+                            onChangeText={setSect}
+                            placeholder="e.g. Sunni"
+                            placeholderTextColor={colors.neutral[400]}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Mother Tongue</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={motherTongue}
+                            onChangeText={setMotherTongue}
+                            placeholder="e.g. Urdu"
+                            placeholderTextColor={colors.neutral[400]}
                         />
                     </View>
                 </View>
@@ -541,6 +705,26 @@ const styles = StyleSheet.create({
         paddingVertical: moderateScale(12),
         fontSize: responsiveFontSizes.base,
         color: colors.neutral[900],
+    },
+    pickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.neutral[100],
+        borderRadius: borderRadius.lg,
+        paddingHorizontal: moderateScale(16),
+        paddingVertical: moderateScale(12),
+    },
+    pickerText: {
+        fontSize: responsiveFontSizes.base,
+        color: colors.neutral[900],
+    },
+    placeholderText: {
+        color: colors.neutral[400],
+    },
+    pickerIcon: {
+        fontSize: moderateScale(12),
+        color: colors.neutral[400],
     },
     textArea: {
         minHeight: moderateScale(100),

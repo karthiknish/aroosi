@@ -77,10 +77,10 @@ export function PostForm({
   return (
     <div className="space-y-8 pb-24">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-neutral-900">
+        <h1 className="text-3xl font-bold text-neutral-dark">
           {mode === "create" ? "Create New Post" : "Edit Blog Post"}
         </h1>
-        <p className="text-neutral-500">
+        <p className="text-neutral-light">
           {mode === "create"
             ? "Write and publish a new blog post for your audience."
             : "Update existing blog post details and content."}
@@ -89,9 +89,9 @@ export function PostForm({
 
       <form onSubmit={onSubmit} className="space-y-8">
         {/* Basic Details Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/60 overflow-hidden">
-          <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50/50">
-            <h2 className="text-lg font-semibold text-neutral-800">
+        <div className="bg-base-light rounded-2xl shadow-sm border border-neutral/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral/5 bg-neutral/5">
+            <h2 className="text-lg font-semibold text-neutral-dark">
               Basic Details
             </h2>
           </div>
@@ -121,9 +121,9 @@ export function PostForm({
         </div>
 
         {/* Content Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/60 overflow-hidden">
-          <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-800">
+        <div className="bg-base-light rounded-2xl shadow-sm border border-neutral/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral/5 bg-neutral/5 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-neutral-dark">
               Content
             </h2>
             <Button
@@ -174,7 +174,7 @@ export function PostForm({
         </div>
 
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2">
+          <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-xl text-sm flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
@@ -192,7 +192,7 @@ export function PostForm({
         )}
 
         {/* Sticky Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-neutral-200/60 z-40 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
+        <div className="fixed bottom-0 left-0 right-0 bg-base-light/80 backdrop-blur-xl border-t border-neutral/10 z-40 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
           <div className="max-w-4xl mx-auto flex justify-end gap-3">
             {onReset && (
               <Button
@@ -200,7 +200,7 @@ export function PostForm({
                 variant="ghost"
                 onClick={onReset}
                 disabled={isSubmitting}
-                className="mr-auto text-neutral-500 hover:text-neutral-700"
+                className="mr-auto text-neutral-light hover:text-neutral-dark"
               >
                 Reset Form
               </Button>
@@ -210,7 +210,7 @@ export function PostForm({
               variant="outline"
               onClick={onCancel}
               disabled={isSubmitting}
-              className="min-w-[100px] rounded-full border-neutral-300"
+              className="min-w-[100px] rounded-full border-neutral/20"
             >
               Cancel
             </Button>
@@ -235,4 +235,5 @@ export function PostForm({
       </form>
     </div>
   );
+}
 }

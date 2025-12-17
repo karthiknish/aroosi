@@ -17,13 +17,13 @@ export function SearchHeader() {
         >
           <path
             d="M0 3C50 0.5 150 0.5 200 3"
-            stroke="#FDA4AF"
+            stroke="hsl(var(--primary-light))"
             strokeWidth="5"
             strokeLinecap="round"
           />
         </svg>
       </div>
-      <p className="text-lg text-neutral-light max-w-2xl mx-auto mb-8 font-nunito">
+      <p className="text-lg text-neutral-light max-w-2xl mx-auto mb-8 font-sans">
         Browse and filter profiles to find your ideal match on Aroosi.
       </p>
     </section>

@@ -163,18 +163,18 @@ export function PexelsImageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white gap-0 border-neutral-200 shadow-2xl sm:rounded-xl h-[85vh] flex flex-col">
-        <DialogHeader className="px-6 py-4 border-b border-neutral-100 bg-white shrink-0">
+      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-base-light gap-0 border-neutral/20 shadow-2xl sm:rounded-xl h-[85vh] flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b border-neutral/10 bg-base-light shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <ImageIcon className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold text-neutral-900">
+                <DialogTitle className="text-lg font-semibold text-neutral-dark">
                   Select Image
                 </DialogTitle>
-                <p className="text-xs text-neutral-500 mt-0.5">
+                <p className="text-xs text-neutral-light mt-0.5">
                   Search high-quality photos from Pexels
                 </p>
               </div>
@@ -182,7 +182,7 @@ export function PexelsImageModal({
           </div>
         </DialogHeader>
 
-        <div className="p-4 border-b border-neutral-100 bg-neutral-50/50 shrink-0">
+        <div className="p-4 border-b border-neutral/10 bg-neutral/5 shrink-0">
           <form
             onSubmit={handleSearch}
             className="relative flex gap-2"
@@ -190,13 +190,13 @@ export function PexelsImageModal({
             aria-label="Search images"
           >
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-light" />
               <Input
                 ref={inputRef}
                 placeholder="Search for images (e.g. wedding, couple, love)"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-9 bg-white border-neutral-200 focus-visible:ring-primary/20 focus-visible:border-primary"
+                className="pl-9 bg-base-light border-neutral/20 focus-visible:ring-primary/20 focus-visible:border-primary text-neutral-dark"
                 aria-label="Image search query"
               />
             </div>
@@ -209,12 +209,12 @@ export function PexelsImageModal({
             </Button>
           </form>
           
-          <div className="flex items-center justify-between mt-3 text-xs text-neutral-500 px-1">
+          <div className="flex items-center justify-between mt-3 text-xs text-neutral-light px-1">
             <div>
               {loading
                 ? "Searching..."
                 : error
-                  ? <span className="text-red-500">{error}</span>
+                  ? <span className="text-danger">{error}</span>
                   : hasResults
                     ? total
                       ? `Found ${total.toLocaleString()} results`
@@ -233,7 +233,7 @@ export function PexelsImageModal({
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-7 w-7"
+                    className="h-7 w-7 border-neutral/20 text-neutral-dark hover:bg-neutral/5"
                     onClick={onPrev}
                     disabled={!canPrev || loading}
                   >
@@ -243,7 +243,7 @@ export function PexelsImageModal({
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-7 w-7"
+                    className="h-7 w-7 border-neutral/20 text-neutral-dark hover:bg-neutral/5"
                     onClick={onNext}
                     disabled={!canNext || loading}
                   >
@@ -255,38 +255,38 @@ export function PexelsImageModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-50/30 p-4">
+        <div className="flex-1 overflow-y-auto min-h-0 bg-neutral/5 p-4">
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <Skeleton className="w-full aspect-[3/2] rounded-lg" />
-                  <Skeleton className="h-3 w-2/3 rounded" />
+                  <Skeleton className="w-full aspect-[3/2] rounded-lg bg-neutral/10" />
+                  <Skeleton className="h-3 w-2/3 rounded bg-neutral/10" />
                 </div>
               ))}
             </div>
           ) : error ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-500">
-              <div className="p-3 bg-red-50 rounded-full mb-3">
-                <ImageIcon className="w-6 h-6 text-red-400" />
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-light">
+              <div className="p-3 bg-danger/10 rounded-full mb-3">
+                <ImageIcon className="w-6 h-6 text-danger" />
               </div>
-              <p className="text-neutral-900 font-medium mb-1">Failed to load images</p>
+              <p className="text-neutral-dark font-medium mb-1">Failed to load images</p>
               <p className="text-sm">{error}</p>
             </div>
           ) : !hasResults && committedQuery ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-500">
-              <div className="p-3 bg-neutral-100 rounded-full mb-3">
-                <Search className="w-6 h-6 text-neutral-400" />
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-light">
+              <div className="p-3 bg-neutral/10 rounded-full mb-3">
+                <Search className="w-6 h-6 text-neutral-light" />
               </div>
-              <p className="text-neutral-900 font-medium mb-1">No images found</p>
+              <p className="text-neutral-dark font-medium mb-1">No images found</p>
               <p className="text-sm">Try adjusting your search terms</p>
             </div>
           ) : !hasResults ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-500">
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-neutral-light">
               <div className="p-3 bg-primary/5 rounded-full mb-3">
                 <ImageIcon className="w-8 h-8 text-primary/40" />
               </div>
-              <p className="text-neutral-900 font-medium mb-1">Start searching</p>
+              <p className="text-neutral-dark font-medium mb-1">Start searching</p>
               <p className="text-sm max-w-xs mx-auto">
                 Enter keywords above to find high-quality photos for your blog post
               </p>
@@ -308,7 +308,7 @@ export function PexelsImageModal({
                   role="option"
                   aria-selected={idx === activeIndex}
                   className={cn(
-                    "group relative aspect-[3/2] rounded-lg overflow-hidden bg-neutral-200 focus:outline-none transition-all duration-200",
+                    "group relative aspect-[3/2] rounded-lg overflow-hidden bg-neutral/10 focus:outline-none transition-all duration-200",
                     idx === activeIndex
                       ? "ring-2 ring-primary ring-offset-2"
                       : "hover:ring-2 hover:ring-primary/50 hover:ring-offset-1"
@@ -344,7 +344,7 @@ export function PexelsImageModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-neutral-100 bg-white shrink-0 flex items-center justify-between text-xs text-neutral-500">
+        <div className="p-4 border-t border-neutral/10 bg-base-light shrink-0 flex items-center justify-between text-xs text-neutral-light">
           <div className="flex items-center gap-2">
             <span>Photos provided by</span>
             <a
@@ -356,7 +356,7 @@ export function PexelsImageModal({
               Pexels
             </a>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-8">
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-neutral-dark hover:bg-neutral/5">
             Cancel
           </Button>
         </div>

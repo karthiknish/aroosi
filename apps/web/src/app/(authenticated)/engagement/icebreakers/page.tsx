@@ -11,10 +11,10 @@ export default function EngagementIcebreakersPage() {
     <div className="max-w-4xl mx-auto px-4 py-16">
       <div className="mb-8 text-center">
         <h1 className="text-3xl sm:text-4xl font-serif font-bold text-primary mb-3 flex items-center justify-center gap-2">
-          <Rocket className="w-6 h-6 text-rose-600" />
+          <Rocket className="w-6 h-6 text-primary" />
           Icebreaker Questions
         </h1>
-        <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
+        <p className="text-sm sm:text-base text-neutral-light max-w-2xl mx-auto">
           Share a little more about yourself. Answering icebreakers helps your profile surface earlier in search results and attracts more meaningful interests.
         </p>
       </div>

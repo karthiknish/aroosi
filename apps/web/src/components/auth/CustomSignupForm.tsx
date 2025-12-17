@@ -409,10 +409,10 @@ export default function CustomSignupForm({
   return (
     <div className="space-y-6 relative">
       {isLoading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-md">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-base-light/70 backdrop-blur-sm rounded-2xl">
           <div className="flex flex-col items-center gap-3 px-6 py-4 text-center">
-            <LoadingSpinner className="h-5 w-5" />
-            <div className="text-sm text-gray-700">
+            <LoadingSpinner className="h-6 w-6 text-primary" />
+            <div className="text-sm font-medium text-neutral-dark font-sans">
               {needsVerification
                 ? "Verifying code..."
                 : "Creating account & sending verification code..."}
@@ -420,49 +420,48 @@ export default function CustomSignupForm({
           </div>
         </div>
       )}
-      {process.env.NODE_ENV !== "production" && (
-        <div>needsVerification: {needsVerification ? "true" : "false"}</div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      
+      <form onSubmit={handleSubmit} className="space-y-5">
         {needsVerification ? (
           // Verification UI
-          <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="text-lg font-medium">Check your email</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                We sent a verification code to <strong>{formData.email}</strong>
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-serif font-bold text-neutral-dark">Check your email</h3>
+              <p className="text-sm text-neutral-light font-sans">
+                We sent a verification code to <strong className="text-primary">{formData.email}</strong>
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="verificationCode">Verification Code</Label>
-              <OtpInput
-                value={verificationCode}
-                onChange={(value) => {
-                  setVerificationCode(value);
-                  // Clear error when user starts typing
-                  if (fieldErrors.verificationCode) {
-                    setFieldErrors((prev) => ({
-                      ...prev,
-                      verificationCode: undefined,
-                    }));
-                  }
-                }}
-                length={6}
-                autoFocus
-                disabled={isLoading || resendLoading}
-              />
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <OtpInput
+                  value={verificationCode}
+                  onChange={(value) => {
+                    setVerificationCode(value);
+                    if (fieldErrors.verificationCode) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        verificationCode: undefined,
+                      }));
+                    }
+                  }}
+                  length={6}
+                  autoFocus
+                  disabled={isLoading || resendLoading}
+                />
+              </div>
               {fieldErrors.verificationCode ? (
-                <p id="verificationCode-error" className="text-xs text-red-600">
+                <p id="verificationCode-error" className="text-xs text-danger text-center font-sans">
                   {fieldErrors.verificationCode}
                 </p>
               ) : null}
-              <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+              
+              <div className="flex flex-col items-center gap-4 mt-4">
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={secondsLeft > 0 || resendLoading || isLoading}
-                  className="text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
+                  className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline font-sans"
                 >
                   {resendLoading
                     ? "Resending..."
@@ -470,33 +469,28 @@ export default function CustomSignupForm({
                       ? `Resend code in ${secondsLeft}s`
                       : "Resend code"}
                 </button>
-                <span>
-                  {verificationCode.length === 6
-                    ? "Ready to verify"
-                    : "Enter the 6-digit code"}
-                </span>
               </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-xl shadow-lg shadow-primary/20 font-sans font-semibold transition-all"
               disabled={isLoading || verificationCode.length !== 6}
             >
               {isLoading ? (
                 <>
                   <LoadingSpinner className="mr-2 h-4 w-4" />
-                  Verifying Email
+                  Verifying...
                 </>
               ) : (
                 "Verify Email"
               )}
             </Button>
 
-            <div className="text-center text-sm">
+            <div className="text-center">
               <button
                 type="button"
-                className="text-primary hover:underline"
+                className="text-sm text-neutral-light hover:text-primary transition-colors font-sans"
                 onClick={() => {
                   setNeedsVerification(false);
                   setVerificationCode("");
@@ -514,135 +508,101 @@ export default function CustomSignupForm({
         ) : (
           // Regular signup form
           <>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                placeholder="Enter your email"
-                required
-                disabled={isLoading}
-                aria-invalid={!!fieldErrors.email}
-                aria-describedby={fieldErrors.email ? "email-error" : undefined}
-              />
-              {fieldErrors.email ? (
-                <p id="email-error" className="text-xs text-red-600">
-                  {fieldErrors.email}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-neutral-dark font-sans">Email Address</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) =>
-                    handleInputChange("password", e.target.value)
-                  }
-                  placeholder="Create a strong password"
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="name@example.com"
                   required
                   disabled={isLoading}
-                  aria-invalid={!!fieldErrors.password}
-                  aria-describedby={
-                    fieldErrors.password ? "password-error" : undefined
-                  }
-                  className={`pr-10 ${
-                    passwordsMatch
-                      ? "border-green-500 focus-visible:ring-green-500"
-                      : fieldErrors.password
-                        ? "border-red-500 focus-visible:ring-red-500"
-                        : ""
-                  }`}
+                  className="h-12 rounded-xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                  aria-invalid={!!fieldErrors.email}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
+                {fieldErrors.email && (
+                  <p className="text-xs text-danger font-sans">{fieldErrors.email}</p>
+                )}
               </div>
-              {fieldErrors.password ? (
-                <p id="password-error" className="text-xs text-red-600 mt-1">
-                  {fieldErrors.password}
-                </p>
-              ) : null}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    handleInputChange("confirmPassword", e.target.value)
-                  }
-                  placeholder="Confirm your password"
-                  required
-                  disabled={isLoading}
-                  aria-invalid={!!fieldErrors.confirmPassword}
-                  aria-describedby={
-                    fieldErrors.confirmPassword
-                      ? "confirmPassword-error"
-                      : undefined
-                  }
-                  className={`pr-10 ${
-                    passwordsMatch
-                      ? "border-green-500 focus-visible:ring-green-500"
-                      : fieldErrors.confirmPassword
-                        ? "border-red-500 focus-visible:ring-red-500"
-                        : ""
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                  disabled={isLoading}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium text-neutral-dark font-sans">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    placeholder="Create a strong password"
+                    required
+                    disabled={isLoading}
+                    className={`h-12 pr-10 rounded-xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans ${
+                      passwordsMatch ? "border-success focus:ring-success/20" : ""
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-light hover:text-neutral-dark"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <p className="text-xs text-danger font-sans">{fieldErrors.password}</p>
+                )}
               </div>
-              {passwordsFilled && !fieldErrors.confirmPassword ? (
-                <p
-                  className={`text-xs mt-1 ${
-                    passwordsMatch ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {passwordsMatch
-                    ? "Passwords match"
-                    : "Passwords do not match"}
-                </p>
-              ) : null}
-              {fieldErrors.confirmPassword ? (
-                <p
-                  id="confirmPassword-error"
-                  className="text-xs text-red-600 mt-1"
-                >
-                  {fieldErrors.confirmPassword}
-                </p>
-              ) : null}
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-neutral-dark font-sans">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) =>
+                      handleInputChange("confirmPassword", e.target.value)
+                    }
+                    placeholder="Repeat your password"
+                    required
+                    disabled={isLoading}
+                    className={`h-12 pr-10 rounded-xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans ${
+                      passwordsMatch ? "border-success focus:ring-success/20" : ""
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-light hover:text-neutral-dark"
+                    disabled={isLoading}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {passwordsFilled && !fieldErrors.confirmPassword && (
+                  <p className={`text-[10px] font-medium font-sans ${passwordsMatch ? "text-success" : "text-danger"}`}>
+                    {passwordsMatch ? "✓ Passwords match" : "✗ Passwords do not match"}
+                  </p>
+                )}
+              </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12 bg-primary hover:bg-primary-dark text-white rounded-xl shadow-lg shadow-primary/20 font-sans font-semibold transition-all mt-2"
               disabled={
                 isLoading ||
                 !formData.email ||
@@ -668,13 +628,12 @@ export default function CustomSignupForm({
 
       {!needsVerification && (
         <>
-          <div className="relative">
+          <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-neutral/10" />
             </div>
-
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">
+              <span className="bg-base-light px-4 text-neutral-light font-sans font-medium">
                 Or continue with
               </span>
             </div>
@@ -683,14 +642,13 @@ export default function CustomSignupForm({
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full h-12 rounded-xl border-neutral/10 hover:bg-neutral/5 hover:border-neutral/30 transition-all font-sans font-medium flex items-center justify-center gap-3"
             onClick={async () => {
               setIsLoading(true);
               try {
                 const result = await signInWithGoogle();
                 if (!result.success) {
-                  const msg =
-                    result.error || "Google sign in failed. Please try again.";
+                  const msg = result.error || "Google sign in failed. Please try again.";
                   onError?.(msg);
                   showErrorToast(msg);
                   setIsLoading(false);
@@ -746,7 +704,6 @@ export default function CustomSignupForm({
                     );
                     if (!compResult.success && compResult.error) {
                       showErrorToast(compResult.error);
-                      // Do not abort; user can finish onboarding later.
                     }
                   }
                 } catch (e) {
@@ -755,7 +712,6 @@ export default function CustomSignupForm({
                   }
                 }
 
-                // Success: Clean up any onboarding/local wizard storage
                 try {
                   const mod = await import("@/lib/utils/onboardingStorage");
                   if (mod && typeof mod.clearAllOnboardingData === "function") {
@@ -763,14 +719,12 @@ export default function CustomSignupForm({
                   }
                 } catch {}
 
-                // Call onComplete callback if provided
                 try {
                   if (onComplete) onComplete();
                 } catch (err) {
                   console.warn("onComplete callback threw, continuing", err);
                 }
 
-                // Show loader during redirect to success page
                 await finalizeToSuccess();
               } catch (err) {
                 if (process.env.NODE_ENV !== "production") {
@@ -786,10 +740,30 @@ export default function CustomSignupForm({
             {isLoading ? (
               <>
                 <LoadingSpinner className="mr-2 h-4 w-4" />
-                Signing up with Google...
+                Connecting...
               </>
             ) : (
-              "Sign up with Google"
+              <>
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                Google
+              </>
             )}
           </Button>
         </>

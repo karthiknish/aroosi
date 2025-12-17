@@ -32,22 +32,22 @@ export function AccessibleField({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <Label htmlFor={id} className="text-sm font-medium text-gray-700">
+      <Label htmlFor={id} className="text-sm font-medium text-neutral">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-danger ml-1">*</span>}
       </Label>
       {control}
       {error ? (
         <div
           id={`${id}-error`}
-          className="text-sm text-red-600"
+          className="text-sm text-danger"
           role="alert"
           aria-live="polite"
         >
           {error}
         </div>
       ) : hint ? (
-        <div id={`${id}-hint`} className="text-sm text-gray-500">
+        <div id={`${id}-hint`} className="text-sm text-neutral-light">
           {hint}
         </div>
       ) : null}

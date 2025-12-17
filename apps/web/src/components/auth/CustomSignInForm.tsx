@@ -127,10 +127,10 @@ export default function CustomSignInForm({
   return (
     <div className="space-y-6 relative" data-testid="custom-sign-in-form">
       {isLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-md">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-base/70 backdrop-blur-sm rounded-md">
           <div className="flex flex-col items-center gap-3 px-6 py-4 text-center">
             <LoadingSpinner className="h-5 w-5" />
-            <div className="text-sm text-gray-700">Signing in...</div>
+            <div className="text-sm text-neutral">Signing in...</div>
           </div>
         </div>
       )}
@@ -164,7 +164,7 @@ export default function CustomSignInForm({
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-gray-700 transition-colors"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-neutral transition-colors"
               disabled={isLoading}
             >
               {showPassword ? (
@@ -198,7 +198,7 @@ export default function CustomSignInForm({
         </div>
 
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-muted-foreground">
+          <span className="bg-base px-2 text-muted-foreground">
             Or continue with
           </span>
         </div>

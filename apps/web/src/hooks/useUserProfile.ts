@@ -30,6 +30,10 @@ import {
   isOnboardingEssentialComplete,
   ONBOARDING_REQUIRED_FIELDS,
 } from "@/lib/userProfile/calculations";
+import {
+  submitProfile,
+  fetchUserProfile as fetchUserProfileApi,
+} from "@/lib/profile/userProfileApi";
 
 // Deprecated local implementation replaced by shared calculation helper
 const isOnboardingDone = (obj: Record<string, any> | undefined | null) =>
@@ -157,15 +161,15 @@ export function useUserProfile() {
     error: null,
   });
 
-  // Fetch user profile from Firestore
+  // Fetch user profile from API
   const fetchUserProfile = useCallback(
     async (userId: string): Promise<UserProfile | null> => {
       try {
-        const userDoc = await getDoc(doc(db, "users", userId));
-        if (!userDoc.exists()) {
-          return null;
+        const result = await fetchUserProfileApi(userId);
+        if (result.success && result.data) {
+          return result.data as UserProfile;
         }
-        return { id: userId, ...userDoc.data() } as UserProfile;
+        return null;
       } catch (error) {
         console.error("Error fetching user profile:", error);
         return null;
@@ -174,16 +178,13 @@ export function useUserProfile() {
     []
   );
 
-  // Create or update user profile in Firestore
+  // Create or update user profile via API
   const createOrUpdateUserProfile = useCallback(
     async (
       firebaseUser: FirebaseUser,
       additionalData?: Record<string, unknown>
     ): Promise<UserProfile> => {
       try {
-        const userRef = doc(db, "users", firebaseUser.uid);
-
-        // Compose a prospective profile snapshot for initial calculation BEFORE writing
         const prospective: any = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || "",
@@ -191,84 +192,23 @@ export function useUserProfile() {
           role: "user",
           ...(additionalData || {}),
         };
-        const initialCompletion = calculateProfileCompletion(prospective);
-        // Derive onboarding completion from essential fields instead of forcing true
-        const initialOnboarding = isOnboardingEssentialComplete(prospective);
 
-        const baseData: Record<string, unknown> = {
-          ...prospective,
-          // Explicit initial values (rules updated to allow these on create)
-          profileCompletionPercentage: initialCompletion,
-          updatedAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
-        };
-
-        // Use setDoc with merge to avoid race & simplify rules evaluation.
-        await setDoc(
-          userRef,
-          {
-            createdAt: serverTimestamp(),
-            ...baseData,
-          },
-          { merge: true }
-        );
-
-        // Retry read-after-write a few times (rarely needed but avoids transient nulls).
-        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-        let prof: UserProfile | null = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          prof = await fetchUserProfile(firebaseUser.uid);
-          if (prof) break;
-          await sleep(50 * Math.pow(2, attempt)); // 50,100,200,400,800
+        const result = await submitProfile(firebaseUser.uid, prospective, "create");
+        
+        if (!result.success) {
+          throw new Error(result.error || "Failed to create profile");
         }
-        if (!prof) {
-          // Fallback: synthesize minimal profile without throwing to avoid breaking signup UX.
-          console.warn(
-            "[createOrUpdateUserProfile] Fallback profile synthesis after retries failed"
-          );
-          return {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || "",
-            emailVerified: firebaseUser.emailVerified,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            role: "user",
-            profileCompletionPercentage: 0,
-          } as UserProfile;
-        }
-        // Post-create: recalc completion & onboarding in case of server merges or defaults
-        try {
-          if (prof) {
-            const recalculatedPct = calculateProfileCompletion(prof);
-            const needsUpdate =
-              prof.profileCompletionPercentage !== recalculatedPct;
-            if (needsUpdate) {
-              await setDoc(
-                userRef,
-                {
-                  profileCompletionPercentage: recalculatedPct,
-                  updatedAt: serverTimestamp(),
-                },
-                { merge: true }
-              );
-              prof = {
-                ...prof,
-                profileCompletionPercentage: recalculatedPct,
-              } as UserProfile;
-            }
-          }
-        } catch {}
-        return prof as UserProfile;
+
+        return result.data as UserProfile;
       } catch (error) {
         console.error("Error creating/updating user profile:", error);
         throw error;
       }
     },
-    [fetchUserProfile]
+    []
   );
 
-  // Update user profile in Firestore
+  // Update user profile via API
   const updateUserProfile = useCallback(
     async (updates: ProfileUpdates): Promise<UserProfile> => {
       try {
@@ -276,86 +216,19 @@ export function useUserProfile() {
           throw new Error("User not authenticated");
         }
 
-        const userRef = doc(db, "users", authState.user.uid);
-        const now = Date.now();
-
-        // Remove protected fields
-        const protectedFields = [
-          "id",
-          "uid",
-          "email",
-          "emailVerified",
-          "createdAt",
-          "role",
-        ];
-
-        protectedFields.forEach((field) => {
-          if (field in (updates as Record<string, unknown>)) {
-            delete (updates as Record<string, unknown>)[field];
-          }
-        });
-
-        const normalized: Record<string, unknown> = { ...updates };
-
-        // Normalize annualIncome (string -> number) if present
-        if (typeof normalized.annualIncome === "string") {
-          const parsed = parseInt(normalized.annualIncome as string, 10);
-          if (!isNaN(parsed)) normalized.annualIncome = parsed;
+        const result = await submitProfile(authState.user.uid, updates as any, "update");
+        
+        if (!result.success) {
+          throw new Error(result.error || "Failed to update profile");
         }
 
-        // Normalize height: accept formats like "180 cm" or "5'11"— store numeric centimeters
-        if (typeof normalized.height === "string") {
-          const h = normalized.height as string;
-          let cm: number | undefined;
-          const cmMatch = h.match(/(\d+(?:\.\d+)?)\s*cm/i);
-          if (cmMatch) {
-            cm = parseFloat(cmMatch[1]);
-          } else if (/\d+'\d+"?/.test(h)) {
-            // feet'inches"
-            const feetIn = h.match(/(\d+)'(\d+)/);
-            if (feetIn) {
-              const feet = parseInt(feetIn[1], 10);
-              const inches = parseInt(feetIn[2], 10);
-              cm = Math.round((feet * 12 + inches) * 2.54);
-            }
-          } else if (/^\d{2,3}$/.test(h)) {
-            const val = parseInt(h, 10);
-            if (val > 90 && val < 250) cm = val; // plausible human height in cm
-          }
-          if (cm) normalized.heightCm = cm; // store derived numeric value
-        }
-
-        // Merge current profile + updates to evaluate completion
-        const prospective = {
-          ...(authState.profile || {}),
-          ...normalized,
-        } as Partial<UserProfile> & Record<string, unknown>;
-
-        const profileCompletionPercentage =
-          calculateProfileCompletion(prospective);
-
-        const updateData: Record<string, unknown> = {
-          ...normalized,
-          updatedAt: now,
-          profileCompletionPercentage,
-        };
-
-        // onboarding flag removed
-
-        await setDoc(userRef, updateData, { merge: true });
-
-        // Fetch updated profile
-        const updatedProfile = await fetchUserProfile(authState.user.uid);
-        if (!updatedProfile) {
-          throw new Error("Failed to load updated profile");
-        }
-        return updatedProfile;
+        return result.data as UserProfile;
       } catch (error) {
         console.error("Error updating user profile:", error);
         throw error;
       }
     },
-    [authState.user, fetchUserProfile]
+    [authState.user]
   );
 
   // Initialize auth state listener

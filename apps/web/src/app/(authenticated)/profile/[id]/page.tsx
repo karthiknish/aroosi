@@ -412,14 +412,14 @@ export default function ProfileDetailPage() {
   }) {
     return (
       <div
-        className={`flex items-center gap-3 mb-2 text-neutral-700 ${className}`}
+        className={`flex items-center gap-3 mb-2 text-neutral-dark ${className}`}
       >
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
           {icon}
         </div>
         <div className="flex flex-col">
-          <span className="text-xs text-neutral-500 font-medium uppercase tracking-wider">{label}</span>
-          <span className="text-sm md:text-base font-medium text-neutral-800">{value ?? "-"}</span>
+          <span className="text-xs text-neutral-light font-medium uppercase tracking-wider">{label}</span>
+          <span className="text-sm md:text-base font-medium text-neutral-dark">{value ?? "-"}</span>
         </div>
       </div>
     );
@@ -564,10 +564,10 @@ export default function ProfileDetailPage() {
           });
         }}
       />
-      <div className="relative w-full min-h-screen overflow-hidden bg-gradient-to-b from-rose-50/50 via-white to-white py-16 px-4 flex items-center justify-center overflow-x-hidden">
+      <div className="relative w-full min-h-screen overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
         {/* Decorative color pop circles */}
-        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary/20 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100/30 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/10 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
         
         <motion.div
           key="profile-card"
@@ -585,7 +585,7 @@ export default function ProfileDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowReportModal(true)}
-                    className="bg-white/95 hover:bg-white text-gray-700 border border-gray-200 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="bg-white/95 hover:bg-white text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     Safety
                   </button>
@@ -593,7 +593,7 @@ export default function ProfileDetailPage() {
                     <button
                       type="button"
                       onClick={handleUnblockUser}
-                      className="bg-white/95 hover:bg-white text-gray-700 border border-gray-200 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="bg-white/95 hover:bg-white text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       Unblock
                     </button>
@@ -651,12 +651,12 @@ export default function ProfileDetailPage() {
                           <h1 className="text-2xl font-semibold drop-shadow flex items-center gap-2">
                             {profile?.fullName || "-"}
                             {compatData?.score != null && (
-                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/90 text-white">
+                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-warning text-white">
                                 {compatData.score}%
                               </span>
                             )}
                           </h1>
-                          <div className="text-sm text-gray-100 flex flex-wrap items-center gap-2">
+                          <div className="text-sm text-base-light flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1">
                               <MapPin className="w-4 h-4" />
                               {profile?.city || "-"}
@@ -676,7 +676,7 @@ export default function ProfileDetailPage() {
                             }
                             className={`flex items-center justify-center rounded-full w-14 h-14 shadow-lg border backdrop-blur bg-white/90 active:scale-95 transition ${
                               alreadySentInterest
-                                ? "border-accent-200 text-primary"
+                                ? "border-primary/20 text-primary"
                                 : "bg-primary text-white border-primary"
                             }`}
                             variants={buttonVariants}
@@ -858,8 +858,8 @@ export default function ProfileDetailPage() {
                         variant="secondary"
                         className={`text-xs px-2 py-0.5 rounded-full ${
                           interestStatusData?.status === "pending"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-warning/10 text-warning"
+                            : "bg-success/10 text-success"
                         }`}
                       >
                         {interestStatusData?.status === "pending"
@@ -873,7 +873,7 @@ export default function ProfileDetailPage() {
                     typeof viewersCount === "number" && (
                       <Badge
                         variant="outline"
-                        className="text-gray-700 border-gray-300 text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                        className="text-neutral-dark border-neutral/30 text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
                       >
                         <Eye className="w-3 h-3" />
                         {viewersCount}
@@ -884,7 +884,7 @@ export default function ProfileDetailPage() {
                   <MapPin className="w-5 h-5 text-accent" />
                   {profile?.city ?? "-"}, {profile?.country ?? "-"}
                   {compatData?.score != null && (
-                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-warning/10 text-warning border border-warning/20">
                       Compatibility: {compatData.score}%
                     </span>
                   )}
@@ -895,7 +895,7 @@ export default function ProfileDetailPage() {
                     {iceQs.slice(0, 2).map((q) => (
                       <span
                         key={q.id}
-                        className="text-[10px] px-2 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-200"
+                        className="text-[10px] px-2 py-1 rounded-full bg-primary/5 text-primary border border-primary/10"
                       >
                         {q.text}
                       </span>
@@ -924,7 +924,7 @@ export default function ProfileDetailPage() {
                   {Array.from({ length: skeletonCount }).map((_, idx) => (
                     <div
                       key={idx}
-                      className="w-full aspect-square bg-gray-100 animate-pulse rounded-lg"
+                      className="w-full aspect-square bg-neutral/5 animate-pulse rounded-lg"
                     />
                   ))}
                 </motion.div>
@@ -968,7 +968,7 @@ export default function ProfileDetailPage() {
                             />
                           </div>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
+                          <div className="w-full h-full flex items-center justify-center bg-neutral/5 rounded-lg overflow-hidden">
                             <Image
                               src="/placeholder.jpg"
                               alt="Profile placeholder"
@@ -987,7 +987,7 @@ export default function ProfileDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mt-8 mb-8">
                 {/* Basic Information */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Basic Information
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1019,7 +1019,7 @@ export default function ProfileDetailPage() {
 
                 {/* Education & Career */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Education & Career
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1038,7 +1038,7 @@ export default function ProfileDetailPage() {
 
                 {/* Location */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Location
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1057,7 +1057,7 @@ export default function ProfileDetailPage() {
 
                 {/* Lifestyle */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Lifestyle
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1086,7 +1086,7 @@ export default function ProfileDetailPage() {
 
                 {/* Religious Information */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Religious Information
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1110,7 +1110,7 @@ export default function ProfileDetailPage() {
 
                 {/* Cultural Values */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Cultural Values
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1155,7 +1155,7 @@ export default function ProfileDetailPage() {
 
                 {/* Partner Preferences */}
                 <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                     Partner Preferences
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
@@ -1185,11 +1185,11 @@ export default function ProfileDetailPage() {
 
               {/* About Me */}
               <div className="space-y-4 mb-8">
-                <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-800 text-xl border-b border-neutral-100 pb-2">
+                <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
                   About Me
                 </h3>
-                <div className="bg-rose-50/50 p-6 rounded-2xl border border-rose-100/50">
-                  <p className="text-neutral-700 leading-relaxed whitespace-pre-wrap">
+                <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
+                  <p className="text-neutral-dark leading-relaxed whitespace-pre-wrap">
                     {profile?.aboutMe ?? "No description provided."}
                   </p>
                 </div>
@@ -1218,7 +1218,7 @@ export default function ProfileDetailPage() {
                         }
                         className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 font-nunito text-lg font-semibold ${
                           alreadySentInterest
-                            ? "bg-accent-100 hover:bg-accent-200 text-primary border border-accent-200"
+                            ? "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
                             : "bg-primary hover:bg-primary-dark text-white"
                         }`}
                         variants={buttonVariants}
@@ -1298,7 +1298,7 @@ export default function ProfileDetailPage() {
                   ["mutual", "accepted"].includes(
                     interestStatusData?.status || ""
                   ) && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full shadow font-semibold">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-full shadow font-semibold">
                       <svg
                         className="w-5 h-5"
                         viewBox="0 0 24 24"

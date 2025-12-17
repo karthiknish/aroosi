@@ -47,9 +47,9 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     return (
       <Card className={`p-6 ${className}`}>
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-neutral-light/20 rounded w-1/4 mb-4"></div>
+          <div className="h-6 bg-neutral-light/20 rounded w-1/2 mb-2"></div>
+          <div className="h-4 bg-neutral-light/20 rounded w-3/4"></div>
         </div>
       </Card>
     );
@@ -58,7 +58,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   if (error) {
     return (
       <Card className={`p-6 ${className}`}>
-        <div className="text-center text-red-600">
+        <div className="text-center text-danger">
           <p>Failed to load subscription status</p>
         </div>
       </Card>
@@ -97,7 +97,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           {effectivePlanKey === "premiumPlus" && (
             <Badge
               variant="outline"
-              className="text-yellow-600 border-yellow-600"
+              className="text-accent-dark border-accent"
             >
               ✨ Spotlight
             </Badge>
@@ -105,7 +105,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           {effectivePlanKey !== planKey && (
             <Badge
               variant="outline"
-              className="border-indigo-500 text-indigo-600"
+              className="border-secondary text-secondary"
             >
               Admin Access
             </Badge>
@@ -113,30 +113,30 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </div>
 
         {config.price && (
-          <span className="text-sm text-gray-600">{config.price}/{config.billing}</span>
+          <span className="text-sm text-neutral-light">{config.price}/{config.billing}</span>
         )}
       </div>
 
       {/* Status indicators */}
       {isCancelScheduled && status.expiresAt && (
-        <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="text-orange-800 text-sm font-medium">
+        <div className="mb-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+          <p className="text-warning text-sm font-medium">
             Cancellation scheduled. Access ends on{" "}
             {new Date(status.expiresAt).toLocaleDateString()}.
           </p>
         </div>
       )}
       {isExpired && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm font-medium">
+        <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-lg">
+          <p className="text-danger text-sm font-medium">
             Your subscription has expired
           </p>
         </div>
       )}
 
       {isExpiringSoon && !isExpired && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-yellow-800 text-sm font-medium">
+        <div className="mb-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+          <p className="text-warning text-sm font-medium">
             Expires in {status.daysRemaining} days
           </p>
         </div>
@@ -146,8 +146,8 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       <div className="space-y-3 mb-6">
         {planKey !== "free" && status.expiresAt && (
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Expires:</span>
-            <span className="font-medium">
+            <span className="text-neutral-light">Expires:</span>
+            <span className="font-medium text-neutral-dark">
               {new Date(status.expiresAt).toLocaleDateString()}
             </span>
           </div>
@@ -155,22 +155,22 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
 
         {effectivePlanKey === "premiumPlus" && (
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Premium Plus benefits:</span>
-            <span className="font-medium">Includes profile boosts</span>
+            <span className="text-neutral-light">Premium Plus benefits:</span>
+            <span className="font-medium text-neutral-dark">Includes profile boosts</span>
           </div>
         )}
       </div>
 
       {/* Features list */}
       <div className="mb-6">
-        <h4 className="font-medium mb-2">Features:</h4>
+        <h4 className="font-medium mb-2 text-neutral-dark">Features:</h4>
         <ul className="space-y-1">
           {config.features.map((feature, index) => (
             <li
               key={index}
-              className="text-sm text-gray-600 flex items-center gap-2"
+              className="text-sm text-neutral-light flex items-center gap-2"
             >
-              <span className="text-green-500">✓</span>
+              <span className="text-success">✓</span>
               {feature.text}
             </li>
           ))}
@@ -180,7 +180,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       {/* Actions */}
       <div className="flex gap-3">
         {updating && (
-          <div className="w-full text-sm text-center py-2 rounded border border-gray-200 bg-gray-50 animate-pulse">
+          <div className="w-full text-sm text-center py-2 rounded border border-neutral/10 bg-neutral/5 animate-pulse">
             Updating plan…
           </div>
         )}

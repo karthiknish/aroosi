@@ -50,17 +50,17 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
   const getActivityConfig = (type: ActivityItem["type"]) => {
     switch (type) {
       case "registration":
-        return { icon: UserPlus, color: "text-blue-600", bg: "bg-blue-50" };
+        return { icon: UserPlus, color: "text-info", bg: "bg-info/10" };
       case "match":
-        return { icon: Heart, color: "text-pink-600", bg: "bg-pink-50" };
+        return { icon: Heart, color: "text-primary", bg: "bg-primary/10" };
       case "message":
-        return { icon: MessageSquare, color: "text-purple-600", bg: "bg-purple-50" };
+        return { icon: MessageSquare, color: "text-secondary", bg: "bg-secondary/10" };
       case "blog":
-        return { icon: FileText, color: "text-teal-600", bg: "bg-teal-50" };
+        return { icon: FileText, color: "text-success", bg: "bg-success/10" };
       case "approval":
-        return { icon: CheckCircle2, color: "text-orange-600", bg: "bg-orange-50" };
+        return { icon: CheckCircle2, color: "text-warning", bg: "bg-warning/10" };
       default:
-        return { icon: AlertCircle, color: "text-slate-600", bg: "bg-slate-50" };
+        return { icon: AlertCircle, color: "text-neutral-light", bg: "bg-neutral/5" };
     }
   };
 
@@ -68,9 +68,9 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
     if (!status) return null;
     
     const variants = {
-      pending: "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100",
-      approved: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100",
-      rejected: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
+      pending: "bg-warning/10 text-warning border-warning/30 hover:bg-warning/20",
+      approved: "bg-success/10 text-success border-success/30 hover:bg-success/20",
+      rejected: "bg-danger/10 text-danger border-danger/30 hover:bg-danger/20",
     };
 
     return (
@@ -82,18 +82,18 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
 
   if (loading) {
     return (
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 pb-4">
-          <CardTitle className="text-lg font-semibold text-slate-900">Recent Activity</CardTitle>
+      <Card className="border-neutral/10 shadow-sm">
+        <CardHeader className="border-b border-neutral/5 pb-4">
+          <CardTitle className="text-lg font-semibold text-neutral-dark">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-6">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-start space-x-4 animate-pulse">
-                <div className="w-10 h-10 bg-slate-100 rounded-full"></div>
+                <div className="w-10 h-10 bg-neutral/10 rounded-full"></div>
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-slate-100 rounded w-3/4"></div>
-                  <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+                  <div className="h-4 bg-neutral/10 rounded w-3/4"></div>
+                  <div className="h-3 bg-neutral/10 rounded w-1/2"></div>
                 </div>
               </div>
             ))}
@@ -106,20 +106,20 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
   const activityList = activities || [];
 
   return (
-    <Card className="border-slate-200 shadow-sm h-full">
-      <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
+    <Card className="border-neutral/10 shadow-sm h-full">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-neutral/5 pb-4">
         <div className="space-y-1">
-          <CardTitle className="text-lg font-semibold text-slate-900">Recent Activity</CardTitle>
-          <p className="text-sm text-slate-500">Latest actions across the platform</p>
+          <CardTitle className="text-lg font-semibold text-neutral-dark">Recent Activity</CardTitle>
+          <p className="text-sm text-neutral-light">Latest actions across the platform</p>
         </div>
-        <Button variant="outline" size="sm" className="text-slate-600">
+        <Button variant="outline" size="sm" className="text-neutral">
           View All
         </Button>
       </CardHeader>
       <CardContent className="pt-6">
         {activityList.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            <Clock className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+          <div className="text-center py-12 text-neutral-light">
+            <Clock className="h-12 w-12 mx-auto mb-3 text-neutral/30" />
             <p>No recent activity found</p>
           </div>
         ) : (
@@ -136,22 +136,22 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
                   
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-slate-900 truncate pr-2">
+                      <p className="text-sm font-medium text-neutral-dark truncate pr-2">
                         {activity.title}
                       </p>
-                      <span className="text-xs text-slate-400 whitespace-nowrap">
+                      <span className="text-xs text-neutral-light whitespace-nowrap">
                         {formatDistanceToNow(activity.timestamp)}
                       </span>
                     </div>
                     
-                    <p className="text-sm text-slate-600 mb-2 line-clamp-1">
+                    <p className="text-sm text-neutral mb-2 line-clamp-1">
                       {activity.description}
                     </p>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         {activity.user && (
-                          <span className="text-xs font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-medium text-neutral-light bg-neutral/5 px-2 py-0.5 rounded-full">
                             {activity.user.name}
                           </span>
                         )}
@@ -163,7 +163,7 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
                         size="icon"
                         className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mr-2"
                       >
-                        <ExternalLink className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                        <ExternalLink className="h-3 w-3 text-neutral-light hover:text-neutral" />
                       </Button>
                     </div>
                   </div>
@@ -175,4 +175,5 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
       </CardContent>
     </Card>
   );
+}
 }

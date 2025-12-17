@@ -93,18 +93,18 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
   return (
     <div className="w-full overflow-x-hidden">
       {/* Decorative background wrapper to align with blog/search aesthetics */}
-      <div className="pt-24 sm:pt-28 md:pt-32 pb-12 bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50 relative overflow-hidden">
+      <div className="pt-24 sm:pt-28 md:pt-32 pb-12 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 relative overflow-hidden">
         {/* Floating gradient circles */}
-        <div className="absolute left-1/4 top-16 w-32 h-32 bg-gradient-to-r from-pink-200 to-rose-200 rounded-full opacity-40 blur-3xl animate-pulse z-0" />
-        <div className="absolute right-1/4 top-28 w-24 h-24 bg-gradient-to-r from-yellow-200 to-orange-200 rounded-full opacity-30 blur-2xl animate-pulse z-0" />
-        <div className="absolute left-1/3 bottom-10 w-20 h-20 bg-gradient-to-r from-orange-200 to-pink-200 rounded-full opacity-25 blur-xl animate-pulse z-0" />
+        <div className="absolute left-1/4 top-16 w-32 h-32 bg-gradient-to-r from-primary/20 to-primary/10 rounded-full opacity-40 blur-3xl animate-pulse z-0" />
+        <div className="absolute right-1/4 top-28 w-24 h-24 bg-gradient-to-r from-accent/20 to-accent/10 rounded-full opacity-30 blur-2xl animate-pulse z-0" />
+        <div className="absolute left-1/3 bottom-10 w-20 h-20 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full opacity-25 blur-xl animate-pulse z-0" />
 
         <div className="container mx-auto max-w-4xl px-4 relative z-10">
           {/* Card wrapper */}
-          <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl border border-pink-100 shadow-xl p-6 md:p-10">
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl border border-primary/10 shadow-xl p-6 md:p-10">
             {/* Small decorative pops inside card */}
-            <div className="pointer-events-none absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-pink-200 to-rose-300 rounded-full opacity-70" />
-            <div className="pointer-events-none absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-full opacity-60" />
+            <div className="pointer-events-none absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/30 rounded-full opacity-70" />
+            <div className="pointer-events-none absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-accent/20 to-accent/30 rounded-full opacity-60" />
 
             <article>
               <header className="mb-6">

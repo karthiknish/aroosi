@@ -87,35 +87,35 @@ export function ContactTable({
 
   return (
     <div className="space-y-4">
-      <div className="border rounded-md bg-white shadow-sm">
+      <div className="border border-neutral/10 rounded-md bg-base-light shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50/50">
-              <TableHead className="font-semibold">Name</TableHead>
-              <TableHead className="font-semibold">Email</TableHead>
-              <TableHead className="font-semibold">Message Preview</TableHead>
-              <TableHead className="font-semibold">Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+            <TableRow className="bg-neutral/5">
+              <TableHead className="font-semibold text-neutral-dark">Name</TableHead>
+              <TableHead className="font-semibold text-neutral-dark">Email</TableHead>
+              <TableHead className="font-semibold text-neutral-dark">Message Preview</TableHead>
+              <TableHead className="font-semibold text-neutral-dark">Date</TableHead>
+              <TableHead className="text-right text-neutral-dark">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {contacts.map((contact) => (
               <TableRow 
                 key={contact._id ?? contact.id ?? `${contact.email}-${contact.createdAt}`}
-                className="hover:bg-slate-50/50 transition-colors"
+                className="hover:bg-neutral/5 transition-colors border-neutral/10"
               >
-                <TableCell className="font-medium text-slate-900">
+                <TableCell className="font-medium text-neutral-dark">
                   {contact.name}
                 </TableCell>
-                <TableCell className="text-slate-600">
+                <TableCell className="text-neutral-light">
                   {contact.email}
                 </TableCell>
                 <TableCell className="max-w-md">
-                  <p className="truncate text-slate-500">
+                  <p className="truncate text-neutral-light">
                     {contact.message}
                   </p>
                 </TableCell>
-                <TableCell className="text-slate-500 whitespace-nowrap">
+                <TableCell className="text-neutral-light whitespace-nowrap">
                   {contact.createdAt
                     ? new Date(contact.createdAt).toLocaleDateString(undefined, {
                         month: "short",
@@ -129,7 +129,7 @@ export function ContactTable({
                     variant="ghost"
                     size="icon"
                     onClick={() => onViewContact(contact)}
-                    className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                    className="h-8 w-8 text-neutral-light hover:text-info hover:bg-info/10"
                   >
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View details</span>
@@ -143,7 +143,7 @@ export function ContactTable({
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-neutral-light">
           Page {page}
         </p>
         <div className="flex items-center gap-2">
@@ -152,7 +152,7 @@ export function ContactTable({
             size="sm"
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="h-8"
+            className="h-8 border-neutral/20 text-neutral-dark hover:bg-neutral/5"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
@@ -162,7 +162,7 @@ export function ContactTable({
             size="sm"
             onClick={() => onPageChange(page + 1)}
             disabled={contacts.length < pageSize}
-            className="h-8"
+            className="h-8 border-neutral/20 text-neutral-dark hover:bg-neutral/5"
           >
             Next
             <ChevronRight className="h-4 w-4 ml-1" />

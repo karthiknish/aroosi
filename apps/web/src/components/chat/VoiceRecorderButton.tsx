@@ -203,10 +203,10 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({
         className={cn(
           "flex items-center gap-2 rounded-full px-4 py-2 text-white transition-all duration-200",
           isRecording
-            ? "bg-red-600 hover:bg-red-700"
+            ? "bg-danger hover:bg-danger-dark"
             : canSendVoice
-              ? "bg-blue-600 hover:bg-blue-700"
-              : "bg-gray-400 cursor-not-allowed",
+              ? "bg-primary hover:bg-primary-dark"
+              : "bg-neutral/40 cursor-not-allowed",
           "disabled:opacity-50",
           className
         )}
@@ -221,7 +221,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({
         ) : isRecording ? (
           <>
             <motion.div
-              className="h-2 w-2 rounded-full bg-white"
+              className="h-2 w-2 rounded-full bg-base-light"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 0.8, repeat: Infinity }}
             />
@@ -240,7 +240,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({
         <motion.button
           type="button"
           onClick={cancelRecording}
-          className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          className="px-3 py-2 text-sm text-neutral-light hover:text-neutral hover:bg-neutral/5 rounded-lg transition-colors"
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}
@@ -251,7 +251,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({
 
       {/* Permission/Subscription messages */}
       {hasPermission === false && (
-        <div className="text-xs text-orange-600 ml-2">
+        <div className="text-xs text-warning ml-2">
           Microphone permission required
         </div>
       )}
@@ -259,7 +259,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({
       {!canSendVoice && (
         <button
           type="button"
-          className="text-xs text-blue-600 ml-2 underline"
+          className="text-xs text-primary ml-2 underline"
           onClick={onUpgradeRequired}
           aria-label="Upgrade to Premium to send voice messages"
         >

@@ -47,18 +47,18 @@ export function SimilarProfiles({ baseCity, baseCountry, baseMotherTongue, exclu
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       {items.map((p) => (
-        <Card key={p.userId} className="hover:shadow-md transition">
+        <Card key={p.userId} className="hover:shadow-md transition border-neutral/10">
           <CardContent className="p-3">
-            <div className="w-full aspect-square rounded-md overflow-hidden bg-gray-100 mb-2">
+            <div className="w-full aspect-square rounded-md overflow-hidden bg-neutral/5 mb-2">
               {p.profile.profileImageUrls && p.profile.profileImageUrls[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.profile.profileImageUrls[0]} alt={p.profile.fullName || "Profile"} className="w-full h-full object-cover" />
               ) : null}
             </div>
-            <div className="text-sm font-medium truncate">{p.profile.fullName || "Member"}</div>
-            <div className="text-xs text-gray-600 truncate">{p.profile.city || ""}</div>
+            <div className="text-sm font-medium truncate text-neutral-dark">{p.profile.fullName || "Member"}</div>
+            <div className="text-xs text-neutral-light truncate">{p.profile.city || ""}</div>
             <div className="mt-2 text-right">
-              <Link href={`/profile/${p.userId}`} className="text-xs text-primary hover:underline">
+              <Link href={`/profile/${p.userId}`} className="text-xs text-primary hover:underline font-medium">
                 View
               </Link>
             </div>

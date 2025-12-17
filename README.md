@@ -14,7 +14,7 @@ aroosi/
 │   └── config/           # Shared configs (TypeScript, ESLint)
 ├── firebase.json         # Firebase project config
 ├── firestore.rules       # Firestore security rules
-└── pnpm-workspace.yaml   # pnpm monorepo config
+└── package.json          # npm monorepo config
 ```
 
 ## Quick Start
@@ -22,40 +22,37 @@ aroosi/
 ### Prerequisites
 
 - Node.js 18+
-- pnpm 8+
+- npm 9+
 - Xcode (for iOS development)
 - Firebase CLI
 
 ### Installation
 
 ```bash
-# Install pnpm if you haven't
-npm install -g pnpm
-
 # Install all dependencies
-pnpm install
+npm install
 ```
 
 ### Development
 
 **Web App:**
 ```bash
-pnpm dev
+npm run dev
 # or
-cd apps/web && pnpm dev
+cd apps/web && npm run dev
 ```
 
 **Mobile App:**
 ```bash
 cd apps/mobile
-pnpm start
+npm start
 ```
 
 **iOS Local Build:**
 ```bash
 cd apps/mobile
-pnpm ios:build
-pnpm ios:open  # Opens Xcode
+npm run ios:build
+npm run ios:open  # Opens Xcode
 ```
 
 ## Firebase Setup
@@ -94,11 +91,11 @@ Shared configuration files:
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Start web development server |
-| `pnpm dev:mobile` | Start mobile Expo server |
-| `pnpm build` | Build web app |
-| `pnpm lint` | Lint all packages |
-| `pnpm type-check` | Type check all packages |
+| `npm run dev` | Start web development server |
+| `npm run dev:mobile` | Start mobile Expo server |
+| `npm run build` | Build web app |
+| `npm run lint` | Lint all packages |
+| `npm run type-check` | Type check all packages |
 
 ## License
 

@@ -60,9 +60,9 @@ export function SubscriptionGuard({
     switch (requiredPlan) {
       case "premium":
         return {
-          icon: <Crown className="w-6 h-6 text-purple-500" />,
+          icon: <Crown className="w-6 h-6 text-secondary" />,
           badge: (
-            <Badge className="bg-accent text-white">
+            <Badge className="bg-secondary text-white">
               <Crown className="w-3 h-3 mr-1" />
               Premium Required
             </Badge>
@@ -71,13 +71,13 @@ export function SubscriptionGuard({
           description:
             "This feature is available to Premium and Premium Plus subscribers.",
           buttonText: "Upgrade to Premium",
-          buttonClass: "bg-accent text-white hover:brightness-95",
+          buttonClass: "bg-secondary text-white hover:brightness-95",
         };
       case "premiumPlus":
         return {
-          icon: <Zap className="w-6 h-6 text-orange-500" />,
+          icon: <Zap className="w-6 h-6 text-warning" />,
           badge: (
-            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+            <Badge className="bg-gradient-to-r from-warning-light to-warning-dark text-white">
               <Zap className="w-3 h-3 mr-1" />
               Premium Plus Required
             </Badge>
@@ -87,16 +87,16 @@ export function SubscriptionGuard({
             "This exclusive feature is only available to Premium Plus subscribers.",
           buttonText: "Upgrade to Premium Plus",
           buttonClass:
-            "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600",
+            "bg-gradient-to-r from-warning-light to-warning-dark hover:from-warning hover:to-warning-dark",
         };
       default:
         return {
-          icon: <Lock className="w-6 h-6 text-gray-500" />,
+          icon: <Lock className="w-6 h-6 text-neutral-light" />,
           badge: <Badge variant="outline">Upgrade Required</Badge>,
           title: "Feature Locked",
           description: "Upgrade your plan to access this feature.",
           buttonText: "View Plans",
-          buttonClass: "bg-gray-600 hover:bg-gray-700",
+          buttonClass: "bg-neutral hover:bg-neutral-dark",
         };
     }
   };
@@ -192,7 +192,7 @@ export function FeatureBadge({ plan, className = "" }: FeatureBadgeProps) {
     case "premium":
       return (
         <Badge
-          className={`bg-gradient-to-r from-purple-500 to-pink-500 text-white ${className}`}
+          className={`bg-gradient-to-r from-secondary-light to-secondary-dark text-white ${className}`}
         >
           <Crown className="w-3 h-3 mr-1" />
           Premium
@@ -201,7 +201,7 @@ export function FeatureBadge({ plan, className = "" }: FeatureBadgeProps) {
     case "premiumPlus":
       return (
         <Badge
-          className={`bg-gradient-to-r from-yellow-500 to-orange-500 text-white ${className}`}
+          className={`bg-gradient-to-r from-warning-light to-warning-dark text-white ${className}`}
         >
           <Zap className="w-3 h-3 mr-1" />
           Premium Plus

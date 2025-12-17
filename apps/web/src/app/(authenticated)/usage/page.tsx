@@ -65,12 +65,12 @@ const chartConfig: ChartConfig = {
 };
 
 const FEATURE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  message_sent: { label: "Messages", icon: <MessageSquare className="h-4 w-4" />, color: "text-blue-500" },
-  profile_view: { label: "Profile Views", icon: <Eye className="h-4 w-4" />, color: "text-emerald-500" },
-  search_performed: { label: "Searches", icon: <Search className="h-4 w-4" />, color: "text-amber-500" },
-  interest_sent: { label: "Interests", icon: <Heart className="h-4 w-4" />, color: "text-pink-500" },
-  profile_boost_used: { label: "Boosts", icon: <Zap className="h-4 w-4" />, color: "text-purple-500" },
-  voice_message_sent: { label: "Voice Messages", icon: <Mic className="h-4 w-4" />, color: "text-indigo-500" },
+  message_sent: { label: "Messages", icon: <MessageSquare className="h-4 w-4" />, color: "text-info" },
+  profile_view: { label: "Profile Views", icon: <Eye className="h-4 w-4" />, color: "text-success" },
+  search_performed: { label: "Searches", icon: <Search className="h-4 w-4" />, color: "text-warning" },
+  interest_sent: { label: "Interests", icon: <Heart className="h-4 w-4" />, color: "text-primary" },
+  profile_boost_used: { label: "Boosts", icon: <Zap className="h-4 w-4" />, color: "text-accent" },
+  voice_message_sent: { label: "Voice Messages", icon: <Mic className="h-4 w-4" />, color: "text-secondary" },
 };
 
 export default function UsagePage() {
@@ -164,16 +164,16 @@ export default function UsagePage() {
   }, [history, page]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pt-24 pb-12">
+    <div className="min-h-screen bg-base-light pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Usage & Analytics</h1>
-            <p className="text-slate-500 mt-1">Track your activity and plan usage limits.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-neutral-dark">Usage & Analytics</h1>
+            <p className="text-neutral-light mt-1">Track your activity and plan usage limits.</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-500 bg-white px-3 py-1.5 rounded-full border shadow-sm">
+          <div className="flex items-center gap-2 text-sm text-neutral-light bg-white px-3 py-1.5 rounded-full border shadow-sm">
             <Calendar className="h-4 w-4" />
             <span>Last 30 Days</span>
           </div>
@@ -184,31 +184,31 @@ export default function UsagePage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Actions</CardTitle>
-              <Activity className="h-4 w-4 text-slate-500" />
+              <Activity className="h-4 w-4 text-neutral-light" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{isLoading ? "..." : stats.total}</div>
-              <p className="text-xs text-slate-500">Recorded activities in period</p>
+              <p className="text-xs text-neutral-light">Recorded activities in period</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Top Feature</CardTitle>
-              <TrendingUp className="h-4 w-4 text-pink-500" />
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{isLoading ? "..." : stats.topFeature}</div>
-              <p className="text-xs text-slate-500">Most frequently used</p>
+              <p className="text-xs text-neutral-light">Most frequently used</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Most Active Day</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-500" />
+              <Calendar className="h-4 w-4 text-info" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{isLoading ? "..." : stats.activeDay}</div>
-              <p className="text-xs text-slate-500">Highest volume of activity</p>
+              <p className="text-xs text-neutral-light">Highest volume of activity</p>
             </CardContent>
           </Card>
         </div>
@@ -334,17 +334,17 @@ export default function UsagePage() {
                           <TableRow key={i}>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <div className={`p-1.5 rounded-full bg-slate-100 ${config.color}`}>
+                                <div className={`p-1.5 rounded-full bg-neutral/10 ${config.color}`}>
                                   {config.icon}
                                 </div>
-                                <span className="font-medium text-slate-700">{config.label}</span>
+                                <span className="font-medium text-neutral-dark">{config.label}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-slate-500">
+                            <TableCell className="text-neutral-light">
                               {format(new Date(item.timestamp), "MMM d, yyyy • h:mm a")}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                              <Badge variant="outline" className="bg-success/10 text-success border-success/20">
                                 Completed
                               </Badge>
                             </TableCell>

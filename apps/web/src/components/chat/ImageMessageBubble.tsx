@@ -57,7 +57,7 @@ export default function ImageMessageBubble({
     <div
       className={cn(
         "relative max-w-[320px] rounded-2xl border shadow-sm overflow-hidden",
-        isMine ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200",
+        isMine ? "bg-primary/5 border-primary/20" : "bg-base border-neutral/20",
         className
       )}
     >
@@ -83,7 +83,7 @@ export default function ImageMessageBubble({
               />
             </div>
           ) : (
-            <div className="h-40 w-56 flex items-center justify-center text-xs text-gray-500">
+            <div className="h-40 w-56 flex items-center justify-center text-xs text-neutral-light">
               {loading ? "Loading…" : error || "Image unavailable"}
             </div>
           )}

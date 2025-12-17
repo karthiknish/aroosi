@@ -365,7 +365,7 @@ export default function Composer(props: ComposerProps) {
   }, []);
 
   const recordingBanner = (isRecording || isPaused || isUploading || reviewData) && (
-    <div className="mb-3 p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div className="mb-3 p-3 rounded-lg border border-neutral/10 bg-white shadow-sm">
       <div className="flex items-center justify-between w-full">
         {reviewData ? (
           // Review UI
@@ -381,7 +381,7 @@ export default function Composer(props: ComposerProps) {
                   }
                 }
               }}
-              className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral/10 hover:bg-neutral/20 text-neutral transition-colors"
             >
               {isPlayingReview ? (
                 <Pause className="w-4 h-4 fill-current" />
@@ -390,7 +390,7 @@ export default function Composer(props: ComposerProps) {
               )}
             </button>
             
-            <div className="flex-1 h-8 flex items-center gap-1 px-2 bg-gray-50 rounded-md overflow-hidden relative">
+            <div className="flex-1 h-8 flex items-center gap-1 px-2 bg-neutral/5 rounded-md overflow-hidden relative">
                {/* Waveform visualization */}
                <div className="flex items-end gap-[1px] h-full w-full justify-center py-1">
                 {reviewData.peaks.length > 0 ? (
@@ -401,13 +401,13 @@ export default function Composer(props: ComposerProps) {
                         "w-1 rounded-full transition-colors",
                         (i / reviewData.peaks.length) * 100 <= reviewProgress 
                           ? "bg-primary" 
-                          : "bg-gray-300"
+                          : "bg-neutral/30"
                       )}
                       style={{ height: `${Math.max(20, p * 100)}%` }}
                     />
                   ))
                 ) : (
-                  <div className="text-xs text-gray-400 w-full text-center">Audio recorded</div>
+                  <div className="text-xs text-neutral-light w-full text-center">Audio recorded</div>
                 )}
                </div>
                <audio
@@ -429,7 +429,7 @@ export default function Composer(props: ComposerProps) {
               />
             </div>
 
-            <div className="text-xs font-medium text-gray-500 min-w-[40px] text-right">
+            <div className="text-xs font-medium text-neutral-light min-w-[40px] text-right">
               {formatTime(reviewData.durationMs)}
             </div>
 
@@ -439,7 +439,7 @@ export default function Composer(props: ComposerProps) {
                 variant="ghost"
                 size="sm"
                 onClick={handleDeleteVoice}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"
+                className="h-8 w-8 p-0 text-neutral-light hover:text-danger hover:bg-danger/10 rounded-full"
                 title="Delete recording"
               >
                 <Trash2 className="w-4 h-4" />
@@ -465,24 +465,24 @@ export default function Composer(props: ComposerProps) {
                   peaks.map((p, i) => (
                     <div
                       key={i}
-                      className="w-1 bg-pink-500 rounded-sm"
+                      className="w-1 bg-primary rounded-sm"
                       style={{ height: `${Math.max(10, p * 28)}px` }}
                       title={`${i}`}
                     />
                   ))
                 ) : (
-                  <div className="text-xs text-gray-500">Recording…</div>
+                  <div className="text-xs text-neutral-light">Recording…</div>
                 )}
               </div>
               <div
                 className={cn(
                   "text-sm font-medium",
-                  isPaused ? "text-orange-600" : "text-pink-600"
+                  isPaused ? "text-warning" : "text-primary"
                 )}
               >
                 {isUploading ? "Uploading…" : isPaused ? "Paused" : "Recording"}
               </div>
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-neutral-light">
                 • {elapsedLabel} / {formatTime(MAX_DURATION_SECONDS * 1000)}
               </div>
             </div>
@@ -540,7 +540,7 @@ export default function Composer(props: ComposerProps) {
         )}
       </div>
       {uploadError && (
-        <div className="mt-2 text-xs text-red-600">{uploadError}</div>
+        <div className="mt-2 text-xs text-danger">{uploadError}</div>
       )}
     </div>
   );
@@ -575,13 +575,13 @@ export default function Composer(props: ComposerProps) {
     >
       {/* Editing banner - refined */}
       {props.editing && (
-        <div className="mb-3 p-3 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-amber-100/50 text-xs text-amber-800 flex items-center justify-between shadow-sm">
+        <div className="mb-3 p-3 rounded-xl border border-warning/20 bg-gradient-to-r from-warning/5 to-warning/10 text-xs text-warning flex items-center justify-between shadow-sm">
           <div className="truncate mr-2 font-medium">Editing message</div>
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className="h-7 text-xs px-3 rounded-lg hover:bg-amber-200/50"
+            className="h-7 text-xs px-3 rounded-lg hover:bg-warning/20"
             onClick={props.onCancelEdit}
           >
             Cancel
@@ -624,13 +624,13 @@ export default function Composer(props: ComposerProps) {
         }}
       >
         {replyTo && (
-          <div className="absolute -top-16 left-0 right-0 mb-2 flex items-start gap-2.5 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-lg animate-in fade-in slide-in-from-bottom-2">
-            <div className="w-1 h-full bg-gradient-to-b from-rose-400 to-rose-300 rounded-full absolute left-3 top-3 bottom-3" />
+          <div className="absolute -top-16 left-0 right-0 mb-2 flex items-start gap-2.5 bg-white border border-neutral/20 rounded-xl p-3 shadow-lg animate-in fade-in slide-in-from-bottom-2">
+            <div className="w-1 h-full bg-gradient-to-b from-primary to-primary/60 rounded-full absolute left-3 top-3 bottom-3" />
             <div className="flex-1 overflow-hidden pl-3">
-              <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-0.5 font-semibold">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-light mb-0.5 font-semibold">
                 Replying to
               </p>
-              <p className="text-xs text-neutral-700 line-clamp-2 break-words font-medium">
+              <p className="text-xs text-neutral line-clamp-2 break-words font-medium">
                 {replyTo.type === "voice"
                   ? "Voice message"
                   : replyTo.text || "(no text)"}
@@ -640,7 +640,7 @@ export default function Composer(props: ComposerProps) {
               type="button"
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
+              className="h-7 w-7 p-0 rounded-lg hover:bg-neutral/10 text-neutral-light hover:text-neutral"
               onClick={onCancelReply}
               aria-label="Cancel reply"
             >
@@ -648,7 +648,7 @@ export default function Composer(props: ComposerProps) {
             </Button>
           </div>
         )}
-        <div className="flex-1 relative bg-neutral-50/80 rounded-2xl border border-neutral-200/60 focus-within:border-rose-300/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-rose-100/50 focus-within:shadow-lg transition-all duration-300" aria-live="polite">
+        <div className="flex-1 relative bg-neutral/5 rounded-2xl border border-neutral/20 focus-within:border-primary/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 focus-within:shadow-lg transition-all duration-300" aria-live="polite">
           <textarea
             ref={inputRef as any}
             value={text}
@@ -667,7 +667,7 @@ export default function Composer(props: ComposerProps) {
             aria-multiline="true"
             maxLength={maxChars}
             className={cn(
-              "w-full bg-transparent border-none px-4 py-3.5 pr-12 focus:ring-0 text-neutral-800 placeholder-neutral-400 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-neutral-300/60 text-[15px] font-medium",
+              "w-full bg-transparent border-none px-4 py-3.5 pr-12 focus:ring-0 text-neutral placeholder-neutral-light resize-none leading-relaxed scrollbar-thin scrollbar-thumb-neutral/30 text-[15px] font-medium",
               (isSending || isBlocked) &&
                 "opacity-50 cursor-not-allowed"
             )}
@@ -676,9 +676,9 @@ export default function Composer(props: ComposerProps) {
           <div
             className={cn(
               "absolute right-11 top-1/2 -translate-y-1/2 text-[10px] font-semibold select-none transition-colors",
-              remaining > 100 && "text-neutral-300",
-              nearingLimit && remaining >= 0 && "text-amber-500",
-              remaining < 0 && "text-red-500"
+              remaining > 100 && "text-neutral-light",
+              nearingLimit && remaining >= 0 && "text-warning",
+              remaining < 0 && "text-danger"
             )}
             aria-live="polite"
           >
@@ -692,7 +692,7 @@ export default function Composer(props: ComposerProps) {
             size="sm"
             onClick={() => setShowPicker(!showPicker)}
             ref={toggleBtnRef}
-            className="absolute right-2 bottom-2 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 p-2 h-9 w-9 rounded-xl"
+            className="absolute right-2 bottom-2 text-neutral-light hover:text-primary hover:bg-primary/10 transition-all duration-200 p-2 h-9 w-9 rounded-xl"
             aria-label={showPicker ? "Close emoji picker" : "Open emoji picker"}
           >
             <Smile className="w-5 h-5" />
@@ -705,7 +705,7 @@ export default function Composer(props: ComposerProps) {
             type="button"
             variant="ghost"
             size="sm"
-            className="text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 p-2 h-11 w-11 rounded-xl flex-shrink-0 border border-transparent hover:border-rose-200/50"
+            className="text-neutral-light hover:text-primary hover:bg-primary/10 transition-all duration-200 p-2 h-11 w-11 rounded-xl flex-shrink-0 border border-transparent hover:border-primary/20"
             title={canUseVoice ? "Record voice" : "Voice not available"}
             disabled={!canUseVoice || isSending || isBlocked || isRecording}
             onClick={startRecording}
@@ -878,7 +878,7 @@ export default function Composer(props: ComposerProps) {
             variant="ghost"
             size="sm"
             className={cn(
-              "text-neutral-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 p-2 h-11 w-11 rounded-xl flex-shrink-0 border border-transparent hover:border-rose-200/50",
+              "text-neutral-light hover:text-primary hover:bg-primary/10 transition-all duration-200 p-2 h-11 w-11 rounded-xl flex-shrink-0 border border-transparent hover:border-primary/20",
               (isImageUploading || isImageConverting) &&
                 "opacity-50 cursor-not-allowed"
             )}
@@ -918,9 +918,9 @@ export default function Composer(props: ComposerProps) {
             type="submit"
             disabled={!text.trim() || isSending || isBlocked}
             className={cn(
-              "bg-gradient-to-br from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-semibold h-11 w-11 rounded-xl transition-all duration-300 shadow-lg shadow-rose-500/25 hover:shadow-xl hover:shadow-rose-500/30 transform hover:scale-105 active:scale-95 flex items-center justify-center flex-shrink-0 ml-1",
+              "bg-gradient-to-br from-primary to-primary-dark hover:from-primary-dark hover:to-primary-dark text-white font-semibold h-11 w-11 rounded-xl transition-all duration-300 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transform hover:scale-105 active:scale-95 flex items-center justify-center flex-shrink-0 ml-1",
               (!text.trim() || isSending || isBlocked) &&
-                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100 bg-neutral-200 from-neutral-200 to-neutral-200 text-neutral-400 hover:from-neutral-200 hover:to-neutral-200"
+                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100 bg-neutral/20 from-neutral/20 to-neutral/20 text-neutral-light hover:from-neutral/20 hover:to-neutral/20"
             )}
             aria-label={
               isBlocked
@@ -945,7 +945,7 @@ export default function Composer(props: ComposerProps) {
               type="button"
               variant="outline"
               size="sm"
-              className="h-9 text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-0 shadow-lg shadow-amber-500/20 rounded-xl font-semibold px-3"
+              className="h-9 text-xs bg-gradient-to-r from-warning to-warning-dark hover:from-warning-dark hover:to-warning-dark text-white border-0 shadow-lg shadow-warning/20 rounded-xl font-semibold px-3"
               onClick={() => (window.location.href = "/subscription")}
               title="Upgrade to Premium to send voice messages"
             >
@@ -962,7 +962,7 @@ export default function Composer(props: ComposerProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 25 }}
-              className="absolute bottom-full right-0 mb-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-neutral-200/80"
+              className="absolute bottom-full right-0 mb-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-neutral/20"
             >
               <EmojiPicker
                 theme="light"
@@ -986,7 +986,7 @@ export default function Composer(props: ComposerProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 25 }}
-            className="mt-3 relative inline-flex flex-col gap-1.5 rounded-2xl border border-neutral-200/80 bg-white p-2.5 shadow-lg max-w-full"
+            className="mt-3 relative inline-flex flex-col gap-1.5 rounded-2xl border border-neutral/20 bg-white p-2.5 shadow-lg max-w-full"
           >
             <div className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1010,7 +1010,7 @@ export default function Composer(props: ComposerProps) {
                   if (imageInputRef.current) imageInputRef.current.value = "";
                 }}
                 className={cn(
-                  "absolute -top-2 -right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow ring-1 ring-gray-200",
+                  "absolute -top-2 -right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-neutral shadow ring-1 ring-neutral/10",
                   isImageUploading && "opacity-50 cursor-not-allowed"
                 )}
                 disabled={isImageUploading}
@@ -1030,7 +1030,7 @@ export default function Composer(props: ComposerProps) {
             <div className="flex items-center justify-between gap-2">
               {imageFileName && (
                 <span
-                  className="truncate text-xs text-gray-500"
+                  className="truncate text-xs text-neutral-light"
                   title={imageFileName}
                 >
                   {imageFileName}
@@ -1041,7 +1041,7 @@ export default function Composer(props: ComposerProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs px-3 rounded-lg hover:bg-neutral-100"
+                  className="h-7 text-xs px-3 rounded-lg hover:bg-neutral/10"
                   onClick={() => {
                     try {
                       imageAbortRef.current?.abort();
@@ -1053,20 +1053,20 @@ export default function Composer(props: ComposerProps) {
               )}
             </div>
             {imageError && (
-              <div className="text-xs text-red-500 font-medium">{imageError}</div>
+              <div className="text-xs text-danger font-medium">{imageError}</div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Keyboard shortcuts hint - refined */}
-      <div className="mt-3 text-[11px] text-neutral-400 flex items-center gap-4 pl-1 select-none">
+      <div className="mt-3 text-[11px] text-neutral-light flex items-center gap-4 pl-1 select-none">
         <span className="flex items-center gap-1.5">
-          <kbd className="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-medium text-neutral-500">Enter</kbd>
+          <kbd className="px-1.5 py-0.5 bg-neutral/10 rounded text-[10px] font-medium text-neutral">Enter</kbd>
           <span>to send</span>
         </span>
         <span className="hidden sm:flex items-center gap-1.5">
-          <kbd className="px-1.5 py-0.5 bg-neutral-100 rounded text-[10px] font-medium text-neutral-500">Shift+Enter</kbd>
+          <kbd className="px-1.5 py-0.5 bg-neutral/10 rounded text-[10px] font-medium text-neutral">Shift+Enter</kbd>
           <span>for newline</span>
         </span>
       </div>
@@ -1079,12 +1079,12 @@ export default function Composer(props: ComposerProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.2 }}
-            className="mt-2 text-xs text-rose-400 pl-2 font-medium flex items-center gap-1.5"
+            className="mt-2 text-xs text-primary pl-2 font-medium flex items-center gap-1.5"
           >
             <span className="flex gap-0.5">
-              <span className="w-1 h-1 bg-rose-400 rounded-full animate-bounce"></span>
-              <span className="w-1 h-1 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
-              <span className="w-1 h-1 bg-rose-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+              <span className="w-1 h-1 bg-primary rounded-full animate-bounce"></span>
+              <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+              <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
             </span>
             typing…
           </motion.div>
@@ -1109,15 +1109,15 @@ export default function Composer(props: ComposerProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="mt-3 p-3.5 bg-red-50 border border-red-200/80 rounded-xl"
+            className="mt-3 p-3.5 bg-danger/5 border border-danger/20 rounded-xl"
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-red-600 text-xs flex-1 font-medium">{error}</p>
+              <p className="text-danger text-xs flex-1 font-medium">{error}</p>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => window.location.reload()}
-                className="text-red-600 hover:bg-red-100 text-xs px-3 py-1.5 h-auto rounded-lg font-medium"
+                className="text-danger hover:bg-danger/10 text-xs px-3 py-1.5 h-auto rounded-lg font-medium"
               >
                 Retry
               </Button>

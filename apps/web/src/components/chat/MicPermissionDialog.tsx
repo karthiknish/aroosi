@@ -66,13 +66,13 @@ export default function MicPermissionDialog({ open, onClose, onRetry }: MicPermi
             We can’t access your mic yet. Follow these quick steps and then try again.
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-2 text-sm text-gray-700">
+        <div className="mt-2 text-sm text-neutral">
           <ol className="list-decimal ml-5 space-y-1">
             {list.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ol>
-          <p className="mt-3 text-xs text-gray-500">
+          <p className="mt-3 text-xs text-neutral-light">
             Tip: This site requires HTTPS and a browser that allows microphone access.
           </p>
         </div>

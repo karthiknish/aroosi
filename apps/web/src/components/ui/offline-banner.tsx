@@ -35,16 +35,16 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
   const getQualityIcon = () => {
     switch (networkStatus.quality) {
       case "excellent":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       case "good":
-        return <Wifi className="h-4 w-4 text-blue-500" />;
+        return <Wifi className="h-4 w-4 text-info" />;
       case "slow":
-        return <Wifi className="h-4 w-4 text-yellow-500" />;
+        return <Wifi className="h-4 w-4 text-warning" />;
       case "poor":
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        return <AlertTriangle className="h-4 w-4 text-warning" />;
       case "offline":
       default:
-        return <WifiOff className="h-4 w-4 text-red-500" />;
+        return <WifiOff className="h-4 w-4 text-danger" />;
     }
   };
 
@@ -78,22 +78,22 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
 
   const getBackgroundColor = () => {
     if (!networkStatus.isOnline) {
-      return "bg-red-50 border-red-200";
+      return "bg-danger/5 border-danger/20";
     }
     if (networkStatus.isSlowConnection) {
-      return "bg-yellow-50 border-yellow-200";
+      return "bg-warning/5 border-warning/20";
     }
-    return "bg-green-50 border-green-200";
+    return "bg-success/5 border-success/20";
   };
 
   const getTextColor = () => {
     if (!networkStatus.isOnline) {
-      return "text-red-800";
+      return "text-danger";
     }
     if (networkStatus.isSlowConnection) {
-      return "text-yellow-800";
+      return "text-warning";
     }
-    return "text-green-800";
+    return "text-success";
   };
 
   if (!shouldShow) {
@@ -151,7 +151,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
             </p>
 
             {networkStatus.latency && networkStatus.latency < Infinity && (
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-neutral-light mt-1">
                 Latency: {networkStatus.latency}ms
               </p>
             )}
@@ -223,16 +223,16 @@ export const ConnectionIndicator: React.FC<{
   const getIcon = () => {
     switch (networkStatus.quality) {
       case "excellent":
-        return <CheckCircle className={`${getSizeClasses()} text-green-500`} />;
+        return <CheckCircle className={`${getSizeClasses()} text-success`} />;
       case "good":
-        return <Wifi className={`${getSizeClasses()} text-blue-500`} />;
+        return <Wifi className={`${getSizeClasses()} text-info`} />;
       case "slow":
-        return <Wifi className={`${getSizeClasses()} text-yellow-500`} />;
+        return <Wifi className={`${getSizeClasses()} text-warning`} />;
       case "poor":
-        return <AlertTriangle className={`${getSizeClasses()} text-orange-500`} />;
+        return <AlertTriangle className={`${getSizeClasses()} text-warning`} />;
       case "offline":
       default:
-        return <WifiOff className={`${getSizeClasses()} text-red-500`} />;
+        return <WifiOff className={`${getSizeClasses()} text-danger`} />;
     }
   };
 
@@ -240,7 +240,7 @@ export const ConnectionIndicator: React.FC<{
     <div className={`flex items-center gap-1 ${className}`}>
       {getIcon()}
       {showLabel && (
-        <span className="text-xs text-gray-600 capitalize">
+        <span className="text-xs text-neutral-light capitalize">
           {networkStatus.quality}
         </span>
       )}

@@ -24,8 +24,8 @@ export const DEFAULT_PLANS: PlanConfig[] = [
     currency: "GBP",
     billing: "forever",
     description: "Essential features to get started",
-    gradient: "bg-gray-100",
-    color: "bg-gray-500",
+    gradient: "bg-neutral/10",
+    color: "bg-neutral",
     iconName: "Star",
     features: [
       { text: "Create profile", included: true },
@@ -45,8 +45,8 @@ export const DEFAULT_PLANS: PlanConfig[] = [
     currency: "GBP",
     billing: "per month",
     description: "Perfect for active users",
-    gradient: "bg-gradient-to-br from-purple-600 to-pink-600",
-    color: "bg-blue-500",
+    gradient: "bg-gradient-to-br from-accent to-primary",
+    color: "bg-info",
     iconName: "Crown",
     features: [
       { text: "500 searches/day", included: true },
@@ -67,8 +67,8 @@ export const DEFAULT_PLANS: PlanConfig[] = [
     currency: "GBP",
     billing: "per month",
     description: "Maximum visibility and features",
-    gradient: "bg-gradient-to-br from-pink-600 to-rose-600",
-    color: "bg-purple-500",
+    gradient: "bg-gradient-to-br from-primary to-secondary",
+    color: "bg-accent",
     iconName: "Rocket",
     features: [
       { text: "2000 searches/day", included: true },

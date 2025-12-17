@@ -89,6 +89,21 @@ const FILTER_OPTIONS = {
         { label: 'Spanish', value: 'spanish' },
         { label: 'Other', value: 'other' },
     ],
+    religions: [
+        { label: 'Any', value: undefined },
+        { label: 'Islam', value: 'Islam' },
+        { label: 'Hinduism', value: 'Hinduism' },
+        { label: 'Sikhism', value: 'Sikhism' },
+        { label: 'Christianity', value: 'Christianity' },
+        { label: 'Other', value: 'Other' },
+    ],
+    maritalStatuses: [
+        { label: 'Any', value: undefined },
+        { label: 'Never Married', value: 'Never Married' },
+        { label: 'Divorced', value: 'Divorced' },
+        { label: 'Widowed', value: 'Widowed' },
+        { label: 'Awaiting Divorce', value: 'Awaiting Divorce' },
+    ],
 };
 
 export default function DiscoverScreen() {
@@ -522,6 +537,84 @@ export default function DiscoverScreen() {
                                                 <Text style={[
                                                     styles.filterOptionText,
                                                     (filters as any).language === option.value &&
+                                                    styles.filterOptionTextActive
+                                                ]}>
+                                                    {option.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+
+                            {/* Religion Filter */}
+                            <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                                <Text style={styles.premiumFilterLabel}>
+                                    Religion {!isPremium && '🔒'}
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.filterOptions}>
+                                        {FILTER_OPTIONS.religions.map((option) => (
+                                            <TouchableOpacity
+                                                key={option.label}
+                                                style={[
+                                                    styles.filterOption,
+                                                    (filters as any).religion === option.value &&
+                                                    styles.filterOptionActive,
+                                                    !isPremium && styles.filterOptionDisabled
+                                                ]}
+                                                onPress={() => {
+                                                    if (isPremium) {
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            religion: option.value
+                                                        } as SearchFilters));
+                                                    }
+                                                }}
+                                                disabled={!isPremium}
+                                            >
+                                                <Text style={[
+                                                    styles.filterOptionText,
+                                                    (filters as any).religion === option.value &&
+                                                    styles.filterOptionTextActive
+                                                ]}>
+                                                    {option.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+
+                            {/* Marital Status Filter */}
+                            <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                                <Text style={styles.premiumFilterLabel}>
+                                    Marital Status {!isPremium && '🔒'}
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.filterOptions}>
+                                        {FILTER_OPTIONS.maritalStatuses.map((option) => (
+                                            <TouchableOpacity
+                                                key={option.label}
+                                                style={[
+                                                    styles.filterOption,
+                                                    (filters as any).maritalStatus === option.value &&
+                                                    styles.filterOptionActive,
+                                                    !isPremium && styles.filterOptionDisabled
+                                                ]}
+                                                onPress={() => {
+                                                    if (isPremium) {
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            maritalStatus: option.value
+                                                        } as SearchFilters));
+                                                    }
+                                                }}
+                                                disabled={!isPremium}
+                                            >
+                                                <Text style={[
+                                                    styles.filterOptionText,
+                                                    (filters as any).maritalStatus === option.value &&
                                                     styles.filterOptionTextActive
                                                 ]}>
                                                     {option.label}

@@ -15,13 +15,13 @@ export const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
 
   return (
     <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4">
-      <div className="text-sm font-medium text-gray-500">{label}</div>
+      <div className="text-sm font-medium text-neutral-light">{label}</div>
       {isTextArea ? (
-        <div className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800 whitespace-pre-wrap">
+        <div className="mt-1 sm:mt-0 sm:col-span-2 text-md text-neutral-dark whitespace-pre-wrap">
           {displayValue}
         </div>
       ) : (
-        <div className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800">
+        <div className="mt-1 sm:mt-0 sm:col-span-2 text-md text-neutral-dark">
           {displayValue}
         </div>
       )}
@@ -39,7 +39,7 @@ export const DisplaySection: React.FC<DisplaySectionProps> = ({
   children,
 }) => (
   <div className="space-y-1 pt-6 border-t first:border-t-0 first:pt-0">
-    <h2 className="text-xl font-semibold text-gray-700 mb-3">{title}</h2>
+    <h2 className="text-xl font-semibold text-neutral-dark mb-3">{title}</h2>
     {children}
   </div>
 );

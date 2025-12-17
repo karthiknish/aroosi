@@ -35,12 +35,12 @@ export default function OAuthCallbackPage() {
   }, [isSignedIn, isLoaded, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-base-light">
       <div className="text-center">
-        <h2 className="text-xl font-semibold mb-2">Completing sign in...</h2>
-        <p className="text-gray-600">Please wait while we redirect you.</p>
+        <h2 className="text-xl font-semibold mb-2 text-neutral-dark">Completing sign in...</h2>
+        <p className="text-neutral-light">Please wait while we redirect you.</p>
         {typeof window !== "undefined" && window.opener && (
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-neutral-light/80 mt-2">
             This window will close automatically.
           </p>
         )}

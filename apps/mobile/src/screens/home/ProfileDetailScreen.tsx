@@ -380,6 +380,11 @@ export default function ProfileDetailScreen({
                                 📍 {profile.location.city}
                             </Text>
                         )}
+                        {profile.occupation && (
+                            <Text style={styles.location}>
+                                💼 {profile.occupation}
+                            </Text>
+                        )}
                     </View>
                 </View>
 
@@ -392,6 +397,49 @@ export default function ProfileDetailScreen({
                             <Text style={styles.bioText}>{profile.bio}</Text>
                         </View>
                     )}
+
+                    {/* Key Details */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Details</Text>
+                        <View style={styles.detailsGrid}>
+                            {profile.maritalStatus && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Marital Status</Text>
+                                    <Text style={styles.detailValue}>{profile.maritalStatus}</Text>
+                                </View>
+                            )}
+                            {profile.religion && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Religion</Text>
+                                    <Text style={styles.detailValue}>{profile.religion}{profile.sect ? ` (${profile.sect})` : ''}</Text>
+                                </View>
+                            )}
+                            {profile.motherTongue && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Mother Tongue</Text>
+                                    <Text style={styles.detailValue}>{profile.motherTongue}</Text>
+                                </View>
+                            )}
+                            {profile.height && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Height</Text>
+                                    <Text style={styles.detailValue}>{profile.height}</Text>
+                                </View>
+                            )}
+                            {profile.education && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Education</Text>
+                                    <Text style={styles.detailValue}>{profile.education}</Text>
+                                </View>
+                            )}
+                            {profile.occupation && (
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailLabel}>Occupation</Text>
+                                    <Text style={styles.detailValue}>{profile.occupation}</Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
 
                     {/* Interests */}
                     {profile.interests && profile.interests.length > 0 && (
@@ -667,6 +715,30 @@ const styles = StyleSheet.create({
         fontSize: responsiveFontSizes.base,
         color: colors.neutral[600],
         lineHeight: responsiveFontSizes.base * 1.6,
+    },
+    detailsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: moderateScale(12),
+    },
+    detailItem: {
+        width: '47%',
+        backgroundColor: colors.neutral[50],
+        padding: moderateScale(12),
+        borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        borderColor: colors.neutral[100],
+    },
+    detailLabel: {
+        fontSize: responsiveFontSizes.xs,
+        color: colors.neutral[500],
+        marginBottom: moderateScale(4),
+        fontWeight: fontWeight.medium,
+    },
+    detailValue: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[800],
+        fontWeight: fontWeight.semibold,
     },
     interestsList: {
         flexDirection: 'row',

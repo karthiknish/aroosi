@@ -224,7 +224,7 @@ export default function ConversationList({
       <div className={cn("flex items-center justify-center h-64", className)}>
         <div className="text-center space-y-2">
           <LoadingSpinner size={32} />
-          <p className="text-gray-500 text-sm">Loading conversations...</p>
+          <p className="text-neutral-light text-sm">Loading conversations...</p>
         </div>
       </div>
     );
@@ -234,14 +234,14 @@ export default function ConversationList({
     return (
       <div className={cn("p-4 text-center", className)}>
         <div className="space-y-3">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-            <MessageCircle className="w-6 h-6 text-red-500" />
+          <div className="w-12 h-12 bg-danger/10 rounded-full flex items-center justify-center mx-auto">
+            <MessageCircle className="w-6 h-6 text-danger" />
           </div>
           <div>
-            <h3 className="font-medium text-gray-900">
+            <h3 className="font-medium text-neutral">
               Failed to load conversations
             </h3>
-            <p className="text-gray-500 text-sm mt-1">{error}</p>
+            <p className="text-neutral-light text-sm mt-1">{error}</p>
           </div>
           <Button onClick={fetchConversations} size="sm">
             Try Again
@@ -284,16 +284,16 @@ export default function ConversationList({
         {filteredConversations.length === 0 ? (
           <div className="flex items-center justify-center h-full p-4">
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                <MessageCircle className="w-8 h-8 text-gray-400" />
+              <div className="w-16 h-16 bg-neutral/5 rounded-full flex items-center justify-center mx-auto">
+                <MessageCircle className="w-8 h-8 text-neutral-light" />
               </div>
               <div>
-                <h3 className="font-medium text-gray-900 mb-1">
+                <h3 className="font-medium text-neutral mb-1">
                   {searchQuery
                     ? "No matching conversations"
                     : "No conversations yet"}
                 </h3>
-                <p className="text-gray-500 text-sm">
+                <p className="text-neutral-light text-sm">
                   {searchQuery
                     ? "Try searching for a different name or message"
                     : "Start messaging your matches to see conversations here"}
@@ -355,8 +355,8 @@ export default function ConversationList({
                           className={cn(
                             "font-medium text-sm truncate",
                             conv.unreadCount > 0
-                              ? "text-gray-900"
-                              : "text-gray-700"
+                              ? "text-neutral"
+                              : "text-neutral-light"
                           )}
                         >
                           {conv.otherUser.fullName}

@@ -237,32 +237,43 @@ export async function uploadPendingImages(params: {
 
       const file = fileFromBlob(blob, img.fileName || "photo.jpg");
 
-      try {
-        const result = await uploadProfileImageWithProgress(
-          file,
-          (loaded, total) => {
-            if (typeof mgr.onProgress === "function") {
-              try {
-                mgr.onProgress(img.id, loaded, total);
-              } catch {}
+      // Robust upload with retries
+      let uploadSuccess = false;
+      let lastError: any = null;
+      const MAX_RETRIES = 2;
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const result = await uploadProfileImageWithProgress(
+            file,
+            (loaded, total) => {
+              if (typeof mgr.onProgress === "function") {
+                try {
+                  mgr.onProgress(img.id, loaded, total);
+                } catch {}
+              }
             }
+          );
+          if (result?.imageId) {
+            createdImageIds.push(result.imageId);
+            safeRevokeObjectURL(img.url);
+            uploadSuccess = true;
+            break;
+          } else {
+            throw new Error("No imageId returned from server");
           }
-        );
-        if (!result?.imageId) {
-          failedImages.push({
-            index,
-            id: img.id,
-            name: file.name,
-            reason: "No imageId returned",
-          });
-          continue;
+        } catch (e: any) {
+          lastError = e;
+          if (attempt < MAX_RETRIES) {
+            // Wait before retry (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+          }
         }
-        createdImageIds.push(result.imageId);
-        safeRevokeObjectURL(img.url);
-      } catch (e: any) {
-        const message = e instanceof Error ? e.message : "Upload failed";
+      }
+
+      if (!uploadSuccess) {
+        const message = lastError instanceof Error ? lastError.message : "Upload failed after retries";
         failedImages.push({ index, id: img.id, name: file.name, reason: message });
-        continue;
       }
     } catch (err: any) {
       const message = err instanceof Error ? err.message : "Unknown image upload error";

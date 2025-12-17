@@ -63,7 +63,7 @@ export function BlogPosts({
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="p-4 bg-white rounded-lg border border-gray-200 flex flex-col gap-3 h-full"
+                className="p-4 bg-base-light rounded-lg border border-neutral/10 flex flex-col gap-3 h-full"
               >
                 <div className="flex items-start gap-4">
                   <Skeleton className="w-20 h-20 rounded-lg" />
@@ -88,14 +88,14 @@ export function BlogPosts({
             ))}
           </div>
         ) : posts === undefined ? (
-          <div className="text-center py-8 text-gray-500">No posts yet</div>
+          <div className="text-center py-8 text-neutral-light">No posts yet</div>
         ) : (
           <>
             <div className="space-y-4">
               {pagedPosts.map((post) => (
                 <div
                   key={post._id}
-                  className="p-4 bg-white rounded-lg border border-gray-200"
+                  className="p-4 bg-base-light rounded-lg border border-neutral/10"
                 >
                   <div className="flex items-start gap-4">
                     {post.imageUrl && (
@@ -106,13 +106,13 @@ export function BlogPosts({
                       />
                     )}
                     <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">
+                      <h3 className="font-medium text-neutral-dark">
                         {post.title}
                       </h3>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-neutral-light mt-1">
                         {post.excerpt}
                       </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                      <div className="flex items-center gap-4 mt-2 text-xs text-neutral-light">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {new Date(post.createdAt).toLocaleDateString()}
@@ -127,7 +127,7 @@ export function BlogPosts({
                           {post.categories.map((cat) => (
                             <span
                               key={cat}
-                              className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
+                              className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium"
                             >
                               {cat}
                             </span>
@@ -146,7 +146,7 @@ export function BlogPosts({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-danger hover:text-danger/90 hover:bg-danger/10"
                         onClick={() => deletePost(post._id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -167,7 +167,7 @@ export function BlogPosts({
                 >
                   Previous
                 </Button>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-neutral-light">
                   Page {page + 1} of {pageCount}
                 </div>
                 <Button

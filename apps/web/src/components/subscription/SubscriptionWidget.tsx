@@ -23,10 +23,10 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
   if (!status) {
     return (
       <div
-        className={`flex items-center justify-between p-3 rounded-lg border ${className}`}
+        className={`flex items-center justify-between p-3 rounded-lg border border-neutral/10 ${className}`}
       >
         <div className="flex items-center gap-2">
-          <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
+          <div className="h-6 w-20 bg-neutral/10 rounded animate-pulse" />
         </div>
         <LoadingSpinner size={16} />
       </div>
@@ -46,34 +46,34 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
       case 'free':
         return {
           name: 'Free',
-          color: 'bg-gray-500',
-          textColor: 'text-gray-600',
-          bgColor: 'bg-gray-50',
-          borderColor: 'border-gray-200',
+          color: 'bg-neutral-light',
+          textColor: 'text-neutral-light',
+          bgColor: 'bg-neutral/5',
+          borderColor: 'border-neutral/10',
         };
       case 'premium':
         return {
           name: 'Premium',
-          color: 'bg-blue-500',
-          textColor: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          borderColor: 'border-blue-200',
+          color: 'bg-info',
+          textColor: 'text-info',
+          bgColor: 'bg-info/10',
+          borderColor: 'border-info/30',
         };
       case 'premiumPlus':
         return {
           name: 'Premium Plus',
-          color: 'bg-purple-500',
-          textColor: 'text-purple-600',
-          bgColor: 'bg-purple-50',
-          borderColor: 'border-purple-200',
+          color: 'bg-secondary',
+          textColor: 'text-secondary',
+          bgColor: 'bg-secondary/10',
+          borderColor: 'border-secondary/30',
         };
       default:
         return {
           name: 'Unknown',
-          color: 'bg-gray-500',
-          textColor: 'text-gray-600',
-          bgColor: 'bg-gray-50',
-          borderColor: 'border-gray-200',
+          color: 'bg-neutral-light',
+          textColor: 'text-neutral-light',
+          bgColor: 'bg-neutral/5',
+          borderColor: 'border-neutral/10',
         };
     }
   };
@@ -96,13 +96,13 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           {status.plan === "premiumPlus" && (
             <Badge
               variant="outline"
-              className="text-yellow-600 border-yellow-600 text-xs"
+              className="text-warning border-warning/30 text-xs"
             >
               ✨
             </Badge>
           )}
             {isExpiringSoon && (
-              <span className="text-xs text-yellow-600 font-medium">
+              <span className="text-xs text-warning font-medium">
                 Expires in {status.daysRemaining} days
               </span>
             )}
@@ -131,7 +131,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           {status.plan === "premiumPlus" && (
             <Badge
               variant="outline"
-              className="text-yellow-600 border-yellow-600"
+              className="text-warning border-warning/30"
             >
               ✨ Spotlight
             </Badge>
@@ -139,7 +139,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
         </div>
 
         {status.plan !== "free" && status.expiresAt && (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-neutral-light">
             {status.daysRemaining > 0
               ? `${status.daysRemaining} days left`
               : "Expired"}
@@ -149,7 +149,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
 
       {status.plan === "free" && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-light">
             Unlock premium features like unlimited messaging, profile boost, and
             more.
           </p>
@@ -177,13 +177,13 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span>Status:</span>
-            <span className={isActive ? "text-green-600" : "text-red-600"}>
+            <span className={isActive ? "text-success" : "text-danger"}>
               {isActive ? "Active" : "Inactive"}
             </span>
           </div>
 
           {isExpiringSoon && (
-            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+            <div className="p-2 bg-warning/10 border border-warning/30 rounded text-sm text-warning">
               Your subscription expires in {status.daysRemaining} days
             </div>
           )}
@@ -214,7 +214,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex justify-between">
               <span>Status:</span>
-              <span className={isActive ? "text-green-600" : "text-red-600"}>
+              <span className={isActive ? "text-success" : "text-danger"}>
                 {isActive ? "Active" : "Inactive"}
               </span>
             </div>
@@ -226,7 +226,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           </div>
 
           {isExpiringSoon && (
-            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+            <div className="p-2 bg-warning/10 border border-warning/30 rounded text-sm text-warning">
               Your subscription expires in {status.daysRemaining} days
             </div>
           )}

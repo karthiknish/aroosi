@@ -206,18 +206,20 @@ export default function AdminEditProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-neutral-50 pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
+        <div className="mb-8 flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={() => router.push(`/admin/profile/${id}`)}
-            className="text-gray-600 hover:text-gray-900"
+            className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Profile
           </Button>
+          <h1 className="text-xl font-bold text-neutral-900">Edit Profile</h1>
         </div>
+
         <ProfileEditForm
           initialValues={profile}
           onSubmit={handleAdminProfileUpdate}

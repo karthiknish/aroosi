@@ -115,7 +115,7 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white">
+      <DialogContent className="sm:max-w-md bg-base-light">
         <DialogHeader>
           <DialogTitle>{images[currentIndex]?.name}</DialogTitle>
         </DialogHeader>
@@ -169,7 +169,7 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-2 py-1 text-sm rounded border hover:bg-gray-50"
+              className="px-2 py-1 text-sm rounded border border-neutral/10 hover:bg-neutral/5"
               onClick={() => setRotate((r) => (r - 90 + 360) % 360)}
               disabled={isCropping}
             >
@@ -177,7 +177,7 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
             </button>
             <button
               type="button"
-              className="px-2 py-1 text-sm rounded border hover:bg-gray-50"
+              className="px-2 py-1 text-sm rounded border border-neutral/10 hover:bg-neutral/5"
               onClick={() => setRotate((r) => (r + 90) % 360)}
               disabled={isCropping}
             >
@@ -202,14 +202,14 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
               <>
                 <button
                   type="button"
-                  className="px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                  className="px-3 py-1.5 text-sm rounded bg-success text-white hover:bg-success/90"
                   onClick={handleApplyCrop}
                 >
                   <Check className="w-4 h-4 inline-block mr-1" /> Apply
                 </button>
                 <button
                   type="button"
-                  className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm rounded border border-neutral/10 hover:bg-neutral/5"
                   onClick={() => {
                     setIsCropping(false);
                     setCroppedAreaPixels(null);

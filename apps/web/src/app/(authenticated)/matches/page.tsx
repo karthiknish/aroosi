@@ -82,7 +82,7 @@ function MatchCard({
                   {match.fullName || "Unknown"}
                 </h3>
 
-                <div className="flex items-center gap-4 text-sm text-neutral-500">
+                <div className="flex items-center gap-4 text-sm text-neutral-light">
                   <div className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
                     <span className="truncate max-w-[100px] sm:max-w-xs">
@@ -102,7 +102,7 @@ function MatchCard({
                   </span>
                 </div>
                 
-                <p className="text-sm text-neutral-400 truncate mt-1">
+                <p className="text-sm text-neutral-light truncate mt-1">
                   {(match.unread ?? 0) > 0 
                     ? <span className="text-primary font-medium">You have new messages</span>
                     : "Start a conversation..."}
@@ -218,9 +218,9 @@ export default function MatchesPage() {
       />
       <SubscriptionGuard feature="canChatWithMatches">
         <div className="w-full overflow-x-hidden overflow-y-hidden bg-base-light pt-24 pb-12 relative">
-        {/* Decorative pink circles */}
-        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none" />
+        {/* Decorative circles */}
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent rounded-full blur-3xl opacity-10 z-0 pointer-events-none" />
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Header Section */}
@@ -247,7 +247,7 @@ export default function MatchesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 mb-8 border border-primary-light/20 shadow-sm"
+            className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-primary/10 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
@@ -294,7 +294,7 @@ export default function MatchesPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             {fetchError && (
-              <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              <div className="mb-4 text-sm text-danger bg-danger/5 border border-danger/20 rounded-md px-3 py-2">
                 {fetchError}
               </div>
             )}

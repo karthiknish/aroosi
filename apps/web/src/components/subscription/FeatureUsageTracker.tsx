@@ -78,22 +78,22 @@ export const UsageWarning: React.FC<UsageWarningProps> = ({
 
   return (
     <div
-      className={`p-3 rounded-lg border ${isAtLimit ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"} ${className}`}
+      className={`p-3 rounded-lg border ${isAtLimit ? "bg-danger/5 border-danger/20" : "bg-warning/5 border-warning/20"} ${className}`}
     >
       <div className="flex items-center gap-2">
         <span
-          className={`text-lg ${isAtLimit ? "text-red-600" : "text-yellow-600"}`}
+          className={`text-lg ${isAtLimit ? "text-danger" : "text-warning"}`}
         >
           {isAtLimit ? "⚠️" : "⚡"}
         </span>
         <div className="flex-1">
           <p
-            className={`text-sm font-medium ${isAtLimit ? "text-red-800" : "text-yellow-800"}`}
+            className={`text-sm font-medium ${isAtLimit ? "text-danger" : "text-warning"}`}
           >
             {isAtLimit ? "Usage Limit Reached" : "Approaching Usage Limit"}
           </p>
           <p
-            className={`text-xs ${isAtLimit ? "text-red-600" : "text-yellow-600"}`}
+            className={`text-xs ${isAtLimit ? "text-danger" : "text-warning"}`}
           >
             You&apos;ve used {(usage as { currentUsage?: number }).currentUsage}{" "}
             of {(usage as { limit?: number }).limit} {feature.replace("_", " ")}{" "}

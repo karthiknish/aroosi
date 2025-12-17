@@ -157,7 +157,8 @@ export default function HomePage() {
                     >
                       <path
                         d="M0 3C50 0.5 150 0.5 200 3"
-                        stroke="#FDA4AF"
+                        stroke="currentColor"
+                        className="text-primary/30"
                         strokeWidth="5"
                         strokeLinecap="round"
                       />
@@ -176,29 +177,29 @@ export default function HomePage() {
 
               <div className="grid md:grid-cols-3 gap-8 relative">
                 {/* Connecting line between cards */}
-                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-accent-200 hidden md:block"></div>
-                <div className="absolute top-1/2 left-1/4 right-3/4 h-0.5 bg-accent-300 hidden md:block"></div>
-                <div className="absolute top-1/2 left-2/4 right-2/4 h-0.5 bg-accent-400 hidden md:block"></div>
-                <div className="absolute top-1/2 left-3/4 right-1/4 h-0.5 bg-accent-500 hidden md:block"></div>
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-accent/10 hidden md:block"></div>
+                <div className="absolute top-1/2 left-1/4 right-3/4 h-0.5 bg-accent/20 hidden md:block"></div>
+                <div className="absolute top-1/2 left-2/4 right-2/4 h-0.5 bg-accent/30 hidden md:block"></div>
+                <div className="absolute top-1/2 left-3/4 right-1/4 h-0.5 bg-accent/40 hidden md:block"></div>
 
                 {[
                   // Cards for "How it works"
                   {
-                    icon: <Users className="h-8 w-8 text-accent-600" />,
+                    icon: <Users className="h-8 w-8 text-accent-dark" />,
                     title: "Create Your Profile",
                     desc: "Sign up and create a detailed profile with your preferences, values, and what you're looking for in a partner.",
                     ringClass: "animate-spin-slow",
                     ringStyle: {},
                   },
                   {
-                    icon: <Heart className="h-8 w-8 text-accent-600" />,
+                    icon: <Heart className="h-8 w-8 text-accent-dark" />,
                     title: "Find Matches",
                     desc: "Our advanced matching algorithm suggests compatible profiles based on your preferences and values.",
                     ringClass: "animate-pulse",
                     ringStyle: {},
                   },
                   {
-                    icon: <CheckCircle className="h-8 w-8 text-accent-600" />,
+                    icon: <CheckCircle className="h-8 w-8 text-accent-dark" />,
                     title: "Connect & Meet",
                     desc: "Start conversations, get to know each other, and take the next step towards your happily ever after.",
                     ringClass: "animate-spin-slow",
@@ -213,12 +214,12 @@ export default function HomePage() {
                     viewport={{ once: true, amount: 0.2 }}
                     custom={i}
                   >
-                    <Card className="text-center p-8 border-primary-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10">
+                    <Card className="text-center p-8 border-primary/10 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10">
                       <CardContent className="space-y-4">
-                        <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto relative">
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto relative">
                           {card.icon}
                           <div
-                            className={`absolute -inset-1 border-2 border-dashed border-primary-200 rounded-full ${card.ringClass}`}
+                            className={`absolute -inset-1 border-2 border-dashed border-primary/20 rounded-full ${card.ringClass}`}
                             style={card.ringStyle}
                           ></div>
                         </div>
@@ -269,7 +270,8 @@ export default function HomePage() {
                       >
                         <path
                           d="M0 3C50 0.5 150 0.5 200 3"
-                          stroke="#FDA4AF"
+                          stroke="currentColor"
+                          className="text-primary/30"
                           strokeWidth="5"
                           strokeLinecap="round"
                         />
@@ -290,22 +292,22 @@ export default function HomePage() {
                   <div className="space-y-6">
                     {[
                       {
-                        icon: <Shield className="h-6 w-6 text-accent-600" />,
+                        icon: <Shield className="h-6 w-6 text-accent-dark" />,
                         title: "Verified Profiles",
                         desc: "All profiles are manually verified to ensure authenticity and safety.",
                       },
                       {
-                        icon: <Star className="h-6 w-6 text-accent-600" />,
+                        icon: <Star className="h-6 w-6 text-accent-dark" />,
                         title: "Advanced Matching",
                         desc: "Our algorithm considers compatibility factors beyond just basic preferences.",
                       },
                       {
-                        icon: <Users className="h-6 w-6 text-accent-600" />,
+                        icon: <Users className="h-6 w-6 text-accent-dark" />,
                         title: "Family Involvement",
                         desc: "We respect traditional values and welcome family participation in the process.",
                       },
                       {
-                        icon: <Heart className="h-6 w-6 text-accent-600" />,
+                        icon: <Heart className="h-6 w-6 text-accent-dark" />,
                         title: "Success Support",
                         desc: "Our dedicated team provides guidance and support throughout your journey.",
                       },
@@ -316,7 +318,7 @@ export default function HomePage() {
                         custom={i}
                         className="flex items-start space-x-4 p-4 rounded-lg hover:bg-primary-light/30 transition-colors"
                       >
-                        <div className="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
                           {feature.icon}
                         </div>
                         <div>
@@ -325,7 +327,7 @@ export default function HomePage() {
                           >
                             {feature.title}
                           </h3>
-                          <p className="font-nunito text-neutral-600">
+                          <p className="font-nunito text-neutral-light">
                             {feature.desc}
                           </p>
                         </div>
@@ -341,9 +343,9 @@ export default function HomePage() {
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   className="relative"
                 >
-                  <div className="absolute inset-0 bg-[radial-gradient(#fda4af_1px,transparent_1px)] [background-size:16px_16px] opacity-20"></div>
+                  <div className="absolute inset-0 bg-[radial-gradient(hsl(var(--primary))_1px,transparent_1px)] [background-size:16px_16px] opacity-20"></div>
                   <div className="relative z-10 rounded-2xl overflow-hidden shadow-xl">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-accent-600/10 to-primary-600/10 mix-blend-overlay"></div>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-accent-dark/10 to-primary-dark/10 mix-blend-overlay"></div>
                     <Image
                       src="https://images.squarespace-cdn.com/content/v1/5c2db4029772aebeba129860/1688023879574-KW15CNT3DTPOTX4452WY/3b06c423-c529-4892-bdb0-fe879ec9824a.jpeg"
                       alt="Features illustration"
@@ -353,14 +355,14 @@ export default function HomePage() {
                     />
 
                     {/* Decorative corner elements */}
-                    <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-accent-400 opacity-70"></div>
-                    <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-accent-400 opacity-70"></div>
-                    <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-accent-400 opacity-70"></div>
-                    <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-accent-400 opacity-70"></div>
+                    <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-accent/70 opacity-70"></div>
+                    <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-accent/70 opacity-70"></div>
+                    <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-accent/70 opacity-70"></div>
+                    <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-accent/70 opacity-70"></div>
                   </div>
 
                   {/* Decorative elements */}
-                  <div className="absolute -top-6 -left-6 w-24 h-24 bg-primary-100 rounded-full opacity-50 -z-10"></div>
+                  <div className="absolute -top-6 -left-6 w-24 h-24 bg-primary/10 rounded-full opacity-50 -z-10"></div>
                   <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-primary-light rounded-full opacity-50 -z-10"></div>
                 </motion.div>
               </div>
@@ -368,14 +370,14 @@ export default function HomePage() {
           </section>
 
           {/* Afghan Community Values Section */}
-          <section className="py-20 bg-accent-100 relative overflow-hidden">
+          <section className="py-20 bg-accent/10 relative overflow-hidden">
             {/* Pink color pop circle */}
             <div className="absolute -top-24 -left-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
             {/* Decorative background */}
             <div
               className="absolute inset-0 opacity-[0.03]"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23e11d48' fillOpacity='1' fillRule='evenodd'/%3E%3C/g%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='hsl(var(--primary))' fillOpacity='1' fillRule='evenodd'/%3E%3C/g%3E%3C/svg%3E")`,
               }}
             ></div>
             <div className="container mx-auto px-4 lg:px-6 relative z-10">
@@ -405,7 +407,8 @@ export default function HomePage() {
                     >
                       <path
                         d="M0 3C50 0.5 150 0.5 200 3"
-                        stroke="#FDA4AF"
+                        stroke="currentColor"
+                        className="text-primary/30"
                         strokeWidth="5"
                         strokeLinecap="round"
                       />
@@ -466,7 +469,7 @@ export default function HomePage() {
                       >
                         {item.title}
                       </h3>
-                      <p className="font-nunito text-neutral">{item.desc}</p>
+                      <p className="font-nunito text-neutral-light">{item.desc}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -485,7 +488,7 @@ export default function HomePage() {
             <div
               className="absolute inset-0 opacity-[0.03]"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='hsl(var(--primary))' fillOpacity='1'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               }}
             ></div>
 
@@ -514,7 +517,8 @@ export default function HomePage() {
                   >
                     <path
                       d="M0 3C50 0.5 150 0.5 200 3"
-                      stroke="#FDA4AF"
+                      stroke="currentColor"
+                      className="text-primary/30"
                       strokeWidth="5"
                       strokeLinecap="round"
                     />
@@ -562,7 +566,7 @@ export default function HomePage() {
                     viewport={{ once: true, amount: 0.2 }}
                     custom={i}
                   >
-                    <Card className="p-6 border-primary-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative overflow-hidden group">
+                    <Card className="p-6 border-primary/10 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative overflow-hidden group">
                       <div className="absolute top-0 right-0 w-24 h-24 bg-primary-light rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-primary-light rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
@@ -574,28 +578,28 @@ export default function HomePage() {
                               alt="Couple"
                               width={60}
                               height={60}
-                              className="rounded-full border-2 border-primary-200"
+                              className="rounded-full border-2 border-primary/20"
                             />
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-100 rounded-full flex items-center justify-center">
-                              <Heart className="h-3 w-3 text-primary-700" />
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary/10 rounded-full flex items-center justify-center">
+                              <Heart className="h-3 w-3 text-primary-dark" />
                             </div>
                           </div>
                           <div>
                             <h4
-                              className="font-serif font-semibold text-neutral-900"
+                              className="font-serif font-semibold text-neutral-dark"
                             >
                               {story.name}
                             </h4>
                           </div>
                         </div>
                         <div className="relative">
-                          <div className="absolute -left-2 -top-2 text-4xl text-primary-200 opacity-50">
+                          <div className="absolute -left-2 -top-2 text-4xl text-primary/20 opacity-50">
                             &quot;
                           </div>
-                          <div className="absolute -right-2 -bottom-6 text-4xl text-primary-200 opacity-50">
+                          <div className="absolute -right-2 -bottom-6 text-4xl text-primary/20 opacity-50">
                             &quot;
                           </div>
-                          <p className="font-nunito text-primary-700 italic relative z-10 px-4">
+                          <p className="font-nunito text-primary-dark italic relative z-10 px-4">
                             {story.quote}
                           </p>
                         </div>
@@ -608,10 +612,10 @@ export default function HomePage() {
           </section>
 
           {/* CTA Section */}
-          <section className="py-20 relative overflow-hidden gradient-secondary">
+          <section className="py-20 relative overflow-hidden bg-secondary">
             {/* Pink color pop circle */}
             <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
-            <div className="absolute inset-0 gradient-secondary"></div>
+            <div className="absolute inset-0 bg-secondary"></div>
 
             {/* Decorative patterns */}
             <div

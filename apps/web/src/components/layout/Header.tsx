@@ -78,12 +78,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h2 className="text-2xl text-primary font-bold">Aroosi</h2>
+              <h2 className="text-2xl text-primary font-bold font-serif">Aroosi</h2>
             </div>
             <div className="hidden md:flex items-center space-x-2">
-              <div className="h-9 w-24 bg-neutral-100 rounded animate-pulse" />
-              <div className="h-9 w-24 bg-neutral-100 rounded animate-pulse" />
-              <div className="h-9 w-24 bg-neutral-100 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-neutral/10 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-neutral/10 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-neutral/10 rounded animate-pulse" />
             </div>
           </div>
         </div>
@@ -632,7 +632,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
       <Tooltip key="profile">
         <TooltipTrigger asChild>
           <Link href="/profile" className="block" aria-label="Profile">
-            <Avatar className="h-10 w-10 border border-neutral-200 shadow-sm">
+            <Avatar className="h-10 w-10 border border-neutral/10 shadow-sm">
               {avatarUrl ? (
                 <AvatarImage
                   src={avatarUrl}
@@ -643,7 +643,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   }}
                 />
               ) : null}
-              <AvatarFallback className="bg-neutral-100 text-neutral-light text-sm font-medium">
+              <AvatarFallback className="bg-neutral/10 text-neutral-light text-sm font-medium">
                 {avatarInitial || <UserIcon className="h-4 w-4" />}
               </AvatarFallback>
             </Avatar>
@@ -660,7 +660,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
             variant="ghost"
             size="icon"
             aria-label="Sign Out"
-            className="h-10 w-10 rounded-xl text-neutral-light hover:text-red-600 hover:bg-red-50"
+            className="h-10 w-10 rounded-xl text-neutral-light hover:text-danger hover:bg-danger/5"
             onClick={() => signOut()}
           >
             <LogOut className="h-5 w-5" />
@@ -688,7 +688,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         className={
           "fixed top-0 left-0 right-0 z-50 transition-all duration-300 " +
           (scrolled
-            ? "bg-base-light/90 backdrop-blur border-b border-neutral-200 shadow-sm"
+            ? "bg-base-light/90 backdrop-blur border-b border-neutral/10 shadow-sm"
             : "bg-base-light shadow-sm")
         }
       >
@@ -696,7 +696,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
-                <h2 className="text-2xl text-primary font-bold">Aroosi</h2>
+                <h2 className="text-2xl text-primary font-bold font-serif">Aroosi</h2>
               </Link>
             </div>
 

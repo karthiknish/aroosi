@@ -183,8 +183,8 @@ export default function SubscriptionPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="min-h-screen bg-base-light">
+        <div className="container mx-auto px-4 py-8 max-w-7xl pt-24">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -195,11 +195,11 @@ export default function SubscriptionPage() {
               style={{
                 lineHeight: "1.7",
               }}
-              className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-4"
+              className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent mb-4 font-serif"
             >
               Subscription Management
             </h1>
-            <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+            <p className="text-lg text-neutral-light max-w-2xl mx-auto">
               Unlock premium features and find your perfect match faster
             </p>
           </motion.div>
@@ -213,11 +213,11 @@ export default function SubscriptionPage() {
               className="space-y-6 xl:col-span-2 order-2 xl:order-1"
             >
               {/* Current Subscription Card */}
-              <Card className="overflow-hidden shadow-lg border-0">
-                <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-1">
+              <Card className="overflow-hidden shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <div className="bg-gradient-to-r from-primary to-primary-dark p-1">
                   <CardHeader className="bg-white rounded-t-lg">
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <Crown className="h-5 w-5 text-pink-500" />
+                    <CardTitle className="flex items-center gap-2 text-xl font-serif">
+                      <Crown className="h-5 w-5 text-primary" />
                       Current Subscription
                     </CardTitle>
                   </CardHeader>
@@ -231,10 +231,10 @@ export default function SubscriptionPage() {
               </Card>
 
               {/* Usage Statistics */}
-              <Card className="shadow-lg border-0">
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <Zap className="h-5 w-5 text-purple-500" />
+                  <CardTitle className="flex items-center gap-2 text-xl font-serif">
+                    <Zap className="h-5 w-5 text-secondary" />
                     Usage Statistics
                   </CardTitle>
                 </CardHeader>
@@ -244,10 +244,10 @@ export default function SubscriptionPage() {
               </Card>
 
               {/* Quick Actions */}
-              <Card className="shadow-lg border-0">
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <Sparkles className="h-5 w-5 text-pink-500" />
+                  <CardTitle className="flex items-center gap-2 text-xl font-serif">
+                    <Sparkles className="h-5 w-5 text-accent" />
                     Quick Actions
                   </CardTitle>
                 </CardHeader>
@@ -257,7 +257,7 @@ export default function SubscriptionPage() {
                       onClick={handleRestore}
                       variant="outline"
                       disabled={restorePending}
-                      className="border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                      className="border-secondary/20 hover:bg-secondary/5 hover:border-secondary/30 transition-colors"
                     >
                       Restore Purchases
                     </Button>
@@ -265,7 +265,7 @@ export default function SubscriptionPage() {
                     <Button
                       onClick={() => router.push("/pricing")}
                       variant="outline"
-                      className="border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors"
+                      className="border-primary/20 hover:bg-primary/5 hover:border-primary/30 transition-colors"
                     >
                       View All Plans
                     </Button>
@@ -274,7 +274,7 @@ export default function SubscriptionPage() {
                       <Button
                         onClick={handleManageBilling}
                         variant="outline"
-                        className="border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+                        className="border-accent/20 hover:bg-accent/5 hover:border-accent/30 transition-colors"
                         disabled={isLoading}
                       >
                         Manage Billing
@@ -284,7 +284,7 @@ export default function SubscriptionPage() {
                     {(isPremium || isPremiumPlus) && (
                       <CancelSubscriptionButton
                         onConfirm={handleConfirmCancel}
-                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors sm:col-span-2"
+                        className="text-danger border-danger/20 hover:bg-danger/5 hover:border-danger/30 transition-colors sm:col-span-2"
                         isLoading={cancelPending}
                         disabled={cancelPending}
                       />
@@ -301,7 +301,7 @@ export default function SubscriptionPage() {
               transition={{ delay: 0.2 }}
               className="space-y-6 order-1 xl:order-2 xl:sticky xl:top-6 self-start"
             >
-              <h2 className="text-2xl font-bold text-neutral-800 mb-4">
+              <h2 className="text-2xl font-bold text-neutral-dark mb-4 font-serif">
                 Available Plans
               </h2>
 
@@ -323,29 +323,29 @@ export default function SubscriptionPage() {
                       <Card
                         className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl ${
                           plan.popular
-                            ? "ring-2 ring-pink-500 ring-offset-2"
+                            ? "ring-2 ring-primary ring-offset-2"
                             : ""
                         } ${
                           isCurrentPlan
-                            ? "bg-gradient-to-br from-green-50 to-emerald-50"
-                            : ""
+                            ? "bg-success/5"
+                            : "bg-white/80 backdrop-blur-sm"
                         }`}
                       >
                         {plan.popular && (
-                          <div className="absolute -top-1 -right-8 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold px-8 py-1 transform rotate-12">
+                          <div className="absolute -top-1 -right-8 bg-gradient-to-r from-primary to-primary-dark text-white text-xs font-bold px-8 py-1 transform rotate-12">
                             POPULAR
                           </div>
                         )}
 
                         {isCurrentPlan &&
                           (status?.cancelAtPeriodEnd && status?.expiresAt ? (
-                            <Badge className="absolute top-4 left-4 bg-orange-500 hover:bg-orange-600">
+                            <Badge className="absolute top-4 left-4 bg-warning hover:bg-warning/90">
                               <Check className="h-3 w-3 mr-1" />
                               Ends{" "}
                               {new Date(status.expiresAt).toLocaleDateString()}
                             </Badge>
                           ) : (
-                            <Badge className="absolute top-4 left-4 bg-green-500 hover:bg-green-600">
+                            <Badge className="absolute top-4 left-4 bg-success hover:bg-success/90">
                               <Check className="h-3 w-3 mr-1" />
                               Current Plan
                             </Badge>
@@ -358,18 +358,18 @@ export default function SubscriptionPage() {
                             >
                               <Icon className="h-8 w-8 text-white" />
                             </div>
-                            <h3 className="text-2xl font-bold text-neutral-800 mb-2">
+                            <h3 className="text-2xl font-bold text-neutral-dark mb-2 font-serif">
                               {plan.name}
                             </h3>
                             <div className="flex items-baseline justify-center gap-1 mb-2">
-                              <span className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                              <span className="text-4xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
                                 {(plan.price / 100).toFixed(2)}
                               </span>
-                              <span className="text-neutral-500 text-sm">
+                              <span className="text-neutral-light text-sm">
                                 /{plan.billing}
                               </span>
                             </div>
-                            <p className="text-sm text-neutral-600">
+                            <p className="text-sm text-neutral-light">
                               {plan.description}
                             </p>
                           </div>
@@ -383,9 +383,9 @@ export default function SubscriptionPage() {
                                   className="flex items-start gap-3 text-sm"
                                 >
                                   <div className="flex-shrink-0 mt-0.5">
-                                    <FeatureIcon className="h-4 w-4 text-pink-500" />
+                                    <FeatureIcon className="h-4 w-4 text-primary" />
                                   </div>
-                                  <span className="text-neutral-700">
+                                  <span className="text-neutral-dark">
                                     {feature.text}
                                   </span>
                                 </li>
@@ -413,7 +413,7 @@ export default function SubscriptionPage() {
                               status?.expiresAt ? (
                                 <Badge
                                   variant="secondary"
-                                  className="bg-orange-100 text-orange-700"
+                                  className="bg-warning/10 text-warning"
                                 >
                                   <Check className="h-3 w-3 mr-1" />
                                   Ends{" "}
@@ -424,7 +424,7 @@ export default function SubscriptionPage() {
                               ) : (
                                 <Badge
                                   variant="secondary"
-                                  className="bg-green-100 text-green-700"
+                                  className="bg-success/10 text-success"
                                 >
                                   <Check className="h-3 w-3 mr-1" />
                                   Active
@@ -445,34 +445,34 @@ export default function SubscriptionPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <Card className="bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 border-0 shadow-lg">
+                <Card className="bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 border-0 shadow-lg">
                   <CardContent className="p-6">
-                    <h3 className="font-bold text-lg mb-4 text-neutral-800 flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-pink-500" />
+                    <h3 className="font-bold text-lg mb-4 text-neutral-dark flex items-center gap-2 font-serif">
+                      <Heart className="h-5 w-5 text-primary" />
                       Why Upgrade?
                     </h3>
                     <ul className="space-y-3 text-sm">
                       <li className="flex items-start gap-3">
-                        <MessageCircle className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-neutral-700">
+                        <MessageCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-neutral-dark">
                           Connect with unlimited matches through messaging
                         </span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <Search className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-neutral-700">
+                        <Search className="h-4 w-4 text-secondary flex-shrink-0 mt-0.5" />
+                        <span className="text-neutral-dark">
                           Find your perfect match with advanced filters
                         </span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <Rocket className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-neutral-700">
+                        <Rocket className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-neutral-dark">
                           Boost your profile to get 10x more visibility
                         </span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <Eye className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-neutral-700">
+                        <Eye className="h-4 w-4 text-secondary flex-shrink-0 mt-0.5" />
+                        <span className="text-neutral-dark">
                           Know who&apos;s interested with profile view tracking
                         </span>
                       </li>

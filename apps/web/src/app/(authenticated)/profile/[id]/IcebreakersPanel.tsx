@@ -177,9 +177,9 @@ export function IcebreakersPanel() {
 
   if (isError) {
     return (
-      <div className="text-center mt-12 p-8 bg-red-50 rounded-2xl border border-red-100">
-        <p className="text-red-600 mb-4">Failed to load icebreakers.</p>
-        <Button onClick={() => refetch()} variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
+      <div className="text-center mt-12 p-8 bg-danger/5 rounded-2xl border border-danger/20">
+        <p className="text-danger mb-4">Failed to load icebreakers.</p>
+        <Button onClick={() => refetch()} variant="outline" className="border-danger/20 text-danger hover:bg-danger/5">
           Try Again
         </Button>
       </div>
@@ -194,13 +194,13 @@ export function IcebreakersPanel() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-xl mx-auto mt-8 p-8 text-center bg-white rounded-3xl shadow-sm border border-green-100"
+        className="max-w-xl mx-auto mt-8 p-8 text-center bg-white rounded-3xl shadow-sm border border-success/20"
       >
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-green-600" />
+        <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 text-success" />
         </div>
-        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">All Caught Up!</h3>
-        <p className="text-gray-600">
+        <h3 className="text-2xl font-serif font-bold text-neutral-dark mb-2">All Caught Up!</h3>
+        <p className="text-neutral-light">
           You&apos;ve answered all the icebreakers for today. Great job showing off your personality!
         </p>
       </motion.div>
@@ -215,18 +215,18 @@ export function IcebreakersPanel() {
     <div className="max-w-2xl mx-auto mt-6">
       {/* Header & Progress */}
       <div className="mb-6 flex items-center justify-between px-2">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
-          <Sparkles className="w-4 h-4 text-rose-500" />
+        <div className="flex items-center gap-2 text-sm font-medium text-neutral-light">
+          <Sparkles className="w-4 h-4 text-primary" />
           <span>Question {Math.min(index + 1, total)} of {total}</span>
         </div>
-        <div className="text-xs font-medium px-2 py-1 bg-rose-50 text-rose-700 rounded-full">
+        <div className="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">
           {answeredCount} answered
         </div>
       </div>
 
-      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mb-8">
+      <div className="h-1.5 w-full bg-neutral/10 rounded-full overflow-hidden mb-8">
         <motion.div
-          className="h-full bg-gradient-to-r from-rose-400 to-rose-600"
+          className="h-full bg-gradient-to-r from-primary to-primary-dark"
           initial={{ width: 0 }}
           animate={{ width: `${(answeredCount / total) * 100}%` }}
           transition={{ duration: 0.5 }}
@@ -240,16 +240,16 @@ export function IcebreakersPanel() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
-          className="relative bg-white rounded-3xl shadow-sm border border-gray-200/60 overflow-hidden"
+          className="relative bg-white rounded-3xl shadow-sm border border-neutral/20 overflow-hidden"
         >
           {/* Card Header */}
           <div className="p-6 md:p-8 pb-4">
-            <h2 className="text-xl md:text-2xl font-serif font-medium text-gray-900 leading-relaxed">
+            <h2 className="text-xl md:text-2xl font-serif font-medium text-neutral-dark leading-relaxed">
               {current.text}
             </h2>
             
             {isSaved && !isEditing && (
-              <div className="mt-4 flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-lg w-fit text-sm font-medium">
+              <div className="mt-4 flex items-center gap-2 text-success bg-success/10 px-3 py-1.5 rounded-lg w-fit text-sm font-medium">
                 <CheckCircle2 className="w-4 h-4" />
                 Answer Saved
               </div>
@@ -264,7 +264,7 @@ export function IcebreakersPanel() {
                   <button
                     key={s}
                     type="button"
-                    className="text-xs font-medium text-gray-600 bg-gray-50 hover:bg-rose-50 hover:text-rose-700 border border-gray-200 hover:border-rose-200 rounded-full px-3 py-1.5 transition-colors"
+                    className="text-xs font-medium text-neutral-light bg-neutral/5 hover:bg-primary/5 hover:text-primary border border-neutral/20 hover:border-primary/20 rounded-full px-3 py-1.5 transition-colors"
                     onClick={() => {
                       setAnswers((a) => ({
                         ...a,
@@ -298,12 +298,12 @@ export function IcebreakersPanel() {
                 placeholder="Type your answer here..."
                 maxLength={500}
                 className={cn(
-                  "min-h-[140px] resize-none text-base leading-relaxed p-4 rounded-xl border-gray-200 focus:border-rose-300 focus:ring-rose-100 transition-all",
-                  isSaved && !isEditing ? "bg-gray-50 text-gray-700" : "bg-white"
+                  "min-h-[140px] resize-none text-base leading-relaxed p-4 rounded-xl border-neutral/20 focus:border-primary/30 focus:ring-primary/10 transition-all",
+                  isSaved && !isEditing ? "bg-neutral/5 text-neutral-dark" : "bg-white"
                 )}
                 disabled={saving[current.id] || (isSaved && !isEditing)}
               />
-              <div className="absolute bottom-3 right-3 text-xs text-gray-400 font-medium">
+              <div className="absolute bottom-3 right-3 text-xs text-neutral-light font-medium">
                 {answers[current.id]?.length || 0}/500
               </div>
             </div>
@@ -314,7 +314,7 @@ export function IcebreakersPanel() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-neutral-light hover:text-neutral-dark"
                   onClick={() => handleSkip(current.id)}
                 >
                   <SkipForward className="w-4 h-4 mr-2" />
@@ -325,7 +325,7 @@ export function IcebreakersPanel() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-neutral-light hover:text-neutral-dark"
                     onClick={() => handleCopy(current.id)}
                   >
                     <Copy className="w-4 h-4 mr-2" />
@@ -347,7 +347,7 @@ export function IcebreakersPanel() {
                   <Button
                     onClick={() => handleSubmit(current.id)}
                     disabled={!canSave || saving[current.id]}
-                    className="bg-rose-600 hover:bg-rose-700 text-white min-w-[120px]"
+                    className="bg-primary hover:bg-primary-dark text-white min-w-[120px]"
                   >
                     {saving[current.id] ? (
                       "Saving..."
@@ -369,7 +369,7 @@ export function IcebreakersPanel() {
       <div className="mt-8 flex items-center justify-between px-4">
         <Button
           variant="ghost"
-          className="text-gray-500 hover:text-gray-900"
+          className="text-neutral-light hover:text-neutral-dark"
           onClick={() => setIndex((i) => Math.max(i - 1, 0))}
           disabled={index === 0}
         >
@@ -379,7 +379,7 @@ export function IcebreakersPanel() {
         
         <Button
           variant="ghost"
-          className="text-gray-500 hover:text-gray-900"
+          className="text-neutral-light hover:text-neutral-dark"
           onClick={() => setIndex((i) => Math.min(i + 1, total - 1))}
           disabled={index >= total - 1}
         >

@@ -144,11 +144,11 @@ export default function ProfileViewersPage() {
               ))}
             </div>
           ) : isError ? (
-            <p className="text-sm text-red-600">Failed to load viewers.</p>
+            <p className="text-sm text-danger">Failed to load viewers.</p>
           ) : viewers.length === 0 ? (
             <div className="text-center py-8">
               <span className="text-4xl">👀</span>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-neutral-light mt-2">
                 {activeFilter === "all"
                   ? "No one has viewed your profile yet."
                   : `No views ${activeFilter === "today" ? "today" : activeFilter === "week" ? "this week" : "this month"}.`}

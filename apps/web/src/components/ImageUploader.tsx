@@ -455,14 +455,14 @@ export function ImageUploader({
         className={`relative group rounded-xl transition-all ${
           disabled
             ? "opacity-50 cursor-not-allowed"
-            : "cursor-pointer hover:bg-accent/20"
+            : "cursor-pointer hover:bg-neutral/5"
         }`}
       >
         <input {...getInputProps()} />
         <div
           className={`
             flex flex-col items-center justify-center p-8 text-center rounded-xl border-2 border-dashed 
-            ${isDragActive ? "border-primary bg-primary/10" : "border-border"}
+            ${isDragActive ? "border-primary bg-primary/10" : "border-neutral/10"}
             transition-all duration-200 ease-in-out
             group-hover:border-primary/60
           `}
@@ -476,17 +476,17 @@ export function ImageUploader({
                 </span>
               </div>
               <div className="w-full space-y-3">
-                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                <div className="flex items-center justify-between text-xs text-neutral-light px-1">
                   <span>{statusMessage || "Uploading"}</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-muted/60 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-neutral/10 rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-primary h-2 rounded-full transition-all duration-150"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <div className="text-[11px] text-neutral/50">
+                <div className="text-[11px] text-neutral-light">
                   Please keep this tab open until processing finishes.
                 </div>
               </div>
@@ -500,7 +500,7 @@ export function ImageUploader({
                 <p className="text-base font-medium text-primary">
                   Drop to upload
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-light">
                   We&apos;ll optimize your photo automatically
                 </p>
               </div>
@@ -508,13 +508,13 @@ export function ImageUploader({
           ) : (
             <div className="space-y-3">
               <div className="flex justify-center">
-                <Upload className="w-8 h-8 text-muted-foreground" />
+                <Upload className="w-8 h-8 text-neutral-light" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-neutral-dark">
                   Drag & drop a photo
                 </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-xs text-neutral-light leading-relaxed">
                   or click to browse. Max{" "}
                   {Math.round(maxSizeBytes / 1024 / 1024)}MB per image (
                   {planDisplayName(plan)} plan).
@@ -523,7 +523,7 @@ export function ImageUploader({
                   512×512px.
                 </p>
                 {plan === "free" && (
-                  <p className="text-[11px] text-amber-600 dark:text-amber-500">
+                  <p className="text-[11px] text-warning">
                     Upgrade for higher size limits & HEIC support.
                   </p>
                 )}
@@ -546,7 +546,7 @@ export function ImageUploader({
       />
 
       <Dialog open={isCropping} onOpenChange={setIsCropping}>
-        <DialogContent className="max-w-2xl bg-white">
+        <DialogContent className="max-w-2xl bg-base-light">
           <DialogHeader>
             <DialogTitle>Crop Image</DialogTitle>
             <DialogDescription>
@@ -556,7 +556,7 @@ export function ImageUploader({
           <div className="space-y-6">
             {isClient && imagePreview && (
               <>
-                <div className="relative max-h-[60vh] h-[400px] w-full bg-muted/20 rounded-lg border border-border">
+                <div className="relative max-h-[60vh] h-[400px] w-full bg-neutral/5 rounded-lg border border-neutral/10">
                   <Cropper
                     image={imagePreview}
                     crop={crop}

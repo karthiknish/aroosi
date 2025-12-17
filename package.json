@@ -3,21 +3,23 @@
     "version": "1.0.0",
     "private": true,
     "description": "Aroosi - Monorepo for web and mobile apps",
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
     "scripts": {
-        "dev": "pnpm --filter @aroosi/web dev",
-        "dev:mobile": "pnpm --filter @aroosi/mobile start",
-        "build": "pnpm --filter @aroosi/web build",
-        "build:mobile": "pnpm --filter @aroosi/mobile build",
-        "lint": "pnpm -r lint",
-        "type-check": "pnpm -r type-check",
-        "clean": "pnpm -r exec rm -rf node_modules && rm -rf node_modules"
+        "dev": "npm run dev -w @aroosi/web",
+        "dev:mobile": "npm run start -w @aroosi/mobile",
+        "build": "npm run build -w @aroosi/web",
+        "build:mobile": "npm run build -w @aroosi/mobile",
+        "lint": "npm run lint --workspaces --if-present",
+        "type-check": "npm run type-check --workspaces --if-present",
+        "clean": "npm run clean --workspaces --if-present && rm -rf node_modules"
     },
     "devDependencies": {
         "typescript": "5.9.2"
     },
     "engines": {
-        "node": ">=18.0.0",
-        "pnpm": ">=8.0.0"
-    },
-    "packageManager": "pnpm@9.15.1"
+        "node": ">=18.0.0"
+    }
 }

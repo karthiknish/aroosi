@@ -22,12 +22,12 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 
   const getIcon = () => {
     if (!networkStatus.isOnline) {
-      return <WifiOff className="h-8 w-8 text-red-500" />;
+      return <WifiOff className="h-8 w-8 text-danger" />;
     }
     if (networkStatus.isSlowConnection) {
-      return <Clock className="h-8 w-8 text-yellow-500" />;
+      return <Clock className="h-8 w-8 text-warning" />;
     }
-    return <AlertTriangle className="h-8 w-8 text-orange-500" />;
+    return <AlertTriangle className="h-8 w-8 text-warning" />;
   };
 
   const getDisplayMessage = (status: typeof networkStatus) => {
@@ -61,14 +61,14 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       className={`flex flex-col items-center justify-center text-center ${getVariantClasses()} ${className}`}
     >
       {getIcon()}
-      <p className={`text-gray-700 max-w-xs ${
+      <p className={`text-neutral-dark max-w-xs ${
         variant === "minimal" ? "text-xs" : "text-sm"
       }`}>
         {getDisplayMessage(networkStatus)}
       </p>
 
       {networkStatus.latency && networkStatus.latency < Infinity && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-neutral-light">
           Connection latency: {networkStatus.latency}ms
         </p>
       )}
@@ -111,19 +111,19 @@ export const NetworkErrorState: React.FC<{
       <div className="flex items-center gap-2">
         {getIcon()}
         {showQuality && networkStatus.quality !== "offline" && (
-          <span className="text-xs bg-gray-100 px-2 py-1 rounded-full capitalize">
+          <span className="text-xs bg-neutral/10 text-neutral-dark px-2 py-1 rounded-full capitalize">
             {networkStatus.quality}
           </span>
         )}
       </div>
 
       <div className="text-center">
-        <h3 className="font-medium text-gray-900 mb-1">Connection Issue</h3>
-        <p className="text-sm text-gray-600 max-w-xs">
+        <h3 className="font-medium text-neutral-dark mb-1">Connection Issue</h3>
+        <p className="text-sm text-neutral-light max-w-xs">
           {getNetworkDisplayMessage(networkStatus)}
         </p>
         {networkStatus.latency && networkStatus.latency < Infinity && (
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-neutral-light mt-2">
             Current latency: {networkStatus.latency}ms
           </p>
         )}
@@ -140,6 +140,6 @@ export const NetworkErrorState: React.FC<{
 };
 
 function getIcon() {
-  return <WifiOff className="h-8 w-8 text-red-500" />;
+  return <WifiOff className="h-8 w-8 text-danger" />;
 }
 

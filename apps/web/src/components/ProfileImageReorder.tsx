@@ -105,7 +105,7 @@ const SortableImageBase = ({
         role="presentation"
         aria-hidden="true"
       >
-        <Grip className="w-4 h-4 text-neutral-400" />
+        <Grip className="w-4 h-4 text-neutral-light" />
       </div>
       {/* Set as main (move to index 0) */}
       {onSetMain && imageIndex !== 0 && (
@@ -115,18 +115,18 @@ const SortableImageBase = ({
             e.stopPropagation();
             onSetMain(dndId);
           }}
-          className="absolute left-1 bottom-1 bg-white/85 text-neutral-800 border border-gray-300 rounded px-1.5 py-0.5 text-[11px] hover:bg-white z-20"
+          className="absolute left-1 bottom-1 bg-white/85 text-neutral-dark border border-neutral/20 rounded px-1.5 py-0.5 text-[11px] hover:bg-white z-20"
           aria-label="Set as main"
         >
           Set main
         </button>
       )}
       {!loaded && !error && (
-        <div className="absolute inset-0 animate-pulse bg-gray-100 rounded-lg" />
+        <div className="absolute inset-0 animate-pulse bg-neutral/10 rounded-lg" />
       )}
       {error ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 rounded-lg border border-gray-200 gap-2">
-          <span className="text-neutral-500 text-xs">Failed to load image</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral/5 rounded-lg border border-border gap-2">
+          <span className="text-neutral-light text-xs">Failed to load image</span>
           <button
             type="button"
             onClick={(e) => {
@@ -145,18 +145,18 @@ const SortableImageBase = ({
                 imgEl.src = cacheBust(img.url);
               } catch {}
             }}
-            className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-50"
+            className="px-2 py-1 text-xs rounded border border-border bg-white hover:bg-neutral/5"
           >
             Retry
           </button>
           {/* Optional small fallback thumbnail area */}
-          <div className="w-10 h-10 bg-gray-200 rounded" aria-hidden="true" />
+          <div className="w-10 h-10 bg-neutral/20 rounded" aria-hidden="true" />
         </div>
       ) : (
         <button
           type="button"
           className={
-            "w-full h-full rounded-lg border border-gray-200 overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 " +
+            "w-full h-full rounded-lg border border-border overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary " +
             (loaded ? "opacity-100" : "opacity-0")
           }
           aria-label={`View image ${imageIndex + 1}`}
@@ -191,7 +191,7 @@ const SortableImageBase = ({
             e.stopPropagation();
             setShowDeleteConfirmation(true);
           }}
-          className="absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full p-1.5 text-xs transition-colors z-30 shadow-sm"
+          className="absolute top-1 right-1 bg-danger/90 hover:bg-danger text-white rounded-full p-1.5 text-xs transition-colors z-30 shadow-sm"
           aria-label="Remove image"
           tabIndex={0}
           type="button"
@@ -462,7 +462,7 @@ export function ProfileImageReorder({
 
   if (!images || images.length === 0) {
     return (
-      <div className="text-center py-6 text-neutral-500">
+      <div className="text-center py-6 text-neutral-light">
         No images to display
       </div>
     );
@@ -617,13 +617,13 @@ export function ProfileImageReorder({
       {isReordering && (
         <div className="flex items-center gap-2">
           <LoadingSpinner size={20} />
-          <span className="text-sm text-neutral-600">
+          <span className="text-sm text-neutral-light">
             Updating image order...
           </span>
         </div>
       )}
       {error && (
-        <div className="mt-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+        <div className="mt-2 p-3 bg-danger/5 text-danger rounded-lg text-sm">
           <p className="font-medium">Error</p>
           <p className="mt-1">{error}</p>
         </div>

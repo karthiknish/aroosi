@@ -264,7 +264,9 @@ export const enhancedValidationSchemas = {
 
   // Step 6: Photos
   photos: z.object({
-    profileImageIds: z.array(z.string()).optional(),
+    profileImageIds: z
+      .array(z.string())
+      .min(1, "At least one profile photo is required"),
   }),
 
   // Step 7: Account Creation
@@ -293,6 +295,7 @@ export const completeProfileSchema = z.object({
   aboutMe: enhancedValidationSchemas.education.shape.aboutMe,
   preferredGender:
     enhancedValidationSchemas.preferencesBase.shape.preferredGender,
+  profileImageIds: enhancedValidationSchemas.photos.shape.profileImageIds,
 
   // Optional fields
   country: enhancedValidationSchemas.location.shape.country,
@@ -314,7 +317,6 @@ export const completeProfileSchema = z.object({
     enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceAgeMax,
   partnerPreferenceCity:
     enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceCity,
-  profileImageIds: enhancedValidationSchemas.photos.shape.profileImageIds,
 });
 
 // Step-to-schema mapping

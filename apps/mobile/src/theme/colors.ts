@@ -4,38 +4,63 @@
  */
 
 export const colors = {
-    // Primary brand colors (matching web app)
+    // Primary brand colors (matching web app's new palette)
     primary: {
-        50: '#FEF2F2',
-        100: '#FEE2E2',
-        200: '#FECACA',
-        300: '#FCA5A5',
-        400: '#F87171',
-        500: '#EF4444',
-        600: '#DC2626',
-        700: '#B91C1C',
-        800: '#991B1B',
-        900: '#7F1D1D',
-        DEFAULT: '#B91C1C', // Primary brand color
+        50: '#FDF2F8',
+        100: '#FCE7F3',
+        200: '#FBCFE8',
+        300: '#F9A8D4',
+        400: '#F472B6',
+        500: '#EC4899',
+        600: '#DB2777',
+        700: '#BE185D',
+        800: '#9D174D',
+        900: '#831843',
+        DEFAULT: '#EC4899', // Primary brand color (Softer Pink)
+    },
+
+    // Secondary colors (Deeper dusty blue)
+    secondary: {
+        50: '#F0F7FA',
+        100: '#E1EFF5',
+        200: '#C2DFEB',
+        300: '#A2C4DB',
+        400: '#82A9CB',
+        500: '#5F92AC',
+        600: '#4D7A91',
+        700: '#3E647A',
+        800: '#2F4D5E',
+        900: '#1F3642',
+        DEFAULT: '#5F92AC',
+    },
+
+    // Accent colors (Muted Gold / Warm Sand)
+    accent: {
+        50: '#FBF8F3',
+        100: '#F7F1E7',
+        200: '#EDD6A4',
+        300: '#D6B27C',
+        400: '#B28E5F',
+        DEFAULT: '#D6B27C',
     },
 
     // Neutral colors
     neutral: {
-        50: '#FAFAFA',
+        50: '#F9F7F5', // Base light
         100: '#F5F5F5',
         200: '#E5E5E5',
         300: '#D4D4D4',
         400: '#A3A3A3',
-        500: '#737373',
+        500: '#7A7A7A', // Neutral light
         600: '#525252',
-        700: '#404040',
-        800: '#262626',
+        700: '#4A4A4A', // Neutral
+        800: '#2D2D2D', // Neutral dark
         900: '#171717',
     },
 
     // Background colors
     background: {
-        light: '#FFFFFF',
+        light: '#F9F7F5',
         dark: '#121212',
         card: {
             light: '#FFFFFF',
@@ -46,24 +71,24 @@ export const colors = {
     // Text colors
     text: {
         primary: {
-            light: '#171717',
+            light: '#2D2D2D',
             dark: '#FAFAFA',
         },
         secondary: {
-            light: '#525252',
+            light: '#4A4A4A',
             dark: '#A3A3A3',
         },
         muted: {
-            light: '#737373',
-            dark: '#737373',
+            light: '#7A7A7A',
+            dark: '#7A7A7A',
         },
     },
 
     // Semantic colors
-    success: '#22C55E',
+    success: '#7BA17D',
     warning: '#F59E0B',
-    error: '#EF4444',
-    info: '#3B82F6',
+    error: '#B45E5E',
+    info: '#0EA5E9',
 
     // UI colors
     border: {

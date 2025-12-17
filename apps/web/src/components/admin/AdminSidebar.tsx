@@ -94,7 +94,7 @@ export function AdminSidebar({
       {/* Mobile Overlay */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300",
+          "fixed inset-0 bg-neutral-dark/50 z-40 lg:hidden transition-opacity duration-300",
           collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         onClick={() => setCollapsed(true)}
@@ -103,7 +103,7 @@ export function AdminSidebar({
 
       <div
         className={cn(
-          "bg-white border-r shadow-sm transition-all duration-300 flex flex-col",
+          "bg-base-light border-r border-neutral/10 shadow-sm transition-all duration-300 flex flex-col",
           "fixed inset-y-0 left-0 z-50 h-full lg:relative",
           collapsed
             ? "-translate-x-full lg:translate-x-0 lg:w-16"
@@ -111,19 +111,19 @@ export function AdminSidebar({
         )}
       >
         {/* Logo Area */}
-      <div className="p-6 border-b">
+      <div className="p-6 border-b border-neutral/10">
         {collapsed ? (
-          <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
-            <Heart className="w-5 h-5 text-pink-600" />
+          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+            <Heart className="w-5 h-5 text-primary" />
           </div>
         ) : (
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
-              <Heart className="w-5 h-5 text-pink-600" />
+            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Heart className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Aroosi</h2>
-              <p className="text-xs text-gray-500">Admin Panel</p>
+              <h2 className="text-lg font-semibold text-neutral-dark">Aroosi</h2>
+              <p className="text-xs text-neutral-light">Admin Panel</p>
             </div>
           </div>
         )}
@@ -139,8 +139,8 @@ export function AdminSidebar({
                 className={cn(
                   "w-full justify-start transition-all duration-200 h-10",
                   item.isActive 
-                    ? "bg-pink-50 text-pink-700 border-pink-200 border" 
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                    ? "bg-primary/10 text-primary font-semibold" 
+                    : "text-neutral-light hover:bg-neutral/5 hover:text-neutral-dark",
                   collapsed ? "px-2 justify-center" : "px-3"
                 )}
                 asChild
@@ -150,14 +150,14 @@ export function AdminSidebar({
                 <Link href={item.href}>
                   <item.icon className={cn("h-4 w-4", !collapsed && "mr-3")} />
                   {!collapsed && (
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-sm">{item.label}</span>
                   )}
                 </Link>
               </Button>
               
               {/* Tooltip for collapsed state */}
               {collapsed && hoveredTab === item.id && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap pointer-events-none">
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1 bg-neutral-dark text-base-light text-xs rounded shadow-lg z-50 whitespace-nowrap pointer-events-none">
                   {item.label}
                 </div>
               )}
@@ -167,7 +167,7 @@ export function AdminSidebar({
       </nav>
 
       {/* Collapse Toggle */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t border-neutral/10">
         <Button
           variant="ghost"
           size="sm"

@@ -136,7 +136,7 @@ export default function QuickPicksPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="space-y-3 text-center">
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <div className="text-sm text-danger bg-danger/5 border border-danger/20 rounded-md px-3 py-2">
             {loadError}
           </div>
           <Button onClick={() => refetch()}>Retry</Button>
@@ -149,13 +149,13 @@ export default function QuickPicksPage() {
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-3">
-          <div className="text-sm text-neutral-600">Daily Quick Picks</div>
-          <div className="text-xs text-neutral-500">
+          <div className="text-sm text-neutral">Daily Quick Picks</div>
+          <div className="text-xs text-neutral-light">
             {Math.min(index + 1, userIds.length)} / {userIds.length} shown •
             Limit {dailyLimit} ({subscription?.plan || "free"})
           </div>
           {loadError && (
-            <div className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2 py-1 inline-block">
+            <div className="mt-2 text-xs text-danger bg-danger/5 border border-danger/20 rounded-md px-2 py-1 inline-block">
               {loadError}
             </div>
           )}
@@ -182,7 +182,7 @@ export default function QuickPicksPage() {
             return (
               <Card
                 key={p.userId}
-                className="absolute inset-0 bg-white rounded-2xl shadow-lg border overflow-hidden"
+                className="absolute inset-0 bg-base rounded-2xl shadow-lg border overflow-hidden"
                 style={{
                   transform: `translateY(${translateY}px) scale(${scale})`,
                   zIndex: 10 - i,
@@ -199,7 +199,7 @@ export default function QuickPicksPage() {
                       priority={isTop}
                     />
                   ) : (
-                    <div className="w-full h-72 bg-gray-100" />
+                    <div className="w-full h-72 bg-neutral/5" />
                   )}
                   <div className="p-4 flex-1 flex flex-col items-center text-center gap-1">
                     <div className="text-base font-semibold">
@@ -210,7 +210,7 @@ export default function QuickPicksPage() {
                         {p.fullName || "Member"}
                       </Link>
                     </div>
-                    <div className="text-xs text-neutral-600">
+                    <div className="text-xs text-neutral">
                       {(p as any).city || ""}
                     </div>
                     {Array.isArray(iceQs) && iceQs.length > 0 && (
@@ -218,7 +218,7 @@ export default function QuickPicksPage() {
                         {iceQs.slice(0, 2).map((q) => (
                           <span
                             key={q.id}
-                            className="text-[10px] px-2 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-200"
+                            className="text-[10px] px-2 py-1 rounded-full bg-primary/5 text-primary border border-primary/20"
                           >
                             {q.text}
                           </span>
@@ -244,7 +244,7 @@ export default function QuickPicksPage() {
         </div>
 
         {userIds.length === 0 && (
-          <div className="text-sm text-neutral-700 text-center mt-4">
+          <div className="text-sm text-neutral text-center mt-4">
             You&apos;re all caught up!
           </div>
         )}

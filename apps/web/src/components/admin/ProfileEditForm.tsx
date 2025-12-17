@@ -390,713 +390,682 @@ export default function ProfileEditForm({
 
   return (
     <form
-      className="space-y-8 bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow-lg"
+      className="space-y-10 bg-base-light p-6 sm:p-10 rounded-2xl shadow-sm border border-neutral/10"
       onSubmit={handleSubmit((values) =>
         onSubmit(values as unknown as ProfileFormValues)
       )}
       autoComplete="off"
     >
-      <h2 className="text-2xl font-bold mb-4">Edit Profile (Admin)</h2>
+      <div className="flex items-center justify-between border-b border-neutral/10 pb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-neutral-dark">Edit Profile</h2>
+          <p className="text-sm text-neutral-light mt-1">Update user information and settings</p>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+            className="border-neutral/20 text-neutral-dark hover:bg-neutral/5"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="bg-primary hover:bg-primary/90 text-white"
+            disabled={loading}
+          >
+            {loading && <LoadingSpinner size={16} className="mr-2" />}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+
       {/* Profile Images Section */}
       {profileId && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Profile Images</h3>
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-neutral-dark">Profile Images</h3>
+            <div className="flex items-center gap-3">
+              {uploading && <LoadingSpinner size={16} />}
+              <label className="cursor-pointer bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                Upload New
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+          </div>
+          
           {imagesLoading ? (
-            <div className="flex items-center gap-2">
-              <LoadingSpinner size={20} /> Loading images...
+            <div className="flex items-center justify-center py-12 bg-neutral/5 rounded-xl border border-dashed border-neutral/20">
+              <div className="flex items-center gap-3 text-neutral-light">
+                <LoadingSpinner size={20} /> 
+                <span>Loading images...</span>
+              </div>
             </div>
           ) : (
-            <ProfileImageReorder
-              images={images}
-              userId={profileId}
-              onReorder={async (newOrder) => {
-                setImages(newOrder);
-                if (profileId) {
-                  await updateAdminProfileImageOrder({
-                    profileId,
-                    imageIds: newOrder
-                      .map((img) => img.id ?? img.storageId ?? "")
-                      .filter(Boolean),
-                  } as any);
-                }
-              }}
-              onDeleteImage={handleDeleteImage}
-              loading={imagesLoading}
-            />
+            <div className="bg-neutral/5 p-6 rounded-xl border border-neutral/10">
+              <ProfileImageReorder
+                images={images}
+                userId={profileId}
+                onReorder={async (newOrder) => {
+                  setImages(newOrder);
+                  if (profileId) {
+                    await updateAdminProfileImageOrder({
+                      profileId,
+                      imageIds: newOrder
+                        .map((img) => img.id ?? img.storageId ?? "")
+                        .filter(Boolean),
+                    } as any);
+                  }
+                }}
+                onDeleteImage={handleDeleteImage}
+                loading={imagesLoading}
+              />
+            </div>
           )}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mt-2">
-            <label htmlFor="profile-image-upload" className="block">
-              <span className="sr-only">Upload image</span>
-            </label>
-            <input
-              id="profile-image-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
-              disabled={uploading}
-            />
-            {uploading && <LoadingSpinner size={16} />}
-            {imageError && (
-              <span className="text-red-600 text-sm">{imageError}</span>
-            )}
-          </div>
-        </div>
+          {imageError && (
+            <p className="text-danger text-sm font-medium">{imageError}</p>
+          )}
+        </section>
       )}
+
       {serverError && (
-        <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger p-4 rounded-xl text-sm font-medium">
           {serverError}
         </div>
       )}
-      {/* Form Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* Personal Info */}
-        <div className="md:col-span-2 mb-2">
-          <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
-        </div>
 
-        <div>
-          <label className="block font-medium" htmlFor="fullName">
-            Full Name
-          </label>
-          <input
-            id="fullName"
-            {...register("fullName")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Full name"
-          />
-          {errors.fullName && (
-            <p className="text-red-600 text-sm">{errors.fullName.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="dateOfBirth">
-            Date of Birth
-          </label>
-          <Controller
-            name="dateOfBirth"
-            control={control}
-            render={({ field }) => (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal bg-white",
-                      !field.value && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {field.value ? (
-                      format(new Date(field.value as string), "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-white" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      field.value ? new Date(field.value as string) : undefined
-                    }
-                    onSelect={(date) => {
-                      if (!date || isNaN(date.getTime())) return;
-                      field.onChange(format(date, "yyyy-MM-dd"));
-                    }}
-                    disabled={(date) => {
-                      const today = new Date();
-                      const minDate = new Date(
-                        today.getFullYear() - 18,
-                        today.getMonth(),
-                        today.getDate()
-                      );
-                      return date > minDate || date < new Date("1900-01-01");
-                    }}
-                    captionLayout="dropdown"
-                    defaultMonth={new Date(2000, 0, 1)}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-          />
-          {errors.dateOfBirth && (
-            <p className="text-red-600 text-sm">{errors.dateOfBirth.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="gender">
-            Gender
-          </label>
-          <select
-            id="gender"
-            {...register("gender")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="non-binary">Non-binary</option>
-            <option value="prefer-not-to-say">Prefer not to say</option>
-          </select>
-          {errors.gender && (
-            <p className="text-red-600 text-sm">{errors.gender.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="city">
-            City
-          </label>
-          <input
-            id="city"
-            {...register("city")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="City"
-          />
-          {errors.city && (
-            <p className="text-red-600 text-sm">{errors.city.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="country">
-            Country
-          </label>
-          <Controller
-            name="country"
-            control={control}
-            render={({ field }) => (
-              <SearchableSelect
-                options={countries.map((c) => ({ value: c, label: c }))}
-                value={(field.value as string) || ""}
-                onValueChange={(v) => field.onChange(v)}
-                placeholder="Select country"
-                className="w-full"
+      {/* Form Sections */}
+      <div className="space-y-12">
+        {/* Personal Info */}
+        <section>
+          <h3 className="text-lg font-bold text-neutral-dark mb-6 flex items-center gap-2">
+            <span className="w-1 h-6 bg-primary rounded-full" />
+            Personal Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="fullName">
+                Full Name
+              </label>
+              <input
+                id="fullName"
+                {...register("fullName")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="Full name"
               />
-            )}
-          />
-          {errors.country && (
-            <p className="text-red-600 text-sm">{errors.country.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="phoneNumber">
-            Phone Number
-          </label>
-          <Controller
-            name="phoneNumber"
-            control={control}
-            render={({ field }) => (
-              <div>
-                <PhoneInput
-                  inputId="phoneNumber"
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Phone number"
-                  className="w-full"
-                  error={!!errors.phoneNumber}
+              {errors.fullName && (
+                <p className="text-danger text-xs font-medium">{errors.fullName.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="dateOfBirth">
+                Date of Birth
+              </label>
+              <Controller
+                name="dateOfBirth"
+                control={control}
+                render={({ field }) => (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal bg-base-light h-[42px] rounded-xl border-neutral/20 text-neutral-dark",
+                          !field.value && "text-neutral-light"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value ? (
+                          format(new Date(field.value as string), "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-base-light border-neutral/10" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          field.value ? new Date(field.value as string) : undefined
+                        }
+                        onSelect={(date) => {
+                          if (!date || isNaN(date.getTime())) return;
+                          field.onChange(format(date, "yyyy-MM-dd"));
+                        }}
+                        disabled={(date) => {
+                          const today = new Date();
+                          const minDate = new Date(
+                            today.getFullYear() - 18,
+                            today.getMonth(),
+                            today.getDate()
+                          );
+                          return date > minDate || date < new Date("1900-01-01");
+                        }}
+                        captionLayout="dropdown"
+                        defaultMonth={new Date(2000, 0, 1)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
+              />
+              {errors.dateOfBirth && (
+                <p className="text-danger text-xs font-medium">{errors.dateOfBirth.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="gender">
+                Gender
+              </label>
+              <select
+                id="gender"
+                {...register("gender")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="non-binary">Non-binary</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="phoneNumber">
+                Phone Number
+              </label>
+              <Controller
+                name="phoneNumber"
+                control={control}
+                render={({ field }) => (
+                  <PhoneInput
+                    inputId="phoneNumber"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Phone number"
+                    className="w-full"
+                    error={!!errors.phoneNumber}
+                  />
+                )}
+              />
+              {errors.phoneNumber && (
+                <p className="text-danger text-xs font-medium">{errors.phoneNumber.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="city">
+                City
+              </label>
+              <input
+                id="city"
+                {...register("city")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="City"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="country">
+                Country
+              </label>
+              <Controller
+                name="country"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    options={countries.map((c) => ({ value: c, label: c }))}
+                    value={(field.value as string) || ""}
+                    onValueChange={(v) => field.onChange(v)}
+                    placeholder="Select country"
+                    className="w-full"
+                  />
+                )}
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="aboutMe">
+                About Me
+              </label>
+              <textarea
+                id="aboutMe"
+                {...register("aboutMe")}
+                className="w-full px-4 py-3 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-h-[120px]"
+                placeholder="Tell us about yourself..."
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Professional & Lifestyle */}
+        <section>
+          <h3 className="text-lg font-bold text-neutral-dark mb-6 flex items-center gap-2">
+            <span className="w-1 h-6 bg-primary rounded-full" />
+            Professional & Lifestyle
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="education">
+                Education
+              </label>
+              <input
+                id="education"
+                {...register("education")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="Education"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="occupation">
+                Occupation
+              </label>
+              <input
+                id="occupation"
+                {...register("occupation")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="Occupation"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="annualIncome">
+                Annual Income
+              </label>
+              <input
+                id="annualIncome"
+                type="number"
+                {...register("annualIncome")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="Annual Income"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="height">
+                Height
+              </label>
+              <input
+                id="height"
+                {...register("height")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="Height"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="maritalStatus">
+                Marital Status
+              </label>
+              <select
+                id="maritalStatus"
+                {...register("maritalStatus")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="single">Single</option>
+                <option value="divorced">Divorced</option>
+                <option value="widowed">Widowed</option>
+                <option value="annulled">Annulled</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="diet">
+                Diet
+              </label>
+              <select
+                id="diet"
+                {...register("diet")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">(Unspecified)</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="non-vegetarian">Non-Vegetarian</option>
+                <option value="vegan">Vegan</option>
+                <option value="halal">Halal</option>
+                <option value="kosher">Kosher</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="smoking">
+                Smoking
+              </label>
+              <select
+                id="smoking"
+                {...register("smoking")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">(Unspecified)</option>
+                <option value="never">Never</option>
+                <option value="occasionally">Occasionally</option>
+                <option value="regularly">Regularly</option>
+                <option value="socially">Socially</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="drinking">
+                Drinking
+              </label>
+              <select
+                id="drinking"
+                {...register("drinking")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">(Unspecified)</option>
+                <option value="never">Never</option>
+                <option value="occasionally">Occasionally</option>
+                <option value="socially">Socially</option>
+                <option value="regularly">Regularly</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="physicalStatus">
+                Physical Status
+              </label>
+              <select
+                id="physicalStatus"
+                {...register("physicalStatus")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">(Unspecified)</option>
+                <option value="normal">Normal</option>
+                <option value="differently-abled">Differently Abled</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Cultural & Religious */}
+        <section>
+          <h3 className="text-lg font-bold text-neutral-dark mb-6 flex items-center gap-2">
+            <span className="w-1 h-6 bg-primary rounded-full" />
+            Cultural & Religious
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="motherTongue">
+                Mother Tongue
+              </label>
+              <select
+                id="motherTongue"
+                {...register("motherTongue")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">Select Mother Tongue</option>
+                <option value="farsi-dari">Farsi Dari</option>
+                <option value="pashto">Pashto</option>
+                <option value="uzbeki">Uzbeki</option>
+                <option value="hazaragi">Hazaragi</option>
+                <option value="turkmeni">Turkmeni</option>
+                <option value="balochi">Balochi</option>
+                <option value="nuristani">Nuristani</option>
+                <option value="punjabi">Punjabi</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="religion">
+                Religion
+              </label>
+              <select
+                id="religion"
+                {...register("religion")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">Select Religion</option>
+                <option value="muslim">Muslim</option>
+                <option value="hindu">Hindu</option>
+                <option value="sikh">Sikh</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="ethnicity">
+                Ethnicity
+              </label>
+              <select
+                id="ethnicity"
+                {...register("ethnicity")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="">Select Ethnicity</option>
+                <option value="tajik">Tajik</option>
+                <option value="pashtun">Pashtun</option>
+                <option value="uzbek">Uzbek</option>
+                <option value="hazara">Hazara</option>
+                <option value="turkmen">Turkmen</option>
+                <option value="baloch">Baloch</option>
+                <option value="nuristani">Nuristani</option>
+                <option value="aimaq">Aimaq</option>
+                <option value="pashai">Pashai</option>
+                <option value="qizilbash">Qizilbash</option>
+                <option value="punjabi">Punjabi</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Partner Preferences */}
+        <section>
+          <h3 className="text-lg font-bold text-neutral-dark mb-6 flex items-center gap-2">
+            <span className="w-1 h-6 bg-primary rounded-full" />
+            Partner Preferences
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-neutral-dark" htmlFor="partnerPreferenceAgeMin">
+                  Min Age
+                </label>
+                <input
+                  id="partnerPreferenceAgeMin"
+                  type="number"
+                  {...register("partnerPreferenceAgeMin")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                 />
               </div>
-            )}
-          />
-          {errors.phoneNumber && (
-            <p className="text-red-600 text-sm">{errors.phoneNumber.message}</p>
-          )}
-        </div>
-        <div className="md:col-span-2">
-          <label className="block font-medium" htmlFor="aboutMe">
-            About Me
-          </label>
-          <textarea
-            id="aboutMe"
-            {...register("aboutMe")}
-            className="form-textarea w-full min-h-[80px] rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Tell us about yourself..."
-          />
-          {errors.aboutMe && (
-            <p className="text-red-600 text-sm">{errors.aboutMe.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="height">
-            Height
-          </label>
-          <input
-            id="height"
-            {...register("height")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Height"
-          />
-          {errors.height && (
-            <p className="text-red-600 text-sm">{errors.height.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="maritalStatus">
-            Marital Status
-          </label>
-          <select
-            id="maritalStatus"
-            {...register("maritalStatus")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="single">Single</option>
-            <option value="divorced">Divorced</option>
-            <option value="widowed">Widowed</option>
-            <option value="annulled">Annulled</option>
-          </select>
-          {errors.maritalStatus && (
-            <p className="text-red-600 text-sm">
-              {errors.maritalStatus.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="education">
-            Education
-          </label>
-          <input
-            id="education"
-            {...register("education")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Education"
-          />
-          {errors.education && (
-            <p className="text-red-600 text-sm">{errors.education.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="occupation">
-            Occupation
-          </label>
-          <input
-            id="occupation"
-            {...register("occupation")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Occupation"
-          />
-          {errors.occupation && (
-            <p className="text-red-600 text-sm">{errors.occupation.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="annualIncome">
-            Annual Income
-          </label>
-          <input
-            id="annualIncome"
-            type="number"
-            {...register("annualIncome")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Annual Income"
-          />
-          {errors.annualIncome && (
-            <p className="text-red-600 text-sm">
-              {errors.annualIncome.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="diet">
-            Diet
-          </label>
-          <select
-            id="diet"
-            {...register("diet")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">(Unspecified)</option>
-            <option value="vegetarian">Vegetarian</option>
-            <option value="non-vegetarian">Non-Vegetarian</option>
-            <option value="vegan">Vegan</option>
-            <option value="halal">Halal</option>
-            <option value="kosher">Kosher</option>
-          </select>
-          {errors.diet && (
-            <p className="text-red-600 text-sm">{errors.diet.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="smoking">
-            Smoking
-          </label>
-          <select
-            id="smoking"
-            {...register("smoking")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">(Unspecified)</option>
-            <option value="never">Never</option>
-            <option value="occasionally">Occasionally</option>
-            <option value="regularly">Regularly</option>
-            <option value="socially">Socially</option>
-          </select>
-          {errors.smoking && (
-            <p className="text-red-600 text-sm">{errors.smoking.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="drinking">
-            Drinking
-          </label>
-          <select
-            id="drinking"
-            {...register("drinking")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">(Unspecified)</option>
-            <option value="never">Never</option>
-            <option value="occasionally">Occasionally</option>
-            <option value="socially">Socially</option>
-            <option value="regularly">Regularly</option>
-          </select>
-          {errors.drinking && (
-            <p className="text-red-600 text-sm">{errors.drinking.message}</p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="physicalStatus">
-            Physical Status
-          </label>
-          <select
-            id="physicalStatus"
-            {...register("physicalStatus")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">(Unspecified)</option>
-            <option value="normal">Normal</option>
-            <option value="differently-abled">Differently Abled</option>
-          </select>
-          {errors.physicalStatus && (
-            <p className="text-red-600 text-sm">
-              {errors.physicalStatus.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label
-            className="block font-medium"
-            htmlFor="partnerPreferenceAgeMin"
-          >
-            Partner Preference Age Min
-          </label>
-          <input
-            id="partnerPreferenceAgeMin"
-            type="number"
-            {...register("partnerPreferenceAgeMin")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Partner Preference Age Min"
-          />
-          {errors.partnerPreferenceAgeMin && (
-            <p className="text-red-600 text-sm">
-              {errors.partnerPreferenceAgeMin.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label
-            className="block font-medium"
-            htmlFor="partnerPreferenceAgeMax"
-          >
-            Partner Preference Age Max
-          </label>
-          <input
-            id="partnerPreferenceAgeMax"
-            type="number"
-            {...register("partnerPreferenceAgeMax")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Partner Preference Age Max"
-          />
-          {errors.partnerPreferenceAgeMax && (
-            <p className="text-red-600 text-sm">
-              {errors.partnerPreferenceAgeMax.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="partnerPreferenceCity">
-            Partner Preference City/Cities
-          </label>
-          <input
-            id="partnerPreferenceCity"
-            {...register("partnerPreferenceCity")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Partner Preference City/Cities"
-          />
-          {errors.partnerPreferenceCity && (
-            <p className="text-red-600 text-sm">
-              {errors.partnerPreferenceCity.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="preferredGender">
-            Preferred Gender
-          </label>
-          <select
-            id="preferredGender"
-            {...register("preferredGender")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="both">Both</option>
-            <option value="other">Other</option>
-            <option value="">(Unspecified)</option>
-          </select>
-          {errors.preferredGender && (
-            <p className="text-red-600 text-sm">
-              {errors.preferredGender.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block font-medium" htmlFor="profileFor">
-            Profile For
-          </label>
-          <select
-            id="profileFor"
-            {...register("profileFor")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="self">Self</option>
-            <option value="friend">Friend</option>
-            <option value="family">Family</option>
-          </select>
-          {errors.profileFor && (
-            <p className="text-red-600 text-sm">{errors.profileFor.message}</p>
-          )}
-        </div>
-        <div className="md:col-span-1">
-          <label className="block font-medium" htmlFor="subscriptionPlan">
-            Subscription Plan
-          </label>
-          <select
-            id="subscriptionPlan"
-            {...register("subscriptionPlan")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            {/* Ensure labels stay consistent with server constants */}
-            <option value="free">Free</option>
-            <option value="premium">Premium</option>
-            <option value="premiumPlus">Premium Plus</option>
-          </select>
-          {errors.subscriptionPlan && (
-            <p className="text-red-600 text-sm">
-              {errors.subscriptionPlan.message}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Labels mirror server SUBSCRIPTION_PLANS; changing plan here does not
-            create Stripe billing.
-          </p>
-        </div>
-
-        {/* Subscription admin fields */}
-        <div className="md:col-span-1">
-          <label className="block font-medium" htmlFor="subscriptionExpiresAt">
-            Subscription Expires At
-          </label>
-          <input
-            id="subscriptionExpiresAt"
-            type="number"
-            {...register("subscriptionExpiresAt")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Unix ms timestamp"
-          />
-          {errors.subscriptionExpiresAt && (
-            <p className="text-red-600 text-sm">
-              {errors.subscriptionExpiresAt.message as string}
-            </p>
-          )}
-          {/* Read-only preview */}
-          <SubscriptionExpiryPreview control={control as any} />
-        </div>
-
-        <div className="md:col-span-1">
-          <label
-            htmlFor="hideFromFreeUsers"
-            className="inline-flex items-center gap-2 font-medium"
-          >
-            <input
-              id="hideFromFreeUsers"
-              type="checkbox"
-              {...register("hideFromFreeUsers")}
-              className="rounded border-gray-300"
-            />
-            Hide from Free Users
-          </label>
-        </div>
-
-        {/* Cultural Information */}
-        <div>
-          <label
-            className="block text-sm font-medium text-neutral mb-1"
-            htmlFor="motherTongue"
-          >
-            Mother Tongue
-          </label>
-          <select
-            id="motherTongue"
-            {...register("motherTongue")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">Select Mother Tongue</option>
-            <option value="farsi-dari">Farsi Dari</option>
-            <option value="pashto">Pashto</option>
-            <option value="uzbeki">Uzbeki</option>
-            <option value="hazaragi">Hazaragi</option>
-            <option value="turkmeni">Turkmeni</option>
-            <option value="balochi">Balochi</option>
-            <option value="nuristani">Nuristani</option>
-            <option value="punjabi">Punjabi</option>
-          </select>
-          {errors.motherTongue && (
-            <p className="text-red-600 text-sm">
-              {errors.motherTongue.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label
-            className="block text-sm font-medium text-neutral mb-1"
-            htmlFor="religion"
-          >
-            Religion
-          </label>
-          <select
-            id="religion"
-            {...register("religion")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">Select Religion</option>
-            <option value="muslim">Muslim</option>
-            <option value="hindu">Hindu</option>
-            <option value="sikh">Sikh</option>
-          </select>
-          {errors.religion && (
-            <p className="text-red-600 text-sm">{errors.religion.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label
-            className="block text-sm font-medium text-neutral mb-1"
-            htmlFor="ethnicity"
-          >
-            Ethnicity
-          </label>
-          <select
-            id="ethnicity"
-            {...register("ethnicity")}
-            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-          >
-            <option value="">Select Ethnicity</option>
-            <option value="tajik">Tajik</option>
-            <option value="pashtun">Pashtun</option>
-            <option value="uzbek">Uzbek</option>
-            <option value="hazara">Hazara</option>
-            <option value="turkmen">Turkmen</option>
-            <option value="baloch">Baloch</option>
-            <option value="nuristani">Nuristani</option>
-            <option value="aimaq">Aimaq</option>
-            <option value="pashai">Pashai</option>
-            <option value="qizilbash">Qizilbash</option>
-            <option value="punjabi">Punjabi</option>
-          </select>
-          {errors.ethnicity && (
-            <p className="text-red-600 text-sm">{errors.ethnicity.message}</p>
-          )}
-        </div>
-      </div>
-      {/* Manual Match Section */}
-      {profileId && (
-        <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold mb-2">Manual Match</h3>
-          <p className="text-sm text-muted-foreground mb-3">
-            Enter another profile name to create an immediate mutual match.
-          </p>
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={manualMatchName}
-              onChange={(e) => {
-                setManualMatchName(e.target.value);
-                setSelectedProfile(null);
-              }}
-              placeholder="Other profile name"
-              className="flex-1 form-input rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500 text-foreground"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={
-                (!manualMatchName.trim() && !selectedProfile) || creatingMatch
-              }
-              onClick={handleCreateMatch}
-            >
-              {creatingMatch ? <LoadingSpinner size={16} /> : "Match Now"}
-            </Button>
-          </div>
-          {matchError && (
-            <p className="text-sm text-red-600 mt-2">{matchError}</p>
-          )}
-
-          {/* Suggestions dropdown */}
-          {suggestions.length > 0 && (
-            <div className="border mt-2 rounded-md bg-white shadow max-h-60 overflow-auto z-50">
-              {suggestions.map((sug) => (
-                <button
-                  key={sug._id}
-                  type="button"
-                  className="w-full text-left px-3 py-2 hover:bg-pink-50 cursor-pointer text-foreground"
-                  onClick={() => {
-                    setSelectedProfile(sug);
-                    setManualMatchName(sug.fullName);
-                    setSuggestions([]);
-                  }}
-                >
-                  {sug.fullName} – {sug.city}
-                </button>
-              ))}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-neutral-dark" htmlFor="partnerPreferenceAgeMax">
+                  Max Age
+                </label>
+                <input
+                  id="partnerPreferenceAgeMax"
+                  type="number"
+                  {...register("partnerPreferenceAgeMax")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
             </div>
-          )}
-        </div>
-      )}
-      {/* Matches List */}
-      {matches.length > 0 && (
-        <div className="border-t pt-6 mt-6">
-          <h3 className="text-lg font-semibold mb-2">
-            Current Matches ({matches.length})
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="preferredGender">
+                Preferred Gender
+              </label>
+              <select
+                id="preferredGender"
+                {...register("preferredGender")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="both">Both</option>
+                <option value="other">Other</option>
+                <option value="">(Unspecified)</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-semibold text-neutral-dark" htmlFor="partnerPreferenceCity">
+                Preferred Cities
+              </label>
+              <input
+                id="partnerPreferenceCity"
+                {...register("partnerPreferenceCity")}
+                className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 bg-base-light text-neutral-dark focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="e.g. London, Kabul, Dubai"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Admin & Subscription */}
+        <section className="bg-neutral/5 p-6 rounded-2xl border border-neutral/10">
+          <h3 className="text-lg font-bold text-neutral-dark mb-6 flex items-center gap-2">
+            <span className="w-1 h-6 bg-primary rounded-full" />
+            Admin & Subscription
           </h3>
-          <ul className="list-disc pl-5 space-y-1">
-            {matches.map((m) => (
-              <li key={m._id} className="text-sm text-foreground">
-                {m.fullName} — {m.city}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div className="flex gap-4 mt-8">
-        <Button
-          type="submit"
-          className="bg-pink-600 hover:bg-pink-700"
-          disabled={loading}
-        >
-          {loading && <LoadingSpinner size={16} className="mr-2" />}
-          Save
-        </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-neutral-dark" htmlFor="subscriptionPlan">
+                  Subscription Plan
+                </label>
+                <select
+                  id="subscriptionPlan"
+                  {...register("subscriptionPlan")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+                >
+                  <option value="free">Free</option>
+                  <option value="premium">Premium</option>
+                  <option value="premiumPlus">Premium Plus</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-base-light rounded-xl border border-neutral/10">
+                <input
+                  id="hideFromFreeUsers"
+                  type="checkbox"
+                  {...register("hideFromFreeUsers")}
+                  className="w-5 h-5 rounded border-neutral/30 text-primary focus:ring-primary/20"
+                />
+                <label htmlFor="hideFromFreeUsers" className="text-sm font-semibold text-neutral-dark cursor-pointer">
+                  Hide from Free Users
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-neutral-dark" htmlFor="subscriptionExpiresAt">
+                  Subscription Expiry (Unix ms)
+                </label>
+                <input
+                  id="subscriptionExpiresAt"
+                  type="number"
+                  {...register("subscriptionExpiresAt")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+                  placeholder="Unix ms timestamp"
+                />
+                <SubscriptionExpiryPreview control={control as any} />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Manual Match Section */}
+        {profileId && (
+          <section className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
+            <h3 className="text-lg font-bold text-primary mb-2">Manual Match</h3>
+            <p className="text-sm text-primary/70 mb-6">
+              Create an immediate mutual match with another profile.
+            </p>
+            
+            <div className="relative">
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={manualMatchName}
+                  onChange={(e) => {
+                    setManualMatchName(e.target.value);
+                    setSelectedProfile(null);
+                  }}
+                  placeholder="Search profile by name..."
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-primary/20 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-base-light text-neutral-dark"
+                />
+                <Button
+                  type="button"
+                  className="bg-primary hover:bg-primary/90 h-[42px] px-6 text-white"
+                  disabled={(!manualMatchName.trim() && !selectedProfile) || creatingMatch}
+                  onClick={handleCreateMatch}
+                >
+                  {creatingMatch ? <LoadingSpinner size={16} /> : "Create Match"}
+                </Button>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-base-light border border-neutral/20 rounded-xl shadow-xl overflow-hidden z-50">
+                  {suggestions.map((sug) => (
+                    <button
+                      key={sug._id}
+                      type="button"
+                      className="w-full text-left px-4 py-3 hover:bg-neutral/5 transition-colors border-b border-neutral/10 last:border-0"
+                      onClick={() => {
+                        setSelectedProfile(sug);
+                        setManualMatchName(sug.fullName);
+                        setSuggestions([]);
+                      }}
+                    >
+                      <div className="font-semibold text-neutral-dark">{sug.fullName}</div>
+                      <div className="text-xs text-neutral-light">{sug.city}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {matchError && (
+              <p className="text-sm text-danger mt-3 font-medium">{matchError}</p>
+            )}
+
+            {/* Matches List */}
+            {matches.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-primary/10">
+                <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-4">
+                  Current Matches ({matches.length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {matches.map((m) => (
+                    <div key={m._id} className="bg-base-light px-3 py-1.5 rounded-full border border-primary/10 text-xs font-medium text-primary flex items-center gap-2">
+                      {m.fullName}
+                      <span className="w-1 h-1 rounded-full bg-primary/30" />
+                      {m.city}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+
+      <div className="flex items-center justify-end gap-4 pt-8 border-t border-neutral/10">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={loading}
+          className="px-8 border-neutral/20 text-neutral-dark hover:bg-neutral/5"
         >
           Cancel
         </Button>
+        <Button
+          type="submit"
+          className="bg-primary hover:bg-primary/90 px-8 text-white"
+          disabled={loading}
+        >
+          {loading && <LoadingSpinner size={16} className="mr-2" />}
+          Save Changes
+        </Button>
       </div>
     </form>
+  );
+}
   );
 }
 

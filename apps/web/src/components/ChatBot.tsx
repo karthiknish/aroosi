@@ -83,45 +83,45 @@ const ChatBot: React.FC = () => {
       {/* Floating Button */}
       {!open && (
         <button
-          className="fixed bottom-6 right-6 z-50 bg-primary-dark hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+          className="fixed bottom-6 right-6 z-50 bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
           onClick={() => setOpen(true)}
           aria-label="Open chat bot"
         >
-          <MessageCircle className="w-7 h-7 text-white" />
+          <MessageCircle className="w-7 h-7" />
         </button>
       )}
       {/* Chat Window */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[95vw] bg-white rounded-2xl shadow-2xl border border-primary flex flex-col overflow-hidden animate-fade-in">
-          <div className="flex items-center justify-between bg-primary text-primary-foreground px-4 py-3">
+        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[95vw] bg-base-light rounded-2xl shadow-2xl border border-primary/20 flex flex-col overflow-hidden animate-fade-in">
+          <div className="flex items-center justify-between bg-primary text-white px-4 py-3">
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-white" />
-              <span className="font-bold text-md text-white font-serif">
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-bold text-md font-serif">
                 Aroosi AI Assistant
               </span>
             </div>
             <button
               onClick={() => setOpen(false)}
               aria-label="Close chat"
-              className="hover:bg-primary/10 p-1 rounded-full transition-colors"
+              className="hover:bg-white/10 p-1 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
           {!email ? (
             <form
-              className="flex flex-col gap-3 p-6 bg-muted"
+              className="flex flex-col gap-3 p-6 bg-neutral/5"
               onSubmit={handleEmailSubmit}
             >
               <label
                 htmlFor="chatbot-email"
-                className="text-sm font-semibold text-foreground"
+                className="text-sm font-semibold text-neutral-dark"
               >
                 Enter your email to start chatting:
               </label>
               <input
                 id="chatbot-email"
-                className="rounded-md border border-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all bg-background text-foreground"
+                className="rounded-md border border-neutral/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-base-light text-neutral-dark"
                 placeholder="you@example.com"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
@@ -134,14 +134,14 @@ const ChatBot: React.FC = () => {
               {emailError && (
                 <div
                   id="chatbot-email-error"
-                  className="text-destructive text-xs"
+                  className="text-danger text-xs"
                 >
                   {emailError}
                 </div>
               )}
               <button
                 type="submit"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md px-4 py-2 mt-2 transition-all duration-300 hover:scale-[1.02]"
+                className="bg-primary hover:bg-primary-dark text-white rounded-md px-4 py-2 mt-2 transition-all duration-300 hover:scale-[1.02]"
               >
                 Start Chat
               </button>
@@ -149,7 +149,7 @@ const ChatBot: React.FC = () => {
           ) : (
             <>
               <div
-                className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-muted"
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-neutral/5"
                 style={{ minHeight: 300, maxHeight: 500 }}
               >
                 {messages.map((msg, i) => (
@@ -160,8 +160,8 @@ const ChatBot: React.FC = () => {
                     <div
                       className={`group relative rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm transition-all duration-300 ${
                         msg.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-foreground border border-primary hover:border-primary/80"
+                          ? "bg-primary text-white"
+                          : "bg-base-light text-neutral-dark border border-neutral/10 hover:border-primary/20"
                       }`}
                     >
                       <div className="whitespace-pre-wrap">
@@ -199,7 +199,7 @@ const ChatBot: React.FC = () => {
                                 <em className="italic font-sans">{children}</em>
                               ),
                               code: ({ children }) => (
-                                <code className="bg-muted rounded px-1 py-0.5 text-xs font-mono">
+                                <code className="bg-neutral/10 rounded px-1 py-0.5 text-xs font-mono">
                                   {children}
                                 </code>
                               ),
@@ -219,7 +219,7 @@ const ChatBot: React.FC = () => {
                                 </h3>
                               ),
                               blockquote: ({ children }) => (
-                                <blockquote className="border-l-2 border-primary-200 pl-3 my-2 italic">
+                                <blockquote className="border-l-2 border-primary/20 pl-3 my-2 italic">
                                   {children}
                                 </blockquote>
                               ),
@@ -230,7 +230,7 @@ const ChatBot: React.FC = () => {
                         )}
                       </div>
                       <div
-                        className={`text-xs mt-1 ${msg.role === "user" ? "text-primary-100" : "text-muted-foreground"}`}
+                        className={`text-xs mt-1 ${msg.role === "user" ? "text-white/70" : "text-neutral-light"}`}
                       >
                         {formatTime(msg.timestamp)}
                       </div>
@@ -239,7 +239,7 @@ const ChatBot: React.FC = () => {
                 ))}
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="bg-background text-foreground border border-primary-100 rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm flex items-center gap-2">
+                    <div className="bg-base-light text-neutral-dark border border-neutral/10 rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm flex items-center gap-2">
                       <Skeleton className="w-4 h-4 rounded-full" />
                       <Skeleton className="h-4 w-20 rounded" />
                     </div>
@@ -248,14 +248,14 @@ const ChatBot: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
               <form
-                className="flex items-center gap-2 border-t border-primary-100 bg-background p-3"
+                className="flex items-center gap-2 border-t border-neutral/10 bg-base-light p-3"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!loading) void sendMessage();
                 }}
               >
                 <input
-                  className="flex-1 rounded-full border border-primary-500 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all bg-background text-foreground"
+                  className="flex-1 rounded-full border border-neutral/20 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-base-light text-neutral-dark"
                   placeholder="Type your message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -264,7 +264,7 @@ const ChatBot: React.FC = () => {
                 />
                 <button
                   type="submit"
-                  className="bg-primary-600 hover:bg-primary-700 text-primary-foreground rounded-full p-2 disabled:opacity-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100"
+                  className="bg-primary hover:bg-primary-dark text-white rounded-full p-2 disabled:opacity-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100"
                   disabled={loading || !input.trim()}
                   aria-label="Send"
                 >
@@ -273,6 +273,8 @@ const ChatBot: React.FC = () => {
               </form>
             </>
           )}
+        </div>
+      )}
         </div>
       )}
     </div>

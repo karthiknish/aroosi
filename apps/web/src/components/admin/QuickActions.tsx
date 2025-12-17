@@ -34,8 +34,8 @@ export function QuickActions() {
       description: "Write a new article",
       icon: <Plus className="h-5 w-5" />,
       href: "/admin/blog/create",
-      colorClass: "bg-blue-50 hover:bg-blue-100 border-blue-100",
-      iconColor: "text-blue-600",
+      colorClass: "bg-info/5 hover:bg-info/10 border-info/10",
+      iconColor: "text-info",
     },
     {
       id: "review-profiles",
@@ -43,8 +43,8 @@ export function QuickActions() {
       description: "Approve pending profiles",
       icon: <Shield className="h-5 w-5" />,
       href: "/admin/profile",
-      colorClass: "bg-orange-50 hover:bg-orange-100 border-orange-100",
-      iconColor: "text-orange-600",
+      colorClass: "bg-warning/5 hover:bg-warning/10 border-warning/10",
+      iconColor: "text-warning",
     },
     {
       id: "view-messages",
@@ -52,8 +52,8 @@ export function QuickActions() {
       description: "Respond to user inquiries",
       icon: <Mail className="h-5 w-5" />,
       href: "/admin/contact",
-      colorClass: "bg-green-50 hover:bg-green-100 border-green-100",
-      iconColor: "text-green-600",
+      colorClass: "bg-success/5 hover:bg-success/10 border-success/10",
+      iconColor: "text-success",
     },
     {
       id: "user-management",
@@ -61,8 +61,8 @@ export function QuickActions() {
       description: "Search and manage users",
       icon: <Search className="h-5 w-5" />,
       href: "/admin/profile",
-      colorClass: "bg-purple-50 hover:bg-purple-100 border-purple-100",
-      iconColor: "text-purple-600",
+      colorClass: "bg-secondary/5 hover:bg-secondary/10 border-secondary/10",
+      iconColor: "text-secondary",
     },
     {
       id: "analytics",
@@ -70,8 +70,8 @@ export function QuickActions() {
       description: "Platform insights",
       icon: <BarChart3 className="h-5 w-5" />,
       href: "/admin/analytics",
-      colorClass: "bg-pink-50 hover:bg-pink-100 border-pink-100",
-      iconColor: "text-pink-600",
+      colorClass: "bg-primary/5 hover:bg-primary/10 border-primary/10",
+      iconColor: "text-primary",
     },
     {
       id: "marketing-email",
@@ -79,8 +79,8 @@ export function QuickActions() {
       description: "Promote to all users",
       icon: <Mail className="h-5 w-5" />,
       href: "/admin/marketing-email",
-      colorClass: "bg-red-50 hover:bg-red-100 border-red-100",
-      iconColor: "text-red-600",
+      colorClass: "bg-danger/5 hover:bg-danger/10 border-danger/10",
+      iconColor: "text-danger",
     },
     {
       id: "push-notification",
@@ -88,8 +88,8 @@ export function QuickActions() {
       description: "Notify all app users",
       icon: <Bell className="h-5 w-5" />,
       href: "/admin/push-notification",
-      colorClass: "bg-yellow-50 hover:bg-yellow-100 border-yellow-100",
-      iconColor: "text-yellow-600",
+      colorClass: "bg-warning/5 hover:bg-warning/10 border-warning/10",
+      iconColor: "text-warning",
     },
     {
       id: "settings",
@@ -97,15 +97,15 @@ export function QuickActions() {
       description: "Configure system",
       icon: <Settings className="h-5 w-5" />,
       href: "/admin/settings",
-      colorClass: "bg-slate-50 hover:bg-slate-100 border-slate-100",
-      iconColor: "text-slate-600",
+      colorClass: "bg-neutral/5 hover:bg-neutral/10 border-neutral/10",
+      iconColor: "text-neutral",
     },
   ];
 
   return (
-    <Card className="border-slate-200 shadow-sm h-full">
-      <CardHeader className="border-b border-slate-100 pb-4">
-        <CardTitle className="text-lg font-semibold text-slate-900">Quick Actions</CardTitle>
+    <Card className="border-neutral/10 shadow-sm h-full">
+      <CardHeader className="border-b border-neutral/5 pb-4">
+        <CardTitle className="text-lg font-semibold text-neutral-dark">Quick Actions</CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="grid grid-cols-1 gap-3">
@@ -116,14 +116,14 @@ export function QuickActions() {
               className={`group flex items-center justify-between w-full p-4 rounded-xl border transition-all duration-200 ${action.colorClass}`}
             >
               <div className="flex items-center space-x-4">
-                <div className={`p-2 rounded-lg bg-white/60 ${action.iconColor}`}>
+                <div className={`p-2 rounded-lg bg-base-light/60 ${action.iconColor}`}>
                   {action.icon}
                 </div>
                 <div className="flex flex-col items-start">
-                  <span className="font-semibold text-slate-900 text-sm">
+                  <span className="font-semibold text-neutral-dark text-sm">
                     {action.title}
                   </span>
-                  <span className="text-xs text-slate-600">
+                  <span className="text-xs text-neutral">
                     {action.description}
                   </span>
                 </div>

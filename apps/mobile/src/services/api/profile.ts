@@ -8,21 +8,37 @@ export interface UserProfile {
     id: string;
     email: string | null;
     displayName: string | null;
+    fullName?: string;
+    profileFor?: 'self' | 'friend' | 'family';
     photoURL: string | null;
     bio?: string;
+    aboutMe?: string;
     age?: number;
+    dateOfBirth?: string;
     gender?: 'male' | 'female' | 'other';
+    preferredGender?: 'male' | 'female' | 'both' | 'other';
     location?: {
         city?: string;
         state?: string;
         country?: string;
+        origin?: string;
         coordinates?: {
             latitude: number;
             longitude: number;
         };
     };
+    education?: string;
+    occupation?: string;
+    income?: string;
+    height?: string;
+    maritalStatus?: string;
+    religion?: string;
+    sect?: string;
+    caste?: string;
+    motherTongue?: string;
     preferences?: UserPreferences;
     photos?: string[];
+    profileImageIds?: string[];
     interests?: string[];
     isVerified?: boolean;
     isPremium?: boolean;
@@ -43,14 +59,29 @@ export interface UserPreferences {
 
 export interface ProfileUpdateData {
     displayName?: string;
+    fullName?: string;
+    profileFor?: 'self' | 'friend' | 'family';
     bio?: string;
+    aboutMe?: string;
     age?: number;
+    dateOfBirth?: string;
     gender?: 'male' | 'female' | 'other';
+    preferredGender?: 'male' | 'female' | 'both' | 'other';
     location?: {
         city?: string;
         state?: string;
         country?: string;
+        origin?: string;
     };
+    education?: string;
+    occupation?: string;
+    income?: string;
+    height?: string;
+    maritalStatus?: string;
+    religion?: string;
+    sect?: string;
+    caste?: string;
+    motherTongue?: string;
     interests?: string[];
     onboardingComplete?: boolean;
 }
@@ -100,20 +131,10 @@ export async function uploadProfilePhoto(imageUri: string, index: number) {
         uri: imageUri,
         type: 'image/jpeg',
         name: `photo_${index}.jpg`,
-    } as unknown as Blob);
+    } as any);
     formData.append('index', String(index));
 
-    // Use custom fetch for multipart form data
-    const token = await getAuthToken();
-    const response = await fetch(`${API_BASE_URL}/profile-images/upload`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-    });
-
-    return response.json();
+    return api.post('/profile-images/upload', formData);
 }
 
 /**
@@ -142,14 +163,4 @@ export async function boostProfile() {
  */
 export async function toggleSpotlight(enabled: boolean) {
     return api.post('/profile/spotlight', { enabled });
-}
-
-// Helper to get auth token
-import auth from '@react-native-firebase/auth';
-import { API_BASE_URL } from '../../config';
-
-async function getAuthToken(): Promise<string | null> {
-    const user = auth().currentUser;
-    if (!user) return null;
-    return user.getIdToken();
 }

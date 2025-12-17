@@ -341,9 +341,9 @@ export function ProfileImageUpload({
       <div
         className={`relative flex items-center justify-center ${className || ""}`}
       >
-        <label className="flex flex-col items-center justify-center w-full h-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-neutral/10">
+        <label className="flex flex-col items-center justify-center w-full h-full p-4 border-2 border-dashed border-neutral/20 rounded-lg cursor-pointer hover:bg-neutral/5">
           <svg
-            className="w-8 h-8 mb-2 text-neutral/60"
+            className="w-8 h-8 mb-2 text-neutral-light"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -356,7 +356,7 @@ export function ProfileImageUpload({
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-sm text-neutral/60 text-center">
+          <p className="text-sm text-neutral-light text-center">
             Click to upload or drag and drop
           </p>
           <input
@@ -398,15 +398,15 @@ export function ProfileImageUpload({
       {(memoizedOrderedImages?.length ?? 0) < MAX_IMAGES_PER_USER && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-neutral">Add New Photo</h3>
-            <span className="text-xs text-neutral/60">
+            <h3 className="text-sm font-medium text-neutral-dark">Add New Photo</h3>
+            <span className="text-xs text-neutral-light">
               {memoizedOrderedImages?.length ?? 0} of {MAX_IMAGES_PER_USER}{" "}
               photos
             </span>
           </div>
           {memoizedOrderedImages.length === 0 && (
-            <div className="rounded-lg border border-dashed border-neutral/30 p-3 text-xs text-neutral/60">
-              <p className="font-medium text-neutral mb-1">
+            <div className="rounded-lg border border-dashed border-neutral/20 p-3 text-xs text-neutral-light">
+              <p className="font-medium text-neutral-dark mb-1">
                 Tips for great profile photos
               </p>
               <ul className="list-disc ml-4 space-y-1">
@@ -434,12 +434,12 @@ export function ProfileImageUpload({
           />
           {/* Upload limit indicator */}
           <div className="flex justify-between px-1">
-            <p className="text-xs text-neutral/60">
+            <p className="text-xs text-neutral-light">
               {MAX_IMAGES_PER_USER - (memoizedOrderedImages?.length || 0) === 0
                 ? "Maximum photos uploaded"
                 : `Upload up to ${MAX_IMAGES_PER_USER - (memoizedOrderedImages?.length || 0)} more`}
             </p>
-            <p className="text-xs text-neutral/60">
+            <p className="text-xs text-neutral-light">
               {MAX_IMAGES_PER_USER - (memoizedOrderedImages?.length || 0)}{" "}
               remaining
             </p>

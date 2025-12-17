@@ -55,36 +55,36 @@ export const PremiumFeatureGuard: React.FC<PremiumFeatureGuardProps> = ({
   const price = neededTier === 'premiumPlus' ? '£39.99' : '£14.99';
 
   return (
-    <Card className="p-6 text-center bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+    <Card className="p-6 text-center bg-gradient-to-br from-info/5 to-primary/5 border-info/20">
       <div className="mb-4">
-        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-info to-primary rounded-full flex items-center justify-center">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
         
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <h3 className="text-lg font-semibold text-neutral mb-2">
           {tierName} Feature
         </h3>
         
-        <p className="text-gray-600 mb-4">
+        <p className="text-neutral-light mb-4">
           This feature requires a {tierName} subscription to access.
         </p>
       </div>
 
       <div className="space-y-3">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-neutral-light">
           Current plan: <span className="capitalize font-medium">{status?.plan || 'Free'}</span>
         </div>
         
         <Button
           onClick={onUpgrade ?? (() => (window.location.href = '/plans'))}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+          className="w-full bg-gradient-to-r from-info to-primary hover:brightness-95"
         >
           Upgrade to {tierName} - {price}/month
         </Button>
         
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-neutral-light">
           Cancel anytime • 30-day money-back guarantee
         </p>
       </div>
@@ -109,17 +109,17 @@ export const FeatureLocked: React.FC<FeatureLockedProps> = ({
   const price = requiredTier === 'premiumPlus' ? '£39.99' : '£14.99';
 
   return (
-    <div className={`bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center ${className}`}>
+    <div className={`bg-neutral/5 border-2 border-dashed border-neutral/10 rounded-lg p-8 text-center ${className}`}>
       <div className="mb-4">
-        <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-12 h-12 mx-auto text-neutral-light mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
         
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="text-lg font-medium text-neutral mb-2">
           {featureName}
         </h3>
         
-        <p className="text-gray-600 mb-4">
+        <p className="text-neutral-light mb-4">
           Unlock {featureName.toLowerCase()} with {tierName}
         </p>
       </div>
@@ -127,7 +127,7 @@ export const FeatureLocked: React.FC<FeatureLockedProps> = ({
       <Button
         onClick={onUpgrade ?? (() => (window.location.href = '/plans'))}
         variant="outline"
-        className="border-blue-500 text-blue-600 hover:bg-blue-50"
+        className="border-info text-info hover:bg-info/5"
       >
         Upgrade to {tierName} - {price}/month
       </Button>

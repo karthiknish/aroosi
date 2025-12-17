@@ -62,7 +62,7 @@ export const FormField: React.FC<FormFieldProps> = ({
 }) => (
   <div>
     <Label htmlFor={String(name)}>
-      {label} {isRequired && <span className="text-primary">*</span>}
+      {label} {isRequired && <span className="text-danger">*</span>}
     </Label>
     {textarea ? (
       <Textarea
@@ -70,7 +70,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         {...form.register(name)}
         aria-invalid={!!form.formState.errors[name] || undefined}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
-        className="mt-1 block w-full rounded-md border border-neutral-light/30 shadow-sm focus:ring-primary focus:border-primary min-h-[100px]"
+        className="mt-1 block w-full rounded-md border border-neutral/10 shadow-sm focus:ring-primary focus:border-primary min-h-[100px]"
         rows={5}
       />
     ) : (
@@ -194,7 +194,7 @@ export const DatePickerCustomInput = React.forwardRef<
     variant="outline"
     className={cn(
       "w-full justify-start text-left font-normal mt-1",
-      !value && "text-muted-foreground",
+      !value && "text-neutral-light",
     )}
     onClick={onClick}
     ref={ref}
@@ -259,8 +259,8 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                     data-empty={!selectedDate}
                     aria-invalid={!!errors[name] || undefined}
                     className={cn(
-                      "w-full justify-start text-left font-normal mt-1 data-[empty=true]:text-muted-foreground",
-                      !selectedDate && "text-muted-foreground",
+                      "w-full justify-start text-left font-normal mt-1 data-[empty=true]:text-neutral-light",
+                      !selectedDate && "text-neutral-light",
                       errors[name] &&
                         "ring-1 ring-danger border-danger focus-visible:ring-danger"
                     )}
@@ -343,7 +343,7 @@ export const FormPhoneField: React.FC<FormPhoneFieldProps> = ({
   return (
     <div>
       <Label htmlFor={String(name)}>
-        {label} {isRequired && <span className="text-primary">*</span>}
+        {label} {isRequired && <span className="text-danger">*</span>}
       </Label>
       <div className="mt-1">
         <Controller

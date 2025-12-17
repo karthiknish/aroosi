@@ -233,16 +233,6 @@ export default function ChatPage({
                     : "Choose a conversation from the sidebar to start messaging with your matches. Build meaningful connections through thoughtful conversations."}
                 </p>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Welcome to Messages
-                </h3>
-                <p className="text-gray-500 text-sm leading-relaxed">
-                  {isMobile
-                    ? "Select a conversation to start messaging"
-                    : "Choose a conversation from the sidebar to start messaging with your matches. Build meaningful connections through thoughtful conversations."}
-                </p>
-              </div>
               {!isMobile && (
                 <div className="pt-4">
                   <div className="flex items-center justify-center gap-4 text-xs text-neutral-light">

@@ -174,13 +174,13 @@ export default function PremiumSettingsPage() {
     switch (plan) {
       case "premium":
         return (
-          <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white flex items-center">
+          <Badge className="bg-gradient-to-r from-primary to-primary-dark text-white flex items-center">
             <Crown className="w-3 h-3 mr-1" /> Premium
           </Badge>
         );
       case "premiumPlus":
         return (
-          <Badge className="bg-gradient-to-r from-pink-600 to-rose-600 text-white flex items-center">
+          <Badge className="bg-gradient-to-r from-accent to-accent-dark text-white flex items-center">
             <Rocket className="w-3 h-3 mr-1" /> Premium Plus
           </Badge>
         );
@@ -202,28 +202,28 @@ export default function PremiumSettingsPage() {
 
   const premiumFeatures: Feature[] = [
     {
-      icon: <Heart className="w-5 h-5 text-pink-500" />,
+      icon: <Heart className="w-5 h-5 text-primary" />,
       title: "Unlimited Likes",
       description: "Like as many profiles as you want",
       available: true,
       action: () => handleNavigate("/search"),
     },
     {
-      icon: <MessageCircle className="w-5 h-5 text-purple-500" />,
+      icon: <MessageCircle className="w-5 h-5 text-accent" />,
       title: "Chat with Matches",
       description: "Start conversations with your matches",
       available: true,
       action: () => handleNavigate("/matches"),
     },
     {
-      icon: <Shield className="w-5 h-5 text-pink-500" />,
+      icon: <Shield className="w-5 h-5 text-primary" />,
       title: "Privacy Controls",
       description: "Hide your profile from free users",
       available: true,
       isToggle: true,
     },
     {
-      icon: <Users className="w-5 h-5 text-purple-500" />,
+      icon: <Users className="w-5 h-5 text-accent" />,
       title: "Daily Match Suggestions",
       description: "Get personalized matches every day",
       available: true,
@@ -236,7 +236,7 @@ export default function PremiumSettingsPage() {
 
   const premiumPlusFeatures: Feature[] = [
     {
-      icon: <Rocket className="w-5 h-5 text-pink-600" />,
+      icon: <Rocket className="w-5 h-5 text-accent" />,
       title: "Profile Boost",
       description: isCurrentlyBoosted
         ? `Profile is boosted! (${timeRemaining || formatTimeRemaining(profile.boostedUntil!)})`
@@ -249,21 +249,21 @@ export default function PremiumSettingsPage() {
       isBoosted: !!isCurrentlyBoosted,
     },
     {
-      icon: <Eye className="w-5 h-5 text-purple-600" />,
+      icon: <Eye className="w-5 h-5 text-primary" />,
       title: "Profile Viewers",
       description: "See who has viewed your profile",
       available: isPremiumPlus,
       action: () => handleNavigate("/profile/viewers"),
     },
     {
-      icon: <Filter className="w-5 h-5 text-pink-600" />,
+      icon: <Filter className="w-5 h-5 text-accent" />,
       title: "Advanced Filters",
       description: "Filter by income, education, and career",
       available: isPremiumPlus,
       action: () => handleNavigate("/search"),
     },
     {
-      icon: <Sparkles className="w-5 h-5 text-purple-600" />,
+      icon: <Sparkles className="w-5 h-5 text-primary" />,
       title: "Spotlight Badge",
       description:
         profile.hasSpotlightBadge && profile.subscriptionPlan === "premiumPlus"

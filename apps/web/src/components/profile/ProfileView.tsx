@@ -87,14 +87,14 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
 }) => {
   const displayValue = value == null || value === "" ? "-" : String(value);
   const textClass = isSubtle
-    ? "text-sm text-neutral-500"
-    : "text-md text-neutral";
+    ? "text-sm text-neutral-light"
+    : "text-md text-neutral-dark";
 
   return (
     <div
-      className={`py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral-100 last:border-b-0 ${className}`}
+      className={`py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral/10 last:border-b-0 ${className}`}
     >
-      <dt className="text-sm font-medium text-neutral-500 flex items-center gap-2">
+      <dt className="text-sm font-medium text-neutral-light flex items-center gap-2">
         {icon}
         {label}
       </dt>
@@ -121,11 +121,11 @@ const DisplaySection: React.FC<DisplaySectionProps> = ({
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-neutral-100" : ""} ${
+    className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-neutral/10" : ""} ${
       fullWidth ? "w-full" : ""
     } first:border-t-0 first:pt-0 ${className}`}
   >
-    <h2 className="text-lg font-semibold text-neutral mb-3 flex items-center gap-2">
+    <h2 className="text-lg font-semibold text-neutral-dark mb-3 flex items-center gap-2 font-serif">
       {title}
     </h2>
     {children}
@@ -228,13 +228,13 @@ const ProfileView: FC<ProfileViewProps> = ({
       className={`w-full overflow-y-hidden py-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
     >
       {/* Decorative color pop circles */}
-      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/20 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent rounded-full blur-3xl opacity-10 z-0 pointer-events-none"></div>
       {/* Subtle SVG background pattern */}
       <div
         className="absolute inset-0 opacity-[0.04] z-0 pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='hsl(39, 41%25, 61%25)' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}
       ></div>
       <div className="max-w-4xl mx-auto relative z-10">
@@ -382,9 +382,9 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </div>
                     ) : (
                       <div className="w-full">
-                        <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center bg-base-light/60">
+                        <div className="border-2 border-dashed border-neutral/20 rounded-xl p-6 text-center bg-base-light/60">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="h-12 w-12 rounded-full bg-neutral-100 flex items-center justify-center">
+                            <div className="h-12 w-12 rounded-full bg-neutral/5 flex items-center justify-center">
                               <Camera className="h-6 w-6 text-neutral-light" />
                             </div>
                             <p className="text-sm text-neutral-light">
@@ -428,7 +428,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   }
                 >
                   {/* Full Name with spotlight tick for premium users */}
-                  <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral-100">
+                  <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral/10">
                     <dt className="text-sm font-medium text-neutral-light flex items-center gap-2">
                       Full Name
                     </dt>
@@ -882,7 +882,7 @@ const ProfileView: FC<ProfileViewProps> = ({
               </div>
             </div>
           </div>
-          <div className="px-6 pb-6 pt-4 bg-neutral-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <div className="px-6 pb-6 pt-4 bg-neutral/5 border-t border-neutral/10 flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}

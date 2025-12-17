@@ -23,8 +23,8 @@ export function SpotlightBadge({
   return (
     <Badge
       className={cn(
-        "bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500 text-white border-0 shadow-sm",
-        "hover:from-yellow-500 hover:via-yellow-600 hover:to-amber-600 transition-all duration-200",
+        "bg-gradient-to-r from-warning-light via-warning to-warning-dark text-white border-0 shadow-sm",
+        "hover:from-warning hover:via-warning-dark hover:to-warning-dark transition-all duration-200",
         "animate-pulse [animation-duration:2s]",
         sizeClasses[size],
         className
@@ -40,7 +40,7 @@ export function SpotlightIcon({ className }: { className?: string }) {
   return (
     <Zap 
       className={cn(
-        "fill-yellow-500 text-yellow-500 animate-pulse [animation-duration:2s]",
+        "fill-warning text-warning animate-pulse [animation-duration:2s]",
         className
       )} 
     />

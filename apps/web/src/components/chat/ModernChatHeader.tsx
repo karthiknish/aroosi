@@ -57,9 +57,9 @@ export default function ModernChatHeader({
   // Status indicator styling
   const statusDotClass = cn(
     "h-3 w-3 rounded-full transition-all duration-300",
-    isOnline && "bg-emerald-400 shadow-lg shadow-emerald-400/40",
-    isConnecting && "bg-amber-400 shadow-lg shadow-amber-400/40 animate-pulse",
-    !isOnline && !isConnecting && "bg-neutral-300"
+    isOnline && "bg-success shadow-lg shadow-success/40",
+    isConnecting && "bg-warning shadow-lg shadow-warning/40 animate-pulse",
+    !isOnline && !isConnecting && "bg-neutral/30"
   );
 
   return (
@@ -72,9 +72,9 @@ export default function ModernChatHeader({
             <motion.div
               whileHover={{ scale: 1.05, x: -2 }}
               whileTap={{ scale: 0.95 }}
-              className="h-10 w-10 rounded-xl bg-neutral-50/80 hover:bg-neutral-100 border border-neutral-200/60 flex items-center justify-center transition-colors duration-200 cursor-pointer"
+              className="h-10 w-10 rounded-xl bg-neutral/5 hover:bg-neutral/10 border border-neutral/20 flex items-center justify-center transition-colors duration-200 cursor-pointer"
             >
-              <ChevronLeft className="w-5 h-5 text-neutral-600" />
+              <ChevronLeft className="w-5 h-5 text-neutral" />
             </motion.div>
           </Link>
 
@@ -88,7 +88,7 @@ export default function ModernChatHeader({
                   className="object-cover"
                 />
               ) : null}
-              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-rose-100 to-amber-50 text-rose-600">
+              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary/10 to-warning/5 text-primary">
                 {matchUserName ? matchUserName[0]?.toUpperCase() : "U"}
               </AvatarFallback>
             </Avatar>
@@ -104,7 +104,7 @@ export default function ModernChatHeader({
                   <motion.div
                     animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute inset-0 rounded-full bg-emerald-400"
+                    className="absolute inset-0 rounded-full bg-success"
                   />
                 )}
               </div>
@@ -114,7 +114,7 @@ export default function ModernChatHeader({
           {/* Name and status text */}
           <div className="flex flex-col min-w-0 flex-1 gap-0.5">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[15px] leading-tight truncate text-neutral-900 tracking-tight">
+              <span className="font-semibold text-[15px] leading-tight truncate text-neutral tracking-tight">
                 {matchUserName || "User"}
               </span>
               
@@ -123,10 +123,10 @@ export default function ModernChatHeader({
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-50 to-amber-100/80 border border-amber-200/50"
+                  className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-warning/5 to-warning/10 border border-warning/20"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-600" />
-                  <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3 text-warning" />
+                  <span className="text-[10px] font-semibold text-warning uppercase tracking-wider">
                     {planDisplayName(subscriptionPlan)}
                   </span>
                 </motion.div>
@@ -135,7 +135,7 @@ export default function ModernChatHeader({
             
             <span className={cn(
               "text-xs font-medium tracking-wide transition-colors",
-              isOnline ? "text-emerald-600" : "text-neutral-500"
+              isOnline ? "text-success" : "text-neutral-light"
             )}>
               {lastSeenLabel}
             </span>
@@ -149,7 +149,7 @@ export default function ModernChatHeader({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-10 w-10 p-0 rounded-xl bg-neutral-50/80 hover:bg-neutral-100 border border-neutral-200/60 text-neutral-500 hover:text-neutral-700 transition-all duration-200"
+                className="h-10 w-10 p-0 rounded-xl bg-neutral/5 hover:bg-neutral/10 border border-neutral/20 text-neutral-light hover:text-neutral transition-all duration-200"
                 onClick={onToggleSearch}
                 title="Search messages"
                 aria-label="Search messages"
@@ -163,7 +163,7 @@ export default function ModernChatHeader({
             <Button
               variant="ghost"
               size="sm"
-              className="h-10 w-10 p-0 rounded-xl bg-neutral-50/80 hover:bg-rose-50 border border-neutral-200/60 text-neutral-500 hover:text-rose-600 hover:border-rose-200/50 transition-all duration-200"
+              className="h-10 w-10 p-0 rounded-xl bg-neutral/5 hover:bg-primary/10 border border-neutral/20 text-neutral-light hover:text-primary hover:border-primary/20 transition-all duration-200"
               onClick={onReport}
               title="Report or block user"
               aria-label="Report user"

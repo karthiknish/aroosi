@@ -134,12 +134,12 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
       case 'success_report':
         return (
           <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center animate-in fade-in zoom-in duration-300">
-            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+            <div className="h-16 w-16 bg-success/10 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8 text-success" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Report Submitted</h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <h3 className="text-lg font-semibold text-neutral-dark">Report Submitted</h3>
+              <p className="text-sm text-neutral-light mt-1">
                 Thank you for keeping our community safe. We will review your report shortly.
               </p>
             </div>
@@ -152,12 +152,12 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
       case 'success_block':
         return (
           <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center animate-in fade-in zoom-in duration-300">
-            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
-              <Shield className="h-8 w-8 text-green-600" />
+            <div className="h-16 w-16 bg-success/10 rounded-full flex items-center justify-center">
+              <Shield className="h-8 w-8 text-success" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">User Blocked</h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <h3 className="text-lg font-semibold text-neutral-dark">User Blocked</h3>
+              <p className="text-sm text-neutral-light mt-1">
                 You will no longer see messages or content from this user.
               </p>
             </div>
@@ -170,10 +170,10 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
       case 'block_confirm':
         return (
           <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-danger/5 border border-danger/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-red-800">
+                <AlertTriangle className="h-5 w-5 text-danger mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-danger">
                   <p className="font-medium mb-2">Are you sure you want to block {userName || 'this user'}?</p>
                   <ul className="text-xs space-y-1.5 list-disc list-inside opacity-90">
                     <li>They won&apos;t be able to send you messages</li>
@@ -218,10 +218,10 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
       default:
         return (
           <div className="space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
               <div className="flex items-start gap-2">
-                <Shield className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-amber-800">
+                <Shield className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-warning">
                   <p className="font-medium mb-1">Safety First</p>
                   <p className="text-xs">
                     If you simply don&apos;t want to interact with this user, you can block them instead.
@@ -242,7 +242,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                   className="space-y-3"
                 >
                   {reportReasons.map((reason) => (
-                    <div key={reason.value} className="flex items-start space-x-2 p-2 rounded-md hover:bg-gray-50 transition-colors">
+                    <div key={reason.value} className="flex items-start space-x-2 p-2 rounded-md hover:bg-neutral/5 transition-colors">
                       <RadioGroupItem
                         value={reason.value}
                         id={reason.value}
@@ -255,7 +255,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                         >
                           {reason.label}
                         </Label>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-neutral-light">
                           {reason.description}
                         </p>
                       </div>
@@ -284,7 +284,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                   maxLength={500}
                   className="min-h-[80px] resize-none"
                 />
-                <div className="text-xs text-gray-500 text-right">
+                <div className="text-xs text-neutral-light text-right">
                   {description.length}/500
                 </div>
               </div>
@@ -295,7 +295,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                 type="button"
                 variant="outline"
                 onClick={() => setStep('block_confirm')}
-                className="sm:mr-auto text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                className="sm:mr-auto text-danger hover:text-danger-dark hover:bg-danger/5 border-danger/20"
               >
                 Block User Instead
               </Button>
@@ -306,7 +306,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                 <Button
                   onClick={handleReportSubmit}
                   disabled={!canSubmitReport || isPending}
-                  className="bg-red-600 hover:bg-red-700 flex-1 sm:flex-none"
+                  className="bg-danger hover:bg-danger-dark flex-1 sm:flex-none"
                 >
                   {isPending ? (
                     <>
@@ -331,14 +331,14 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
           <DialogTitle className="flex items-center gap-2">
             {step === 'block_confirm' ? (
               <>
-                <Shield className="h-5 w-5 text-red-500" />
+                <Shield className="h-5 w-5 text-danger" />
                 Block User
               </>
             ) : step.startsWith('success') ? (
               <span className="sr-only">Success</span>
             ) : (
               <>
-                <Flag className="h-5 w-5 text-red-500" />
+                <Flag className="h-5 w-5 text-danger" />
                 Report User
               </>
             )}

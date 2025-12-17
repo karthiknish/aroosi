@@ -210,7 +210,7 @@ export default function ContactPage() {
                               errors.name ? "name-error" : undefined
                             }
                             aria-required="true"
-                            className={`${errors.name ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
+                            className={`${errors.name ? "border-danger focus:border-danger" : "border-neutral/20 focus:border-primary"}`}
                           />
                           {errors.name && (
                             <p
@@ -246,7 +246,7 @@ export default function ContactPage() {
                               errors.email ? "email-error" : undefined
                             }
                             aria-required="true"
-                            className={`${errors.email ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
+                            className={`${errors.email ? "border-danger focus:border-danger" : "border-neutral/20 focus:border-primary"}`}
                           />
                           {errors.email && (
                             <p
@@ -279,7 +279,7 @@ export default function ContactPage() {
                             errors.subject ? "subject-error" : undefined
                           }
                           aria-required="true"
-                          className={`${errors.subject ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
+                          className={`${errors.subject ? "border-danger focus:border-danger" : "border-neutral/20 focus:border-primary"}`}
                         />
                         {errors.subject && (
                           <p
@@ -311,7 +311,7 @@ export default function ContactPage() {
                             errors.message ? "message-error" : undefined
                           }
                           aria-required="true"
-                          className={`${errors.message ? "border-danger focus:border-danger" : "border-neutral-200 focus:border-primary"}`}
+                          className={`${errors.message ? "border-danger focus:border-danger" : "border-neutral/20 focus:border-primary"}`}
                         />
                         {errors.message && (
                           <p

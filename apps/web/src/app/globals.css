@@ -8,31 +8,34 @@
   --font-family-sans: var(--font-nunito), 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Boldonse", ui-serif, serif;
 
-  /* Custom Theme Colors */
-  --color-primary: #EC4899;        /* Softer Pink */
-  --color-primary-light: #F9A8D4;
-  --color-primary-dark: #BE185D;
-  
-  --color-secondary: #5F92AC;      /* Deeper dusty blue */
-  --color-secondary-light: #A2C4DB;
-  --color-secondary-dark: #3E647A;
-  
-  --color-accent: #D6B27C;         /* Muted Gold / Warm Sand */
-  --color-accent-light: #EDD6A4;
-  --color-accent-dark: #B28E5F;
-  
-  --color-base: #F9F7F5;           /* Clean soft off-white */
-  --color-base-light: #FFFFFF;
-  --color-base-dark: #E7E3DF;
-  
-  --color-neutral: #4A4A4A;        /* Muted charcoal for text */
-  --color-neutral-light: #7A7A7A;
-  
-  --color-success: #7BA17D;        /* Gentle Green */
-  --color-danger: #B45E5E;         /* Subtle Terracotta Red */
+  /* Brand Colors (HSL format for Tailwind opacity support) */
+  --primary: 330 81% 60%;          /* #EC4899 - Softer Pink */
+  --primary-light: 330 85% 82%;    /* #F9A8D4 */
+  --primary-dark: 335 77% 42%;     /* #BE185D */
+  --primary-foreground: 0 0% 98%;
 
-  /* Border Radius */
-  --radius: 0.5rem;
+  --secondary: 201 34% 53%;        /* #5F92AC - Deeper dusty blue */
+  --secondary-light: 204 45% 75%;  /* #A2C4DB */
+  --secondary-dark: 201 33% 36%;   /* #3E647A */
+  --secondary-foreground: 0 0% 98%;
+
+  --accent: 39 52% 66%;            /* #D6B27C - Muted Gold / Warm Sand */
+  --accent-light: 41 69% 79%;      /* #EDD6A4 */
+  --accent-dark: 34 34% 54%;       /* #B28E5F */
+  --accent-foreground: 0 0% 9%;
+
+  --base: 30 20% 97%;              /* #F9F7F5 - Clean soft off-white */
+  --base-light: 0 0% 100%;         /* #FFFFFF */
+  --base-dark: 30 11% 89%;         /* #E7E3DF */
+  
+  --neutral: 0 0% 29%;             /* #4A4A4A - Muted charcoal for text */
+  --neutral-light: 0 0% 48%;       /* #7A7A7A */
+  --neutral-dark: 0 0% 18%;        /* #2D2D2D */
+
+  --success: 123 18% 56%;          /* #7BA17D - Gentle Green */
+  --danger: 0 35% 54%;             /* #B45E5E - Subtle Terracotta Red */
+  --warning: 38 92% 50%;           /* #F59E0B - Amber */
+  --info: 199 89% 48%;             /* #0EA5E9 - Sky Blue */
 
   /* shadcn/ui Colors (HSL format) */
   --background: 0 0% 100%;
@@ -41,20 +44,17 @@
   --card-foreground: 0 0% 3.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 3.9%;
-  --primary: 330 81% 60%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 201 34% 53%;
-  --secondary-foreground: 0 0% 98%;
   --muted: 0 0% 96.1%;
   --muted-foreground: 0 0% 45.1%;
-  --accent: 39 52% 66%;
-  --accent-foreground: 0 0% 9%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
   --border: 0 0% 89.8%;
   --input: 0 0% 89.8%;
   --ring: 330 81% 60%;
   
+  /* Border Radius */
+  --radius: 0.5rem;
+
   /* Chart Colors */
   --chart-1: 330 81% 60%;
   --chart-2: 200 70% 50%;
@@ -133,18 +133,18 @@
 }
 
 #blog-content blockquote{
-  @apply border-l-4 border-gray-300 pl-4;
+  @apply border-l-4 border-primary pl-4;
   margin-bottom: 1rem;
   margin-top: 1rem;
   margin-left: 2rem;
 }
 
 #blog-content code{
-  @apply bg-gray-100 p-1 rounded-md;
+  @apply bg-neutral/10 p-1 rounded-md;
 }
 
 #blog-content pre{
-  @apply bg-gray-100 p-1 rounded-md;
+  @apply bg-neutral/10 p-1 rounded-md;
 }
 #blog-content table{
   @apply w-full;
@@ -152,28 +152,28 @@
   margin-top: 1rem;
 }
 #blog-content table th{
-  @apply bg-gray-100 p-1;
-  border: 1px solid #e0e0e0;
+  @apply bg-neutral/10 p-1;
+  border: 1px solid hsl(var(--border));
 
 }
 #blog-content table td{
   @apply p-1;
-  border: 1px solid #e0e0e0;
+  border: 1px solid hsl(var(--border));
 }
 #blog-content table tr{
-  @apply border-b border-gray-300;
+  @apply border-b border-neutral/20;
 }
 #blog-content table thead{
-  @apply bg-gray-100;
+  @apply bg-neutral/10;
 }
 
 #blog-content a {
-  color: #db2777;
+  color: hsl(var(--primary));
   text-decoration: underline;
   transition: color 0.2s;
 }
 #blog-content a:hover {
-  color: #a21caf;
+  color: hsl(var(--primary-dark));
 }
 #blog-content table {
   border-collapse: collapse;
@@ -181,34 +181,34 @@
   margin: 1em 0;
 }
 #blog-content th {
-  border: 1.5px solid #e11d48;
-  background: #ffe4e6;
-  color: #be185d;
+  border: 1.5px solid hsl(var(--primary));
+  background: hsl(var(--primary-light) / 0.2);
+  color: hsl(var(--primary-dark));
   font-weight: 700;
   padding: 0.6em 0.9em;
   text-align: left;
 }
 #blog-content td {
-  border: 1px solid #e5e7eb;
+  border: 1px solid hsl(var(--border));
   padding: 0.5em 0.75em;
   text-align: left;
-  background: #fff;
+  background: hsl(var(--background));
 }
 #blog-content tr:nth-child(even) td {
-  background: #f3f4f6;
+  background: hsl(var(--muted) / 0.5);
 }
 #blog-content blockquote {
-  border-left: 4px solid #db2777;
-  background: #fdf2f8;
-  color: #a21caf;
+  border-left: 4px solid hsl(var(--primary));
+  background: hsl(var(--primary-light) / 0.1);
+  color: hsl(var(--primary-dark));
   margin: 1em 0;
   padding: 0.75em 1.25em;
   font-style: italic;
   border-radius: 0.375em;
 }
 #blog-content pre {
-  background: #f3f4f6;
-  color: #be185d;
+  background: hsl(var(--muted));
+  color: hsl(var(--primary-dark));
   font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
   padding: 1em;
   border-radius: 0.375em;
@@ -217,8 +217,8 @@
   font-size: 0.97em;
 }
 #blog-content code {
-  background: #fef3c7;
-  color: #b45309;
+  background: hsl(var(--accent-light) / 0.3);
+  color: hsl(var(--accent-dark));
   font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
   padding: 0.15em 0.4em;
   border-radius: 0.3em;
@@ -258,7 +258,7 @@
 }
 #blog-content hr {
   border: none;
-  border-top: 2px solid #db2777;
+  border-top: 2px solid hsl(var(--primary));
   margin: 2em 0;
   height: 0;
   background: none;
@@ -314,12 +314,12 @@
   display: block;
   margin: 1.5em auto;
   border-radius: 0.5em;
-  box-shadow: 0 2px 8px 0 rgba(219,39,119,0.08);
+  box-shadow: 0 2px 8px 0 hsla(var(--primary), 0.08);
   resize: both;
   overflow: auto;
   min-width: 80px;
   min-height: 40px;
-  background: #fff;
+  background: hsl(var(--background));
 }
 
 @layer base {
@@ -346,141 +346,21 @@
 }
 
 @layer utilities {
-  /* Override Tailwind colors with CSS variables */
-  .bg-primary {
-    background-color: var(--color-primary) !important;
-  }
-  .bg-primary-light {
-    background-color: var(--color-primary-light) !important;
-  }
-  .bg-primary-dark {
-    background-color: var(--color-primary-dark) !important;
-  }
-  
-  .bg-secondary {
-    background-color: var(--color-secondary) !important;
-  }
-  .bg-secondary-light {
-    background-color: var(--color-secondary-light) !important;
-  }
-  .bg-secondary-dark {
-    background-color: var(--color-secondary-dark) !important;
-  }
-  
-  .bg-accent {
-    background-color: var(--color-accent) !important;
-  }
-  .bg-accent-light {
-    background-color: var(--color-accent-light) !important;
-  }
-  .bg-accent-dark {
-    background-color: var(--color-accent-dark) !important;
-  }
-  
-  .bg-base {
-    background-color: var(--color-base) !important;
-  }
-  .bg-base-light {
-    background-color: var(--color-base-light) !important;
-  }
-  .bg-base-dark {
-    background-color: var(--color-base-dark) !important;
-  }
-  
-  .bg-neutral {
-    background-color: var(--color-neutral) !important;
-  }
-  .bg-neutral-light {
-    background-color: var(--color-neutral-light) !important;
-  }
-  
-  .bg-success {
-    background-color: var(--color-success) !important;
-  }
-  .bg-danger {
-    background-color: var(--color-danger) !important;
-  }
-  
-  /* Text colors */
-  .text-primary {
-    color: var(--color-primary) !important;
-  }
-  .text-primary-light {
-    color: var(--color-primary-light) !important;
-  }
-  .text-primary-dark {
-    color: var(--color-primary-dark) !important;
-  }
-  
-  .text-secondary {
-    color: var(--color-secondary) !important;
-  }
-  .text-secondary-light {
-    color: var(--color-secondary-light) !important;
-  }
-  .text-secondary-dark {
-    color: var(--color-secondary-dark) !important;
-  }
-  
-  .text-accent {
-    color: var(--color-accent) !important;
-  }
-  .text-accent-light {
-    color: var(--color-accent-light) !important;
-  }
-  .text-accent-dark {
-    color: var(--color-accent-dark) !important;
-  }
-  
-  .text-neutral {
-    color: var(--color-neutral) !important;
-  }
-  .text-neutral-light {
-    color: var(--color-neutral-light) !important;
-  }
-  
-  .text-success {
-    color: var(--color-success) !important;
-  }
-  .text-danger {
-    color: var(--color-danger) !important;
-  }
-  
-  /* Border colors */
-  .border-primary {
-    border-color: var(--color-primary) !important;
-  }
-  .border-secondary {
-    border-color: var(--color-secondary) !important;
-  }
-  .border-accent {
-    border-color: var(--color-accent) !important;
-  }
-  .border-neutral {
-    border-color: var(--color-neutral) !important;
-  }
-  .border-success {
-    border-color: var(--color-success) !important;
-  }
-  .border-danger {
-    border-color: var(--color-danger) !important;
-  }
-  
   /* Gradient utilities - using CSS variables for consistent theming */
   .gradient-secondary {
-    background: linear-gradient(to right, var(--color-secondary), var(--color-secondary-dark)) !important;
+    background: linear-gradient(to right, hsl(var(--secondary)), hsl(var(--secondary-dark))) !important;
   }
   .gradient-secondary-vertical {
-    background: linear-gradient(to bottom, var(--color-secondary), var(--color-secondary-dark)) !important;
+    background: linear-gradient(to bottom, hsl(var(--secondary)), hsl(var(--secondary-dark))) !important;
   }
   .gradient-primary {
-    background: linear-gradient(to right, var(--color-primary), var(--color-primary-dark)) !important;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--primary-dark))) !important;
   }
   .gradient-primary-vertical {
-    background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-dark)) !important;
+    background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--primary-dark))) !important;
   }
   .gradient-accent {
-    background: linear-gradient(to right, var(--color-accent), var(--color-accent-dark)) !important;
+    background: linear-gradient(to right, hsl(var(--accent)), hsl(var(--accent-dark))) !important;
   }
 }
   
@@ -491,7 +371,7 @@
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid hsl(var(--primary));
     outline-offset: 2px;
   }
 

@@ -113,7 +113,7 @@ export default function VoiceMessageBubble(props: VoiceMessageBubbleProps) {
     <div
       className={cn(
         "max-w-[80%] rounded-2xl px-3 py-2 shadow-sm border",
-        isMine ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200",
+        isMine ? "bg-primary/5 border-primary/20" : "bg-base border-neutral/20",
         className
       )}
     >
@@ -123,7 +123,7 @@ export default function VoiceMessageBubble(props: VoiceMessageBubbleProps) {
           type="button"
           size="icon"
           variant={isMine ? "default" : "secondary"}
-          className={cn("h-8 w-8", isMine ? "bg-pink-600 hover:bg-pink-700 text-white" : "")}
+          className={cn("h-8 w-8", isMine ? "bg-primary hover:bg-primary-dark text-white" : "")}
           onClick={togglePlay}
           aria-label={isPlaying ? "Pause voice message" : "Play voice message"}
         >
@@ -137,13 +137,13 @@ export default function VoiceMessageBubble(props: VoiceMessageBubbleProps) {
               {bars.map((p, i) => (
                 <div
                   key={i}
-                  className={cn("w-[3px] rounded-sm", isMine ? "bg-pink-500" : "bg-gray-500/70")}
+                  className={cn("w-[3px] rounded-sm", isMine ? "bg-primary" : "bg-neutral/50")}
                   style={{ height: `${Math.max(6, p * 30)}px` }}
                 />
               ))}
             </div>
           ) : (
-            <div className="h-2 w-full bg-gray-200 rounded" aria-hidden />
+            <div className="h-2 w-full bg-neutral/10 rounded" aria-hidden />
           )}
 
           {/* Seek */}
@@ -153,17 +153,17 @@ export default function VoiceMessageBubble(props: VoiceMessageBubbleProps) {
             max={Math.max(1, Math.floor(duration))}
             value={Math.floor(currentTime)}
             onChange={onSeek}
-            className="w-full mt-1 accent-pink-600"
+            className="w-full mt-1 accent-primary"
             aria-label="Seek voice message"
           />
 
           {/* Time */}
-          <div className="mt-0.5 text-[11px] text-gray-600 flex justify-between">
+          <div className="mt-0.5 text-[11px] text-neutral-light flex justify-between">
             <span>{formatTime(currentTime * 1000)}</span>
             <span>{formatTime(duration * 1000)}</span>
           </div>
 
-          {error && <div className="mt-1 text-[11px] text-red-600">{error}</div>}
+          {error && <div className="mt-1 text-[11px] text-danger">{error}</div>}
         </div>
 
         {/* Download (optional) */}

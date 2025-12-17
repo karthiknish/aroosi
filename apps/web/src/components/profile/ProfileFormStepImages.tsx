@@ -39,7 +39,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+          <div key={i} className="h-48 bg-neutral/5 rounded-lg animate-pulse" />
         ))}
       </div>
     );
@@ -57,7 +57,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
         />
       )}
       {images.length < 5 && (
-        <div className="w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+        <div className="w-full border-2 border-dashed border-neutral/20 rounded-lg flex items-center justify-center">
           <ProfileImageUpload
             userId={userId}
             isAdmin={isAdmin}

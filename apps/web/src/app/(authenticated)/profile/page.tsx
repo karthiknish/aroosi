@@ -176,7 +176,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
   return (
     <>
-      <div className="flex overflow-y-hidden items-center justify-center w-full bg-pink-50">
+      <div className="flex overflow-y-hidden items-center justify-center w-full bg-base-light">
         <div className="w-full space-y-6 py-6">
           <ProfileView
             profileData={profile}
@@ -186,17 +186,17 @@ const ProfilePage: React.FC = (): React.ReactElement => {
           />
 
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <DialogContent className="bg-white p-0 sm:max-w-md overflow-hidden rounded-xl border shadow-lg">
+            <DialogContent className="bg-base-light p-0 sm:max-w-md overflow-hidden rounded-xl border shadow-lg">
               <div className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <div className="h-12 w-12 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
                       strokeWidth={1.6}
                       stroke="currentColor"
-                      className="h-7 w-7 text-red-600"
+                      className="h-7 w-7 text-danger"
                     >
                       <path
                         strokeLinecap="round"
@@ -206,15 +206,15 @@ const ProfilePage: React.FC = (): React.ReactElement => {
                     </svg>
                   </div>
                   <div className="space-y-2">
-                    <DialogTitle className="text-xl font-semibold text-red-700">
+                    <DialogTitle className="text-xl font-semibold text-danger">
                       Delete your profile?
                     </DialogTitle>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <p className="text-sm text-neutral-light leading-relaxed">
                       This will permanently remove your profile, photos,
                       matches, messages and preferences. You will not be able
                       to recover this data once deleted.
                     </p>
-                    <ul className="mt-2 list-disc list-inside text-xs text-gray-500 space-y-1">
+                    <ul className="mt-2 list-disc list-inside text-xs text-neutral-light space-y-1">
                       <li>Photos & messages are permanently erased</li>
                       <li>Conversations & matches will be lost</li>
                       <li>Data can’t be recovered later</li>
@@ -222,12 +222,12 @@ const ProfilePage: React.FC = (): React.ReactElement => {
                   </div>
                 </div>
               </div>
-              <div className="px-6 pb-6 pt-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <div className="px-6 pb-6 pt-4 bg-base-dark/10 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={cancelDeleteProfile}
                   disabled={deleteProfileMutation.status === "pending"}
-                  className="bg-white"
+                  className="bg-base-light"
                 >
                   Cancel
                 </Button>

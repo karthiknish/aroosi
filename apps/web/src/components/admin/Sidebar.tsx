@@ -54,7 +54,7 @@ export function Sidebar({
       className={`bg-base-light border-r h-screen p-4 transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}
     >
       <button
-        className="mb-4 flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-100 transition"
+        className="mb-4 flex items-center justify-center w-8 h-8 rounded hover:bg-neutral/10 transition"
         onClick={() => setCollapsed(!collapsed)}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >

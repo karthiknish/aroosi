@@ -149,7 +149,7 @@ export default function PricingPage() {
 
                     {/* Gradient bar at top */}
                     <div className={`h-1.5 w-full rounded-t-xl ${
-                      plan.id === "free" ? "bg-gray-400" : 
+                      plan.id === "free" ? "bg-neutral-light" : 
                       plan.id === "premium" ? "bg-primary" : 
                       "bg-gradient-to-r from-primary to-accent"
                     }`} />
@@ -157,7 +157,7 @@ export default function PricingPage() {
                     <CardHeader className="pt-8 pb-4">
                       <div className="flex items-center gap-3 mb-3">
                         <div className={`p-3 rounded-xl ${
-                          plan.id === "free" ? "bg-gray-100 text-gray-600" :
+                          plan.id === "free" ? "bg-neutral/10 text-neutral-dark" :
                           plan.id === "premium" ? "bg-primary/10 text-primary" :
                           "bg-accent/10 text-accent-dark"
                         }`}>
@@ -188,7 +188,7 @@ export default function PricingPage() {
                       </div>
 
                       {/* Features */}
-                      <div className="space-y-4 pt-4 border-t border-gray-100">
+                      <div className="space-y-4 pt-4 border-t border-neutral/10">
                         {plan.features.map((feature: PlanFeature, i: number) => (
                           <div key={i} className="flex items-start gap-3">
                             {feature.included ? (
@@ -196,8 +196,8 @@ export default function PricingPage() {
                                 <Check className="w-3 h-3 text-success" />
                               </div>
                             ) : (
-                              <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <X className="w-3 h-3 text-gray-400" />
+                              <div className="w-5 h-5 rounded-full bg-neutral/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <X className="w-3 h-3 text-neutral-light" />
                               </div>
                             )}
                             <span className={`text-sm ${feature.included ? "text-neutral" : "text-neutral-light/60"}`}>
@@ -215,7 +215,7 @@ export default function PricingPage() {
                           isPopular 
                             ? "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 hover:shadow-xl" 
                             : plan.id === "free"
-                            ? "bg-gray-100 hover:bg-gray-200 text-neutral border-0"
+                            ? "bg-neutral/10 hover:bg-neutral/20 text-neutral border-0"
                             : "bg-secondary hover:bg-secondary-dark text-white"
                         }`}
                         size="lg"

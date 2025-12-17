@@ -62,4 +62,9 @@ export interface SearchFilters {
     distance?: number;
     verified?: boolean;
     interests?: string[];
+    religion?: string;
+    maritalStatus?: string;
+    motherTongue?: string;
+    education?: string;
+    occupation?: string;
 }

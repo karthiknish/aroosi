@@ -85,12 +85,12 @@ export const WebSocketTest: React.FC<WebSocketTestProps> = ({
   };
 
   return (
-    <div className="p-4 border rounded-lg">
-      <h3 className="text-lg font-semibold mb-2">WebSocket Test</h3>
+    <div className="p-4 border border-neutral/10 rounded-lg">
+      <h3 className="text-lg font-semibold text-neutral-dark mb-2">WebSocket Test</h3>
 
       <div className="mb-2">
         <span
-          className={`px-2 py-1 rounded text-sm ${isConnected ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+          className={`px-2 py-1 rounded text-sm ${isConnected ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}
         >
           {isConnected ? "Connected" : "Disconnected"}
         </span>
@@ -104,18 +104,18 @@ export const WebSocketTest: React.FC<WebSocketTestProps> = ({
           onFocus={() => sendTyping(true)}
           onBlur={() => sendTyping(false)}
           placeholder="Type a message..."
-          className="border p-2 rounded mr-2"
+          className="border border-neutral/10 p-2 rounded mr-2"
         />
         <button
           onClick={sendMessage}
           disabled={!isConnected}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-info text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Send
         </button>
       </div>
 
-      <div className="h-40 overflow-y-auto border rounded p-2">
+      <div className="h-40 overflow-y-auto border border-neutral/10 rounded p-2">
         {messages.map((msg, index) => (
           <div key={index} className="text-sm mb-1">
             {msg}

@@ -11,6 +11,7 @@ import {
   Briefcase,
   ChevronLeft,
   ChevronRight,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -366,7 +367,7 @@ export default function AdminProfileDetailPage() {
               </div>
               <Link
                 href={`/admin/profile/${id}`}
-                className="text-pink-600 hover:text-pink-800 font-semibold text-xs flex items-center gap-1"
+                className="text-primary hover:text-primary/80 font-semibold text-xs flex items-center gap-1"
               >
                 <Eye className="w-4 h-4" /> View
               </Link>
@@ -377,360 +378,275 @@ export default function AdminProfileDetailPage() {
     );
 
   return (
-    <div className="max-w-3xl  mx-auto py-10 px-2">
+    <div className="max-w-4xl mx-auto py-10 px-4">
+      {/* Back Button */}
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/admin/profile")}
+          className="gap-2 text-neutral-600 hover:text-neutral-900"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back to Profiles
+        </Button>
+      </div>
+
       {/* Profile Images Slider Section */}
-      <Card className="mb-8 mt-8">
-        <CardContent>
+      <Card className="mb-8 overflow-hidden border-neutral-200 shadow-sm">
+        <CardContent className="p-0">
           {Array.isArray(orderedImages) && orderedImages.length > 0 ? (
-            <div className="flex flex-col items-center">
-              <div className="relative w-64 h-64 flex items-center justify-center">
-                {/* Only show arrows if more than one image */}
+            <div className="flex flex-col md:flex-row">
+              {/* Main Image Display */}
+              <div className="relative flex-1 bg-neutral-100 aspect-square md:aspect-auto md:h-[500px] flex items-center justify-center group">
+                {/* Navigation Arrows */}
                 {Array.isArray(orderedImages) && orderedImages.length > 1 && (
-                  <button
-                    onClick={handlePrev}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition z-10"
-                    aria-label="Previous image"
-                    type="button"
-                  >
-                    <ChevronLeft className="w-6 h-6 text-pink-600" />
-                  </button>
+                  <>
+                    <button
+                      onClick={handlePrev}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-md hover:bg-white transition-all z-10 opacity-0 group-hover:opacity-100"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="w-6 h-6 text-neutral-900" />
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-md hover:bg-white transition-all z-10 opacity-0 group-hover:opacity-100"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="w-6 h-6 text-neutral-900" />
+                    </button>
+                  </>
                 )}
 
-                <div className="w-full mt-8 h-full flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden relative group">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Image
-                      src={
-                        orderedImages[currentImageIdx]?.url ||
-                        "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png"
-                      }
-                      alt={
-                        typeof profile?.fullName === "string"
-                          ? `${profile.fullName} profile photo ${currentImageIdx + 1}`
-                          : `Profile photo ${currentImageIdx + 1}`
-                      }
-                      width={256}
-                      height={256}
-                      className="max-h-full  max-w-full object-contain"
-                      unoptimized
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src =
-                          "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png";
-                      }}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                      if (orderedImages[currentImageIdx]?.storageId) {
-                        openDeleteModal(
-                          orderedImages[currentImageIdx].storageId,
-                          currentImageIdx === 0
-                        );
-                      }
-                      return false;
-                    }}
-                    onMouseDown={(e) => {
-                      // Prevent focus change which might trigger blur on other elements
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Image
+                  src={
+                    orderedImages[currentImageIdx]?.url ||
+                    "/images/placeholder.png"
+                  }
+                  alt={profile.fullName || "Profile photo"}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
 
-                {/* Only show arrows if more than one image */}
-                {Array.isArray(orderedImages) && orderedImages.length > 1 && (
-                  <button
-                    onClick={handleNext}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition z-10"
-                    aria-label="Next image"
-                    type="button"
-                  >
-                    <ChevronRight className="w-6 h-6 text-pink-600" />
-                  </button>
-                )}
-
-                <div className="absolute bottom-2 right-2 bg-white/80 text-xs px-2 py-0.5 rounded shadow">
+                {/* Image Counter */}
+                <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md text-white text-xs font-medium px-3 py-1.5 rounded-full">
                   {currentImageIdx + 1} / {orderedImages.length}
                 </div>
+
+                {/* Delete Button */}
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg"
+                  onClick={() => {
+                    if (orderedImages[currentImageIdx]?.storageId) {
+                      openDeleteModal(
+                        orderedImages[currentImageIdx].storageId,
+                        currentImageIdx === 0
+                      );
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
 
-              {/* Thumbnail navigation */}
-              <div className="flex flex-col gap-4 mt-8">
-                {/* Dots for mobile */}
-                {Array.isArray(orderedImages) && orderedImages.length > 1 && (
-                  <div className="flex gap-2 justify-center">
-                    {orderedImages.map((_, idx) => (
-                      <button
-                        key={idx}
-                        className={`w-3 h-3 rounded-full border-2 ${
-                          idx === currentImageIdx
-                            ? "bg-pink-600 border-pink-600"
-                            : "bg-gray-200 border-gray-300"
-                        }`}
-                        onClick={() => setCurrentImageIdx(idx)}
-                        aria-label={`Go to image ${idx + 1}`}
-                        type="button"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Image grid */}
-                {Array.isArray(orderedImages) && orderedImages.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2">
-                    {orderedImages.map((img, idx) => (
-                      <div
-                        key={String(img.storageId) || idx}
-                        className={`relative aspect-square rounded-md overflow-hidden cursor-pointer border-2 transition-all ${
-                          idx === currentImageIdx
-                            ? "border-pink-500 ring-2 ring-pink-200"
-                            : "border-transparent hover:border-gray-300"
-                        }`}
-                        onClick={() => setCurrentImageIdx(idx)}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Select image ${idx + 1}`}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            setCurrentImageIdx(idx);
-                          }
-                        }}
-                      >
-                        <Image
-                          src={
-                            img.url ||
-                            "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png"
-                          }
-                          alt={
-                            typeof profile?.fullName === "string"
-                              ? `${profile.fullName} profile photo ${idx + 1}`
-                              : `Profile photo ${idx + 1}`
-                          }
-                          width={128}
-                          height={128}
-                          className="w-full h-full object-cover"
-                          unoptimized
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src =
-                              "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png";
-                          }}
-                        />
-                        {idx === 0 && (
-                          <div className="absolute top-1 left-1 bg-pink-500 text-white text-xs px-1 rounded">
-                            Main
-                          </div>
-                        )}
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.nativeEvent.stopImmediatePropagation();
-                            openDeleteModal(img.storageId, idx === 0);
-                            return false;
-                          }}
-                          onMouseDown={(e) => {
-                            // Prevent focus change which might trigger blur on other elements
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+              {/* Thumbnails Sidebar (Desktop) / Bottom (Mobile) */}
+              <div className="w-full md:w-32 bg-white border-t md:border-t-0 md:border-l border-neutral-100 p-4 flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto">
+                {orderedImages.map((img, idx) => (
+                  <button
+                    key={img.storageId || idx}
+                    className={cn(
+                      "relative shrink-0 w-16 h-16 md:w-full md:h-24 rounded-lg overflow-hidden border-2 transition-all",
+                      idx === currentImageIdx
+                        ? "border-primary ring-2 ring-primary/20"
+                        : "border-transparent hover:border-neutral-200"
+                    )}
+                    onClick={() => setCurrentImageIdx(idx)}
+                  >
+                    <Image
+                      src={img.url || "/images/placeholder.png"}
+                      alt={`Thumbnail ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                    {idx === 0 && (
+                      <div className="absolute top-1 left-1 bg-primary text-white text-[8px] font-bold px-1 rounded uppercase">
+                        Main
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              No profile images available
+            <div className="flex flex-col items-center justify-center py-20 text-neutral-400 bg-neutral-50">
+              <UserCircle className="w-16 h-16 mb-4 opacity-20" />
+              <p>No profile images available</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card className="mb-8 shadow-xl">
-        <CardContent className="pt-8 pb-10 px-6 flex flex-col items-center">
-          <div className="text-2xl font-bold text-gray-900 mb-1">
-            {typeof profile?.fullName === "string"
-              ? profile.fullName
-              : "Unnamed"}
-          </div>
-          <div className="text-md text-gray-600 flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4" />{" "}
-            {typeof profile?.city === "string" ? profile.city : "-"}
-          </div>
-          <div className="flex flex-wrap gap-4 justify-center mb-4">
-            <div className="flex items-center gap-1 text-gray-500">
-              <Heart className="w-4 h-4" />{" "}
-            </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <GraduationCap className="w-4 h-4" />{" "}
-              {typeof profile?.education === "string" ? profile.education : "-"}
-            </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <Briefcase className="w-4 h-4" />{" "}
-              {typeof profile?.occupation === "string"
-                ? profile.occupation
-                : "-"}
-            </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <Phone className="w-4 h-4" />{" "}
-              {typeof profile?.phoneNumber === "string"
-                ? profile.phoneNumber
-                : "-"}
-            </div>
-          </div>
-          <div className="text-sm text-gray-400 mb-2">
-            Profile ID:{" "}
-            {typeof profile?._id === "string" ? profile._id : String(id)}
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Profile Details</CardTitle>
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex gap-2">
-              {/* Add spotlight badge management */}
-              <Button
-                variant={profile?.hasSpotlightBadge ? "default" : "outline"}
-                onClick={() => handleToggleSpotlightBadge(String(profile?._id))}
-                className="flex items-center gap-1"
-              >
-                <SpotlightIcon className="w-4 h-4" />
-                {profile?.hasSpotlightBadge
-                  ? "Remove Spotlight"
-                  : "Add Spotlight"}
-              </Button>
-            </div>
-
-            {/* Show spotlight badge expiration if active */}
-            {profile?.hasSpotlightBadge && profile?.spotlightBadgeExpiresAt && (
-              <div className="text-sm text-gray-600 flex items-center gap-1">
-                <SpotlightIcon className="w-3 h-3" />
-                Spotlight expires:{" "}
-                {new Date(profile.spotlightBadgeExpiresAt).toLocaleDateString()}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column - Basic Info */}
+        <div className="lg:col-span-1 space-y-8">
+          <Card className="border-neutral-200 shadow-sm overflow-hidden">
+            <div className="h-2 bg-primary" />
+            <CardContent className="pt-8 pb-8 px-6 flex flex-col items-center text-center">
+              <div className="text-2xl font-bold text-neutral-900 mb-1">
+                {profile.fullName || "Unnamed"}
               </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-            <div>
-              <span className="font-semibold">Date of Birth:</span>{" "}
-              {typeof profile?.dateOfBirth === "string"
-                ? profile.dateOfBirth
-                : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Gender:</span>{" "}
-              {typeof profile?.gender === "string" ? profile.gender : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Postcode:</span>{" "}
-              {typeof profile?.country === "string" ? profile.country : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Height:</span>{" "}
-              {typeof profile?.height === "string" ? profile.height : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Marital Status:</span>{" "}
-              {typeof profile?.maritalStatus === "string"
-                ? profile.maritalStatus
-                : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Annual Income:</span>{" "}
-              {typeof profile?.annualIncome === "string" ||
-              typeof profile?.annualIncome === "number"
-                ? profile.annualIncome
-                : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Diet:</span>{" "}
-              {typeof profile?.diet === "string" ? profile.diet : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Smoking:</span>{" "}
-              {typeof profile?.smoking === "string" ? profile.smoking : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Drinking:</span>{" "}
-              {typeof profile?.drinking === "string" ? profile.drinking : "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Physical Status:</span>{" "}
-              {typeof profile?.physicalStatus === "string"
-                ? profile.physicalStatus
-                : "-"}
-            </div>
-            <div className="md:col-span-2">
-              <span className="font-semibold">About Me:</span>{" "}
-              <span className="text-gray-700">
-                {typeof profile?.aboutMe === "string" ? profile.aboutMe : "-"}
-              </span>
-            </div>
-            <div className="md:col-span-2 border-t pt-4 mt-2">
-              <span className="font-semibold">Partner Preference Age:</span>{" "}
-              {typeof profile?.partnerPreferenceAgeMin === "number" ||
-              typeof profile?.partnerPreferenceAgeMin === "string"
-                ? profile.partnerPreferenceAgeMin
-                : "-"}{" "}
-              -{" "}
-              {typeof profile?.partnerPreferenceAgeMax === "number" ||
-              typeof profile?.partnerPreferenceAgeMax === "string"
-                ? profile.partnerPreferenceAgeMax
-                : "-"}
-            </div>
-            <div className="md:col-span-2">
-              <span className="font-semibold">Partner Preference City:</span>{" "}
-              {Array.isArray(profile?.partnerPreferenceCity)
-                ? profile.partnerPreferenceCity.join(", ")
-                : "-"}
-            </div>
-            <div className="md:col-span-2 border-t pt-4 mt-2">
-              <span className="font-semibold">Banned:</span>{" "}
-              {profile?.banned ? "Yes" : "No"}
-            </div>
-            <div className="md:col-span-2">
-              <span className="font-semibold">Created At:</span>{" "}
-              {profile?.createdAt
-                ? new Date(String(profile.createdAt)).toLocaleString()
-                : "-"}
-            </div>
-            <div className="md:col-span-2">
-              <span className="font-semibold">Updated At:</span>{" "}
-              {profile?.updatedAt
-                ? new Date(String(profile.updatedAt)).toLocaleString()
-                : "-"}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Matches</CardTitle>
-        </CardHeader>
-        <CardContent>{matchesSection}</CardContent>
-      </Card>
+              <div className="text-neutral-500 flex items-center gap-1.5 mb-6">
+                <MapPin className="w-4 h-4" />
+                {profile.city || "Location not set"}
+              </div>
+
+              <div className="w-full space-y-4">
+                <div className="flex items-center justify-between text-sm p-3 bg-neutral-50 rounded-lg">
+                  <span className="text-neutral-500 flex items-center gap-2">
+                    <Phone className="w-4 h-4" /> Phone
+                  </span>
+                  <span className="font-medium text-neutral-900">{profile.phoneNumber || "-"}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm p-3 bg-neutral-50 rounded-lg">
+                  <span className="text-neutral-500 flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" /> Education
+                  </span>
+                  <span className="font-medium text-neutral-900 truncate max-w-[120px]">{profile.education || "-"}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm p-3 bg-neutral-50 rounded-lg">
+                  <span className="text-neutral-500 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4" /> Occupation
+                  </span>
+                  <span className="font-medium text-neutral-900 truncate max-w-[120px]">{profile.occupation || "-"}</span>
+                </div>
+              </div>
+
+              <div className="mt-8 w-full pt-6 border-t border-neutral-100">
+                <div className="text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-4">
+                  Admin Actions
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <Button
+                    variant={profile.hasSpotlightBadge ? "default" : "outline"}
+                    onClick={() => handleToggleSpotlightBadge(String(profile._id))}
+                    className="w-full justify-start gap-2"
+                  >
+                    <SpotlightIcon className="w-4 h-4" />
+                    {profile.hasSpotlightBadge ? "Remove Spotlight" : "Grant Spotlight"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100"
+                    onClick={() => router.push(`/admin/profile/${profile._id}/edit`)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit Profile
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Spotlight Status */}
+          {profile.hasSpotlightBadge && (
+            <Card className="bg-amber-50 border-amber-100 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <SpotlightIcon className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-amber-900">Spotlight Active</div>
+                  <div className="text-xs text-amber-700">
+                    Expires: {profile.spotlightBadgeExpiresAt ? new Date(profile.spotlightBadgeExpiresAt).toLocaleDateString() : "N/A"}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column - Details & Matches */}
+        <div className="lg:col-span-2 space-y-8">
+          <Card className="border-neutral-200 shadow-sm">
+            <CardHeader className="border-b border-neutral-100">
+              <CardTitle className="text-lg font-bold">Profile Details</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                <DetailItem label="Date of Birth" value={profile.dateOfBirth} />
+                <DetailItem label="Gender" value={profile.gender} />
+                <DetailItem label="Country" value={profile.country} />
+                <DetailItem label="Height" value={profile.height} />
+                <DetailItem label="Marital Status" value={profile.maritalStatus} />
+                <DetailItem label="Annual Income" value={profile.annualIncome} />
+                <DetailItem label="Diet" value={profile.diet} />
+                <DetailItem label="Smoking" value={profile.smoking} />
+                <DetailItem label="Drinking" value={profile.drinking} />
+                <DetailItem label="Physical Status" value={profile.physicalStatus} />
+                
+                <div className="md:col-span-2 pt-4 border-t border-neutral-50">
+                  <div className="text-sm font-semibold text-neutral-900 mb-2">About Me</div>
+                  <p className="text-sm text-neutral-600 leading-relaxed bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+                    {profile.aboutMe || "No description provided."}
+                  </p>
+                </div>
+
+                <div className="md:col-span-2 pt-4 border-t border-neutral-50">
+                  <div className="text-sm font-semibold text-neutral-900 mb-4">Partner Preferences</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <DetailItem 
+                      label="Age Range" 
+                      value={profile.partnerPreferenceAgeMin && profile.partnerPreferenceAgeMax 
+                        ? `${profile.partnerPreferenceAgeMin} - ${profile.partnerPreferenceAgeMax} years` 
+                        : "-"} 
+                    />
+                    <DetailItem 
+                      label="Preferred Cities" 
+                      value={Array.isArray(profile.partnerPreferenceCity) ? profile.partnerPreferenceCity.join(", ") : "-"} 
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 pt-6 border-t border-neutral-100 flex flex-wrap gap-x-8 gap-y-4">
+                  <div className="text-[10px] text-neutral-400">
+                    <span className="font-bold uppercase mr-2">Created:</span>
+                    {profile.createdAt ? new Date(String(profile.createdAt)).toLocaleString() : "-"}
+                  </div>
+                  <div className="text-[10px] text-neutral-400">
+                    <span className="font-bold uppercase mr-2">Updated:</span>
+                    {profile.updatedAt ? new Date(String(profile.updatedAt)).toLocaleString() : "-"}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-neutral-200 shadow-sm">
+            <CardHeader className="border-b border-neutral-100">
+              <CardTitle className="text-lg font-bold">Matches ({matches.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {matchesSection}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
       {renderDeleteConfirmation()}
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{label}</div>
+      <div className="text-sm font-medium text-neutral-900">{value || "-"}</div>
     </div>
   );
 }

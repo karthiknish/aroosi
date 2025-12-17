@@ -24,9 +24,9 @@ export const BlockedUserBanner: React.FC<BlockedUserBannerProps> = ({
 
   if (isBlockedBy) {
     return (
-      <Alert className={`border-orange-200 bg-orange-50 ${className}`}>
-        <AlertTriangle className="h-4 w-4 text-orange-600" />
-        <AlertDescription className="text-orange-800">
+      <Alert className={`border-warning/20 bg-warning/5 ${className}`}>
+        <AlertTriangle className="h-4 w-4 text-warning" />
+        <AlertDescription className="text-warning">
           This user has blocked you. You cannot send them messages or interests.
         </AlertDescription>
       </Alert>
@@ -35,9 +35,9 @@ export const BlockedUserBanner: React.FC<BlockedUserBannerProps> = ({
 
   if (isBlocked) {
     return (
-      <Alert className={`border-red-200 bg-red-50 ${className}`}>
-        <Shield className="h-4 w-4 text-red-600" />
-        <AlertDescription className="text-red-800 flex items-center justify-between">
+      <Alert className={`border-danger/20 bg-danger/5 ${className}`}>
+        <Shield className="h-4 w-4 text-danger" />
+        <AlertDescription className="text-danger flex items-center justify-between">
           <span>
             You have blocked {userName || 'this user'}. They cannot send you messages or interests.
           </span>
@@ -46,7 +46,7 @@ export const BlockedUserBanner: React.FC<BlockedUserBannerProps> = ({
               variant="outline"
               size="sm"
               onClick={onUnblock}
-              className="ml-4 border-red-300 text-red-700 hover:bg-red-100"
+              className="ml-4 border-danger/30 text-danger hover:bg-danger/10"
             >
               Unblock
             </Button>

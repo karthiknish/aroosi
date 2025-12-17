@@ -37,13 +37,13 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
   const getIcon = () => {
     switch (type) {
       case "success":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-success" />;
       case "error":
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-danger" />;
       case "warning":
-        return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+        return <AlertCircle className="w-4 h-4 text-warning" />;
       case "loading":
-        return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
+        return <Loader2 className="w-4 h-4 text-info animate-spin" />;
       default:
         return null;
     }
@@ -52,15 +52,15 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
   const getBackgroundColor = () => {
     switch (type) {
       case "success":
-        return "bg-green-50 border-green-200";
+        return "bg-success/5 border-success/10";
       case "error":
-        return "bg-red-50 border-red-200";
+        return "bg-danger/5 border-danger/10";
       case "warning":
-        return "bg-yellow-50 border-yellow-200";
+        return "bg-warning/5 border-warning/10";
       case "loading":
-        return "bg-blue-50 border-blue-200";
+        return "bg-info/5 border-info/10";
       default:
-        return "bg-gray-50 border-gray-200";
+        return "bg-neutral/5 border-neutral/10";
     }
   };
 
@@ -82,7 +82,7 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
           {onClose && type !== "loading" && (
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-neutral-light hover:text-neutral transition-colors"
             >
               ×
             </button>
@@ -107,29 +107,29 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
       case "connected":
         return {
           icon: <Wifi className="w-3 h-3" />,
-          color: "text-green-500",
-          bgColor: "bg-green-100",
+          color: "text-success",
+          bgColor: "bg-success/10",
           label: "Connected",
         };
       case "connecting":
         return {
           icon: <Loader2 className="w-3 h-3 animate-spin" />,
-          color: "text-yellow-500",
-          bgColor: "bg-yellow-100",
+          color: "text-warning",
+          bgColor: "bg-warning/10",
           label: "Connecting...",
         };
       case "disconnected":
         return {
           icon: <WifiOff className="w-3 h-3" />,
-          color: "text-red-500",
-          bgColor: "bg-red-100",
+          color: "text-danger",
+          bgColor: "bg-danger/10",
           label: "Disconnected",
         };
       default:
         return {
           icon: <WifiOff className="w-3 h-3" />,
-          color: "text-gray-500",
-          bgColor: "bg-gray-100",
+          color: "text-neutral",
+          bgColor: "bg-neutral/10",
           label: "Unknown",
         };
     }
@@ -168,31 +168,31 @@ export const MessageOperationFeedback: React.FC<
       case "sending":
         return {
           icon: <Loader2 className="w-3 h-3 animate-spin" />,
-          color: "text-blue-500",
+          color: "text-info",
           message: "Sending...",
         };
       case "sent":
         return {
           icon: <CheckCircle className="w-3 h-3" />,
-          color: "text-green-500",
+          color: "text-success",
           message: "Sent",
         };
       case "failed":
         return {
           icon: <XCircle className="w-3 h-3" />,
-          color: "text-red-500",
+          color: "text-danger",
           message: "Failed",
         };
       case "retrying":
         return {
           icon: <Loader2 className="w-3 h-3 animate-spin" />,
-          color: "text-yellow-500",
+          color: "text-warning",
           message: `Retrying... (${attempt}/${maxAttempts})`,
         };
       default:
         return {
           icon: null,
-          color: "text-gray-500",
+          color: "text-neutral",
           message: "",
         };
     }
@@ -238,13 +238,13 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className={cn(
-            "absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10",
+            "absolute inset-0 bg-base-light/80 backdrop-blur-sm flex items-center justify-center z-10",
             className
           )}
         >
           <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-            <span className="text-sm font-medium text-gray-600">{message}</span>
+            <Loader2 className="w-6 h-6 animate-spin text-info" />
+            <span className="text-sm font-medium text-neutral">{message}</span>
           </div>
         </motion.div>
       )}

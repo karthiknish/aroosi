@@ -50,9 +50,9 @@ const FormSection: React.FC<{
   children: React.ReactNode;
   gridClassName?: string;
 }> = ({ title, children, gridClassName }) => (
-  <Card className="mb-6 border border-neutral-200/60 shadow-sm rounded-3xl overflow-hidden bg-white/50 backdrop-blur-sm">
-    <CardHeader className="border-b border-neutral-100/80 bg-white/50">
-      <CardTitle className="text-lg md:text-xl font-semibold text-neutral-800">
+  <Card className="mb-6 border border-neutral/10 shadow-sm rounded-3xl overflow-hidden bg-base-light/50 backdrop-blur-sm">
+    <CardHeader className="border-b border-neutral/5 bg-base-light/50">
+      <CardTitle className="text-lg md:text-xl font-semibold text-neutral-dark">
         {title}
       </CardTitle>
     </CardHeader>
@@ -778,13 +778,13 @@ export default function ProfileEditSimpleForm({
       )}
 
       {/* Sticky action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-neutral-200/60 z-50 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-base-light/80 backdrop-blur-xl border-t border-neutral/10 z-50 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
         <div className="max-w-4xl mx-auto flex justify-end gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel ? onCancel : () => router.back()}
-            className="min-w-[120px] rounded-full border-neutral-300 hover:bg-neutral-50"
+            className="min-w-[120px] rounded-full border-neutral/20 hover:bg-neutral/5"
             disabled={loading}
           >
             Cancel

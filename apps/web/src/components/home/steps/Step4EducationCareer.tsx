@@ -16,9 +16,9 @@ export function Step4EducationCareer(props: {
     <div className="space-y-8">
       {/* Education & Career Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <GraduationCap className="w-4 h-4" />
-            <h3>Education & Career</h3>
+            <h3 className="text-lg">Education & Career</h3>
         </div>
 
         <div className="grid gap-4">
@@ -31,7 +31,7 @@ export function Step4EducationCareer(props: {
                 placeholder="e.g. Bachelor's in Computer Science"
                 required
                 hint="Highest level of education completed"
-                className="bg-white"
+                className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -43,7 +43,7 @@ export function Step4EducationCareer(props: {
                     onValueChange={(v) => onChange("occupation", v)}
                     placeholder="e.g. Software Engineer"
                     required
-                    className="bg-white"
+                    className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
                 />
 
                 <ValidatedInput
@@ -54,7 +54,7 @@ export function Step4EducationCareer(props: {
                     onValueChange={(v) => onChange("annualIncome", v)}
                     placeholder="e.g. $75,000 or ₹12,00,000"
                     hint="Optional"
-                    className="bg-white"
+                    className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
                 />
             </div>
         </div>
@@ -62,9 +62,9 @@ export function Step4EducationCareer(props: {
 
       {/* About Me Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <FileText className="w-4 h-4" />
-            <h3>About You</h3>
+            <h3 className="text-lg">About You</h3>
         </div>
 
         <ValidatedTextarea
@@ -79,7 +79,7 @@ export function Step4EducationCareer(props: {
             showCharacterCount
             maxLength={500}
             hint="Write at least 10 characters"
-            className="bg-white resize-none"
+            className="bg-base-light/50 rounded-2xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans resize-none"
         />
       </div>
     </div>

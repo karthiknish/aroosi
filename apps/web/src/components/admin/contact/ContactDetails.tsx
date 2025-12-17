@@ -27,7 +27,7 @@ export function ContactDetails({ contact, open, onClose }: ContactDetailsProps) 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] bg-white">
+      <DialogContent className="sm:max-w-[600px] bg-base-light">
         <DialogHeader>
           <DialogTitle>Contact Details</DialogTitle>
           <DialogDescription>
@@ -38,24 +38,24 @@ export function ContactDetails({ contact, open, onClose }: ContactDetailsProps) 
         <div className="grid gap-6 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <h4 className="text-sm font-medium text-slate-500 flex items-center gap-2">
+              <h4 className="text-sm font-medium text-neutral-light flex items-center gap-2">
                 <User className="h-4 w-4" /> Sender
               </h4>
-              <p className="text-sm font-semibold text-slate-900">{contact.name}</p>
+              <p className="text-sm font-semibold text-neutral-dark">{contact.name}</p>
             </div>
             
             <div className="space-y-1">
-              <h4 className="text-sm font-medium text-slate-500 flex items-center gap-2">
+              <h4 className="text-sm font-medium text-neutral-light flex items-center gap-2">
                 <Mail className="h-4 w-4" /> Email
               </h4>
-              <p className="text-sm font-semibold text-slate-900">{contact.email}</p>
+              <p className="text-sm font-semibold text-neutral-dark">{contact.email}</p>
             </div>
             
             <div className="space-y-1 col-span-2">
-              <h4 className="text-sm font-medium text-slate-500 flex items-center gap-2">
+              <h4 className="text-sm font-medium text-neutral-light flex items-center gap-2">
                 <Calendar className="h-4 w-4" /> Submitted At
               </h4>
-              <p className="text-sm text-slate-900">
+              <p className="text-sm text-neutral-dark">
                 {contact.createdAt
                   ? new Date(contact.createdAt).toLocaleString(undefined, {
                       dateStyle: "full",
@@ -67,10 +67,10 @@ export function ContactDetails({ contact, open, onClose }: ContactDetailsProps) 
           </div>
 
           <div className="space-y-2">
-            <h4 className="text-sm font-medium text-slate-500 flex items-center gap-2">
+            <h4 className="text-sm font-medium text-neutral-light flex items-center gap-2">
               <MessageSquare className="h-4 w-4" /> Message
             </h4>
-            <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap border border-slate-100">
+            <div className="rounded-md bg-neutral/5 p-4 text-sm text-neutral-dark whitespace-pre-wrap border border-neutral/10">
               {contact.message}
             </div>
           </div>

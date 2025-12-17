@@ -44,14 +44,14 @@ export function Step2LocationPhysical(props: {
     <div className="space-y-8">
       {/* Location Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <MapPin className="w-4 h-4" />
-            <h3>Location Details</h3>
+            <h3 className="text-lg">Location Details</h3>
         </div>
         
         <div className="grid gap-4">
             <div>
-                <Label htmlFor="country" className="text-gray-700 mb-2 block font-medium">
+                <Label htmlFor="country" className="text-neutral-dark mb-2 block font-medium font-sans">
                 {requiredLabel("Country")}
                 </Label>
                 <SearchableSelect
@@ -59,9 +59,9 @@ export function Step2LocationPhysical(props: {
                 value={formData.country}
                 onValueChange={(v) => onChange("country", v)}
                 placeholder="Select country"
-                className="w-full"
+                className="w-full rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
-                {errors.country && <p className="text-xs text-red-500 mt-1">{errors.country}</p>}
+                {errors.country && <p className="text-xs text-danger mt-1 font-sans">{errors.country}</p>}
             </div>
 
             <ValidatedInput
@@ -73,30 +73,30 @@ export function Step2LocationPhysical(props: {
                 placeholder="Enter your city"
                 required
                 hint="Where do you currently live?"
-                className="bg-white"
+                className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
             />
         </div>
       </div>
 
       {/* Physical Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-medium border-b border-gray-100 pb-2">
+        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
             <User className="w-4 h-4" />
-            <h3>Physical Attributes</h3>
+            <h3 className="text-lg">Physical Attributes</h3>
         </div>
 
         <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <div className="flex justify-between items-center mb-4">
-                    <Label className="text-gray-700 font-medium flex items-center gap-2">
-                        <Ruler className="w-4 h-4 text-gray-400" />
+            <div className="bg-neutral/5 backdrop-blur-sm p-6 rounded-2xl border border-neutral/10 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                    <Label className="text-neutral-dark font-medium flex items-center gap-2 font-sans">
+                        <Ruler className="w-4 h-4 text-neutral-light" />
                         {requiredLabel("Height")}
                     </Label>
                     <div className="text-right">
-                        <span className="text-lg font-bold text-primary block leading-none">
+                        <span className="text-2xl font-serif font-bold text-primary block leading-none">
                             {cmToFeetInches(heightVal)}
                         </span>
-                        <span className="text-xs text-gray-500 font-medium">
+                        <span className="text-xs text-neutral-light font-medium font-sans">
                             {heightVal} cm
                         </span>
                     </div>
@@ -109,7 +109,7 @@ export function Step2LocationPhysical(props: {
                     onValueChange={handleHeightChange}
                     className="py-2"
                 />
-                <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
+                <div className="flex justify-between text-xs text-neutral-light mt-3 px-1 font-sans">
                     <span>4'6"</span>
                     <span>7'3"</span>
                 </div>
@@ -130,6 +130,7 @@ export function Step2LocationPhysical(props: {
                     ]}
                     placeholder="Select status"
                     required
+                    className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
                 />
 
                 <ValidatedSelect
@@ -143,6 +144,7 @@ export function Step2LocationPhysical(props: {
                     { value: "differently-abled", label: "Differently Abled" },
                     ]}
                     placeholder="Select status"
+                    className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
                 />
             </div>
         </div>

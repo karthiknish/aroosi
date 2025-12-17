@@ -189,14 +189,14 @@ export function showErrorToast(
 export function showSuccessToast(message: string) {
   toast.success(message, {
     style: {
-      background: "linear-gradient(135deg, #7BA17D 0%, #059669 100%)",
+      background: "linear-gradient(135deg, hsl(var(--success)) 0%, #059669 100%)",
       color: "#ffffff",
-      border: "1px solid #A7F3D0",
+      border: "1px solid hsl(var(--success) / 0.3)",
       borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
       padding: "16px 20px",
-      boxShadow: "0 6px 16px rgba(5, 150, 105, 0.25)",
+      boxShadow: "0 6px 16px hsla(var(--success), 0.25)",
     },
     duration: 4000,
   });
@@ -239,14 +239,14 @@ export function showUndoToast(
 export function showInfoToast(message: string) {
   toast.info(message, {
     style: {
-      background: "linear-gradient(135deg, #5F92AC 0%, #3E647A 100%)",
+      background: "linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary-dark)) 100%)",
       color: "#ffffff",
-      border: "1px solid #BFDBFE",
+      border: "1px solid hsl(var(--secondary-light) / 0.5)",
       borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
       padding: "16px 20px",
-      boxShadow: "0 6px 16px rgba(62, 100, 122, 0.25)",
+      boxShadow: "0 6px 16px hsla(var(--secondary-dark), 0.25)",
     },
     duration: 4000,
   });
@@ -256,14 +256,14 @@ export function showInfoToast(message: string) {
 export function showWarningToast(message: string) {
   toast.warning(message, {
     style: {
-      background: "linear-gradient(135deg, #D6B27C 0%, #B28E5F 100%)",
+      background: "linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--accent-dark)) 100%)",
       color: "#ffffff",
-      border: "1px solid #FDE68A",
+      border: "1px solid hsl(var(--accent-light) / 0.5)",
       borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
       padding: "16px 20px",
-      boxShadow: "0 6px 16px rgba(178, 142, 95, 0.25)",
+      boxShadow: "0 6px 16px hsla(var(--accent-dark), 0.25)",
     },
     duration: 5000,
   });
@@ -273,14 +273,14 @@ export function showWarningToast(message: string) {
 export function showPrimaryToast(message: string) {
   toast(message, {
     style: {
-      background: "linear-gradient(135deg, #EC4899 0%, #BE185D 100%)",
+      background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-dark)) 100%)",
       color: "#ffffff",
-      border: "1px solid #FBCFE8",
+      border: "1px solid hsl(var(--primary-light) / 0.5)",
       borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "600",
       padding: "16px 20px",
-      boxShadow: "0 6px 16px rgba(236, 72, 153, 0.3)",
+      boxShadow: "0 6px 16px hsla(var(--primary), 0.3)",
     },
     duration: 6000,
   });

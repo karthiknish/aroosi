@@ -101,25 +101,25 @@ export default function BlogPage() {
     <>
 
 
-      <section className="pt-24 sm:pt-28 md:pt-32 pb-16 text-center bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50 relative overflow-hidden">
+      <section className="pt-24 sm:pt-28 md:pt-32 pb-16 text-center bg-gradient-to-br from-primary/5 via-accent/5 to-base/5 relative overflow-hidden">
         {/* Enhanced decorative elements */}
-        <div className="absolute left-1/4 top-20 w-32 h-32 bg-gradient-to-r from-pink-200 to-rose-200 rounded-full opacity-40 blur-3xl animate-pulse z-0" />
-        <div className="absolute right-1/4 top-32 w-24 h-24 bg-gradient-to-r from-yellow-200 to-orange-200 rounded-full opacity-30 blur-2xl animate-pulse z-0" />
-        <div className="absolute left-1/3 bottom-20 w-20 h-20 bg-gradient-to-r from-orange-200 to-pink-200 rounded-full opacity-25 blur-xl animate-pulse z-0" />
+        <div className="absolute left-1/4 top-20 w-32 h-32 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full opacity-40 blur-3xl animate-pulse z-0" />
+        <div className="absolute right-1/4 top-32 w-24 h-24 bg-gradient-to-r from-base/20 to-accent/20 rounded-full opacity-30 blur-2xl animate-pulse z-0" />
+        <div className="absolute left-1/3 bottom-20 w-20 h-20 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full opacity-25 blur-xl animate-pulse z-0" />
 
         <div className="container mx-auto px-6 relative z-10">
           <h1
             style={{
               lineHeight: "1.4",
             }}
-            className="text-5xl font-serif sm:text-6xl  lg:text-7xl font-bold bg-gradient-to-r from-pink-600 via-rose-500 to-orange-500 bg-clip-text text-transparent mb-6 leading-tight"
+            className="text-5xl font-serif sm:text-6xl  lg:text-7xl font-bold bg-gradient-to-r from-primary-dark via-secondary to-accent bg-clip-text text-transparent mb-6 leading-tight"
           >
             Matrimonial Blog
           </h1>
 
           {/* Enhanced wavy underline */}
 
-          <p className="text-xl text-neutral-700 max-w-3xl mx-auto mb-8 leading-relaxed">
+          <p className="text-xl text-neutral-light max-w-3xl mx-auto mb-8 leading-relaxed">
             Discover inspiring stories, expert advice, and cultural insights to
             guide your journey towards finding your perfect Afghan life partner.
           </p>
@@ -134,11 +134,11 @@ export default function BlogPage() {
                   setPage(0);
                 }}
                 placeholder="Search blog posts..."
-                className="w-full px-6 py-4 rounded-2xl border-2 border-pink-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-100 bg-white/90 backdrop-blur-sm text-gray-800 shadow-lg font-sans text-lg transition-all duration-300 placeholder:text-gray-500"
+                className="w-full px-6 py-4 rounded-2xl border-2 border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10 bg-base-light/90 backdrop-blur-sm text-neutral-dark shadow-lg font-sans text-lg transition-all duration-300 placeholder:text-neutral-light"
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
                 <svg
-                  className="w-5 h-5 text-pink-400"
+                  className="w-5 h-5 text-primary-light"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -161,8 +161,8 @@ export default function BlogPage() {
                 key={cat}
                 className={`px-6 py-3 rounded-2xl border-2 transition-all duration-300 text-sm whitespace-nowrap font-semibold transform hover:scale-105 ${
                   category === cat
-                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-500 shadow-lg shadow-pink-200"
-                    : "bg-white/90 backdrop-blur-sm text-pink-700 border-pink-200 hover:bg-gradient-to-r hover:from-pink-50 hover:to-rose-50 hover:border-pink-300 shadow-md"
+                    ? "bg-gradient-to-r from-primary to-secondary text-base-light border-primary shadow-lg shadow-primary/20"
+                    : "bg-base-light/90 backdrop-blur-sm text-primary-dark border-primary/20 hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 hover:border-primary/30 shadow-md"
                 }`}
                 onClick={() => {
                   setCategory(cat);
@@ -174,23 +174,23 @@ export default function BlogPage() {
             ))}
           </div>
 
-          <div className="inline-flex items-center px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-pink-200 text-sm text-neutral-600 shadow-sm">
-            <span className="font-medium text-pink-600">
+          <div className="inline-flex items-center px-4 py-2 bg-base-light/80 backdrop-blur-sm rounded-full border border-primary/20 text-sm text-neutral shadow-sm">
+            <span className="font-medium text-primary-dark">
               {filteredPosts.length}
             </span>
             <span className="mx-1">of</span>
-            <span className="font-medium text-pink-600">{total}</span>
+            <span className="font-medium text-primary-dark">{total}</span>
             <span className="ml-1">posts found</span>
           </div>
         </div>
       </section>
       {/* Decorative section break */}
 
-      <div className="px-6 py-16 bg-gradient-to-b from-white via-pink-50/30 to-orange-50/20 relative">
+      <div className="px-6 py-16 bg-gradient-to-b from-base-light via-primary/5 to-accent/5 relative">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-r from-pink-100/30 to-rose-100/30 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-1/4 w-48 h-48 bg-gradient-to-r from-orange-100/30 to-yellow-100/30 rounded-full blur-2xl" />
+          <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-1/4 w-48 h-48 bg-gradient-to-r from-accent/10 to-base/10 rounded-full blur-2xl" />
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
@@ -199,7 +199,7 @@ export default function BlogPage() {
               Array.from({ length: pageSize }).map((_, i) => (
                 <Card
                   key={i}
-                  className="bg-white rounded-3xl overflow-hidden flex flex-col animate-pulse shadow-xl border-0 hover:shadow-2xl transition-all z-10"
+                  className="bg-base-light rounded-3xl overflow-hidden flex flex-col animate-pulse shadow-xl border-0 hover:shadow-2xl transition-all z-10"
                 >
                   <Skeleton className="w-full h-48 object-cover rounded-t-3xl" />
                   <div className="flex-1 p-6 flex flex-col">
@@ -224,14 +224,14 @@ export default function BlogPage() {
                 <Link
                   key={post._id}
                   href={`/blog/${post.slug}`}
-                  className="group block focus:outline-none focus:ring-4 focus:ring-pink-200 rounded-3xl transition-all"
+                  className="group block focus:outline-none focus:ring-4 focus:ring-primary/20 rounded-3xl transition-all"
                   tabIndex={0}
                 >
                   {/* Removed duplicate Card tag, only one Card remains below */}
-                  <Card className="h-full hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border-0 bg-white rounded-3xl overflow-hidden flex flex-col group cursor-pointer relative z-10">
+                  <Card className="h-full hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border-0 bg-base-light rounded-3xl overflow-hidden flex flex-col group cursor-pointer relative z-10">
                     {/* Enhanced decorative elements */}
-                    <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-pink-200 to-rose-300 rounded-full opacity-70 group-hover:opacity-100 transition-opacity z-10" />
-                    <div className="absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-full opacity-60 group-hover:scale-110 transition-transform z-10" />
+                    <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/30 rounded-full opacity-70 group-hover:opacity-100 transition-opacity z-10" />
+                    <div className="absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-accent/20 to-base/20 rounded-full opacity-60 group-hover:scale-110 transition-transform z-10" />
 
                     {post.imageUrl && /^https?:\/\//.test(post.imageUrl) && (
                       <div className="relative overflow-hidden rounded-t-3xl">
@@ -254,11 +254,11 @@ export default function BlogPage() {
                     )}
 
                     <CardHeader className="flex-1 p-6">
-                      <CardTitle className="text-lg font-serif font-semibold text-neutral-800 mb-3 line-clamp-2 group-hover:text-pink-600 transition-colors">
+                      <CardTitle className="text-lg font-serif font-semibold text-neutral-dark mb-3 line-clamp-2 group-hover:text-primary-dark transition-colors">
                         {post.title}
                       </CardTitle>
 
-                      <div className="flex items-center gap-2 text-sm text-neutral-500 mb-3">
+                      <div className="flex items-center gap-2 text-sm text-neutral-light mb-3">
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -284,7 +284,7 @@ export default function BlogPage() {
                         </span>
                       </div>
 
-                      <p className="text-neutral-600 text-sm line-clamp-3 mb-4 leading-relaxed">
+                      <p className="text-neutral text-sm line-clamp-3 mb-4 leading-relaxed">
                         {post.excerpt}
                       </p>
 
@@ -293,13 +293,13 @@ export default function BlogPage() {
                           {post.categories.slice(0, 2).map((cat: string) => (
                             <span
                               key={cat}
-                              className="px-3 py-1 bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 rounded-full text-xs font-semibold border border-pink-200"
+                              className="px-3 py-1 bg-gradient-to-r from-primary/10 to-secondary/10 text-primary-dark rounded-full text-xs font-semibold border border-primary/20"
                             >
                               {cat}
                             </span>
                           ))}
                           {post.categories.length > 2 && (
-                            <span className="px-3 py-1 bg-gray-100 text-neutral-600 rounded-full text-xs font-medium">
+                            <span className="px-3 py-1 bg-neutral/10 text-neutral rounded-full text-xs font-medium">
                               +{post.categories.length - 2}
                             </span>
                           )}
@@ -319,7 +319,7 @@ export default function BlogPage() {
                 size="lg"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0 || isLoading}
-                className="px-6 py-3 rounded-2xl border-2 border-pink-200 bg-white/80 backdrop-blur-sm hover:bg-gradient-to-r hover:from-pink-50 hover:to-rose-50 hover:border-pink-300 transition-all duration-300 font-semibold"
+                className="px-6 py-3 rounded-2xl border-2 border-primary/20 bg-base-light/80 backdrop-blur-sm hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 hover:border-primary/30 transition-all duration-300 font-semibold"
               >
                 ← Previous
               </Button>
@@ -330,8 +330,8 @@ export default function BlogPage() {
                     key={i}
                     className={`px-4 py-3 rounded-2xl border-2 text-sm font-semibold transition-all duration-300 ${
                       i === page
-                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-500 shadow-lg shadow-pink-200 transform scale-110"
-                        : "bg-white/80 backdrop-blur-sm text-pink-700 border-pink-200 hover:bg-gradient-to-r hover:from-pink-50 hover:to-rose-50 hover:border-pink-300 hover:scale-105"
+                        ? "bg-gradient-to-r from-primary to-secondary text-base-light border-primary shadow-lg shadow-primary/20 transform scale-110"
+                        : "bg-base-light/80 backdrop-blur-sm text-primary-dark border-primary/20 hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 hover:border-primary/30 hover:scale-105"
                     }`}
                     onClick={() => setPage(i)}
                     disabled={i === page}
@@ -346,7 +346,7 @@ export default function BlogPage() {
                 size="lg"
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page + 1 >= totalPages || isLoading}
-                className="px-6 py-3 rounded-2xl border-2 border-pink-200 bg-white/80 backdrop-blur-sm hover:bg-gradient-to-r hover:from-pink-50 hover:to-rose-50 hover:border-pink-300 transition-all duration-300 font-semibold"
+                className="px-6 py-3 rounded-2xl border-2 border-primary/20 bg-base-light/80 backdrop-blur-sm hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 hover:border-primary/30 transition-all duration-300 font-semibold"
               >
                 Next →
               </Button>

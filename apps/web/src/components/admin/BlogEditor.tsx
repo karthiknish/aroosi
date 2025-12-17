@@ -100,17 +100,17 @@ const ToolbarButton = ({
     className={`p-2 rounded-md transition-all duration-150 ${
       active
         ? "bg-primary text-white shadow-sm"
-        : "text-neutral-dark hover:bg-neutral-100"
-    } ${disabled ? "opacity-40 cursor-not-allowed" : "hover:shadow-sm"}`}
-    title={label}
-  >
-    <Icon className="w-4 h-4" />
-  </button>
+    : "text-neutral-dark hover:bg-neutral/5"
+} ${disabled ? "opacity-40 cursor-not-allowed" : "hover:shadow-sm"}`}
+title={label}
+>
+<Icon className="w-4 h-4" />
+</button>
 );
 
 // Toolbar divider
 const ToolbarDivider = () => (
-  <div className="w-px h-6 bg-neutral-200 mx-1" />
+  <div className="w-px h-6 bg-neutral/10 mx-1" />
 );
 
 const MenuBar = ({ editor }: MenuBarProps) => {
@@ -152,7 +152,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const characterCount = editor.storage.characterCount;
 
   return (
-    <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-neutral-200/60 px-2 py-2 flex flex-wrap gap-1 items-center">
+    <div className="sticky top-0 z-20 bg-base-light/95 backdrop-blur-sm border-b border-neutral/10 px-2 py-2 flex flex-wrap gap-1 items-center">
       {/* History */}
       <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
@@ -169,7 +169,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         />
       </div>
 
-      <div className="w-px h-5 bg-neutral-200 mx-1" />
+      <div className="w-px h-5 bg-neutral/10 mx-1" />
 
       {/* Text Formatting */}
       <div className="flex items-center gap-0.5">
@@ -205,7 +205,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         />
       </div>
 
-      <div className="w-px h-5 bg-neutral-200 mx-1" />
+      <div className="w-px h-5 bg-neutral/10 mx-1" />
 
       {/* Headings */}
       <div className="flex items-center gap-0.5">
@@ -223,7 +223,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         />
       </div>
 
-      <div className="w-px h-5 bg-neutral-200 mx-1" />
+      <div className="w-px h-5 bg-neutral/10 mx-1" />
 
       {/* Lists & Alignment */}
       <div className="flex items-center gap-0.5">
@@ -247,7 +247,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         />
       </div>
 
-      <div className="w-px h-5 bg-neutral-200 mx-1" />
+      <div className="w-px h-5 bg-neutral/10 mx-1" />
 
       {/* Alignment */}
       <div className="flex items-center gap-0.5">
@@ -271,7 +271,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         />
       </div>
 
-      <div className="w-px h-5 bg-neutral-200 mx-1" />
+      <div className="w-px h-5 bg-neutral/10 mx-1" />
 
       {/* Insert */}
       <div className="flex items-center gap-0.5">
@@ -307,7 +307,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           ref={emojiButtonRef}
           type="button"
           onClick={() => setEmojiPickerOpen((v) => !v)}
-          className="p-2 rounded-md transition-all duration-150 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+          className="p-2 rounded-md transition-all duration-150 text-neutral-light hover:bg-neutral/5 hover:text-neutral-dark"
           title="Insert Emoji"
         >
           <Smile className="w-4 h-4" />
@@ -327,10 +327,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       {/* ... (Modals code is fine, just need to ensure they are inside the return) ... */}
       {/* Table Modal */}
       {tableModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-dark/50 backdrop-blur-sm">
+          <div className="bg-base-light rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+              className="absolute top-4 right-4 text-neutral-light hover:text-neutral-dark transition-colors"
               onClick={() => setTableModalOpen(false)}
             >
               <X className="w-5 h-5" />
@@ -343,7 +343,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-light mb-1.5">
                   Rows
                 </label>
                 <input
@@ -352,11 +352,11 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                   max={10}
                   value={tableRows}
                   onChange={(e) => setTableRows(Number(e.target.value))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full border border-neutral/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-base-light text-neutral-dark"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-light mb-1.5">
                   Columns
                 </label>
                 <input
@@ -365,13 +365,13 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                   max={10}
                   value={tableCols}
                   onChange={(e) => setTableCols(Number(e.target.value))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full border border-neutral/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-base-light text-neutral-dark"
                 />
               </div>
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
                 onClick={() => setTableModalOpen(false)}
               >
                 Cancel
@@ -402,10 +402,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
       {/* Link Modal */}
       {linkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-dark/50 backdrop-blur-sm">
+          <div className="bg-base-light rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+              className="absolute top-4 right-4 text-neutral-light hover:text-neutral-dark transition-colors"
               onClick={() => setLinkModalOpen(false)}
             >
               <X className="w-5 h-5" />
@@ -419,12 +419,12 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               </h2>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+              <label className="block text-sm font-medium text-neutral-light mb-1.5">
                 URL
               </label>
               <input
                 type="url"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full border border-neutral/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-base-light text-neutral-dark"
                 placeholder="https://example.com"
                 value={linkValue}
                 onChange={(e) => setLinkValue(e.target.value)}
@@ -433,7 +433,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
                 onClick={() => setLinkModalOpen(false)}
               >
                 Cancel
@@ -486,10 +486,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
       {/* Image Upload Modal */}
       {imageModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-dark/50 backdrop-blur-sm">
+          <div className="bg-base-light rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+              className="absolute top-4 right-4 text-neutral-light hover:text-neutral-dark transition-colors"
               onClick={() => {
                 setImageModalOpen(false);
                 setUploadedUrl("");
@@ -504,19 +504,19 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               <h2 className="text-lg font-semibold text-neutral-dark">Insert Image</h2>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+              <label className="block text-sm font-medium text-neutral-light mb-1.5">
                 Image URL
               </label>
               <input
                 type="url"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full border border-neutral/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-base-light text-neutral-dark"
                 placeholder="https://example.com/image.jpg"
                 value={uploadedUrl}
                 onChange={(e) => setUploadedUrl(e.target.value)}
                 autoFocus
               />
               {uploadedUrl && (
-                <div className="mt-3 p-2 bg-neutral-50 rounded-lg">
+                <div className="mt-3 p-2 bg-neutral/5 rounded-lg">
                   <img
                     src={uploadedUrl}
                     alt="Preview"
@@ -530,7 +530,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
                 onClick={() => {
                   setImageModalOpen(false);
                   setUploadedUrl("");
@@ -558,10 +558,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
       {/* Youtube Modal */}
       {youtubeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-dark/50 backdrop-blur-sm">
+          <div className="bg-base-light rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors"
+              className="absolute top-4 right-4 text-neutral-light hover:text-neutral-dark transition-colors"
               onClick={() => {
                 setYoutubeModalOpen(false);
                 setYoutubeUrl("");
@@ -576,12 +576,12 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               <h2 className="text-lg font-semibold text-neutral-dark">Insert Youtube Video</h2>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-600 mb-1.5">
+              <label className="block text-sm font-medium text-neutral-light mb-1.5">
                 Video URL
               </label>
               <input
                 type="url"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full border border-neutral/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-base-light text-neutral-dark"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
@@ -590,8 +590,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
-                onClick={() => {
+                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
                   setYoutubeModalOpen(false);
                   setYoutubeUrl("");
                 }}
@@ -719,12 +718,12 @@ export default function BlogEditor({
     style.id = "tiptap-link-style";
     style.innerHTML = `
       .tiptap-editor-content a {
-        color: var(--color-primary);
+        color: hsl(var(--primary));
         text-decoration: underline;
         transition: color 0.2s;
       }
       .tiptap-editor-content a:hover {
-        color: var(--color-accent);
+        color: hsl(var(--accent));
       }
       .tiptap-editor-content table {
         border-collapse: collapse;
@@ -732,34 +731,34 @@ export default function BlogEditor({
         margin: 1em 0;
       }
       .tiptap-editor-content th {
-        border: 1.5px solid var(--color-primary);
-        background: var(--color-base);
-        color: var(--color-accent);
+        border: 1.5px solid hsl(var(--primary));
+        background: hsl(var(--base));
+        color: hsl(var(--accent));
         font-weight: 700;
         padding: 0.6em 0.9em;
         text-align: left;
       }
       .tiptap-editor-content td {
-        border: 1px solid var(--color-neutral-light);
+        border: 1px solid hsl(var(--neutral-light));
         padding: 0.5em 0.75em;
         text-align: left;
-        background: var(--color-base-light);
+        background: hsl(var(--base-light));
       }
       .tiptap-editor-content tr:nth-child(even) td {
-        background: var(--color-base);
+        background: hsl(var(--base));
       }
       .tiptap-editor-content blockquote {
-        border-left: 4px solid var(--color-primary);
-        background: var(--color-base);
-        color: var(--color-accent);
+        border-left: 4px solid hsl(var(--primary));
+        background: hsl(var(--base));
+        color: hsl(var(--accent));
         margin: 1em 0;
         padding: 0.75em 1.25em;
         font-style: italic;
         border-radius: 0.375em;
       }
       .tiptap-editor-content pre {
-        background: var(--color-base);
-        color: var(--color-accent);
+        background: hsl(var(--base));
+        color: hsl(var(--accent));
         font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
         padding: 1em;
         border-radius: 0.375em;
@@ -768,8 +767,8 @@ export default function BlogEditor({
         font-size: 0.97em;
       }
       .tiptap-editor-content code {
-        background: var(--color-base-dark);
-        color: var(--color-accent);
+        background: hsl(var(--base-dark));
+        color: hsl(var(--accent));
         font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
         padding: 0.15em 0.4em;
         border-radius: 0.3em;
@@ -809,7 +808,7 @@ export default function BlogEditor({
       }
       .tiptap-editor-content hr {
         border: none;
-        border-top: 2px solid var(--color-primary);
+        border-top: 2px solid hsl(var(--primary));
         margin: 2em 0;
         height: 0;
         background: none;
@@ -866,12 +865,12 @@ export default function BlogEditor({
         display: block;
         margin: 1.5em auto;
         border-radius: 0.5em;
-        box-shadow: 0 2px 8px 0 rgba(var(--color-primary),0.08);
+        box-shadow: 0 2px 8px 0 hsla(var(--primary), 0.08);
         resize: both;
         overflow: auto;
         min-width: 80px;
         min-height: 40px;
-        background: var(--color-base-light);
+        background: hsl(var(--base-light));
       }
       .tiptap-editor-content iframe {
         width: 100%;
@@ -885,13 +884,13 @@ export default function BlogEditor({
   }
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-base-light">
       <MenuBar editor={editor} />
       <div className="tiptap-editor-content">
         <EditorContent editor={editor} />
       </div>
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-neutral-50 border-t border-neutral-100 text-xs text-neutral-500">
+      <div className="flex items-center justify-between px-4 py-2 bg-neutral/5 border-t border-neutral/10 text-xs text-neutral-light">
         <div className="flex items-center gap-4">
           <span>{editor.storage.characterCount?.characters() ?? 0} characters</span>
           <span>{editor.storage.characterCount?.words() ?? 0} words</span>

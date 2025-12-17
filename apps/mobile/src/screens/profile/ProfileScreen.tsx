@@ -164,7 +164,21 @@ export default function ProfileScreen() {
     const getProfileCompletion = () => {
         if (!profile) return 0;
         let completed = 0;
-        const fields = ['displayName', 'bio', 'age', 'gender', 'location', 'photos', 'interests'];
+        const fields = [
+            'displayName', 
+            'bio', 
+            'age', 
+            'gender', 
+            'location', 
+            'photos', 
+            'interests',
+            'education',
+            'occupation',
+            'maritalStatus',
+            'religion',
+            'motherTongue',
+            'height'
+        ];
         fields.forEach(field => {
             const value = (profile as any)[field];
             if (value && (Array.isArray(value) ? value.length > 0 : true)) {
@@ -247,6 +261,18 @@ export default function ProfileScreen() {
                         <Text style={styles.location}>
                             📍 {profile.location.city}
                             {profile.location.state ? `, ${profile.location.state}` : ''}
+                        </Text>
+                    )}
+
+                    {profile?.occupation && (
+                        <Text style={styles.occupation}>
+                            💼 {profile.occupation}
+                        </Text>
+                    )}
+
+                    {profile?.education && (
+                        <Text style={styles.education}>
+                            🎓 {profile.education}
                         </Text>
                     )}
 
@@ -543,6 +569,16 @@ const styles = StyleSheet.create({
     location: {
         fontSize: responsiveFontSizes.base,
         color: colors.neutral[500],
+        marginBottom: moderateScale(4),
+    },
+    occupation: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[600],
+        marginBottom: moderateScale(2),
+    },
+    education: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[600],
         marginBottom: moderateScale(12),
     },
     badges: {

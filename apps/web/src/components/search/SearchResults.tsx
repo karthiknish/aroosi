@@ -59,7 +59,7 @@ export function SearchResults({
   if (profiles.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="mx-auto w-24 h-24 text-gray-300 mb-4">
+        <div className="mx-auto w-24 h-24 text-neutral-light mb-4">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -74,10 +74,10 @@ export function SearchResults({
             />
           </svg>
         </div>
-        <h3 className="text-xl font-medium text-neutral-700 mb-2">
+        <h3 className="text-xl font-medium text-neutral mb-2">
           No profiles found
         </h3>
-        <p className="text-neutral-500 max-w-md mx-auto">
+        <p className="text-neutral-light max-w-md mx-auto">
           {hasFilters
             ? "Try adjusting your search criteria to see more results."
             : "There are currently no profiles available. Please check back later."}
@@ -85,7 +85,7 @@ export function SearchResults({
         {hasFilters && (
           <button
             onClick={clearAllFilters}
-            className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
+            className="mt-4 px-4 py-2 bg-primary/10 text-primary-dark rounded-lg hover:bg-primary/20 transition-colors"
           >
             Clear all filters
           </button>
@@ -111,7 +111,7 @@ export function SearchResults({
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-10">
           <button
-            className="px-4 py-2 rounded bg-gray-200 text-neutral-700 disabled:opacity-50"
+            className="px-4 py-2 rounded bg-neutral/10 text-neutral disabled:opacity-50"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
           >
@@ -121,7 +121,7 @@ export function SearchResults({
             Page {page + 1} of {totalPages}
           </span>
           <button
-            className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+            className="px-4 py-2 rounded bg-neutral/10 text-neutral disabled:opacity-50"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
           >

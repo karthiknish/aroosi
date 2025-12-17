@@ -67,7 +67,7 @@ export default function CustomForgotPasswordForm({
     <form onSubmit={handleSubmit} className="w-full">
       <div className="mb-4 text-center">
         <h2 className="text-xl font-semibold">Forgot Password</h2>
-        <p className="text-gray-600 mt-1">
+        <p className="text-neutral-light mt-1">
           Enter your email to receive a reset link.
         </p>
       </div>
@@ -86,7 +86,7 @@ export default function CustomForgotPasswordForm({
       <div className="mb-4">
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-neutral mb-1"
         >
           Email
         </label>

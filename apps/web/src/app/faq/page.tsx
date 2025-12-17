@@ -236,11 +236,11 @@ export default function FaqPage() {
                 className="max-w-2xl mx-auto"
               >
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-light w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search for answers..."
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-neutral-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-neutral/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />

@@ -291,22 +291,22 @@ function HeroOnboardingInner() {
 
   return (
     <div className="w-full max-w-md mx-auto relative z-10">
-      <Card className="bg-white/95 backdrop-blur-xl shadow-2xl border-0 overflow-hidden relative ring-1 ring-white/20">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-pink-500 to-primary animate-gradient-x" />
+      <Card className="bg-base-light/80 backdrop-blur-xl shadow-2xl border-0 overflow-hidden relative ring-1 ring-black/5">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-secondary to-primary animate-gradient-x" />
         
         <div className="sm:p-8 p-6">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+            <h2 className="text-3xl font-serif font-bold text-neutral-dark mb-2 tracking-tight">
               Find Your Match
             </h2>
-            <p className="text-gray-500 text-sm">
+            <p className="text-neutral-light text-sm font-sans">
               Join thousands of Afghan singles finding love
             </p>
           </div>
 
           {/* Modern Progress Indicator */}
           <div className="flex justify-center mb-8 relative">
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -z-10 rounded-full" />
+            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-neutral/10 -z-10 rounded-full" />
             <div className="flex items-center justify-between w-full max-w-[200px]">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="relative group">
@@ -315,7 +315,7 @@ function HeroOnboardingInner() {
                       "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2",
                       i <= step
                         ? "bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-110"
-                        : "bg-white border-gray-200 text-gray-400"
+                        : "bg-base-light border-neutral/10 text-neutral-light"
                     )}
                   >
                     {i}
@@ -325,7 +325,7 @@ function HeroOnboardingInner() {
             </div>
              {/* Active Progress Line */}
              <div 
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[200px] h-0.5 -z-20 bg-gray-100 overflow-hidden rounded-full"
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[200px] h-0.5 -z-20 bg-neutral/10 overflow-hidden rounded-full"
              >
                 <motion.div 
                   className="h-full bg-primary"
@@ -349,7 +349,7 @@ function HeroOnboardingInner() {
               {step === 1 && (
                 <div className="space-y-6">
                   <div className="space-y-3">
-                    <Label className="text-gray-700 font-medium block">
+                    <Label className="text-neutral font-medium block font-sans">
                       {required("This profile is for")}
                     </Label>
                     <Select
@@ -360,25 +360,25 @@ function HeroOnboardingInner() {
                     >
                       <SelectTrigger
                         id="profileFor"
-                        className="w-full h-12 bg-gray-50/50 border-gray-200 focus:ring-2 focus:ring-primary/20 transition-all"
+                        className="w-full h-12 bg-neutral/5 border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all rounded-xl"
                       >
                         <SelectValue placeholder="Select who this is for" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white/95 backdrop-blur-xl border-gray-100 shadow-xl">
+                      <SelectContent className="bg-base-light/95 backdrop-blur-xl border-neutral/5 shadow-xl rounded-xl">
                         <SelectItem value="self">Myself</SelectItem>
                         <SelectItem value="friend">A Friend</SelectItem>
                         <SelectItem value="family">A Family Member</SelectItem>
                       </SelectContent>
                     </Select>
                     {heroErrors.profileFor && (
-                      <p className="text-xs text-red-500 font-medium animate-shake">
+                      <p className="text-xs text-danger font-medium animate-shake">
                         {heroErrors.profileFor}
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-gray-700 font-medium block">
+                    <Label className="text-neutral font-medium block font-sans">
                       {required("Gender")}
                     </Label>
                     <div className="grid grid-cols-2 gap-4">
@@ -388,10 +388,10 @@ function HeroOnboardingInner() {
                           type="button"
                           onClick={() => handleInputChange("gender", g)}
                           className={cn(
-                            "relative h-12 rounded-lg border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize",
+                            "relative h-12 rounded-xl border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize font-sans",
                             (heroData.gender ?? "") === g
                               ? "border-primary bg-primary/5 text-primary shadow-sm"
-                              : "border-gray-100 bg-gray-50/50 text-gray-600 hover:border-gray-200 hover:bg-gray-100"
+                              : "border-neutral/5 bg-neutral/5 text-neutral hover:border-neutral/10 hover:bg-neutral/10"
                           )}
                         >
                           {g}
@@ -405,7 +405,7 @@ function HeroOnboardingInner() {
                       ))}
                     </div>
                     {heroErrors.gender && (
-                      <p className="text-xs text-red-500 font-medium animate-shake">
+                      <p className="text-xs text-danger font-medium animate-shake">
                         {heroErrors.gender}
                       </p>
                     )}
@@ -425,11 +425,11 @@ function HeroOnboardingInner() {
                     placeholder="e.g. Sarah Ahmad"
                     required
                     externalError={heroErrors.fullName}
-                    className="h-12 bg-gray-50/50 border-gray-200 focus:ring-2 focus:ring-primary/20"
+                    className="h-12 bg-neutral/5 border-neutral/10 focus:ring-2 focus:ring-primary/20 rounded-xl font-sans"
                   />
 
                   <div className="space-y-2">
-                    <Label className="text-gray-700 font-medium block">
+                    <Label className="text-neutral font-medium block font-sans">
                       {required("Date of Birth")}
                     </Label>
                     <Popover>
@@ -437,7 +437,7 @@ function HeroOnboardingInner() {
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full h-12 justify-start text-left font-normal bg-gray-50/50 border-gray-200 hover:bg-gray-100 transition-all",
+                            "w-full h-12 justify-start text-left font-normal bg-neutral/5 border-neutral/10 hover:bg-neutral/10 transition-all rounded-xl",
                             !heroData.dateOfBirth && "text-muted-foreground"
                           )}
                         >
@@ -449,7 +449,7 @@ function HeroOnboardingInner() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white border-gray-100 shadow-xl rounded-xl" align="start">
+                      <PopoverContent className="w-auto p-0 bg-base-light border-neutral/5 shadow-xl rounded-xl" align="start">
                         <Calendar
                           mode="single"
                           selected={
@@ -482,7 +482,7 @@ function HeroOnboardingInner() {
                       </PopoverContent>
                     </Popover>
                     {heroErrors.dateOfBirth && (
-                      <p className="text-xs text-red-500 font-medium animate-shake">
+                      <p className="text-xs text-danger font-medium animate-shake">
                         {heroErrors.dateOfBirth}
                       </p>
                     )}
@@ -494,14 +494,14 @@ function HeroOnboardingInner() {
               {step === 3 && (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label className="text-gray-700 font-medium block">
+                    <Label className="text-neutral font-medium block font-sans">
                       {required("Phone Number")}
                     </Label>
                     <div className={cn(
-                      "transition-all duration-200 rounded-lg border",
+                      "transition-all duration-200 rounded-xl border",
                       heroErrors.phoneNumber 
-                        ? "border-red-500 ring-1 ring-red-500/20" 
-                        : "border-gray-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary"
+                        ? "border-danger ring-1 ring-danger/20" 
+                        : "border-neutral/10 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary"
                     )}>
                       <PhoneInput
                         value={heroData.phoneNumber ?? ""}
@@ -515,15 +515,15 @@ function HeroOnboardingInner() {
                           handleInputChange("phoneNumber", normalized);
                         }}
                         placeholder="7XXX XXXXXX"
-                        className="w-full border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg"
+                        className="w-full border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-xl"
                       />
                     </div>
                     {heroErrors.phoneNumber && (
-                      <p className="text-xs text-red-500 font-medium animate-shake">
+                      <p className="text-xs text-danger font-medium animate-shake">
                         {heroErrors.phoneNumber}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400 mt-2">
+                    <p className="text-xs text-neutral-light mt-2 font-sans">
                       We'll send you a verification code to confirm your number.
                     </p>
                   </div>
@@ -532,13 +532,13 @@ function HeroOnboardingInner() {
             </motion.div>
           </AnimatePresence>
 
-          <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100">
+          <div className="mt-8 flex justify-between items-center pt-6 border-t border-neutral/5">
             {step > 1 ? (
               <Button
                 variant="ghost"
                 onClick={() => setStep(step - 1)}
                 disabled={loading}
-                className="text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                className="text-neutral-light hover:text-neutral-dark hover:bg-neutral/10 rounded-xl font-sans"
               >
                 Back
               </Button>
@@ -549,7 +549,7 @@ function HeroOnboardingInner() {
               onClick={handleNext}
               disabled={loading}
               className={cn(
-                "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300",
+                "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300 rounded-xl font-sans",
                 step === 3 ? "px-8" : "px-6"
               )}
             >
@@ -569,7 +569,7 @@ function HeroOnboardingInner() {
             </Button>
           </div>
 
-          <div className="mt-6 text-center text-sm text-gray-500">
+          <div className="mt-6 text-center text-sm text-neutral-light font-sans">
             Already have an account?{" "}
             <Link
               href="/sign-in"
@@ -593,10 +593,10 @@ function HeroOnboardingInner() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 + idx * 0.1 }}
-            className="text-white/90 backdrop-blur-sm bg-white/10 rounded-xl p-3 border border-white/10"
+            className="text-white/90 backdrop-blur-md bg-base-light/10 rounded-2xl p-3 border border-base-light/20 shadow-lg"
           >
             <Icon className="h-6 w-6 mx-auto mb-2 opacity-90" />
-            <p className="text-xs font-medium">{text}</p>
+            <p className="text-xs font-medium font-sans">{text}</p>
           </motion.div>
         ))}
       </div>

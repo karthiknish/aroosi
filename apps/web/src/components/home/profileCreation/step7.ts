@@ -13,6 +13,7 @@ export function getGlobalRequiredFields(): string[] {
     "height",
     "maritalStatus",
     "phoneNumber",
+    "profileImageIds",
   ];
 }
 
