@@ -275,8 +275,6 @@ const ChatBot: React.FC = () => {
           )}
         </div>
       )}
-        </div>
-      )}
     </div>
   );
 };

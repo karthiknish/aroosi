@@ -176,4 +176,3 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
     </Card>
   );
 }
-}

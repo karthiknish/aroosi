@@ -111,5 +111,6 @@ export default function AdminCreateProfilePage() {
         />
       </div>
     </div>
+  </div>
   );
 }

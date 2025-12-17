@@ -1,5 +1,61 @@
 @import "tailwindcss";
 
+@theme {
+  --font-nunito: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-family-sans: var(--font-nunito), 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Boldonse", ui-serif, serif;
+
+  --color-primary: hsl(330 81% 60%);
+  --color-primary-light: hsl(330 85% 82%);
+  --color-primary-dark: hsl(335 77% 42%);
+  --color-primary-foreground: hsl(0 0% 98%);
+
+  --color-secondary: hsl(201 34% 53%);
+  --color-secondary-light: hsl(204 45% 75%);
+  --color-secondary-dark: hsl(201 33% 36%);
+  --color-secondary-foreground: hsl(0 0% 98%);
+
+  --color-accent: hsl(39 52% 66%);
+  --color-accent-light: hsl(41 69% 79%);
+  --color-accent-dark: hsl(34 34% 54%);
+  --color-accent-foreground: hsl(0 0% 9%);
+
+  --color-base: hsl(30 20% 97%);
+  --color-base-light: hsl(0 0% 100%);
+  --color-base-dark: hsl(30 11% 89%);
+  
+  --color-neutral: hsl(0 0% 29%);
+  --color-neutral-light: hsl(0 0% 48%);
+  --color-neutral-dark: hsl(0 0% 18%);
+
+  --color-success: hsl(123 18% 56%);
+  --color-danger: hsl(0 35% 54%);
+  --color-warning: hsl(38 92% 50%);
+  --color-info: hsl(199 89% 48%);
+
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(0 0% 3.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(0 0% 3.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(0 0% 3.9%);
+  --color-muted: hsl(0 0% 96.1%);
+  --color-muted-foreground: hsl(0 0% 45.1%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(0 0% 89.8%);
+  --color-input: hsl(0 0% 89.8%);
+  --color-ring: hsl(330 81% 60%);
+  
+  --radius: 0.5rem;
+
+  --color-chart-1: hsl(330 81% 60%);
+  --color-chart-2: hsl(200 70% 50%);
+  --color-chart-3: hsl(45 70% 60%);
+  --color-chart-4: hsl(120 60% 50%);
+  --color-chart-5: hsl(280 65% 60%);
+}
+
 @import "highlight.js/styles/github.css";
 
 :root {

@@ -1066,8 +1066,6 @@ export default function ProfileEditForm({
     </form>
   );
 }
-  );
-}
 
 /**
  * Read-only preview for subscription expiry:

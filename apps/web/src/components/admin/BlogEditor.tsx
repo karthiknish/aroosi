@@ -591,6 +591,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             <div className="flex gap-3 justify-end">
               <button
                 className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
+                onClick={() => {
                   setYoutubeModalOpen(false);
                   setYoutubeUrl("");
                 }}
