@@ -3,140 +3,142 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import { db } from "@/lib/firebaseAdmin";
 
-export const GET = withFirebaseAuth(
-  async (user: AuthenticatedUser, req: NextRequest, { params }: { params: Promise<{ userId: string }> }) => {
-    // Extract target userId from URL (dynamic segment)
-    const { userId: targetUserId } = await params;
-    if (!targetUserId) return errorResponse("Missing userId", 400);
+export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
+  return withFirebaseAuth(
+    async (user: AuthenticatedUser, request: NextRequest, _ctx) => {
+      // Extract target userId from URL (dynamic segment)
+      const { userId: targetUserId } = await ctx.params;
+      if (!targetUserId) return errorResponse("Missing userId", 400);
 
-    const authedUserId = user.id;
+      const authedUserId = user.id;
 
-    try {
-      // Load self & target user docs (profile fields flattened in users doc)
-      const [selfSnap, targetSnap] = await Promise.all([
-        db.collection("users").doc(authedUserId).get(),
-        db.collection("users").doc(targetUserId).get(),
-      ]);
-      if (!targetSnap.exists) {
-        return successResponse({ score: null, reasons: ["no-target-profile"] });
-      }
-      if (!selfSnap.exists) {
-        return successResponse({ score: null, reasons: ["no-self"] });
-      }
-      const self = selfSnap.data() as any;
-      const target = targetSnap.data() as any;
-
-      let score = 0;
-      const reasons: string[] = [];
-
-      // City match
-      if (
-        self?.city &&
-        target?.city &&
-        String(self.city).toLowerCase() === String(target.city).toLowerCase()
-      ) {
-        score += 20;
-        reasons.push("city");
-      }
-
-      // Preferred gender (self preference applies to target's gender)
-      const selfPref =
-        (self?.preferredGender as string | undefined) || undefined;
-      const tgtGender = (target?.gender as string | undefined) || undefined;
-      if (
-        !selfPref ||
-        selfPref === "any" ||
-        (tgtGender && selfPref === tgtGender)
-      ) {
-        score += 20;
-        reasons.push("gender");
-      }
-
-      // Age window (self preferences vs target DOB)
-      const min = Number(self?.partnerPreferenceAgeMin ?? NaN);
-      const max = Number(self?.partnerPreferenceAgeMax ?? NaN);
-      if (!Number.isNaN(min) && !Number.isNaN(max)) {
-        const dobStr = target?.dateOfBirth as string | undefined;
-        const year = dobStr ? parseInt(dobStr.slice(0, 4)) : NaN;
-        const nowYear = new Date().getUTCFullYear();
-        const age = nowYear - (Number.isFinite(year) ? year : nowYear);
-        if (age >= min && age <= max) {
-          score += 20;
-          reasons.push("age");
-        }
-      }
-
-      // Quiz similarity placeholder: existence of userQuizResults docs for both
       try {
-        const [selfQuiz, targetQuiz] = await Promise.all([
-          db.collection("userQuizResults").doc(authedUserId).get(),
-          db.collection("userQuizResults").doc(targetUserId).get(),
+        // Load self & target user docs (profile fields flattened in users doc)
+        const [selfSnap, targetSnap] = await Promise.all([
+          db.collection("users").doc(authedUserId).get(),
+          db.collection("users").doc(targetUserId).get(),
         ]);
-        if (selfQuiz.exists && targetQuiz.exists) {
-          score += 20;
-          reasons.push("quiz");
+        if (!targetSnap.exists) {
+          return successResponse({ score: null, reasons: ["no-target-profile"] });
         }
-      } catch {}
+        if (!selfSnap.exists) {
+          return successResponse({ score: null, reasons: ["no-self"] });
+        }
+        const self = selfSnap.data() as any;
+        const target = targetSnap.data() as any;
 
-      // Lifestyle alignment (diet, smoking, drinking)
-      const diet = String(self?.diet || "").toLowerCase();
-      const tgtDiet = String(target?.diet || "").toLowerCase();
-      if (diet && tgtDiet && diet === tgtDiet) {
-        score += 10;
-        reasons.push("diet");
-      }
-      const smoking = String(self?.smoking || "").toLowerCase();
-      const tgtSmoking = String(target?.smoking || "").toLowerCase();
-      if (smoking && tgtSmoking && smoking === tgtSmoking) {
-        score += 10;
-        reasons.push("smoking");
-      }
-      const drinking = String(self?.drinking || "").toLowerCase();
-      const tgtDrinking = String(target?.drinking || "").toLowerCase();
-      if (drinking && tgtDrinking && drinking === tgtDrinking) {
-        score += 10;
-        reasons.push("drinking");
-      }
+        let score = 0;
+        const reasons: string[] = [];
 
-      // Cultural alignment
-      const religiousPractice = String(self?.religiousPractice || "").toLowerCase();
-      const tgtReligiousPractice = String(target?.religiousPractice || "").toLowerCase();
-      if (religiousPractice && tgtReligiousPractice && religiousPractice === tgtReligiousPractice) {
-        score += 10;
-        reasons.push("religiousPractice");
+        // City match
+        if (
+          self?.city &&
+          target?.city &&
+          String(self.city).toLowerCase() === String(target.city).toLowerCase()
+        ) {
+          score += 20;
+          reasons.push("city");
+        }
+
+        // Preferred gender (self preference applies to target's gender)
+        const selfPref =
+          (self?.preferredGender as string | undefined) || undefined;
+        const tgtGender = (target?.gender as string | undefined) || undefined;
+        if (
+          !selfPref ||
+          selfPref === "any" ||
+          (tgtGender && selfPref === tgtGender)
+        ) {
+          score += 20;
+          reasons.push("gender");
+        }
+
+        // Age window (self preferences vs target DOB)
+        const min = Number(self?.partnerPreferenceAgeMin ?? NaN);
+        const max = Number(self?.partnerPreferenceAgeMax ?? NaN);
+        if (!Number.isNaN(min) && !Number.isNaN(max)) {
+          const dobStr = target?.dateOfBirth as string | undefined;
+          const year = dobStr ? parseInt(dobStr.slice(0, 4)) : NaN;
+          const nowYear = new Date().getUTCFullYear();
+          const age = nowYear - (Number.isFinite(year) ? year : nowYear);
+          if (age >= min && age <= max) {
+            score += 20;
+            reasons.push("age");
+          }
+        }
+
+        // Quiz similarity placeholder: existence of userQuizResults docs for both
+        try {
+          const [selfQuiz, targetQuiz] = await Promise.all([
+            db.collection("userQuizResults").doc(authedUserId).get(),
+            db.collection("userQuizResults").doc(targetUserId).get(),
+          ]);
+          if (selfQuiz.exists && targetQuiz.exists) {
+            score += 20;
+            reasons.push("quiz");
+          }
+        } catch {}
+
+        // Lifestyle alignment (diet, smoking, drinking)
+        const diet = String(self?.diet || "").toLowerCase();
+        const tgtDiet = String(target?.diet || "").toLowerCase();
+        if (diet && tgtDiet && diet === tgtDiet) {
+          score += 10;
+          reasons.push("diet");
+        }
+        const smoking = String(self?.smoking || "").toLowerCase();
+        const tgtSmoking = String(target?.smoking || "").toLowerCase();
+        if (smoking && tgtSmoking && smoking === tgtSmoking) {
+          score += 10;
+          reasons.push("smoking");
+        }
+        const drinking = String(self?.drinking || "").toLowerCase();
+        const tgtDrinking = String(target?.drinking || "").toLowerCase();
+        if (drinking && tgtDrinking && drinking === tgtDrinking) {
+          score += 10;
+          reasons.push("drinking");
+        }
+
+        // Cultural alignment
+        const religiousPractice = String(self?.religiousPractice || "").toLowerCase();
+        const tgtReligiousPractice = String(target?.religiousPractice || "").toLowerCase();
+        if (religiousPractice && tgtReligiousPractice && religiousPractice === tgtReligiousPractice) {
+          score += 10;
+          reasons.push("religiousPractice");
+        }
+
+        const familyValues = String(self?.familyValues || "").toLowerCase();
+        const tgtFamilyValues = String(target?.familyValues || "").toLowerCase();
+        if (familyValues && tgtFamilyValues && familyValues === tgtFamilyValues) {
+          score += 10;
+          reasons.push("familyValues");
+        }
+
+        const marriageViews = String(self?.marriageViews || "").toLowerCase();
+        const tgtMarriageViews = String(target?.marriageViews || "").toLowerCase();
+        if (marriageViews && tgtMarriageViews && marriageViews === tgtMarriageViews) {
+          score += 10;
+          reasons.push("marriageViews");
+        }
+
+        const traditionalValues = String(self?.traditionalValues || "").toLowerCase();
+        const tgtTraditionalValues = String(target?.traditionalValues || "").toLowerCase();
+        if (traditionalValues && tgtTraditionalValues && traditionalValues === tgtTraditionalValues) {
+          score += 10;
+          reasons.push("traditionalValues");
+        }
+
+        // Clamp score
+        if (score > 100) score = 100;
+
+        return successResponse({ score, reasons });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return errorResponse(
+          { score: null, reasons: ["error"], error: message },
+          500
+        );
       }
-
-      const familyValues = String(self?.familyValues || "").toLowerCase();
-      const tgtFamilyValues = String(target?.familyValues || "").toLowerCase();
-      if (familyValues && tgtFamilyValues && familyValues === tgtFamilyValues) {
-        score += 10;
-        reasons.push("familyValues");
-      }
-
-      const marriageViews = String(self?.marriageViews || "").toLowerCase();
-      const tgtMarriageViews = String(target?.marriageViews || "").toLowerCase();
-      if (marriageViews && tgtMarriageViews && marriageViews === tgtMarriageViews) {
-        score += 10;
-        reasons.push("marriageViews");
-      }
-
-      const traditionalValues = String(self?.traditionalValues || "").toLowerCase();
-      const tgtTraditionalValues = String(target?.traditionalValues || "").toLowerCase();
-      if (traditionalValues && tgtTraditionalValues && traditionalValues === tgtTraditionalValues) {
-        score += 10;
-        reasons.push("traditionalValues");
-      }
-
-      // Clamp score
-      if (score > 100) score = 100;
-
-      return successResponse({ score, reasons });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return errorResponse(
-        { score: null, reasons: ["error"], error: message },
-        500
-      );
     }
-  }
-);
+  )(req, ctx);
+}
