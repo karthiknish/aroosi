@@ -100,6 +100,24 @@ export function errorResponse(
   return jsonResponse(payload, status);
 }
 
+/**
+ * Public variant: always expose the provided message (for user-friendly errors).
+ * Use this when you have a deliberately crafted user-facing message that should
+ * not be sanitized away in production.
+ */
+export function errorResponsePublic(
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>
+): Response {
+  const payload = {
+    success: false,
+    error: message,
+    ...extra,
+  };
+  return jsonResponse(payload, status);
+}
+
 function sanitizeErrorMessage(message: string, status: number): string {
   // For server errors, don't expose internal details
   if (status >= 500) return "Internal server error";

@@ -1,82 +1,63 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
-import { db } from "@/lib/firebaseAdmin";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { z } from "zod";
 import {
-  FamilyApprovalRequest,
-  FamilyApprovalResponse
-} from "@/types/cultural";
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
+import { db } from "@/lib/firebaseAdmin";
+import { FamilyApprovalRequest, FamilyRelationship } from "@/types/cultural";
 
-// POST /api/cultural/family-approval/request - Create a new family approval request
-export const POST = withFirebaseAuth(async (user, request) => {
-  // Rate limiting
-  const rateLimitResult = checkApiRateLimit(`family_approval_request_${user.id}`, 50, 60000);
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { success: false, error: "Rate limit exceeded" },
-      { status: 429 }
-    );
-  }
+const requestSchema = z.object({
+  familyMemberId: z.string().min(1),
+  relationship: z.enum(["father", "mother", "brother", "sister", "uncle", "aunt", "grandfather", "grandmother", "cousin", "guardian", "other"]),
+  message: z.string().min(1),
+});
 
-  const userId = user.id;
-
-  try {
-    const body = await request.json();
+export const POST = createAuthenticatedHandler(
+  async (ctx: ApiContext, body: z.infer<typeof requestSchema>) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { familyMemberId, relationship, message } = body;
 
-    // Validate required fields
-    if (!familyMemberId || !relationship || !message) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing required fields: familyMemberId, relationship, message"
-        },
-        { status: 400 }
-      );
+    try {
+      // Check for existing pending request
+      const existingRequest = await db
+        .collection("familyApprovalRequests")
+        .where("requesterId", "==", userId)
+        .where("familyMemberId", "==", familyMemberId)
+        .where("status", "==", "pending")
+        .limit(1)
+        .get();
+
+      if (!existingRequest.empty) {
+        return errorResponse("You already have a pending request to this family member", 409, { correlationId: ctx.correlationId });
+      }
+
+      const now = Date.now();
+      const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
+
+      const requestData: Omit<FamilyApprovalRequest, "_id"> = {
+        requesterId: userId,
+        familyMemberId,
+        relationship,
+        message,
+        status: "pending",
+        expiresAt,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const docRef = await db.collection("familyApprovalRequests").add(requestData);
+      const newRequest = { _id: docRef.id, ...requestData };
+
+      return successResponse({ request: newRequest }, 201, ctx.correlationId);
+    } catch (error) {
+      console.error("cultural/family-approval/request error", { error, correlationId: ctx.correlationId });
+      return errorResponse("Failed to create request", 500, { correlationId: ctx.correlationId });
     }
-
-    // Check if user already has a pending request to this family member
-    const existingRequest = await db
-      .collection("familyApprovalRequests")
-      .where("requesterId", "==", userId)
-      .where("familyMemberId", "==", familyMemberId)
-      .where("status", "==", "pending")
-      .limit(1)
-      .get();
-
-    if (!existingRequest.empty) {
-      return NextResponse.json(
-        { success: false, error: "You already have a pending request to this family member" },
-        { status: 409 }
-      );
-    }
-
-    const now = Date.now();
-    const expiresAt = now + (30 * 24 * 60 * 60 * 1000); // 30 days
-
-    const requestData: Omit<FamilyApprovalRequest, "_id"> = {
-      requesterId: userId,
-      familyMemberId,
-      relationship,
-      message,
-      status: "pending",
-      expiresAt,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const docRef = await db.collection("familyApprovalRequests").add(requestData);
-    const newRequest = { _id: docRef.id, ...requestData };
-
-    return NextResponse.json({
-      success: true,
-      request: newRequest
-    } as FamilyApprovalResponse, { status: 201 });
-  } catch (error) {
-    console.error("Error creating family approval request:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create request" },
-      { status: 500 }
-    );
+  },
+  {
+    bodySchema: requestSchema,
+    rateLimit: { identifier: "family_approval_request", maxRequests: 50 }
   }
-});
+);

@@ -1,59 +1,41 @@
-import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession, devLog } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { z } from "zod";
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  errorResponsePublic,
+  ApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_RECOMMENDATIONS } from "@/lib/firestoreSchema";
+
+const blockSchema = z.object({
+  blockedUserId: z.string().min(1, "blockedUserId is required"),
+});
 
 // In-memory short cooldown map per (blocker, target)
 const perTargetCooldown = new Map<string, number>();
 
-export async function POST(request: NextRequest) {
-  try {
-    // Cookie-only authentication with user ID extraction
-    const session = await requireSession(request);
-    if ("errorResponse" in session) return session.errorResponse;
-    const { userId } = session;
-
-    if (!userId) {
-      return errorResponse("User ID not found in session", 401);
-    }
-
-    // Rate limiting for blocking actions
-    const rateLimitResult = checkApiRateLimit(
-      `safety_block_${userId}`,
-      20,
-      60000
-    ); // 20 blocks per minute
-    if (!rateLimitResult.allowed) {
-      return errorResponse(
-        "Rate limit exceeded. Please wait before blocking again.",
-        429
-      );
-    }
-
-    const body = await request.json();
+export const POST = createAuthenticatedHandler(
+  async (ctx: ApiContext, body: z.infer<typeof blockSchema>) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { blockedUserId } = body;
-
-    if (!blockedUserId) {
-      return errorResponse("Missing required field: blockedUserId", 400);
-    }
 
     // Prevent self-blocking
     if (userId === blockedUserId) {
-      return errorResponse("Cannot block yourself", 400);
+      return errorResponsePublic("Cannot block yourself", 400);
     }
 
-    // Per-target cooldown: prevent repeated blocks within 60 seconds for same target
+    // Per-target cooldown: prevent repeated blocks within 60 seconds
     const key = `${userId}_${blockedUserId}`;
     const now = Date.now();
     const last = perTargetCooldown.get(key) || 0;
     if (now - last < 60_000) {
-      return errorResponse("Please wait before blocking this user again", 429);
+      return errorResponsePublic("Please wait before blocking this user again", 429);
     }
 
-    // Persist block relation in Firestore (collection: blocks, docId: `${blocker}_${blocked}`)
     try {
+      // Persist block relation in Firestore
       const docId = `${userId}_${blockedUserId}`;
       await db.collection("blocks").doc(docId).set(
         {
@@ -63,41 +45,33 @@ export async function POST(request: NextRequest) {
         },
         { merge: true }
       );
+
+      perTargetCooldown.set(key, now);
+
+      // Invalidate recommendation cache
+      try {
+        const snaps = await db
+          .collection(COL_RECOMMENDATIONS)
+          .where("userId", "in", [userId, blockedUserId])
+          .where("expiresAt", ">", now - 30 * 60 * 1000)
+          .get();
+        if (!snaps.empty) {
+          const batch = db.batch();
+          snaps.docs.forEach((d: any) => batch.delete(d.ref));
+          await batch.commit();
+        }
+      } catch (e) {
+        console.warn("recs_cache_invalidate_failed", e);
+      }
+
+      return successResponse({ message: "User blocked successfully" }, 200, ctx.correlationId);
     } catch (e) {
-      devLog("error", "safety.block", "firestore_error", {
-        message: e instanceof Error ? e.message : String(e),
-      });
-      return errorResponse("Failed to block user", 500);
+      console.error("safety/block error", { error: e, correlationId: ctx.correlationId });
+      return errorResponse("Failed to block user", 500, { correlationId: ctx.correlationId });
     }
-
-    perTargetCooldown.set(key, now);
-
-    // Invalidate recommendation cache for blocker (and optionally blocked user) by deleting stale rec docs
-    try {
-      const nowTs = Date.now();
-      const snaps = await db
-        .collection(COL_RECOMMENDATIONS)
-        .where("userId", "in", [userId, blockedUserId])
-        .where("expiresAt", ">", nowTs - 30 * 60 * 1000)
-        .get();
-      const batch = db.batch();
-      snaps.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot) =>
-        batch.delete(d.ref)
-      );
-      if (!snaps.empty) await batch.commit();
-    } catch (e) {
-      devLog("warn", "safety.block", "recs_cache_invalidate_failed", {
-        message: e instanceof Error ? e.message : String(e),
-      });
-    }
-
-    return successResponse({
-      message: "User blocked successfully",
-    });
-  } catch (error) {
-    devLog("error", "safety.block", "unhandled_error", {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return errorResponse("Failed to block user", 500);
+  },
+  {
+    bodySchema: blockSchema,
+    rateLimit: { identifier: "safety_block", maxRequests: 20 }
   }
-}
+);

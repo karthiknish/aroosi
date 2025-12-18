@@ -1,73 +1,63 @@
-import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyFirebaseIdToken, getFirebaseUser, db } from "@/lib/firebaseAdmin";
+import {
+  createApiHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
+import { verifyFirebaseIdToken, getFirebaseUser } from "@/lib/firebaseAdmin";
 
-// Return current user with profile using Firebase authentication (cookie first, bearer header fallback)
-export async function GET(request: Request) {
-  try {
-    const cookieStore = await cookies();
-    let token: string | null | undefined =
-      cookieStore.get("firebaseAuthToken")?.value;
+export const GET = createApiHandler(
+  async (ctx: ApiContext) => {
+    try {
+      const cookieStore = await cookies();
+      let token: string | null | undefined = cookieStore.get("firebaseAuthToken")?.value;
 
-    // Authorization: Bearer <token> fallback (mirrors requireSession logic)
-    if (!token) {
-      const authz =
-        request.headers.get("authorization") ||
-        request.headers.get("Authorization");
-      if (authz && authz.toLowerCase().startsWith("bearer ")) {
-        token = authz.slice(7).trim() || null;
-        if (process.env.NODE_ENV !== "production") {
-          // eslint-disable-next-line no-console
-          console.info("[/api/auth/me] Using bearer header fallback");
+      // Authorization: Bearer <token> fallback
+      if (!token) {
+        const authz = ctx.request.headers.get("authorization") || ctx.request.headers.get("Authorization");
+        if (authz && authz.toLowerCase().startsWith("bearer ")) {
+          token = authz.slice(7).trim() || null;
         }
       }
+
+      if (!token) {
+        return successResponse({ user: null }, 401, ctx.correlationId);
+      }
+
+      const decodedToken = await verifyFirebaseIdToken(token);
+      const userId = decodedToken.uid;
+      if (!userId) {
+        return successResponse({ user: null }, 401, ctx.correlationId);
+      }
+
+      const userData = await getFirebaseUser(userId);
+      const signInProvider = (decodedToken as any)?.firebase?.sign_in_provider;
+      const exp = (decodedToken as any)?.exp;
+      const nowSec = Math.floor(Date.now() / 1000);
+      const secondsUntilExpiry = typeof exp === "number" ? exp - nowSec : null;
+
+      return successResponse({
+        user: {
+          id: userId,
+          email: userData.email || "",
+          role: userData.role || "user",
+          emailVerified: userData.emailVerified || false,
+          createdAt: userData.createdAt || Date.now(),
+          fullName: userData.fullName || userData.displayName || undefined,
+          signInProvider: signInProvider || null,
+          tokenExpiresInSeconds: secondsUntilExpiry,
+          profile: userData ? { id: userId, fullName: userData.fullName || undefined } : null,
+          needsProfile: !userData,
+        },
+      }, 200, ctx.correlationId);
+    } catch (error) {
+      console.error("auth/me error", { error, correlationId: ctx.correlationId });
+      return successResponse({ user: null }, 401, ctx.correlationId);
     }
-
-    if (!token) {
-      return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    const decodedToken = await verifyFirebaseIdToken(token);
-    const userId = decodedToken.uid;
-    if (!userId) {
-      return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-  const userData = await getFirebaseUser(userId);
-
-  const signInProvider = (decodedToken as any)?.firebase?.sign_in_provider;
-  const exp = (decodedToken as any)?.exp; // seconds since epoch
-  const nowSec = Math.floor(Date.now() / 1000);
-  const secondsUntilExpiry = typeof exp === "number" ? exp - nowSec : null;
-
-  return NextResponse.json(
-    {
-      user: {
-        id: userId,
-        email: userData.email || "",
-        role: userData.role || "user",
-        emailVerified: userData.emailVerified || false,
-        createdAt: userData.createdAt || Date.now(),
-        fullName: userData.fullName || userData.displayName || undefined,
-        signInProvider: signInProvider || null,
-        tokenExpiresInSeconds: secondsUntilExpiry,
-        profile: userData
-          ? {
-              id: userId,
-              fullName: userData.fullName || undefined,
-            }
-          : null,
-        needsProfile: !userData,
-      },
-    },
-    { status: 200 }
-  );
-  } catch (error) {
-    // On unexpected failures, mask with 401 to encourage client retry rather than caching null success
-    if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
-      console.error("Error in /api/auth/me:", error);
-    }
-    return NextResponse.json({ user: null }, { status: 401 });
+  },
+  {
+    requireAuth: false,
+    rateLimit: { identifier: "auth_me", maxRequests: 60 }
   }
-}
+);

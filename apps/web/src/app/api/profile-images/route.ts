@@ -7,8 +7,13 @@
 //  DELETE /api/profile-images (JSON body)   -> { storageId } deletes image
 // Legacy fields (fileSize) are mapped to `size`.
 
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
+import { z } from "zod";
+import { 
+  createAuthenticatedHandler, 
+  successResponse, 
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
 
 const ALLOWED_TYPES = [
@@ -20,7 +25,27 @@ const ALLOWED_TYPES = [
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES_PER_USER = 5;
 
-async function listUserImages(user: AuthenticatedUser) {
+// Zod schemas for request validation
+const postBodySchema = z.object({
+  storageId: z.string().min(1, "storageId is required"),
+  fileName: z.string().min(1, "fileName is required"),
+  contentType: z.string().min(1, "contentType is required"),
+  size: z.number().optional(),
+  fileSize: z.number().optional(), // legacy support
+}).refine(
+  (data) => typeof data.size === "number" || typeof data.fileSize === "number",
+  { message: "size or fileSize is required" }
+);
+
+const deleteBodySchema = z.object({
+  storageId: z.string().optional(),
+  imageId: z.string().optional(), // legacy support
+}).refine(
+  (data) => data.storageId || data.imageId,
+  { message: "storageId or imageId is required" }
+);
+
+async function listUserImages(userId: string) {
   let bucket: any;
   try {
     bucket = adminStorage.bucket();
@@ -35,7 +60,7 @@ async function listUserImages(user: AuthenticatedUser) {
     bucket = adminStorage.bucket(fallback);
   }
   const [filesRaw] = await bucket.getFiles({
-    prefix: `users/${user.id}/profile-images/`,
+    prefix: `users/${userId}/profile-images/`,
   });
   const files: any[] = Array.isArray(filesRaw) ? filesRaw : [];
   return Promise.all(
@@ -57,210 +82,164 @@ async function listUserImages(user: AuthenticatedUser) {
   );
 }
 
-export const GET = withFirebaseAuth(async (user) => {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  try {
-    const images = await listUserImages(user);
-    return new Response(
-      JSON.stringify({ success: true, images, correlationId }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  } catch (e) {
-    console.error("profile-images GET firebase error", e);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Failed to fetch images",
-        correlationId,
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
-  }
-});
-
-export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  try {
-    const body = await req.json().catch(() => ({}));
-    const { storageId, fileName, contentType } = body as Record<
-      string,
-      unknown
-    >;
-    const size = (body as any).size ?? (body as any).fileSize; // legacy support
-    if (!storageId || !fileName || !contentType || typeof size !== "number") {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Missing required fields",
-          correlationId,
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    if (!String(storageId).startsWith(`users/${user.id}/`)) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Unauthorized storage path",
-          correlationId,
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    if (!ALLOWED_TYPES.includes(String(contentType).toLowerCase() as any)) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Unsupported image type",
-          correlationId,
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    if (size > MAX_SIZE_BYTES) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "File too large",
-          correlationId,
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    // Enforce max images (Firestore count + storage listing best-effort)
+export const GET = createAuthenticatedHandler(
+  async (ctx: ApiContext) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    
     try {
-      const existing = await listUserImages(user);
-      if (existing.length >= MAX_IMAGES_PER_USER) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: `You can only display up to ${MAX_IMAGES_PER_USER} images`,
-            correlationId,
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
+      const images = await listUserImages(userId);
+      return successResponse({ images }, 200, ctx.correlationId);
+    } catch (e) {
+      console.error("profile-images GET firebase error", {
+        error: e instanceof Error ? e.message : String(e),
+        correlationId: ctx.correlationId,
+      });
+      return errorResponse("Failed to fetch images", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    rateLimit: { identifier: "profile_images_get", maxRequests: 30 }
+  }
+);
+
+export const POST = createAuthenticatedHandler(
+  async (ctx: ApiContext, body: z.infer<typeof postBodySchema>) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    
+    try {
+      const { storageId, fileName, contentType } = body;
+      const size = body.size ?? body.fileSize!; // One of these is guaranteed by schema
+      
+      if (!String(storageId).startsWith(`users/${userId}/`)) {
+        return errorResponse("Unauthorized storage path", 403, { correlationId: ctx.correlationId });
       }
-    } catch {}
+      
+      if (!ALLOWED_TYPES.includes(String(contentType).toLowerCase() as any)) {
+        return errorResponse("Unsupported image type", 400, { correlationId: ctx.correlationId });
+      }
+      
+      if (size > MAX_SIZE_BYTES) {
+        return errorResponse("File too large", 400, { correlationId: ctx.correlationId });
+      }
+      
+      // Enforce max images (Firestore count + storage listing best-effort)
+      try {
+        const existing = await listUserImages(userId);
+        if (existing.length >= MAX_IMAGES_PER_USER) {
+          return errorResponse(
+            `You can only display up to ${MAX_IMAGES_PER_USER} images`, 
+            400, 
+            { correlationId: ctx.correlationId }
+          );
+        }
+      } catch {}
 
-    const imageId = String(storageId).split("/").pop() || String(storageId);
-    // Generate signed URL for the image
-    let bucket: any;
-    try {
-      bucket = adminStorage.bucket();
+      const imageId = String(storageId).split("/").pop() || String(storageId);
+      
+      // Get bucket for URL generation
+      let bucket: any;
+      try {
+        bucket = adminStorage.bucket();
+      } catch (e) {
+        const fallbackName =
+          process.env.FIREBASE_STORAGE_BUCKET ||
+          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+          (process.env.GCLOUD_PROJECT
+            ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+            : undefined);
+        if (!fallbackName) throw e;
+        bucket = adminStorage.bucket(fallbackName);
+      }
+      
+      // Use public URL since storage rules allow public read access
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storageId}`;
+
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("images")
+        .doc(imageId)
+        .set(
+          {
+            storageId,
+            fileName,
+            contentType,
+            size,
+            url: publicUrl,
+            uploadedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+        
+      return successResponse({ imageId, url: publicUrl }, 200, ctx.correlationId);
     } catch (e) {
-      const fallbackName =
-        process.env.FIREBASE_STORAGE_BUCKET ||
-        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-        (process.env.GCLOUD_PROJECT
-          ? `${process.env.GCLOUD_PROJECT}.appspot.com`
-          : undefined);
-      if (!fallbackName) throw e;
-      bucket = adminStorage.bucket(fallbackName);
+      console.error("profile-images POST firebase error", {
+        error: e instanceof Error ? e.message : String(e),
+        correlationId: ctx.correlationId,
+      });
+      return errorResponse("Failed to save metadata", 500, { correlationId: ctx.correlationId });
     }
-    const file = bucket.file(storageId);
-    // Use public URL since storage rules allow public read access
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storageId}`;
-
-    await db
-      .collection("users")
-      .doc(user.id)
-      .collection("images")
-      .doc(imageId)
-      .set(
-        {
-          storageId,
-          fileName,
-          contentType,
-          size,
-          url: publicUrl,
-          uploadedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
-    return new Response(
-      JSON.stringify({ success: true, imageId, url: publicUrl, correlationId }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  } catch (e) {
-    console.error("profile-images POST firebase error", e);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Failed to save metadata",
-        correlationId,
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+  },
+  {
+    bodySchema: postBodySchema,
+    rateLimit: { identifier: "profile_images_post", maxRequests: 20 }
   }
-});
+);
 
-export const DELETE = withFirebaseAuth(async (user, req: NextRequest) => {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  try {
-    let storageId: string | null = null;
-    // Prefer JSON body
+export const DELETE = createAuthenticatedHandler(
+  async (ctx: ApiContext, body: z.infer<typeof deleteBodySchema>) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    
     try {
-      const body = await req.json();
-      storageId = body?.storageId || body?.imageId || null; // legacy imageId
-    } catch {}
-    if (!storageId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Missing storageId",
-          correlationId,
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    if (!storageId.startsWith(`users/${user.id}/`)) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Unauthorized",
-          correlationId,
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    let fileRef: any;
-    try {
-      fileRef = adminStorage.bucket().file(storageId);
+      const storageId = body.storageId || body.imageId;
+      
+      if (!storageId) {
+        return errorResponse("Missing storageId", 400, { correlationId: ctx.correlationId });
+      }
+      
+      if (!storageId.startsWith(`users/${userId}/`)) {
+        return errorResponse("Unauthorized", 403, { correlationId: ctx.correlationId });
+      }
+      
+      let fileRef: any;
+      try {
+        fileRef = adminStorage.bucket().file(storageId);
+      } catch (e) {
+        const fallback =
+          process.env.FIREBASE_STORAGE_BUCKET ||
+          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+          (process.env.GCLOUD_PROJECT
+            ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+            : undefined);
+        if (!fallback) throw e;
+        fileRef = adminStorage.bucket(fallback).file(storageId);
+      }
+      
+      await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
+      
+      const imageId = storageId.split("/").pop() || storageId;
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("images")
+        .doc(imageId)
+        .delete()
+        .catch(() => {});
+        
+      return successResponse(undefined, 200, ctx.correlationId);
     } catch (e) {
-      const fallback =
-        process.env.FIREBASE_STORAGE_BUCKET ||
-        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-        (process.env.GCLOUD_PROJECT
-          ? `${process.env.GCLOUD_PROJECT}.appspot.com`
-          : undefined);
-      if (!fallback) throw e;
-      fileRef = adminStorage.bucket(fallback).file(storageId);
+      console.error("profile-images DELETE firebase error", {
+        error: e instanceof Error ? e.message : String(e),
+        correlationId: ctx.correlationId,
+      });
+      return errorResponse("Failed to delete image", 500, { correlationId: ctx.correlationId });
     }
-    await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
-    const imageId = storageId.split("/").pop() || storageId;
-    await db
-      .collection("users")
-      .doc(user.id)
-      .collection("images")
-      .doc(imageId)
-      .delete()
-      .catch(() => {});
-    return new Response(JSON.stringify({ success: true, correlationId }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("profile-images DELETE firebase error", e);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Failed to delete image",
-        correlationId,
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+  },
+  {
+    bodySchema: deleteBodySchema,
+    rateLimit: { identifier: "profile_images_delete", maxRequests: 20 }
   }
-});
+);
 
 // NOTE: Admin cross-user image management previously supported via Convex by
 // passing an arbitrary userId. That functionality will be reintroduced via

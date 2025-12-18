@@ -1,120 +1,74 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
-import { db } from "@/lib/firebaseAdmin";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { z } from "zod";
 import {
-  SupervisedConversation,
-  SupervisedConversationResponse,
-  SupervisedConversationStatus
-} from "@/types/cultural";
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
+import { db } from "@/lib/firebaseAdmin";
+import { SupervisedConversation, SupervisedConversationStatus } from "@/types/cultural";
+import { NextRequest } from "next/server";
 
-// PUT /api/cultural/supervised-conversation/:id - Update a supervised conversation
-export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ id: string }> }) => {
-    const { id: conversationId } = await ctx.params;
+const updateSchema = z.object({
+  status: z.enum(["approved", "active", "paused", "ended", "rejected"]).optional(),
+  conversationId: z.string().optional(),
+});
 
-    // Rate limiting
-    const rateLimitResult = checkApiRateLimit(`supervised_conv_put_${user.id}`, 50, 60000);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { success: false, error: "Rate limit exceeded" },
-        { status: 429 }
-      );
-    }
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const handler = createAuthenticatedHandler(
+    async (ctx: ApiContext, body: z.infer<typeof updateSchema>) => {
+      const { id: conversationId } = await context.params;
+      const userId = (ctx.user as any).userId || (ctx.user as any).id;
+      const { status, conversationId: chatConversationId } = body;
 
-    const userId = user.id;
+      try {
+        const conversationDoc = await db.collection("supervisedConversations").doc(conversationId).get();
+        if (!conversationDoc.exists) {
+          return errorResponse("Conversation not found", 404, { correlationId: ctx.correlationId });
+        }
 
-    try {
-      const body = await request.json();
-    const { status, conversationId: chatConversationId } = body;
+        const conversation = { _id: conversationDoc.id, ...conversationDoc.data() } as SupervisedConversation;
 
-    // Get the conversation
-    const conversationDoc = await db.collection("supervisedConversations").doc(conversationId).get();
-    if (!conversationDoc.exists) {
-      return NextResponse.json(
-        { success: false, error: "Conversation not found" },
-        { status: 404 }
-      );
-    }
+        // Check if user is involved in this conversation
+        if (conversation.requesterId !== userId && conversation.supervisorId !== userId && conversation.targetUserId !== userId) {
+          return errorResponse("You are not authorized to update this conversation", 403, { correlationId: ctx.correlationId });
+        }
 
-    const conversation = { _id: conversationDoc.id, ...conversationDoc.data() } as SupervisedConversation;
+        // Status-specific validations
+        if (status) {
+          if (status === "approved" && conversation.supervisorId !== userId) {
+            return errorResponse("Only the supervisor can approve conversations", 403, { correlationId: ctx.correlationId });
+          }
+          if (status === "active" && conversation.status !== "approved") {
+            return errorResponse("Conversation must be approved before becoming active", 400, { correlationId: ctx.correlationId });
+          }
+        }
 
-    // Check if user is involved in this conversation
-    if (conversation.requesterId !== userId && conversation.supervisorId !== userId && conversation.targetUserId !== userId) {
-      return NextResponse.json(
-        { success: false, error: "You are not authorized to update this conversation" },
-        { status: 403 }
-      );
-    }
+        const now = Date.now();
+        const updateData: Partial<SupervisedConversation> = { updatedAt: now };
 
-    // Validate status if provided
-    if (status) {
-      const validStatuses: SupervisedConversationStatus[] = [
-        "approved", "active", "paused", "ended", "rejected"
-      ];
+        if (status) {
+          updateData.status = status as SupervisedConversationStatus;
+          if (status === "active" && !conversation.startedAt) updateData.startedAt = now;
+          if (["ended", "rejected"].includes(status) && !conversation.endedAt) updateData.endedAt = now;
+        }
 
-      if (!validStatuses.includes(status)) {
-        return NextResponse.json(
-          { success: false, error: "Invalid status" },
-          { status: 400 }
-        );
+        if (chatConversationId) updateData.conversationId = chatConversationId;
+
+        await db.collection("supervisedConversations").doc(conversationId).update(updateData);
+        const updatedDoc = await db.collection("supervisedConversations").doc(conversationId).get();
+        const updatedConversation = { _id: updatedDoc.id, ...updatedDoc.data() } as SupervisedConversation;
+
+        return successResponse({ conversation: updatedConversation }, 200, ctx.correlationId);
+      } catch (error) {
+        console.error("cultural/supervised-conversation/[id] PUT error", { error, correlationId: ctx.correlationId });
+        return errorResponse("Failed to update conversation", 500, { correlationId: ctx.correlationId });
       }
-
-      // Status-specific validations
-      if (status === "approved" && conversation.supervisorId !== userId) {
-        return NextResponse.json(
-          { success: false, error: "Only the supervisor can approve conversations" },
-          { status: 403 }
-        );
-      }
-
-      if (status === "active" && conversation.status !== "approved") {
-        return NextResponse.json(
-          { success: false, error: "Conversation must be approved before becoming active" },
-          { status: 400 }
-        );
-      }
+    },
+    {
+      bodySchema: updateSchema,
+      rateLimit: { identifier: "supervised_conv_update", maxRequests: 50 }
     }
-
-    // Prepare update data
-    const now = Date.now();
-    const updateData: Partial<SupervisedConversation> = {
-      updatedAt: now
-    };
-
-    if (status) {
-      updateData.status = status;
-
-      if (status === "active" && !conversation.startedAt) {
-        updateData.startedAt = now;
-      }
-
-      if (["ended", "rejected"].includes(status) && !conversation.endedAt) {
-        updateData.endedAt = now;
-      }
-    }
-
-    if (chatConversationId) {
-      updateData.conversationId = chatConversationId;
-    }
-
-    // Update the conversation
-    await db.collection("supervisedConversations").doc(conversationId).update(updateData);
-
-    // Get updated conversation
-    const updatedDoc = await db.collection("supervisedConversations").doc(conversationId).get();
-    const updatedConversation = { _id: updatedDoc.id, ...updatedDoc.data() } as SupervisedConversation;
-
-    return NextResponse.json({
-      success: true,
-      conversation: updatedConversation
-    } as SupervisedConversationResponse);
-  } catch (error) {
-    console.error("Error updating supervised conversation:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update conversation" },
-      { status: 500 }
-    );
-  }
-  })(req, context);
+  );
+  return handler(request);
 }

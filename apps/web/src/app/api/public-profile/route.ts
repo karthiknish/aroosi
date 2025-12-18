@@ -1,68 +1,96 @@
-import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import {
+  createApiHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
-export async function GET(req: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
-  try {
-    const { searchParams } = new URL(req.url);
+// Query param schema
+const querySchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+});
+
+/**
+ * GET /api/public-profile?userId=xxx
+ * Returns public profile data for a given user (no auth required).
+ */
+export const GET = createApiHandler(
+  async (ctx: ApiContext) => {
+    const { searchParams } = new URL(ctx.request.url);
     const userId = searchParams.get("userId");
+    
     if (!userId) {
-      console.warn("Public profile GET missing userId", {
-        scope: "public_profile.get",
-        type: "validation_error",
-        correlationId,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { success: false, error: "Missing userId", correlationId },
-        { status: 400 }
-      );
+      return errorResponse("Missing userId", 400, { correlationId: ctx.correlationId });
     }
 
-  const snap = await db.collection("users").doc(userId).get();
-  const res = snap.exists ? (snap.data() as any) : null;
+    try {
+      const snap = await db.collection("users").doc(userId).get();
+      
+      if (!snap.exists) {
+        console.info("Public profile GET not found", {
+          scope: "public_profile.get",
+          type: "not_found",
+          correlationId: ctx.correlationId,
+          statusCode: 404,
+          durationMs: Date.now() - ctx.startTime,
+        });
+        return errorResponse("Not found", 404, { correlationId: ctx.correlationId });
+      }
 
-    if (!res) {
-      console.info("Public profile GET not found", {
+      const data = snap.data() as any;
+      
+      // Filter sensitive fields for public profile
+      const publicProfile = {
+        userId,
+        fullName: data.fullName,
+        age: data.age,
+        city: data.city,
+        country: data.country,
+        aboutMe: data.aboutMe,
+        occupation: data.occupation,
+        education: data.education,
+        height: data.height,
+        religion: data.religion,
+        motherTongue: data.motherTongue,
+        ethnicity: data.ethnicity,
+        profileImageUrls: data.profileImageUrls,
+        gender: data.gender,
+        maritalStatus: data.maritalStatus,
+        diet: data.diet,
+        smoking: data.smoking,
+        drinking: data.drinking,
+        profileFor: data.profileFor,
+        createdAt: data.createdAt,
+        lastActive: data.lastActive,
+        isVerified: data.isVerified,
+      };
+
+      console.info("Public profile GET success", {
         scope: "public_profile.get",
-        type: "not_found",
-        correlationId,
-        statusCode: 404,
-        durationMs: Date.now() - startedAt,
+        type: "success",
+        correlationId: ctx.correlationId,
+        statusCode: 200,
+        durationMs: Date.now() - ctx.startTime,
       });
-      return NextResponse.json(
-        { success: false, error: "Not found", correlationId },
-        { status: 404 }
-      );
-    }
 
-    console.info("Public profile GET success", {
-      scope: "public_profile.get",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json({
-      success: true,
-      data: { ...res, userId },
-      correlationId,
-    });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("Public profile GET unhandled error", {
-      scope: "public_profile.get",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { success: false, error: "Failed", correlationId },
-      { status: 500 }
-    );
+      return successResponse(publicProfile, 200, ctx.correlationId);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("Public profile GET unhandled error", {
+        scope: "public_profile.get",
+        type: "unhandled_error",
+        message,
+        correlationId: ctx.correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - ctx.startTime,
+      });
+      return errorResponse("Failed to fetch profile", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    requireAuth: false, // Public endpoint
+    rateLimit: { identifier: "public_profile", maxRequests: 100 }
   }
-}
+);

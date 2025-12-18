@@ -1,46 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
-import { db } from "@/lib/firebaseAdmin";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import {
-  FamilyApprovalRequest,
-  FamilyApprovalResponse
-} from "@/types/cultural";
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
+import { db } from "@/lib/firebaseAdmin";
+import { FamilyApprovalRequest } from "@/types/cultural";
 
-// GET /api/cultural/family-approval/requests - Get user's sent requests
-export const GET = withFirebaseAuth(async (user, request) => {
-  // Rate limiting
-  const rateLimitResult = checkApiRateLimit(`family_approval_requests_${user.id}`, 100, 60000);
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { success: false, error: "Rate limit exceeded" },
-      { status: 429 }
-    );
+export const GET = createAuthenticatedHandler(
+  async (ctx: ApiContext) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+
+    try {
+      const requestsSnapshot = await db
+        .collection("familyApprovalRequests")
+        .where("requesterId", "==", userId)
+        .orderBy("createdAt", "desc")
+        .get();
+
+      const requests: FamilyApprovalRequest[] = [];
+      requestsSnapshot.forEach((doc: any) => {
+        requests.push({ _id: doc.id, ...doc.data() } as FamilyApprovalRequest);
+      });
+
+      return successResponse({ requests }, 200, ctx.correlationId);
+    } catch (error) {
+      console.error("cultural/family-approval/requests error", { error, correlationId: ctx.correlationId });
+      return errorResponse("Failed to fetch requests", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    rateLimit: { identifier: "family_approval_requests", maxRequests: 100 }
   }
-
-  const userId = user.id;
-
-  try {
-    const requestsSnapshot = await db
-      .collection("familyApprovalRequests")
-      .where("requesterId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const requests: FamilyApprovalRequest[] = [];
-    requestsSnapshot.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-      requests.push({ _id: doc.id, ...doc.data() } as FamilyApprovalRequest);
-    });
-
-    return NextResponse.json({
-      success: true,
-      requests
-    } as FamilyApprovalResponse);
-  } catch (error) {
-    console.error("Error fetching family approval requests:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch requests" },
-      { status: 500 }
-    );
-  }
-});
+);

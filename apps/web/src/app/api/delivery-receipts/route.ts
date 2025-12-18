@@ -1,96 +1,103 @@
-import { NextRequest } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { z } from "zod";
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/delivery-receipts?conversationId=...
-export const GET = withFirebaseAuth(async (_authUser, request: NextRequest) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const conversationId = searchParams.get("conversationId");
-    if (!conversationId) {
-      return new Response(
-        JSON.stringify({ error: "conversationId is required" }),
-        { status: 400 }
-      );
-    }
-
-    // Fetch receipts for the conversation (denormalized conversationId stored on receipts)
-    const snap = await db
-      .collection("messageReceipts")
-      .where("conversationId", "==", conversationId)
-      .get();
-
-    const deliveryReceipts = snap.docs.map((d: any) => {
-      const data = d.data() || {};
-      return {
-        id: d.id,
-        messageId: data.messageId,
-        userId: data.userId,
-        status: data.status,
-        updatedAt: data.updatedAt || data.timestamp || Date.now(),
-      };
-    });
-
-    return new Response(JSON.stringify({ deliveryReceipts }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error("GET /api/delivery-receipts error", error);
-    return new Response(JSON.stringify({ error: "Failed to load receipts" }), {
-      status: 500,
-    });
-  }
+// Zod schema for POST body
+const createReceiptSchema = z.object({
+  messageId: z.string().min(1, "messageId is required"),
+  status: z.enum(["delivered", "read", "failed"]),
 });
+
+// GET /api/delivery-receipts?conversationId=...
+export const GET = createAuthenticatedHandler(
+  async (ctx: ApiContext) => {
+    try {
+      const { searchParams } = new URL(ctx.request.url);
+      const conversationId = searchParams.get("conversationId");
+      
+      if (!conversationId) {
+        return errorResponse("conversationId is required", 400, { correlationId: ctx.correlationId });
+      }
+
+      // Fetch receipts for the conversation
+      const snap = await db
+        .collection("messageReceipts")
+        .where("conversationId", "==", conversationId)
+        .get();
+
+      const deliveryReceipts = snap.docs.map((d: any) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          messageId: data.messageId,
+          userId: data.userId,
+          status: data.status,
+          updatedAt: data.updatedAt || data.timestamp || Date.now(),
+        };
+      });
+
+      return successResponse({ deliveryReceipts }, 200, ctx.correlationId);
+    } catch (error) {
+      console.error("delivery-receipts GET error", {
+        error: error instanceof Error ? error.message : String(error),
+        correlationId: ctx.correlationId,
+      });
+      return errorResponse("Failed to load receipts", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    rateLimit: { identifier: "delivery_receipts_get", maxRequests: 60 }
+  }
+);
 
 // POST /api/delivery-receipts { messageId, status }
-export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
-  try {
-    const userId = authUser.id;
-    const body = await request.json().catch(() => ({}));
-    const { messageId, status } = body as {
-      messageId?: string;
-      status?: "delivered" | "read" | "failed";
-    };
-    if (!messageId || !status) {
-      return new Response(JSON.stringify({ error: "Missing fields" }), {
-        status: 400,
+export const POST = createAuthenticatedHandler(
+  async (ctx: ApiContext, body: z.infer<typeof createReceiptSchema>) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    
+    try {
+      const { messageId, status } = body;
+
+      // Lookup message to denormalize conversationId
+      const msgDoc = await db.collection("messages").doc(messageId).get();
+      const messageData = msgDoc.exists ? (msgDoc.data() as any) : null;
+      const conversationId = messageData?.conversationId || null;
+
+      const receiptId = `${messageId}_${userId}`;
+      const updatedAt = Date.now();
+      
+      await db
+        .collection("messageReceipts")
+        .doc(receiptId)
+        .set(
+          {
+            messageId,
+            userId,
+            status,
+            updatedAt,
+            ...(conversationId ? { conversationId } : {}),
+          },
+          { merge: true }
+        );
+
+      return successResponse({ messageId, status, updatedAt }, 200, ctx.correlationId);
+    } catch (error) {
+      console.error("delivery-receipts POST error", {
+        error: error instanceof Error ? error.message : String(error),
+        correlationId: ctx.correlationId,
       });
+      return errorResponse("Failed to record receipt", 500, { correlationId: ctx.correlationId });
     }
-
-    // Lookup message to denormalize conversationId
-    const msgDoc = await db.collection("messages").doc(messageId).get();
-    const messageData = msgDoc.exists ? (msgDoc.data() as any) : null;
-    const conversationId = messageData?.conversationId || null;
-
-    const receiptId = `${messageId}_${userId}`;
-    const updatedAt = Date.now();
-    await db
-      .collection("messageReceipts")
-      .doc(receiptId)
-      .set(
-        {
-          messageId,
-          userId,
-          status,
-          updatedAt,
-          ...(conversationId ? { conversationId } : {}),
-        },
-        { merge: true }
-      );
-
-    return new Response(
-      JSON.stringify({ success: true, data: { messageId, status, updatedAt } }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("POST /api/delivery-receipts error", error);
-    return new Response(JSON.stringify({ error: "Failed to record receipt" }), {
-      status: 500,
-    });
+  },
+  {
+    bodySchema: createReceiptSchema,
+    rateLimit: { identifier: "delivery_receipts_post", maxRequests: 100 }
   }
-});
-
-// Duplicate alternative implementation removed to avoid redeclarations
+);

@@ -1,87 +1,82 @@
-import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
 import {
-  checkApiRateLimit,
-  logSecurityEvent,
-} from "@/lib/utils/securityHeaders";
-import { requireSession } from "@/app/api/_utils/auth";
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
-// Firestore implementation for interest status lookup.
-// Status semantics mirror legacy Convex version:
-//  - null/"none" when no interest found
-//  - "pending" | "accepted" | "rejected" from stored document
-//  - "mutual" convenience state when both directions are accepted (returned as status: "mutual")
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  let fromUserId = searchParams.get("fromUserId");
-  let toUserId = searchParams.get("toUserId");
-  const targetUserId = searchParams.get("targetUserId");
+export const GET = createAuthenticatedHandler(
+  async (ctx: ApiContext) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const { searchParams } = new URL(ctx.request.url);
+    
+    let fromUserId = searchParams.get("fromUserId");
+    let toUserId = searchParams.get("toUserId");
+    const targetUserId = searchParams.get("targetUserId");
 
-  try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) return session.errorResponse as Response;
-    const authUserId = String(session.userId);
-
-    const rl = checkApiRateLimit(`interest_status_${authUserId}`, 200, 60_000);
-    if (!rl.allowed) return errorResponse("Rate limit exceeded", 429);
-
-    // Backward compatibility: if client only supplies targetUserId, infer direction with current user as sender
+    // Backward compatibility: if client only supplies targetUserId, infer direction
     if (!fromUserId && !toUserId && targetUserId) {
-      fromUserId = authUserId;
+      fromUserId = userId;
       toUserId = targetUserId;
     }
 
-    if (!fromUserId || !toUserId)
+    if (!fromUserId || !toUserId) {
       return errorResponse(
         "Missing fromUserId/toUserId or targetUserId parameter",
-        400
+        400,
+        { correlationId: ctx.correlationId }
       );
+    }
 
-    if (fromUserId !== authUserId && toUserId !== authUserId) {
-      logSecurityEvent(
-        "UNAUTHORIZED_ACCESS",
-        {
-          userId: authUserId,
-          attemptedFromUserId: fromUserId,
-          attemptedToUserId: toUserId,
-          action: "get_interest_status",
-        },
-        req
-      );
+    if (fromUserId !== userId && toUserId !== userId) {
+      console.warn("Unauthorized interest status access", {
+        authUserId: userId,
+        attemptedFromUserId: fromUserId,
+        attemptedToUserId: toUserId,
+        correlationId: ctx.correlationId,
+      });
       return errorResponse(
         "Unauthorized: can only check interest status involving yourself",
-        403
+        403,
+        { correlationId: ctx.correlationId }
       );
     }
 
-    // Fetch interest doc from from->to
-    const interestSnap = await db
-      .collection("interests")
-      .where("fromUserId", "==", fromUserId)
-      .where("toUserId", "==", toUserId)
-      .limit(1)
-      .get();
-    const interest = interestSnap.empty ? null : interestSnap.docs[0].data();
-
-    if (!interest) return successResponse({ status: null });
-
-    let status = interest.status as string | null;
-    if (status === "accepted") {
-      // Check reverse acceptance for mutual convenience flag
-      const reverseSnap = await db
+    try {
+      // Fetch interest doc from from->to
+      const interestSnap = await db
         .collection("interests")
-        .where("fromUserId", "==", toUserId)
-        .where("toUserId", "==", fromUserId)
-        .where("status", "==", "accepted")
+        .where("fromUserId", "==", fromUserId)
+        .where("toUserId", "==", toUserId)
         .limit(1)
         .get();
-      if (!reverseSnap.empty) status = "mutual"; // surface mutual
+      const interest = interestSnap.empty ? null : interestSnap.docs[0].data();
+
+      if (!interest) {
+        return successResponse({ status: null }, 200, ctx.correlationId);
+      }
+
+      let status = interest.status as string | null;
+      if (status === "accepted") {
+        // Check reverse acceptance for mutual convenience flag
+        const reverseSnap = await db
+          .collection("interests")
+          .where("fromUserId", "==", toUserId)
+          .where("toUserId", "==", fromUserId)
+          .where("status", "==", "accepted")
+          .limit(1)
+          .get();
+        if (!reverseSnap.empty) status = "mutual";
+      }
+      
+      return successResponse({ status }, 200, ctx.correlationId);
+    } catch (error) {
+      console.error("interests/status GET error", { error, correlationId: ctx.correlationId });
+      return errorResponse("Failed to fetch interest status", 500, { correlationId: ctx.correlationId });
     }
-    return successResponse({ status });
-  } catch (error) {
-    console.error("Firestore interest status error", error);
-    if (error instanceof Response) return error; // already formatted
-    return errorResponse("Failed to fetch interest status", 500);
+  },
+  {
+    rateLimit: { identifier: "interests_status", maxRequests: 200 }
   }
-}
+);

@@ -1,13 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
-import { db } from "@/lib/firebaseAdmin";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { z } from "zod";
 import {
-  CulturalProfile,
-  CulturalProfileResponse
-} from "@/types/cultural";
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
+import { db } from "@/lib/firebaseAdmin";
+import { CulturalProfile } from "@/types/cultural";
+import { NextRequest } from "next/server";
 
-async function getCulturalProfile(userId: string): Promise<CulturalProfileResponse> {
+async function getCulturalProfile(userId: string): Promise<{ success: boolean; profile?: CulturalProfile; error?: string }> {
   try {
     const docRef = db.collection("culturalProfiles").doc(userId);
     const doc = await docRef.get();
@@ -24,10 +26,7 @@ async function getCulturalProfile(userId: string): Promise<CulturalProfileRespon
   }
 }
 
-async function createOrUpdateCulturalProfile(
-  userId: string,
-  profileData: Partial<CulturalProfile>
-): Promise<CulturalProfileResponse> {
+async function createOrUpdateCulturalProfile(userId: string, profileData: Partial<CulturalProfile>): Promise<{ success: boolean; profile?: CulturalProfile; error?: string }> {
   try {
     const now = Date.now();
     const docRef = db.collection("culturalProfiles").doc(userId);
@@ -49,8 +48,6 @@ async function createOrUpdateCulturalProfile(
     };
 
     await docRef.set(profile, { merge: true });
-
-    // Fetch the updated profile
     const updatedDoc = await docRef.get();
     const updatedProfile = { _id: updatedDoc.id, ...updatedDoc.data() } as CulturalProfile;
 
@@ -61,119 +58,73 @@ async function createOrUpdateCulturalProfile(
   }
 }
 
-// GET /api/cultural/profile/:userId
-export async function GET(req: NextRequest, context: { params: Promise<{ userId: string }> }) {
-  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ userId: string }> }) => {
-    const { userId } = await ctx.params;
+const profileSchema = z.object({
+  religion: z.string(),
+  religiousPractice: z.string(),
+  motherTongue: z.string().min(1),
+  languages: z.array(z.string()),
+  familyValues: z.string(),
+  marriageViews: z.string(),
+  traditionalValues: z.string(),
+  importanceOfReligion: z.number().min(1).max(10).optional(),
+  importanceOfCulture: z.number().min(1).max(10).optional(),
+  familyBackground: z.string().optional(),
+});
 
-    // Rate limiting
-    const rateLimitResult = checkApiRateLimit(`cultural_profile_get_${user.id}`, 100, 60000);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { success: false, error: "Rate limit exceeded" },
-        { status: 429 }
-      );
-    }
-
-    // Users can only access their own profiles or admins can access any
-    const authUserId = user.id;
-    const isAdmin = user.role === "admin";
-
-  if (!isAdmin && authUserId !== userId) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 403 }
-    );
-  }
-
-  const result = await getCulturalProfile(userId);
-
-  if (!result.success) {
-    return NextResponse.json(result, { status: 404 });
-  }
-
-  return NextResponse.json(result);
-  })(req, context);
+// Helper to extract userId from params
+async function extractUserId(ctx: ApiContext): Promise<string | null> {
+  const urlParts = ctx.request.url.split("/");
+  const userIdIdx = urlParts.findIndex(p => p === "profile") + 1;
+  return urlParts[userIdIdx] || null;
 }
 
-// POST /api/cultural/profile/:userId
-export async function POST(req: NextRequest, context: { params: Promise<{ userId: string }> }) {
-  return withFirebaseAuth(async (user, request, ctx: { params: Promise<{ userId: string }> }) => {
-    const { userId } = await ctx.params;
+export async function GET(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
+  const handler = createAuthenticatedHandler(
+    async (ctx: ApiContext) => {
+      const { userId } = await context.params;
+      const authUserId = (ctx.user as any).userId || (ctx.user as any).id;
+      const isAdmin = (ctx.user as any).role === "admin";
 
-    // Rate limiting
-    const rateLimitResult = checkApiRateLimit(`cultural_profile_post_${user.id}`, 50, 60000);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { success: false, error: "Rate limit exceeded" },
-        { status: 429 }
-      );
+      if (!isAdmin && authUserId !== userId) {
+        return errorResponse("Unauthorized", 403, { correlationId: ctx.correlationId });
+      }
+
+      const result = await getCulturalProfile(userId);
+      if (!result.success) {
+        return errorResponse(result.error || "Not found", 404, { correlationId: ctx.correlationId });
+      }
+
+      return successResponse({ profile: result.profile }, 200, ctx.correlationId);
+    },
+    {
+      rateLimit: { identifier: "cultural_profile_get", maxRequests: 100 }
     }
+  );
+  return handler(request);
+}
 
-    // Users can only update their own profiles or admins can update any
-    const authUserId = user.id;
-    const isAdmin = user.role === "admin";
+export async function POST(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
+  const handler = createAuthenticatedHandler(
+    async (ctx: ApiContext, body: z.infer<typeof profileSchema>) => {
+      const { userId } = await context.params;
+      const authUserId = (ctx.user as any).userId || (ctx.user as any).id;
+      const isAdmin = (ctx.user as any).role === "admin";
 
-  if (!isAdmin && authUserId !== userId) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 403 }
-    );
-  }
+      if (!isAdmin && authUserId !== userId) {
+        return errorResponse("Unauthorized", 403, { correlationId: ctx.correlationId });
+      }
 
-  try {
-    const body = await request.json();
+      const result = await createOrUpdateCulturalProfile(userId, body as unknown as Partial<CulturalProfile>);
+      if (!result.success) {
+        return errorResponse(result.error || "Failed", 500, { correlationId: ctx.correlationId });
+      }
 
-    // Validate required fields
-    const requiredFields = [
-      "religion",
-      "religiousPractice",
-      "motherTongue",
-      "languages",
-      "familyValues",
-      "marriageViews",
-      "traditionalValues"
-    ];
-
-    const missingFields = requiredFields.filter(field => !body[field]);
-    if (missingFields.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Missing required fields: ${missingFields.join(", ")}`
-        },
-        { status: 400 }
-      );
+      return successResponse({ profile: result.profile }, 201, ctx.correlationId);
+    },
+    {
+      bodySchema: profileSchema,
+      rateLimit: { identifier: "cultural_profile_post", maxRequests: 50 }
     }
-
-    // Validate importance ratings
-    if (body.importanceOfReligion && (body.importanceOfReligion < 1 || body.importanceOfReligion > 10)) {
-      return NextResponse.json(
-        { success: false, error: "Importance of religion must be between 1-10" },
-        { status: 400 }
-      );
-    }
-
-    if (body.importanceOfCulture && (body.importanceOfCulture < 1 || body.importanceOfCulture > 10)) {
-      return NextResponse.json(
-        { success: false, error: "Importance of culture must be between 1-10" },
-        { status: 400 }
-      );
-    }
-
-    const result = await createOrUpdateCulturalProfile(userId, body);
-
-    if (!result.success) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    console.error("Error processing cultural profile request:", error);
-    return NextResponse.json(
-      { success: false, error: "Invalid request body" },
-      { status: 400 }
-    );
-  }
-  })(req, context);
+  );
+  return handler(request);
 }

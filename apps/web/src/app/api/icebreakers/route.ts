@@ -1,10 +1,9 @@
-import { NextRequest } from "next/server";
 import {
-  applySecurityHeaders,
-  checkApiRateLimit,
-} from "@/lib/utils/securityHeaders";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession } from "@/app/api/_utils/auth";
+  createApiHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
 interface IcebreakerQuestionDoc {
@@ -35,85 +34,94 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-export async function GET(req: NextRequest) {
-  const rl = checkApiRateLimit("icebreakers_get", 120, 60_000);
-  if (!rl.allowed)
-    return applySecurityHeaders(errorResponse("Rate limit exceeded", 429));
-  try {
-    // Optional auth: answered flag only if authenticated
-    const session = await requireSession(req).catch(() => null);
-    const userId =
-      session && !("errorResponse" in session) ? session.userId : null;
+export const GET = createApiHandler(
+  async (ctx: ApiContext) => {
+    try {
+      // Optional auth: answered flag only if authenticated
+      const userId = ctx.user ? ((ctx.user as any).userId || (ctx.user as any).id) : null;
 
-    const allSnap = await db
-      .collection("icebreakerQuestions")
-      .where("active", "==", true)
-      .get();
-    const all: Array<{ id: string; text: string; weight: number }> = [];
-    allSnap.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-      const d = doc.data() as IcebreakerQuestionDoc;
-      all.push({
-        id: doc.id,
-        text: d.text,
-        weight: typeof d.weight === "number" && d.weight > 0 ? d.weight : 1,
+      const allSnap = await db
+        .collection("icebreakerQuestions")
+        .where("active", "==", true)
+        .get();
+      
+      const all: Array<{ id: string; text: string; weight: number }> = [];
+      allSnap.forEach((doc: any) => {
+        const d = doc.data() as IcebreakerQuestionDoc;
+        all.push({
+          id: doc.id,
+          text: d.text,
+          weight: typeof d.weight === "number" && d.weight > 0 ? d.weight : 1,
+        });
       });
-    });
-    if (all.length === 0) return applySecurityHeaders(successResponse([]));
+      
+      if (all.length === 0) {
+        return successResponse([], 200, ctx.correlationId);
+      }
 
-    const key = dayKey();
-    const rand = seededRandom(Number.parseInt(key, 10) || Date.now());
-    const pickCount = Math.min(3, all.length);
-    const pool = [...all];
-    const picked: Array<{ id: string; text: string }> = [];
-    for (let k = 0; k < pickCount; k++) {
-      const totalW = pool.reduce((s, q) => s + q.weight, 0);
-      let r = rand() * totalW;
-      let idx = 0;
-      for (; idx < pool.length; idx++) {
-        r -= pool[idx].weight;
-        if (r <= 0) break;
+      const key = dayKey();
+      const rand = seededRandom(Number.parseInt(key, 10) || Date.now());
+      const pickCount = Math.min(3, all.length);
+      const pool = [...all];
+      const picked: Array<{ id: string; text: string }> = [];
+      
+      for (let k = 0; k < pickCount; k++) {
+        const totalW = pool.reduce((s, q) => s + q.weight, 0);
+        let r = rand() * totalW;
+        let idx = 0;
+        for (; idx < pool.length; idx++) {
+          r -= pool[idx].weight;
+          if (r <= 0) break;
+        }
+        const chosen = pool.splice(Math.min(idx, pool.length - 1), 1)[0];
+        if (chosen) picked.push({ id: chosen.id, text: chosen.text });
       }
-      const chosen = pool.splice(Math.min(idx, pool.length - 1), 1)[0];
-      if (chosen) picked.push({ id: chosen.id, text: chosen.text });
-    }
-    if (!userId) {
-      return applySecurityHeaders(
-        successResponse(picked.map((q) => ({ ...q, answered: false })))
+      
+      if (!userId) {
+        return successResponse(
+          picked.map((q) => ({ ...q, answered: false })),
+          200,
+          ctx.correlationId
+        );
+      }
+      
+      // Determine answered today
+      const since = Date.UTC(
+        new Date().getUTCFullYear(),
+        new Date().getUTCMonth(),
+        new Date().getUTCDate()
       );
-    }
-    // Determine answered today
-    const since = Date.UTC(
-      new Date().getUTCFullYear(),
-      new Date().getUTCMonth(),
-      new Date().getUTCDate()
-    );
-    const answersSnap = await db
-      .collection("userIcebreakerAnswers")
-      .where("userId", "==", userId)
-      .get();
-    const answeredMap = new Map<string, string>();
-    answersSnap.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-      const data = doc.data() as any;
-      if (
-        data &&
-        typeof data.createdAt === "number" &&
-        data.createdAt >= since
-      ) {
-        const qid = String(data.questionId);
-        const ans = typeof data.answer === "string" ? data.answer : "";
-        answeredMap.set(qid, ans);
-      }
-    });
-    return applySecurityHeaders(
-      successResponse(
+      const answersSnap = await db
+        .collection("userIcebreakerAnswers")
+        .where("userId", "==", userId)
+        .get();
+      
+      const answeredMap = new Map<string, string>();
+      answersSnap.forEach((doc: any) => {
+        const data = doc.data() as any;
+        if (data && typeof data.createdAt === "number" && data.createdAt >= since) {
+          const qid = String(data.questionId);
+          const ans = typeof data.answer === "string" ? data.answer : "";
+          answeredMap.set(qid, ans);
+        }
+      });
+      
+      return successResponse(
         picked.map((q) => ({
           ...q,
           answered: answeredMap.has(q.id),
           answer: answeredMap.get(q.id) || undefined,
-        }))
-      )
-    );
-  } catch (e) {
-    return applySecurityHeaders(errorResponse(e, 500));
+        })),
+        200,
+        ctx.correlationId
+      );
+    } catch (error) {
+      console.error("icebreakers GET error", { error, correlationId: ctx.correlationId });
+      return errorResponse("Failed to fetch icebreakers", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    requireAuth: false, // Auth optional for icebreakers
+    rateLimit: { identifier: "icebreakers_get", maxRequests: 120 }
   }
-}
+);

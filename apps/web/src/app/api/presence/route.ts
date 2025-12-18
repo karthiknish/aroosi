@@ -1,79 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
-export async function POST(request: NextRequest) {
-  return withFirebaseAuth(async (user: AuthenticatedUser, req, _ctx) => {
+export const POST = createAuthenticatedHandler(
+  async (ctx: ApiContext) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    
+    // Parse optional body for status
+    let status = "online";
     try {
-      let status = "online";
-      try {
-        const body = await req.json();
-        if (body && typeof body.status === "string") status = body.status;
-      } catch {
-        // no body provided (keepalive) -> default to online
+      const body = await ctx.request.json();
+      if (body && typeof body.status === "string" && ["online", "offline", "away"].includes(body.status)) {
+        status = body.status;
       }
+    } catch {
+      // no body provided (keepalive) -> default to online
+    }
 
-      await db.collection("presence").doc(user.id).set(
-        {
-          userId: user.id,
-          lastSeen: Date.now(),
-          status: status,
-        },
+    try {
+      await db.collection("presence").doc(userId).set(
+        { userId, lastSeen: Date.now(), status },
         { merge: true }
       );
-      return new NextResponse(null, { status: 204 });
+      return new Response(null, { status: 204 });
     } catch (e) {
-      return NextResponse.json(
-        { success: false, error: "presence update failed" },
-        { status: 500 }
-      );
+      console.error("presence POST error", { error: e, correlationId: ctx.correlationId });
+      return errorResponse("presence update failed", 500, { correlationId: ctx.correlationId });
     }
-  })(request, {});
-}
+  },
+  {
+    rateLimit: { identifier: "presence_update", maxRequests: 120 }
+  }
+);
 
-// Optional: handle preflight if needed
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204 });
+  return new Response(null, { status: 204 });
 }
 
-export async function GET(request: NextRequest) {
-  return withFirebaseAuth(async (_user, req, _ctx) => {
+export const GET = createAuthenticatedHandler(
+  async (ctx: ApiContext) => {
+    const { searchParams } = new URL(ctx.request.url);
+    const userId = searchParams.get("userId");
+    
+    if (!userId) {
+      return errorResponse("Missing userId", 400, { correlationId: ctx.correlationId });
+    }
+
     try {
-      const { searchParams } = new URL(req.url);
-      const userId = searchParams.get("userId");
-      if (!userId)
-        return NextResponse.json(
-          { success: false, error: "Missing userId" },
-          { status: 400 }
-        );
       const doc = await db.collection("presence").doc(userId).get();
-      if (!doc.exists)
-        return NextResponse.json({
-          success: true,
-          data: { isOnline: false, lastSeen: 0 },
-        });
+      if (!doc.exists) {
+        return successResponse({ isOnline: false, lastSeen: 0 }, 200, ctx.correlationId);
+      }
 
       const presenceData = doc.data() as any;
       const lastSeen = presenceData?.lastSeen || 0;
       const status = presenceData?.status || "offline";
       const now = Date.now();
 
-      // User is online if:
-      // 1. Status is explicitly "online" AND
-      // 2. Last seen within 30 seconds (recent activity)
+      // User is online if status is "online" AND last seen within 30 seconds
       const isOnline = status === "online" && now - lastSeen < 30 * 1000;
 
-      return NextResponse.json({
-        success: true,
-        data: { isOnline, lastSeen },
-      });
+      return successResponse({ isOnline, lastSeen }, 200, ctx.correlationId);
     } catch (e) {
-      return NextResponse.json(
-        { success: false, error: "presence query failed" },
-        { status: 500 }
-      );
+      console.error("presence GET error", { error: e, correlationId: ctx.correlationId });
+      return errorResponse("presence query failed", 500, { correlationId: ctx.correlationId });
     }
-  })(request, {});
-}
-
-
+  },
+  {
+    rateLimit: { identifier: "presence_get", maxRequests: 200 }
+  }
+);
