@@ -3,11 +3,11 @@ import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import { db } from "@/lib/firebaseAdmin";
 
 export async function POST(request: NextRequest) {
-  return withFirebaseAuth(async (user: AuthenticatedUser) => {
+  return withFirebaseAuth(async (user: AuthenticatedUser, req, _ctx) => {
     try {
       let status = "online";
       try {
-        const body = await request.json();
+        const body = await req.json();
         if (body && typeof body.status === "string") status = body.status;
       } catch {
         // no body provided (keepalive) -> default to online
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  })(request);
+  })(request, {});
 }
 
 // Optional: handle preflight if needed
@@ -37,9 +37,9 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
-  return withFirebaseAuth(async () => {
+  return withFirebaseAuth(async (_user, req, _ctx) => {
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
       const userId = searchParams.get("userId");
       if (!userId)
         return NextResponse.json(
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  })(request);
+  })(request, {});
 }
 
 

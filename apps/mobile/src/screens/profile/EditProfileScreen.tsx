@@ -192,9 +192,9 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
         try {
             const response = await uploadProfilePhoto(imageUri, index);
             
-            if (response.photoUrl) {
+            if (response.data?.url) {
                 const newPhotos = [...photos];
-                newPhotos[index] = response.photoUrl;
+                newPhotos[index] = response.data.url;
                 setPhotos(newPhotos);
             } else if (response.error) {
                 Alert.alert('Error', response.error);
@@ -462,7 +462,7 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
                             style={styles.input}
                             value={height}
                             onChangeText={setHeight}
-                            placeholder="e.g. 5'10\" (178cm)"
+                            placeholder={'e.g. 5\'10" (178cm)'}
                             placeholderTextColor={colors.neutral[400]}
                         />
                     </View>
@@ -479,10 +479,10 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
                                         (index) => { if (index < 4) setMaritalStatus(options[index]); }
                                     );
                                 } else {
-                                    Alert.alert('Marital Status', 'Choose an option', 
-                                        options.slice(0, 4).map(o => ({ text: o, onPress: () => setMaritalStatus(o) }))
-                                        .concat([{ text: 'Cancel', style: 'cancel' }])
-                                    );
+                                    Alert.alert('Marital Status', 'Choose an option', [
+                                        ...options.slice(0, 4).map(o => ({ text: o, onPress: () => setMaritalStatus(o) })),
+                                        { text: 'Cancel', style: 'cancel' as const },
+                                    ]);
                                 }
                             }}
                         >

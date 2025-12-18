@@ -27,7 +27,17 @@ function isProfileWithEmail(
 }
 
 export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
-  const userId = (ctx.user as any).userId || (ctx.user as any).id;
+  // Support fetching a specific user's profile via ?userId= query param
+  // Falls back to authenticated user's own profile if not specified
+  const requestedUserId = ctx.request.nextUrl.searchParams.get("userId");
+  const authUserId = (ctx.user as any).userId || (ctx.user as any).id;
+  
+  // Use requested userId if provided, otherwise use authenticated user's ID
+  const userId = requestedUserId || authUserId;
+  
+  if (!userId) {
+    return errorResponse("User ID is required", 400, { correlationId: ctx.correlationId });
+  }
   
   try {
     const doc = await db.collection("users").doc(userId).get();
@@ -37,12 +47,32 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
     
     const profile = { _id: doc.id, ...(doc.data() as any) };
     
+    // If fetching another user's profile, remove sensitive fields
+    if (requestedUserId && requestedUserId !== authUserId) {
+      // Remove sensitive fields for other users' profiles
+      delete profile.email;
+      delete profile.phoneNumber;
+      delete profile.emailVerified;
+      delete profile.disabled;
+      delete profile.banned;
+      delete profile.banReason;
+      delete profile.banExpiresAt;
+      delete profile.subscriptionPlan;
+      delete profile.subscriptionExpiresAt;
+      delete profile.subscriptionFeatures;
+      delete profile.boostsRemaining;
+      delete profile.referralCode;
+      delete profile.referredBy;
+      delete profile.referredUsers;
+    }
+    
     console.info("Profile GET success", {
       scope: "profile.get",
       type: "success",
       correlationId: ctx.correlationId,
       statusCode: 200,
       durationMs: Date.now() - ctx.startTime,
+      requestedUserId: requestedUserId || "(self)",
     });
     
     return successResponse({ profile }, 200, ctx.correlationId);

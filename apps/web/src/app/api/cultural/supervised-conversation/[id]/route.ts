@@ -116,5 +116,5 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       { status: 500 }
     );
   }
-  })(req);
+  })(req, context);
 }

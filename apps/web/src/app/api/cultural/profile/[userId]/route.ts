@@ -93,7 +93,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ userId:
   }
 
   return NextResponse.json(result);
-  })(req);
+  })(req, context);
 }
 
 // POST /api/cultural/profile/:userId
@@ -175,5 +175,5 @@ export async function POST(req: NextRequest, context: { params: Promise<{ userId
       { status: 400 }
     );
   }
-  })(req);
+  })(req, context);
 }

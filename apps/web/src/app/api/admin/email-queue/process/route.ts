@@ -4,7 +4,7 @@ import { processEmailBatch } from '@/lib/emailQueue';
 
 // Simple protected endpoint to manually trigger processing batch (could be cron / scheduled)
 export async function POST(request: NextRequest) {
-  return withFirebaseAuth(async (user) => {
+  return withFirebaseAuth(async (user, req, _ctx) => {
     // Basic role gate
   const role: any = (user as any)?.role;
   if (role !== 'admin' && role !== 'moderator') {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       // Optional secret header check for extra protection (besides auth)
       const secret = process.env.EMAIL_QUEUE_PROCESS_SECRET;
       if (secret) {
-        const provided = request.headers.get('x-email-queue-secret');
+        const provided = req.headers.get('x-email-queue-secret');
         if (provided !== secret) {
           return new Response(JSON.stringify({ success: false, error: 'Invalid secret' }), { status: 401 });
         }
@@ -24,5 +24,5 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       return new Response(JSON.stringify({ success: false, error: 'Processing failed' }), { status: 500 });
     }
-  })(request);
+  })(request, {});
 }

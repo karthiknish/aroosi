@@ -4,7 +4,7 @@ import { db } from "@/lib/firebaseAdmin";
 
 // Example of a protected API route using Firebase authentication
 export async function GET(request: NextRequest) {
-  return withFirebaseAuth(async (user: AuthenticatedUser) => {
+  return withFirebaseAuth(async (user: AuthenticatedUser, _req, _ctx) => {
     try {
       // Example: Get user's profile from Firestore
   const userDoc = await db.collection("users").doc(user.id).get();
@@ -36,14 +36,14 @@ export async function GET(request: NextRequest) {
         }
       );
     }
-  })(request);
+  })(request, {});
 }
 
 // Example of a protected API route for updating user profile
 export async function PUT(request: NextRequest) {
-  return withFirebaseAuth(async (user: AuthenticatedUser) => {
+  return withFirebaseAuth(async (user: AuthenticatedUser, req, _ctx) => {
     try {
-      const updates = await request.json();
+      const updates = await req.json();
       
       // Example: Update user's profile in Firestore
   await db.collection("users").doc(user.id).update({
@@ -68,5 +68,5 @@ export async function PUT(request: NextRequest) {
         }
       );
     }
-  })(request);
+  })(request, {});
 }

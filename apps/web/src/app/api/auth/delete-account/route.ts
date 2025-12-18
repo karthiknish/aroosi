@@ -14,7 +14,7 @@ import {
 
 // DELETE /api/auth/delete-account - Delete user account and all associated data
 export async function DELETE(request: NextRequest) {
-  return withFirebaseAuth(async (user) => {
+  return withFirebaseAuth(async (user, req, _ctx) => {
     try {
       // Get user profile to confirm existence and gather user info for logging
       const userProfile = await getUserProfileByUid(user.id);
@@ -27,7 +27,7 @@ export async function DELETE(request: NextRequest) {
       }
 
       // Verify user confirmation
-      const body = await request.json().catch(() => ({}));
+      const body = await req.json().catch(() => ({}));
       const { confirmed, password, reason } = body;
 
       if (!confirmed) {
@@ -108,7 +108,7 @@ export async function DELETE(request: NextRequest) {
         error: "Failed to delete account. Please try again or contact support."
       }, { status: 500 });
     }
-  })(request);
+  })(request, {});
 }
 
 export async function POST(request: NextRequest) {

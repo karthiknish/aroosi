@@ -15,7 +15,7 @@ import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 
 // GET /api/user/profile - Get current user's profile
 export async function GET(request: NextRequest) {
-  return withFirebaseAuth(async (user) => {
+  return withFirebaseAuth(async (user, _req, _ctx) => {
     try {
       const userProfile = await getUserProfileByUid(user.id);
       
@@ -55,14 +55,14 @@ export async function GET(request: NextRequest) {
         }
       );
     }
-  })(request);
+  })(request, {});
 }
 
 // PUT /api/user/profile - Update current user's profile
 export async function PUT(request: NextRequest) {
-  return withFirebaseAuth(async (user) => {
+  return withFirebaseAuth(async (user, req, _ctx) => {
     try {
-      const updates = await request.json();
+      const updates = await req.json();
       
       // Remove protected fields that shouldn't be updated by users
       const protectedFields = [
@@ -107,14 +107,14 @@ export async function PUT(request: NextRequest) {
         }
       );
     }
-  })(request);
+  })(request, {});
 }
 
 // POST /api/user/profile - Create or fully update user profile
 export async function POST(request: NextRequest) {
-  return withFirebaseAuth(async (user) => {
+  return withFirebaseAuth(async (user, req, _ctx) => {
     try {
-      const profileData = await request.json();
+      const profileData = await req.json();
       
       // Ensure required fields are present
       if (!profileData.email) {
@@ -159,12 +159,12 @@ export async function POST(request: NextRequest) {
         }
       );
     }
-  })(request);
+  })(request, {});
 }
 
 // DELETE /api/user/profile - Delete user profile (soft delete)
 export async function DELETE(request: NextRequest) {
-  return withFirebaseAuth(async (user) => {
+  return withFirebaseAuth(async (user, _req, _ctx) => {
     try {
       // Instead of hard delete, mark as deleted
       await updateUserProfile(user.id, {
@@ -195,5 +195,5 @@ export async function DELETE(request: NextRequest) {
         }
       );
     }
-  })(request);
+  })(request, {});
 }

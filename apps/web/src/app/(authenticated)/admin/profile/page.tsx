@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   fetchAdminProfiles,

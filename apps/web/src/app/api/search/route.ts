@@ -199,12 +199,14 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
           query = query.startAfter(createdAtCursor, docIdCursor);
         }
       }
-      query = query.limit(pageSize);
+      query = query.limit(pageSize ?? 20);
     } else {
-      if (page > 0) {
-        query = query.offset(page * pageSize);
+      const currentPage = page ?? 0;
+      const size = pageSize ?? 20;
+      if (currentPage > 0) {
+        query = query.offset(currentPage * size);
       }
-      query = query.limit(pageSize);
+      query = query.limit(size);
     }
 
     function isIndexMissing(e: any): boolean {
@@ -312,8 +314,10 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
           return false;
         return true;
       });
-      if (!cursor && page > 0) filtered = filtered.slice(page * pageSize);
-      filtered = filtered.slice(0, pageSize);
+      const currentPage = page ?? 0;
+      const size = pageSize ?? 20;
+      if (!cursor && currentPage > 0) filtered = filtered.slice(currentPage * size);
+      filtered = filtered.slice(0, size);
       return { docs: filtered, scanned: all.length };
     }
 
@@ -400,7 +404,9 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
       typeof ageMin === "number" ||
       typeof ageMax === "number"
     ) {
-      total = docs.length + (cursor ? 0 : page * pageSize);
+      const currentPage = page ?? 0;
+      const size = pageSize ?? 20;
+      total = docs.length + (cursor ? 0 : currentPage * size);
     }
 
     // Apply in-memory weighting

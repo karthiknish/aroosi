@@ -167,7 +167,7 @@ export function useUserProfile() {
       try {
         const result = await fetchUserProfileApi(userId);
         if (result.success && result.data) {
-          return result.data as UserProfile;
+          return result.data as unknown as UserProfile;
         }
         return null;
       } catch (error) {
@@ -196,10 +196,11 @@ export function useUserProfile() {
         const result = await submitProfile(firebaseUser.uid, prospective, "create");
         
         if (!result.success) {
-          throw new Error(result.error || "Failed to create profile");
+          const errorMsg = typeof result.error === 'string' ? result.error : result.error?.message || "Failed to create profile";
+          throw new Error(errorMsg);
         }
 
-        return result.data as UserProfile;
+        return result.data as unknown as UserProfile;
       } catch (error) {
         console.error("Error creating/updating user profile:", error);
         throw error;
@@ -216,13 +217,14 @@ export function useUserProfile() {
           throw new Error("User not authenticated");
         }
 
-        const result = await submitProfile(authState.user.uid, updates as any, "update");
+        const result = await submitProfile(authState.user.uid, updates as any, "edit");
         
         if (!result.success) {
-          throw new Error(result.error || "Failed to update profile");
+          const errorMsg = typeof result.error === 'string' ? result.error : result.error?.message || "Failed to update profile";
+          throw new Error(errorMsg);
         }
 
-        return result.data as UserProfile;
+        return result.data as unknown as UserProfile;
       } catch (error) {
         console.error("Error updating user profile:", error);
         throw error;

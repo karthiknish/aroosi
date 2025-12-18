@@ -106,7 +106,7 @@ export const SafetyActionButton: React.FC<SafetyActionButtonProps> = ({
         <DropdownMenuContent
           align="end"
           className="bg-white/95 backdrop-blur-sm border border-neutral/20 shadow-lg"
-        >        >
+        >
           <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
             <Flag className="h-4 w-4 mr-2" />
             Report User

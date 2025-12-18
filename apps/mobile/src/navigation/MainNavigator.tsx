@@ -233,13 +233,13 @@ function SubscriptionWrapper({ navigation }: any) {
 export function MainTabNavigator() {
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
+            screenOptions={({ route }: { route: { name: string } }) => ({
                 headerShown: false,
                 tabBarStyle: styles.tabBar,
                 tabBarActiveTintColor: colors.primary.DEFAULT,
                 tabBarInactiveTintColor: colors.neutral[400],
                 tabBarLabelStyle: styles.tabLabel,
-                tabBarIcon: ({ focused }) => (
+                tabBarIcon: ({ focused }: { focused: boolean }) => (
                     <TabIcon name={route.name} focused={focused} />
                 ),
             })}

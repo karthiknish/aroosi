@@ -258,5 +258,5 @@ export async function GET(req: NextRequest, context: { params: Promise<{ userId1
       { status: 500 }
     );
   }
-  })(req);
+  })(req, context);
 }

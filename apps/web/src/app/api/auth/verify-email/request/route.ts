@@ -20,7 +20,7 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
     const data = userSnap.data() || {};
     if (data.emailVerified) {
       return NextResponse.json({
-        ok: true,
+        success: true,
         alreadyVerified: true,
         correlationId,
       });
@@ -60,7 +60,7 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
     );
 
     return NextResponse.json(
-      { ok: true, correlationId, expiresAt },
+      { success: true, correlationId, expiresAt },
       { status: 200 }
     );
   } catch (e) {

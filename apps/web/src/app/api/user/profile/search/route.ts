@@ -3,9 +3,9 @@ import { withFirebaseAuth } from '@/lib/auth/firebaseAuth';
 import { searchUsers } from '@/lib/userProfile/search';
 
 export async function GET(request: NextRequest) {
-  return withFirebaseAuth(async () => {
+  return withFirebaseAuth(async (_user, req, _ctx) => {
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
       const filters: any = {};
       const mapInt = (k: string) => { const v = searchParams.get(k); return v ? parseInt(v, 10) : undefined; };
       const mapFloat = (k: string) => { const v = searchParams.get(k); return v ? parseFloat(v) : undefined; };
@@ -33,5 +33,5 @@ export async function GET(request: NextRequest) {
       console.error('Error searching users:', error);
       return new Response(JSON.stringify({ success: false, error: 'Failed to search users' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
-  })(request);
+  })(request, {});
 }
