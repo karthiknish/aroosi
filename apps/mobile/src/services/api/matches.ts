@@ -111,5 +111,16 @@ export async function unblockUser(userId: string) {
  * Get blocked users
  */
 export async function getBlockedUsers() {
-    return api.get<{ userId: string; blockedAt: string }[]>('/safety/blocked');
+    return api.get<{
+        blockedUsers: Array<{
+            id: string;
+            blockedUserId: string;
+            createdAt: number;
+            blockedProfile?: {
+                fullName: string;
+                profileImageUrl?: string;
+            };
+        }>;
+        nextCursor: string | null;
+    }>('/safety/blocked');
 }

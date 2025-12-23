@@ -17,6 +17,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'react-native-image-picker';
 import { 
     colors, 
     spacing, 
@@ -31,11 +32,9 @@ import {
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { useAuthStore } from '../../store';
+import { useRealTimeMessages, type MessageData } from '../../hooks/useRealTimeMessages';
 import {
-    getMessages,
-    sendMessage,
-    markMessagesAsRead,
-    type Message,
+    markMessagesAsRead as markAsReadApi,
 } from '../../services/api/messages';
 
 interface ChatScreenProps {
@@ -52,91 +51,95 @@ export default function ChatScreen({
     onBack
 }: ChatScreenProps) {
     const { user } = useAuthStore();
-    const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
     const [sending, setSending] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
 
-    // Load messages
-    const loadMessages = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
+    const {
+        messages,
+        isConnected,
+        sendMessage: sendMessageFs,
+        sendImageMessage: sendImageFs,
+        fetchOlder,
+        hasMore,
+        loadingOlder,
+        error,
+        markAsRead,
+    } = useRealTimeMessages({ conversationId: matchId });
 
-            const response = await getMessages(matchId);
-
-            if (response.error) {
-                setError(response.error);
-                return;
-            }
-
-            if (response.data?.messages) {
-                // Keep messages in chronological order - newest first for inverted FlatList
-                setMessages(response.data.messages);
-                // Mark as read
-                await markMessagesAsRead(matchId);
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load messages');
-        } finally {
-            setLoading(false);
-        }
-    }, [matchId]);
-
+    // Mark incoming messages as read
     useEffect(() => {
-        loadMessages();
-    }, [loadMessages]);
+        if (messages.length > 0 && user?.id) {
+            const unreadIds = messages
+                .filter(m => m.toUserId === user.id && !m.isRead)
+                .map(m => m.id);
+            
+            if (unreadIds.length > 0) {
+                markAsRead(unreadIds);
+                // Also notify backend for unread count sync
+                markAsReadApi(matchId).catch(console.error);
+            }
+        }
+    }, [messages, user?.id, matchId, markAsRead]);
 
     // Send message
     const handleSend = useCallback(async () => {
-        if (!inputText.trim() || sending) return;
+        if (!inputText.trim() || sending || !user?.id) return;
 
         const messageText = inputText.trim();
         setInputText('');
         setSending(true);
 
-        // Optimistically add message
-        const tempMessage: Message = {
-            id: `temp-${Date.now()}`,
-            matchId,
-            senderId: user?.id || '',
-            recipientId: '',
-            type: 'text',
-            content: messageText,
-            createdAt: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, tempMessage]);
-
         try {
-            const response = await sendMessage(matchId, messageText);
-
-            if (response.data) {
-                // Replace temp message with real one
-                setMessages(prev =>
-                    prev.map(m => m.id === tempMessage.id ? response.data! : m)
-                );
-            }
+            // Extract recipientId from matchId (it's user1_user2)
+            const parts = matchId.split('_');
+            const recipientId = parts.find(id => id !== user.id) || '';
+            
+            await sendMessageFs(messageText, recipientId);
         } catch (err) {
-            // Remove temp message on error
-            setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
-            setError('Failed to send message');
+            console.error('Send error:', err);
         } finally {
             setSending(false);
         }
-    }, [inputText, matchId, sending, user?.id]);
+    }, [inputText, matchId, sending, user?.id, sendMessageFs]);
+
+    // Handle image attachment
+    const handleAttach = useCallback(async () => {
+        if (sending || !user?.id) return;
+
+        const result = await ImagePicker.launchImageLibrary({
+            mediaType: 'photo',
+            quality: 0.8,
+        });
+
+        if (result.didCancel || !result.assets || result.assets.length === 0) {
+            return;
+        }
+
+        const asset = result.assets[0];
+        if (!asset.uri) return;
+
+        setSending(true);
+        try {
+            const parts = matchId.split('_');
+            const recipientId = parts.find(id => id !== user.id) || '';
+            await sendImageFs(asset.uri, recipientId);
+        } catch (err) {
+            console.error('Image send error:', err);
+        } finally {
+            setSending(false);
+        }
+    }, [matchId, sending, user?.id, sendImageFs]);
 
     // Format time
-    const formatTime = (dateStr: string) => {
-        const date = new Date(dateStr);
+    const formatTime = (timestamp: number) => {
+        const date = new Date(timestamp);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     // Format date header
-    const formatDateHeader = (dateStr: string) => {
-        const date = new Date(dateStr);
+    const formatDateHeader = (timestamp: number) => {
+        const date = new Date(timestamp);
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -164,8 +167,8 @@ export default function ChatScreen({
     };
 
     // Render message item
-    const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-        const isMe = item.senderId === user?.id;
+    const renderMessage = ({ item, index }: { item: MessageData; index: number }) => {
+        const isMe = item.fromUserId === user?.id;
         const showDateHeader = shouldShowDateHeader(index);
 
         return (
@@ -179,32 +182,43 @@ export default function ChatScreen({
                 )}
                 <View style={[
                     styles.messageBubble,
-                    isMe ? styles.myMessage : styles.theirMessage
+                    isMe ? styles.myMessage : styles.theirMessage,
+                    item.type === 'image' && styles.imageMessageBubble
                 ]}>
-                    {item.type === 'icebreaker' && (
-                        <View style={styles.icebreakerBadge}>
-                            <Text style={styles.icebreakerIcon}>💡</Text>
-                        </View>
+                    {item.type === 'image' ? (
+                        <Image
+                            source={{ uri: item.mediaUrl }}
+                            style={styles.messageImage}
+                            contentFit="cover"
+                        />
+                    ) : (
+                        <Text style={[
+                            styles.messageText,
+                            isMe ? styles.myMessageText : styles.theirMessageText
+                        ]}>
+                            {item.text}
+                        </Text>
                     )}
-                    <Text style={[
-                        styles.messageText,
-                        isMe ? styles.myMessageText : styles.theirMessageText
-                    ]}>
-                        {item.content}
-                    </Text>
-                    <Text style={[
-                        styles.messageTime,
-                        isMe ? styles.myMessageTime : styles.theirMessageTime
-                    ]}>
-                        {formatTime(item.createdAt)}
-                    </Text>
+                    <View style={styles.messageFooter}>
+                        <Text style={[
+                            styles.messageTime,
+                            isMe ? styles.myMessageTime : styles.theirMessageTime
+                        ]}>
+                            {formatTime(item.createdAt)}
+                        </Text>
+                        {isMe && (
+                            <Text style={styles.readStatus}>
+                                {item.isRead ? ' ✓✓' : ' ✓'}
+                            </Text>
+                        )}
+                    </View>
                 </View>
             </View>
         );
     };
 
     // Render loading state
-    if (loading) {
+    if (!isConnected && messages.length === 0) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -214,7 +228,7 @@ export default function ChatScreen({
                     <Text style={styles.headerTitle}>{recipientName}</Text>
                     <View style={styles.headerRight} />
                 </View>
-                <LoadingSpinner message="Loading messages..." />
+                <LoadingSpinner message="Connecting..." />
             </SafeAreaView>
         );
     }
@@ -258,8 +272,6 @@ export default function ChatScreen({
                         emoji="😕"
                         title="Couldn't load messages"
                         message={error}
-                        actionLabel="Try Again"
-                        onAction={loadMessages}
                     />
                 ) : messages.length === 0 ? (
                     <EmptyState
@@ -276,25 +288,27 @@ export default function ChatScreen({
                         contentContainerStyle={styles.messagesList}
                         showsVerticalScrollIndicator={false}
                         inverted
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={async () => {
-                                    setRefreshing(true);
-                                    await loadMessages();
-                                    setRefreshing(false);
-                                }}
-                                tintColor={colors.primary.DEFAULT}
-                                colors={[colors.primary.DEFAULT]}
-                                progressViewOffset={20}
-                            />
+                        onEndReached={fetchOlder}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={
+                            loadingOlder ? (
+                                <ActivityIndicator 
+                                    size="small" 
+                                    color={colors.primary.DEFAULT} 
+                                    style={{ marginVertical: spacing[4] }} 
+                                />
+                            ) : null
                         }
                     />
                 )}
 
                 {/* Input Area */}
                 <View style={styles.inputContainer}>
-                    <TouchableOpacity style={styles.attachButton}>
+                    <TouchableOpacity 
+                        style={styles.attachButton}
+                        onPress={handleAttach}
+                        disabled={sending}
+                    >
                         <Text style={styles.attachIcon}>📎</Text>
                     </TouchableOpacity>
                     <View style={styles.inputWrapper}>
@@ -430,6 +444,15 @@ const styles = StyleSheet.create({
         backgroundColor: colors.neutral[100],
         borderBottomLeftRadius: moderateScale(4),
     },
+    imageMessageBubble: {
+        padding: moderateScale(4),
+        width: moderateScale(240),
+    },
+    messageImage: {
+        width: '100%',
+        height: moderateScale(240),
+        borderRadius: borderRadius.lg,
+    },
     icebreakerBadge: {
         position: 'absolute',
         top: moderateScale(-8),
@@ -454,16 +477,24 @@ const styles = StyleSheet.create({
     theirMessageText: {
         color: colors.neutral[800],
     },
+    messageFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        marginTop: moderateScale(4),
+    },
     messageTime: {
         fontSize: responsiveFontSizes.xs,
-        marginTop: moderateScale(4),
     },
     myMessageTime: {
         color: 'rgba(255,255,255,0.7)',
-        textAlign: 'right',
     },
     theirMessageTime: {
         color: colors.neutral[400],
+    },
+    readStatus: {
+        fontSize: moderateScale(10),
+        color: 'rgba(255,255,255,0.7)',
     },
     inputContainer: {
         flexDirection: 'row',

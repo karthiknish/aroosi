@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { requireSession } from "@/app/api/_utils/auth";
+import { COL_MATCHES, deterministicMatchId } from "@/lib/firestoreSchema";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -57,12 +58,31 @@ export const GET = createApiHandler(
 
       const profileData = userDoc.data();
 
+      // Check block status and mutual interest if authenticated
+      let isBlocked = false;
+      let isMutualInterest = false;
+
+      if (authedUserId) {
+        const forwardBlockId = `${authedUserId}_${userId}`;
+        const reverseBlockId = `${userId}_${authedUserId}`;
+        const matchId = deterministicMatchId(authedUserId, userId);
+
+        const [forwardBlock, reverseBlock, matchDoc] = await Promise.all([
+          db.collection("blocks").doc(forwardBlockId).get(),
+          db.collection("blocks").doc(reverseBlockId).get(),
+          db.collection(COL_MATCHES).doc(matchId).get(),
+        ]);
+
+        isBlocked = forwardBlock.exists || reverseBlock.exists;
+        isMutualInterest = matchDoc.exists;
+      }
+
       // Build response with legacy shape parity
       const responsePayload = {
         currentUser: authedUserId ? { id: authedUserId } : null,
         profileData: profileData || null,
-        isBlocked: false, // TODO: integrate block lookup if required
-        isMutualInterest: false, // TODO: integrate interest matching
+        isBlocked,
+        isMutualInterest,
         sentInterest: [],
       };
 

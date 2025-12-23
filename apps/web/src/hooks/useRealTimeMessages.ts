@@ -1017,7 +1017,7 @@ export function useRealTimeMessages({
       const olderQ = query(
         msgsRef,
         where("conversationId", "==", convKey),
-        orderBy("createdAt", "asc"),
+        orderBy("createdAt", "desc"),
         where("createdAt", "<", anchor),
         fsLimit(PAGE_SIZE)
       );
@@ -1059,7 +1059,8 @@ export function useRealTimeMessages({
               : d.editedAt,
         });
       });
-      setOlderMessages((prev) => [...chunk, ...prev]);
+      // chunk is descending (newest of the old first), reverse to ascending for olderMessages state
+      setOlderMessages((prev) => [...chunk.reverse(), ...prev]);
       setHasMore(chunk.length === PAGE_SIZE);
     } catch (err) {
       console.error("Fetch older messages failed", err);

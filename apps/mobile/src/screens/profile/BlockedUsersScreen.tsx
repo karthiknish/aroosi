@@ -30,12 +30,18 @@ import {
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { getBlockedUsers, unblockUser } from '../../services/api/matches';
+import { Image } from 'expo-image';
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'BlockedUsers'>;
 
 interface BlockedUser {
-    userId: string;
-    blockedAt: string;
+    id: string;
+    blockedUserId: string;
+    createdAt: number;
+    blockedProfile?: {
+        fullName: string;
+        profileImageUrl?: string;
+    };
 }
 
 export default function BlockedUsersScreen() {
@@ -63,7 +69,7 @@ export default function BlockedUsersScreen() {
                 return;
             }
 
-            setBlockedUsers(response.data || []);
+            setBlockedUsers(response.data?.blockedUsers || []);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load blocked users');
         } finally {
@@ -92,7 +98,7 @@ export default function BlockedUsersScreen() {
 
                             if (!response.error) {
                                 setBlockedUsers((prev) =>
-                                    prev.filter((u) => u.userId !== userId)
+                                    prev.filter((u) => u.blockedUserId !== userId)
                                 );
                             }
                         } catch (err) {
@@ -107,8 +113,8 @@ export default function BlockedUsersScreen() {
     }, []);
 
     // Format date
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+    const formatDate = (timestamp: number) => {
+        return new Date(timestamp).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -118,25 +124,37 @@ export default function BlockedUsersScreen() {
     // Render blocked user item
     const renderItem = useCallback(
         ({ item }: { item: BlockedUser }) => {
-            const isUnblocking = unblocking === item.userId;
+            const isUnblocking = unblocking === item.blockedUserId;
+            const name = item.blockedProfile?.fullName || 'Unknown User';
+            const photo = item.blockedProfile?.profileImageUrl;
 
             return (
                 <View style={styles.itemContainer}>
                     <View style={styles.itemContent}>
-                        {/* Avatar placeholder */}
+                        {/* Avatar */}
                         <View style={styles.avatarContainer}>
-                            <View style={styles.avatarPlaceholder}>
-                                <Text style={styles.avatarText}>🚫</Text>
-                            </View>
+                            {photo ? (
+                                <Image
+                                    source={{ uri: photo }}
+                                    style={styles.avatar}
+                                    contentFit="cover"
+                                />
+                            ) : (
+                                <View style={styles.avatarPlaceholder}>
+                                    <Text style={styles.avatarText}>
+                                        {name.charAt(0)}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
 
                         {/* Info */}
                         <View style={styles.infoContainer}>
-                            <Text style={styles.userId} numberOfLines={1}>
-                                User ID: {item.userId.slice(0, 8)}...
+                            <Text style={styles.userName} numberOfLines={1}>
+                                {name}
                             </Text>
                             <Text style={styles.date}>
-                                Blocked on {formatDate(item.blockedAt)}
+                                Blocked on {formatDate(item.createdAt)}
                             </Text>
                         </View>
 
@@ -146,7 +164,7 @@ export default function BlockedUsersScreen() {
                                 styles.unblockButton,
                                 isUnblocking && styles.unblockButtonDisabled,
                             ]}
-                            onPress={() => handleUnblock(item.userId)}
+                            onPress={() => handleUnblock(item.blockedUserId)}
                             disabled={isUnblocking}
                         >
                             <Text style={styles.unblockButtonText}>
@@ -218,7 +236,7 @@ export default function BlockedUsersScreen() {
             <FlatList
                 data={blockedUsers}
                 renderItem={renderItem}
-                keyExtractor={(item) => item.userId}
+                keyExtractor={(item) => item.blockedUserId}
                 contentContainerStyle={styles.listContent}
                 refreshControl={
                     <RefreshControl
@@ -321,20 +339,27 @@ const styles = StyleSheet.create({
         width: AVATAR_SIZE,
         height: AVATAR_SIZE,
         borderRadius: AVATAR_SIZE / 2,
-        backgroundColor: colors.neutral[200],
+        backgroundColor: colors.primary[100],
         justifyContent: 'center',
         alignItems: 'center',
     },
+    avatar: {
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
+    },
     avatarText: {
-        fontSize: moderateScale(20),
+        fontSize: moderateScale(18),
+        fontWeight: fontWeight.bold,
+        color: colors.primary.DEFAULT,
     },
     infoContainer: {
         flex: 1,
     },
-    userId: {
+    userName: {
         fontSize: responsiveFontSizes.base,
-        fontWeight: fontWeight.medium,
-        color: colors.neutral[700],
+        fontWeight: fontWeight.semibold,
+        color: colors.neutral[800],
     },
     date: {
         fontSize: responsiveFontSizes.sm,

@@ -248,7 +248,6 @@ export function ProfileImageUpload({
   const uploadImageFileAdmin = async (file: File) => {
     if (!profileId)
       throw new Error("Profile ID not available for admin upload.");
-    // TODO: migrate adminUploadProfileImage to cookie-auth; until then pass empty token
     await adminUploadProfileImage({ profileId, file });
     showSuccessToast("Image uploaded successfully");
     await refetchImages();

@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     TextInput,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MessagesStackParamList } from '../../navigation/types';
@@ -30,63 +31,33 @@ import {
 import { ConversationItem } from '../../components/ConversationItem';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
-import { getConversations, type Conversation } from '../../services/api/messages';
-import { getMatches, type Match } from '../../services/api/matches';
+import { type Conversation } from '../../services/api/messages';
+import { type Match } from '../../services/api/matches';
+import { useRealTimeConversations } from '../../hooks/useRealTimeConversations';
 
 type MessagesNavigation = NativeStackNavigationProp<MessagesStackParamList, 'MessagesMain'>;
 
 export default function MessagesScreen() {
     const navigation = useNavigation<MessagesNavigation>();
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    const { conversations, loading, error: rtError } = useRealTimeConversations();
     const [searchQuery, setSearchQuery] = useState('');
-    const [error, setError] = useState<string | null>(null);
 
-    // Load conversations and matches
-    const loadData = useCallback(async (isRefresh = false) => {
-        try {
-            if (isRefresh) {
-                setRefreshing(true);
-            } else {
-                setLoading(true);
-            }
-            setError(null);
-
-            // Load both conversations and new matches in parallel
-            const [conversationsRes, matchesRes] = await Promise.all([
-                getConversations(),
-                getMatches(),
-            ]);
-
-            if (conversationsRes.error) {
-                setError(conversationsRes.error);
-                return;
-            }
-
-            if (conversationsRes.data) {
-                setConversations(conversationsRes.data);
-            }
-
-            if (matchesRes.data) {
-                // Filter matches that don't have conversations yet
-                const newMatches = matchesRes.data.filter(m =>
-                    m.status === 'matched' && !m.lastMessage
-                );
-                setMatches(newMatches);
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load messages');
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+    // Filter conversations that have messages
+    const activeConversations = conversations.filter(c => c.lastMessage);
+    
+    // Filter matches that don't have conversations yet
+    const newMatches = conversations
+        .filter(c => !c.lastMessage)
+        .map(c => ({
+            id: c.matchId,
+            matchedUser: {
+                id: c.userId,
+                displayName: c.user.displayName,
+                photoURL: c.user.photoURL,
+            },
+            status: 'matched' as const,
+            createdAt: c.updatedAt,
+        }));
 
     // Handle conversation press
     const handleConversationPress = useCallback((conversation: Conversation) => {
@@ -98,7 +69,7 @@ export default function MessagesScreen() {
     }, [navigation]);
 
     // Handle new match press
-    const handleMatchPress = useCallback((match: Match) => {
+    const handleMatchPress = useCallback((match: any) => {
         navigation.navigate('Chat', {
             matchId: match.id,
             recipientName: match.matchedUser.displayName || 'New Match',
@@ -108,32 +79,32 @@ export default function MessagesScreen() {
 
     // Filter conversations by search query
     const filteredConversations = searchQuery
-        ? conversations.filter(c =>
+        ? activeConversations.filter(c =>
             c.user.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        : conversations;
+        : activeConversations;
 
     // Render match item (horizontal scroll)
-    const renderMatchItem = ({ item }: { item: Match }) => (
+    const renderMatchItem = ({ item }: { item: any }) => (
         <TouchableOpacity
             style={styles.matchItem}
             onPress={() => handleMatchPress(item)}
             activeOpacity={0.8}
         >
             <View style={styles.matchAvatar}>
-                {item.matchedUser.photoURL ? (
-                    <View style={styles.matchAvatarImageContainer}>
+                <View style={styles.matchAvatarImageContainer}>
+                    {item.matchedUser.photoURL ? (
+                        <Image
+                            source={{ uri: item.matchedUser.photoURL }}
+                            style={styles.matchAvatarImage}
+                            contentFit="cover"
+                        />
+                    ) : (
                         <Text style={styles.matchAvatarPlaceholder}>
                             {item.matchedUser.displayName?.charAt(0) || '?'}
                         </Text>
-                    </View>
-                ) : (
-                    <View style={styles.matchAvatarImageContainer}>
-                        <Text style={styles.matchAvatarPlaceholder}>
-                            {item.matchedUser.displayName?.charAt(0) || '?'}
-                        </Text>
-                    </View>
-                )}
+                    )}
+                </View>
                 <View style={styles.newMatchBadge} />
             </View>
             <Text style={styles.matchName} numberOfLines={1}>
@@ -154,7 +125,7 @@ export default function MessagesScreen() {
     const ItemSeparator = () => <View style={styles.separator} />;
 
     // Render loading state
-    if (loading) {
+    if (loading && conversations.length === 0) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -166,7 +137,7 @@ export default function MessagesScreen() {
     }
 
     // Render error state
-    if (error) {
+    if (rtError) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -175,16 +146,14 @@ export default function MessagesScreen() {
                 <EmptyState
                     emoji="😕"
                     title="Couldn't load messages"
-                    message={error}
-                    actionLabel="Try Again"
-                    onAction={loadData}
+                    message={rtError.message}
                 />
             </SafeAreaView>
         );
     }
 
     // Render empty state
-    if (conversations.length === 0 && matches.length === 0) {
+    if (conversations.length === 0) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -221,12 +190,12 @@ export default function MessagesScreen() {
             </View>
 
             {/* New Matches Section */}
-            {matches.length > 0 && (
+            {newMatches.length > 0 && (
                 <View style={styles.matchesSection}>
                     <Text style={styles.matchesSectionTitle}>New Matches</Text>
                     <FlatList
                         horizontal
-                        data={matches}
+                        data={newMatches}
                         renderItem={renderMatchItem}
                         keyExtractor={item => item.id}
                         showsHorizontalScrollIndicator={false}
@@ -241,13 +210,6 @@ export default function MessagesScreen() {
                 renderItem={renderConversationItem}
                 keyExtractor={item => item.matchId}
                 ItemSeparatorComponent={ItemSeparator}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={() => loadData(true)}
-                        tintColor={colors.primary.DEFAULT}
-                    />
-                }
                 ListEmptyComponent={
                     searchQuery ? (
                         <EmptyState
@@ -341,6 +303,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 2,
         borderColor: colors.primary.DEFAULT,
+        overflow: 'hidden',
+    },
+    matchAvatarImage: {
+        width: '100%',
+        height: '100%',
     },
     matchAvatarPlaceholder: {
         fontSize: responsiveFontSizes['2xl'],

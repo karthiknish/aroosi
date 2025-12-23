@@ -42,6 +42,8 @@ export interface UserProfile {
     interests?: string[];
     isVerified?: boolean;
     isPremium?: boolean;
+    isBlocked?: boolean;
+    isMutualInterest?: boolean;
     lastActive?: string;
     createdAt?: string;
     updatedAt?: string;

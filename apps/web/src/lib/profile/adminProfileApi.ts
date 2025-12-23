@@ -549,6 +549,7 @@ export async function adminUploadProfileImage({
   const uploadRes = await fetch(`/api/profile-images/upload`, {
     method: "POST",
     body: form,
+    credentials: "include",
   });
   if (!uploadRes.ok) {
     const txt = await uploadRes.text().catch(() => "");
@@ -566,6 +567,7 @@ export async function adminUploadProfileImage({
   const metaRes = await fetch(`/api/profile-images`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({
       userId: profileId,
       storageId: json.imageId,

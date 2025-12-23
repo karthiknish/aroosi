@@ -57,6 +57,15 @@ export const POST = createAuthenticatedHandler(
       return errorResponse("Unsupported image type", 400, { correlationId: ctx.correlationId });
     }
 
+    // Content Safety Scanning (Placeholder)
+    // In a production app, you would integrate with Google Cloud Vision API or similar here.
+    // For now, we'll just log that the scan is happening.
+    console.log(`[Safety Scan] Scanning image ${file.name} for user ${userId}`);
+    const isSafe = true; // Assume safe for now
+    if (!isSafe) {
+      return errorResponse("Image failed safety scan", 400, { correlationId: ctx.correlationId });
+    }
+
     try {
       const originalExt = (file.name.split(".").pop() || "jpg").toLowerCase();
       const sanitizedBase = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "image";

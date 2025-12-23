@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebaseAdmin";
+import { db, adminStorage } from "@/lib/firebaseAdmin";
 import type { Profile } from "@/types/profile";
 
 export interface ListProfilesOptions {
@@ -135,7 +135,67 @@ export async function updateProfileById(id: string, updates: Partial<Profile>): 
 }
 
 export async function deleteProfileById(id: string): Promise<boolean> {
+  const profile = await getProfileById(id);
+  if (!profile) return false;
+
+  // 1. Delete user document
   await db.collection("users").doc(id).delete();
-  // TODO: orphan cleanup (images, matches) - add background task.
+
+  // 2. Delete matches
+  const matches1 = await db.collection("matches").where("user1Id", "==", id).get();
+  const matches2 = await db.collection("matches").where("user2Id", "==", id).get();
+  const matchDeletes = [...matches1.docs, ...matches2.docs].map((d: any) =>
+    d.ref.delete()
+  );
+  await Promise.all(matchDeletes);
+
+  // 3. Delete interests
+  const interests1 = await db
+    .collection("interests")
+    .where("fromUserId", "==", id)
+    .get();
+  const interests2 = await db
+    .collection("interests")
+    .where("toUserId", "==", id)
+    .get();
+  const interestDeletes = [...interests1.docs, ...interests2.docs].map(
+    (d: any) => d.ref.delete()
+  );
+  await Promise.all(interestDeletes);
+
+  // 4. Delete messages
+  const messages1 = await db
+    .collection("messages")
+    .where("fromUserId", "==", id)
+    .get();
+  const messages2 = await db
+    .collection("messages")
+    .where("toUserId", "==", id)
+    .get();
+  const messageDeletes = [...messages1.docs, ...messages2.docs].map((d: any) =>
+    d.ref.delete()
+  );
+  await Promise.all(messageDeletes);
+
+  // 5. Delete images from Storage
+  const imageUrls = [
+    ...(profile.profileImageUrls || []),
+    ...(profile.images || []),
+  ];
+  const storageDeletes = imageUrls.map(async (url) => {
+    try {
+      // Extract path from URL if it's a Firebase Storage URL
+      // Example: https://firebasestorage.googleapis.com/v0/b/[BUCKET]/o/[PATH]?alt=media
+      const match = url.match(/\/o\/(.+)\?alt=media/);
+      if (match && match[1]) {
+        const path = decodeURIComponent(match[1]);
+        await adminStorage.bucket().file(path).delete();
+      }
+    } catch (e) {
+      console.error(`Failed to delete image: ${url}`, e);
+    }
+  });
+  await Promise.all(storageDeletes);
+
   return true;
 }

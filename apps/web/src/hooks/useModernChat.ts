@@ -48,6 +48,10 @@ export function useModernChat({
     sendTypingStart,
     sendTypingStop,
     markAsRead,
+    refreshMessages,
+    fetchOlder,
+    hasMore,
+    loadingOlder,
     error,
   } = useRealTimeMessages({ conversationId });
 
@@ -56,20 +60,21 @@ export function useModernChat({
     connectionStatusBool ? "connected" : "connecting"; // simple mapping
   // Show loading skeleton while not connected AND no messages yet
   const loading = !connectionStatusBool && messages.length === 0;
-  const loadingOlder = false; // pagination not yet implemented in Firestore hook
-  const hasMore = false; // TODO: implement pagination via startAfter
-  const fetchOlder = async () => undefined; // placeholder
-  const getLastReadAtForOther = (otherId: string) => 0; // TODO: integrate read receipts collection if added
+
+  const getLastReadAtForOther = (otherId: string) => {
+    const sentMessages = messages.filter(
+      (m) => m.fromUserId === currentUserId && m.isRead
+    );
+    if (sentMessages.length === 0) return 0;
+    return Math.max(...sentMessages.map((m) => m.readAt || 0));
+  };
 
   // Typing indicators
   // Replace typing indicators with Firestore hook wrappers
   const { typingUsers, startTyping, stopTyping } = useTypingIndicators({
     conversationId,
     currentUserId,
-    // Pass through to Firestore typing updates
-    customStart: sendTypingStart,
-    customStop: sendTypingStop,
-  } as any);
+  });
 
   // Delivery receipts
   const {
@@ -200,19 +205,6 @@ export function useModernChat({
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [matchUserId]);
-
-  // Mark incoming messages as read
-  useEffect(() => {
-    (async () => {
-      if (messages.length > 0 && !isBlocked) {
-        const incoming = messages.filter((m) => m.fromUserId === matchUserId);
-        if (incoming.length > 0) {
-          const latest = incoming[incoming.length - 1];
-          await markMessageAsRead(latest._id);
-        }
-      }
-    })();
-  }, [messages, isBlocked, matchUserId, markMessageAsRead]);
 
   // Optimistic delivered on SSE connect: mark last incoming as delivered
   useEffect(() => {

@@ -1,3 +1,14 @@
+/**
+ * @deprecated Use imports from '@/lib/api/handler' instead.
+ * This file is maintained for backward compatibility only.
+ * 
+ * Migration:
+ *   // Old:
+ *   import { successResponse, errorResponse } from '@/lib/apiResponse';
+ *   // New:
+ *   import { successResponse, errorResponse } from '@/lib/api/handler';
+ */
+
 export type ApiSuccess<T> = { success: true; data?: T };
 export type ApiFailure = { success: false; error: string } & Record<
   string,
@@ -7,6 +18,9 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
 import { SECURITY_HEADERS } from "@/lib/utils/securityHeaders";
 
+/**
+ * @deprecated Use successResponse from '@/lib/api/handler' instead
+ */
 export const successResponse = <T = unknown>(data?: T, status = 200) =>
   new Response(
     JSON.stringify({
@@ -19,6 +33,9 @@ export const successResponse = <T = unknown>(data?: T, status = 200) =>
     }
   );
 
+/**
+ * @deprecated Use errorResponse from '@/lib/api/handler' instead
+ */
 export const errorResponse = (
   error: unknown,
   status = 400,
@@ -47,7 +64,9 @@ export const errorResponse = (
   );
 };
 
-// Public variant: always expose provided message (already user-friendly)
+/**
+ * @deprecated Use errorResponsePublic from '@/lib/api/handler' instead
+ */
 export const errorResponsePublic = (
   message: string,
   status = 400,

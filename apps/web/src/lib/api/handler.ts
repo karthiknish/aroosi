@@ -1,11 +1,12 @@
 /**
- * Robust API Handler Utilities for Next.js 16
+ * Robust API Handler Utilities for Next.js
  * Provides standardized error handling, validation, rate limiting, and security
+ * 
+ * This is the CANONICAL source for API utilities. Other files should re-export from here.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z, ZodError, ZodSchema } from "zod";
-import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import { requireAuth, AuthError, AuthPayload } from "@/lib/auth/requireAuth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import {
@@ -15,13 +16,157 @@ import {
 } from "@/lib/utils/securityHeaders";
 
 // ============================================================================
+// Normalized User Type (Unified across all auth patterns)
+// ============================================================================
+
+/**
+ * Normalized user object that provides consistent property names across all auth patterns.
+ * All three ID properties (id, uid, userId) are always available and identical.
+ */
+export interface NormalizedUser {
+  /** Canonical user ID */
+  id: string;
+  /** Alias for Firebase compatibility */
+  uid: string;
+  /** Alias for legacy compatibility */
+  userId: string;
+  /** User email (null if not available) */
+  email: string | null;
+  /** User role */
+  role: string;
+  /** Whether user is admin */
+  isAdmin: boolean;
+}
+
+/**
+ * Normalizes various user object shapes into a consistent NormalizedUser.
+ * Handles AuthPayload, AuthenticatedUser, and raw Firebase decoded tokens.
+ */
+export function normalizeUser(user: unknown): NormalizedUser {
+  if (!user || typeof user !== "object") {
+    throw new Error("Invalid user object");
+  }
+  
+  const u = user as Record<string, unknown>;
+  
+  // Extract ID from various possible property names
+  const id = String(u.userId ?? u.uid ?? u.id ?? "");
+  if (!id) {
+    throw new Error("User object missing ID");
+  }
+  
+  const email = (u.email as string) || null;
+  const role = (u.role as string) || "user";
+  const isAdmin = role === "admin" || u.isAdmin === true;
+  
+  return {
+    id,
+    uid: id,
+    userId: id,
+    email,
+    role,
+    isAdmin,
+  };
+}
+
+// ============================================================================
+// Error Classes (Consolidated)
+// ============================================================================
+
+export enum ErrorCode {
+  // Validation
+  VALIDATION_ERROR = "VALIDATION_ERROR",
+  INVALID_REQUEST = "INVALID_REQUEST",
+  MISSING_FIELDS = "MISSING_FIELDS",
+  INVALID_FORMAT = "INVALID_FORMAT",
+  
+  // Auth
+  UNAUTHORIZED = "UNAUTHORIZED",
+  FORBIDDEN = "FORBIDDEN",
+  TOKEN_EXPIRED = "TOKEN_EXPIRED",
+  TOKEN_INVALID = "TOKEN_INVALID",
+  UNAUTHENTICATED = "UNAUTHENTICATED",
+  
+  // Resources
+  NOT_FOUND = "NOT_FOUND",
+  CONFLICT = "CONFLICT",
+  
+  // Rate limiting
+  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
+  
+  // Server
+  INTERNAL_ERROR = "INTERNAL_ERROR",
+  SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  DATABASE_ERROR = "DATABASE_ERROR",
+}
+
+export class ApiError extends Error {
+  public readonly statusCode: number;
+  public readonly code: ErrorCode | string;
+  public readonly details?: Record<string, unknown>;
+  public readonly correlationId?: string;
+
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: ErrorCode | string = ErrorCode.INTERNAL_ERROR,
+    details?: Record<string, unknown>,
+    correlationId?: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.statusCode = statusCode;
+    this.code = code;
+    this.details = details;
+    this.correlationId = correlationId;
+  }
+}
+
+export class ValidationError extends ApiError {
+  constructor(message: string, details?: Record<string, unknown>, correlationId?: string) {
+    super(message, 400, ErrorCode.VALIDATION_ERROR, details, correlationId);
+    this.name = "ValidationError";
+  }
+}
+
+export class AuthorizationError extends ApiError {
+  constructor(message: string = "Unauthorized", code: ErrorCode | string = ErrorCode.UNAUTHORIZED, correlationId?: string) {
+    super(message, code === ErrorCode.FORBIDDEN ? 403 : 401, code, undefined, correlationId);
+    this.name = "AuthorizationError";
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(resource: string = "Resource", correlationId?: string) {
+    super(`${resource} not found`, 404, ErrorCode.NOT_FOUND, undefined, correlationId);
+    this.name = "NotFoundError";
+  }
+}
+
+export class RateLimitError extends ApiError {
+  constructor(retryAfter?: number, correlationId?: string) {
+    super("Rate limit exceeded", 429, ErrorCode.RATE_LIMIT_EXCEEDED, 
+      retryAfter ? { retryAfter } : undefined, correlationId);
+    this.name = "RateLimitError";
+  }
+}
+
+export class DatabaseError extends ApiError {
+  constructor(message: string = "Database operation failed", correlationId?: string) {
+    super(message, 500, ErrorCode.DATABASE_ERROR, undefined, correlationId);
+    this.name = "DatabaseError";
+  }
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
 export interface ApiContext {
   correlationId: string;
   startTime: number;
-  user?: AuthenticatedUser | AuthPayload;
+  user?: NormalizedUser;
   request: NextRequest;
 }
 
@@ -221,15 +366,18 @@ export function createApiHandler<TBody = unknown>(
       if (options.requireAuth) {
         try {
           const auth = await requireAuth(request);
-          ctx.user = auth;
+          // Normalize the user object for consistent access
+          ctx.user = normalizeUser(auth);
         } catch (e) {
-          const authError = e as AuthError;
-          return applySecurityHeaders(
-            errorResponse(authError.message, authError.status, {
-              correlationId,
-              code: authError.code,
-            })
-          );
+          if (e instanceof AuthError) {
+            return applySecurityHeaders(
+              errorResponse(e.message, e.status, {
+                correlationId,
+                code: e.code,
+              })
+            );
+          }
+          throw e;
         }
       }
 
@@ -239,7 +387,7 @@ export function createApiHandler<TBody = unknown>(
                          request.headers.get("x-real-ip") || 
                          "anonymous";
         const identifier = ctx.user
-          ? `${options.rateLimit.identifier}_${(ctx.user as AuthPayload).userId || (ctx.user as AuthenticatedUser).id}`
+          ? `${options.rateLimit.identifier}_${ctx.user.id}`
           : `${options.rateLimit.identifier}_${clientIp}`;
         const rl = checkRateLimit(
           identifier,
@@ -292,9 +440,17 @@ export function createApiHandler<TBody = unknown>(
         return applySecurityHeaders(await options.onError(error, ctx));
       }
 
-      // Default error handling
-      console.error(`[API Error] ${correlationId}:`, error);
-      
+      // Handle known error types
+      if (error instanceof ApiError) {
+        return applySecurityHeaders(
+          errorResponse(error.message, error.statusCode, {
+            correlationId,
+            code: error.code,
+            ...(error.details || {}),
+          })
+        );
+      }
+
       // Handle Zod validation errors
       if (error instanceof ZodError) {
         return applySecurityHeaders(
@@ -317,6 +473,9 @@ export function createApiHandler<TBody = unknown>(
           })
         );
       }
+
+      // Log unexpected errors
+      console.error(`[API Error] ${correlationId}:`, error);
 
       // Generic error response
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -384,3 +543,10 @@ export function validateQueryParams<T>(
   const params = Object.fromEntries(request.nextUrl.searchParams.entries());
   return validateBody(params, schema);
 }
+
+// ============================================================================
+// Re-exports for backward compatibility
+// ============================================================================
+
+// Re-export AuthError from requireAuth for routes that catch it directly
+export { AuthError } from "@/lib/auth/requireAuth";

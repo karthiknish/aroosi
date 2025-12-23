@@ -33,7 +33,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import { ReportUserModal } from '../../components/ReportUserModal';
 import { getProfileById, type UserProfile } from '../../services/api/profile';
-import { likeUser, passUser } from '../../services/api/matches';
+import { likeUser, passUser, blockUser } from '../../services/api/matches';
 import { isUserShortlisted, toggleShortlist } from '../../services/api/engagement';
 import { sendInterest, checkInterestStatus } from '../../services/api/interests';
 import { getUserIcebreakerAnswers, type IcebreakerAnswer } from '../../services/api/icebreakers';
@@ -188,8 +188,12 @@ export default function ProfileDetailScreen({
                     text: 'Block',
                     style: 'destructive',
                     onPress: async () => {
-                        // await blockUser(userId); // Assuming blockUser exists
-                        onBack?.();
+                        try {
+                            await blockUser(userId);
+                            onBack?.();
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to block user');
+                        }
                     }
                 },
             ]
@@ -374,7 +378,17 @@ export default function ProfileDetailScreen({
                                     <Text style={styles.verifiedIcon}>✓</Text>
                                 </View>
                             )}
+                            {profile.isMutualInterest && (
+                                <View style={styles.matchBadge}>
+                                    <Text style={styles.matchBadgeText}>Mutual Match</Text>
+                                </View>
+                            )}
                         </View>
+                        {profile.isBlocked && (
+                            <View style={styles.blockedBadge}>
+                                <Text style={styles.blockedBadgeText}>You have blocked this user</Text>
+                            </View>
+                        )}
                         {profile.location?.city && (
                             <Text style={styles.location}>
                                 📍 {profile.location.city}
@@ -516,28 +530,30 @@ export default function ProfileDetailScreen({
             </ScrollView>
 
             {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.passButton]}
-                    onPress={handlePass}
-                >
-                    <Text style={styles.passIcon}>✕</Text>
-                </TouchableOpacity>
+            {!profile.isBlocked && (
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.passButton]}
+                        onPress={handlePass}
+                    >
+                        <Text style={styles.passIcon}>✕</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.superLikeButton]}
-                    onPress={handleSuperLike}
-                >
-                    <Text style={styles.superLikeIcon}>⭐</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.superLikeButton]}
+                        onPress={handleSuperLike}
+                    >
+                        <Text style={styles.superLikeIcon}>⭐</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.likeButton]}
-                    onPress={handleLike}
-                >
-                    <Text style={styles.likeIcon}>♥</Text>
-                </TouchableOpacity>
-            </View>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.likeButton]}
+                        onPress={handleLike}
+                    >
+                        <Text style={styles.likeIcon}>♥</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {/* Report User Modal */}
             <ReportUserModal
@@ -693,6 +709,32 @@ const styles = StyleSheet.create({
         fontSize: moderateScale(14),
         color: '#FFFFFF',
         fontWeight: '700',
+    },
+    matchBadge: {
+        backgroundColor: colors.success,
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
+        borderRadius: borderRadius.sm,
+        marginLeft: moderateScale(8),
+    },
+    matchBadgeText: {
+        color: '#FFFFFF',
+        fontSize: moderateScale(10),
+        fontWeight: fontWeight.bold,
+        textTransform: 'uppercase',
+    },
+    blockedBadge: {
+        backgroundColor: colors.error,
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
+        borderRadius: borderRadius.sm,
+        marginTop: moderateScale(4),
+        alignSelf: 'flex-start',
+    },
+    blockedBadgeText: {
+        color: '#FFFFFF',
+        fontSize: moderateScale(10),
+        fontWeight: fontWeight.bold,
     },
     location: {
         fontSize: responsiveFontSizes.base,
