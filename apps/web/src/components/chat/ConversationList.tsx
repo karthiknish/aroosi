@@ -99,10 +99,13 @@ export default function ConversationList({
           const otherUserId = otherParticipant?.userId || "";
 
           return {
+            matchId: conv.conversationId || conv._id || conv.id,
+            id: conv.id || conv._id,
             _id: conv._id,
             participants: conv.participants.map((p) => p.userId),
             lastMessage: conv.lastMessage
               ? {
+                  id: conv.lastMessage._id,
                   _id: conv.lastMessage._id,
                   conversationId: conv.conversationId,
                   fromUserId: "",
@@ -110,11 +113,12 @@ export default function ConversationList({
                   text: conv.lastMessage.content,
                   content: conv.lastMessage.content,
                   type: "text" as const,
-                  isRead: false, // Default to false, should be updated based on actual read status
+                  isRead: false,
                   createdAt: conv.lastMessage.timestamp,
                   _creationTime: conv.lastMessage.timestamp,
                 }
               : undefined,
+            updatedAt: conv.updatedAt,
             lastMessageAt: conv.lastMessageAt,
             unreadCount: conv.unreadCount,
             otherUser: {
@@ -211,9 +215,9 @@ export default function ConversationList({
   const handleConversationClick = useCallback(
     (conv: ConversationWithUser) => {
       onConversationSelect(
-        conv._id,
-        conv.otherUser._id,
-        conv.otherUser.fullName,
+        conv.id || conv._id || "",
+        conv.otherUser._id || "",
+        conv.otherUser.fullName || "User",
       );
     },
     [onConversationSelect],
@@ -306,13 +310,13 @@ export default function ConversationList({
             <AnimatePresence>
               {filteredConversations.map((conv) => (
                 <motion.div
-                  key={conv._id}
+                  key={conv.id || conv._id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   className={cn(
                     "font-medium text-sm truncate cursor-pointer p-2 rounded-lg transition-colors",
-                    selectedConversationId === conv._id
+                    selectedConversationId === (conv.id || conv._id)
                       ? "bg-primary-light/20"
                       : "hover:bg-secondary-light/10",
                     conv.unreadCount > 0 ? "text-neutral" : "text-neutral-light"
@@ -363,7 +367,7 @@ export default function ConversationList({
                         </h3>
                         <span className="text-xs text-neutral-light flex-shrink-0">
                           {conv.lastMessage
-                            ? formatMessageTime(conv.lastMessage._creationTime)
+                            ? formatMessageTime(Number(conv.lastMessage.createdAt || conv.lastMessage._creationTime))
                             : ""}
                         </span>
                       </div>

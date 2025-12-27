@@ -10,13 +10,22 @@ import {
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserCircle, ExternalLink, Users, Heart } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { UserCircle, ExternalLink, Users, Heart, Ban } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import type { ImageType } from "@/types/image";
-import type { Profile } from "@/types/profile";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
+import type { Profile } from "@aroosi/shared/types";
 
 function getAge(dob?: string) {
   if (!dob) return null;
@@ -32,23 +41,28 @@ function getAge(dob?: string) {
 export default function AdminMatchesPage() {
   // Cookie-auth; server will read HttpOnly cookies for admin APIs
   useAuthContext();
-  const [matches, setMatches] = useState<AdminProfileMatchesResult>([]);
+  const [matchesData, setMatchesData] = useState<AdminProfileMatchesResult>({
+    matches: [],
+    total: 0,
+    page: 1,
+    pageSize: 20,
+  });
   const [profileImages, setProfileImages] = useState<
-    Record<string, ImageType[]>
+    Record<string, ProfileImageInfo[]>
   >({});
   const [rootProfiles, setRootProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const matchesData = await fetchAdminAllMatches();
-      setMatches(matchesData);
+      const data = await fetchAdminAllMatches({ page, pageSize: 20 });
+      setMatchesData(data);
       // Root profile details
       const rootIds = Array.from(
-        new Set(matchesData.map((m) => m.profileId).filter(Boolean))
+        new Set(data.matches.map((m) => m.profileId).filter(Boolean))
       ) as string[];
       if (rootIds.length) {
         const fetched = await Promise.all(
@@ -72,7 +86,7 @@ export default function AdminMatchesPage() {
       }
       // Collect all unique profile IDs for images
       const allIds = new Set<string>();
-      matchesData.forEach((g) => {
+      data.matches.forEach((g) => {
         if (g.profileId) allIds.add(g.profileId as string);
         if (Array.isArray(g.matches))
           g.matches.forEach((m) => allIds.add(m._id));
@@ -96,7 +110,7 @@ export default function AdminMatchesPage() {
 
   // Load once on mount
   useEffect(() => {
-    void loadData();
+    void loadData(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -108,7 +122,7 @@ export default function AdminMatchesPage() {
       left: Profile | undefined;
       right: Profile | undefined;
     }[] = [];
-    for (const group of matches) {
+    for (const group of matchesData.matches) {
       const rootId = group.profileId;
       if (!rootId || !Array.isArray(group.matches)) continue;
       const rootProfile = rootProfiles[rootId];
@@ -129,10 +143,12 @@ export default function AdminMatchesPage() {
       }
     }
     return out;
-  }, [matches, rootProfiles]);
+  }, [matchesData.matches, rootProfiles]);
 
   // total matches count
   const totalMatches = matchPairs.length;
+  const totalPages = Math.ceil(matchesData.total / matchesData.pageSize);
+  const serverPage = matchesData.page;
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
@@ -141,12 +157,11 @@ export default function AdminMatchesPage() {
         <div>
           <h1 className="text-3xl font-bold mb-1">Matches Overview</h1>
           <p className="text-muted-foreground">
-            View all matches across user profiles. Total: {totalMatches} pairs
-            across {matches.length} source profiles.
+            View all matches across user profiles. Total: {matchesData.total} source profiles.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={loadData} disabled={loading}>
+          <Button variant="outline" onClick={() => loadData(serverPage)} disabled={loading}>
             Refresh Data
           </Button>
           <Link href="/admin/matches/create">
@@ -169,9 +184,13 @@ export default function AdminMatchesPage() {
       ) : (
         <>
           {matchPairs.length === 0 ? (
-            <div className="col-span-full">
-              <EmptyState message="No user match pairs found." />
-            </div>
+            <Empty className="col-span-full">
+              <EmptyIcon icon={Ban} />
+              <EmptyTitle>No user match pairs found</EmptyTitle>
+              <EmptyDescription>
+                There are currently no matches in the system for the selected criteria.
+              </EmptyDescription>
+            </Empty>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {matchPairs.map((pair) => {
@@ -302,6 +321,91 @@ export default function AdminMatchesPage() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-10">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (serverPage > 1) loadData(serverPage - 1);
+                      }}
+                      className={
+                        serverPage <= 1 ? "pointer-events-none opacity-50" : ""
+                      }
+                    />
+                  </PaginationItem>
+
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = serverPage;
+                    if (serverPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (serverPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = serverPage - 2 + i;
+                    }
+
+                    if (pageNum <= 0 || pageNum > totalPages) return null;
+
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          href="#"
+                          isActive={serverPage === pageNum}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            loadData(pageNum);
+                          }}
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+
+                  {totalPages > 5 && serverPage < totalPages - 2 && (
+                    <>
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            loadData(totalPages);
+                          }}
+                        >
+                          {totalPages}
+                        </PaginationLink>
+                      </PaginationItem>
+                    </>
+                  )}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (serverPage < totalPages) loadData(serverPage + 1);
+                      }}
+                      className={
+                        serverPage >= totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </>

@@ -15,7 +15,7 @@ import {
   isFeatureAvailable,
   type SubscriptionFeatures,
 } from "@/lib/utils/subscriptionUtils";
-import type { SubscriptionPlan } from "@/types/profile";
+import type { AppSubscriptionPlan as SubscriptionPlan } from "@aroosi/shared/types";
 
 interface SubscriptionGuardProps {
   children: React.ReactNode;

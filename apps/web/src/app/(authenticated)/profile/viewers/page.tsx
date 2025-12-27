@@ -24,9 +24,20 @@ const FILTERS: { key: ViewerFilter; label: string }[] = [
   { key: "month", label: "This Month" },
 ];
 
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(timestamp: number | string | Date): string {
+  const ts =
+    typeof timestamp === "number"
+      ? timestamp
+      : timestamp instanceof Date
+        ? timestamp.getTime()
+        : Number.isFinite(Number(timestamp))
+          ? Number(timestamp)
+          : Date.parse(timestamp);
+
+  if (!Number.isFinite(ts)) return "";
+
   const now = Date.now();
-  const diffMs = now - timestamp;
+  const diffMs = now - ts;
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
@@ -34,7 +45,7 @@ function formatRelativeTime(timestamp: number): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
-  return new Date(timestamp).toLocaleDateString("en-US", {
+  return new Date(ts).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });

@@ -110,10 +110,11 @@ export function QuickActions() {
       <CardContent className="pt-6">
         <div className="grid grid-cols-1 gap-3">
           {actions.map((action) => (
-            <button
+            <Button
               key={action.id}
+              variant="ghost"
               onClick={() => router.push(action.href)}
-              className={`group flex items-center justify-between w-full p-4 rounded-xl border transition-all duration-200 ${action.colorClass}`}
+              className={`group flex items-center justify-between w-full h-auto p-4 rounded-xl border transition-all duration-200 ${action.colorClass} hover:bg-transparent`}
             >
               <div className="flex items-center space-x-4">
                 <div className={`p-2 rounded-lg bg-base-light/60 ${action.iconColor}`}>
@@ -129,7 +130,7 @@ export function QuickActions() {
                 </div>
               </div>
               <ChevronRight className={`h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity ${action.iconColor}`} />
-            </button>
+            </Button>
           ))}
         </div>
       </CardContent>

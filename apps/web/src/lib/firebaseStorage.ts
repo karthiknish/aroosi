@@ -9,6 +9,7 @@ import {
   updateMetadata,
 } from "firebase/storage";
 import { AuthenticatedUser } from "@/lib/auth/firebaseAuth";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
 // Define storage paths
 export const STORAGE_PATHS = {
@@ -27,12 +28,19 @@ export async function uploadFile(
   file: File,
   path: string,
   metadata?: any
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     const storageRef = ref(storage, path);
     const snapshot = await uploadBytes(storageRef, file, metadata);
     const url = await getDownloadURL(snapshot.ref);
-    return { url, storageId: snapshot.ref.fullPath };
+    return { 
+      url, 
+      storageId: snapshot.ref.fullPath,
+      fileName: file.name,
+      size: file.size,
+      contentType: file.type,
+      uploadedAt: new Date().toISOString()
+    };
   } catch (error) {
     console.error("Error uploading file to Firebase Storage:", error);
     throw new Error("Failed to upload file");
@@ -44,7 +52,7 @@ export async function uploadProfileImage(
   userId: string,
   file: File,
   user: AuthenticatedUser
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     // Validate that the user is uploading their own image
     if (user.id !== userId) {
@@ -76,7 +84,7 @@ export async function uploadProfileImage(
 export async function uploadBlogImage(
   file: File,
   customFileName?: string
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     // Generate a unique filename if not provided
     const fileName =
@@ -102,7 +110,7 @@ export async function uploadVoiceMessage(
   userId: string,
   file: File,
   user: AuthenticatedUser
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     // Validate that the user is uploading their own voice message
     if (user.id !== userId) {
@@ -157,7 +165,7 @@ export async function deleteFile(storageId: string): Promise<void> {
 // List all files in a directory
 export async function listFiles(
   path: string
-): Promise<{ name: string; url: string; storageId: string }[]> {
+): Promise<ProfileImageInfo[]> {
   try {
     const listRef = ref(storage, path);
     const res = await listAll(listRef);
@@ -165,10 +173,14 @@ export async function listFiles(
     const files = await Promise.all(
       res.items.map(async (itemRef) => {
         const url = await getDownloadURL(itemRef);
+        const metadata = await getMetadata(itemRef);
         return {
-          name: itemRef.name,
+          fileName: itemRef.name,
           url,
           storageId: itemRef.fullPath,
+          size: metadata.size,
+          contentType: metadata.contentType,
+          uploadedAt: metadata.timeCreated
         };
       })
     );
@@ -208,14 +220,10 @@ export async function updateFileMetadata(
 // Get all profile images for a user
 export async function getProfileImages(
   userId: string
-): Promise<{ url: string; storageId: string }[]> {
+): Promise<ProfileImageInfo[]> {
   try {
     const path = STORAGE_PATHS.profileImages(userId);
-    const files = await listFiles(path);
-    return files.map((file) => ({
-      url: file.url,
-      storageId: file.storageId,
-    }));
+    return await listFiles(path);
   } catch (error) {
     console.error("Error getting profile images:", error);
     return [];

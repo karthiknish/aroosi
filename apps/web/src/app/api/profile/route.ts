@@ -18,7 +18,7 @@ import { profileSchema, createProfileSchema } from "@/lib/api/schemas";
 
 function isProfileWithEmail(
   profile: unknown
-): profile is import("@/types/profile").Profile {
+): profile is import("@aroosi/shared/types").Profile {
   return (
     typeof profile === "object" &&
     profile !== null &&

@@ -24,7 +24,7 @@ import {
   unreadMessageReminderTemplate,
   messagesDigestTemplate,
 } from "@/lib/emailTemplates";
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 
 export const Notifications = {
   async profileCreated(userEmail: string, profile: Profile) {

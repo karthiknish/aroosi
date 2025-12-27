@@ -6,7 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import { CulturalProfile } from "@/types/cultural";
+import type { CulturalProfile } from "@aroosi/shared/types";
 import { NextRequest } from "next/server";
 
 async function getCulturalProfile(userId: string): Promise<{ success: boolean; profile?: CulturalProfile; error?: string }> {

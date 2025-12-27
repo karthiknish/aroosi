@@ -6,7 +6,7 @@ Each helper returns an object with `subject` and `html` keys that can be passed 
 All emails use <contact@aroosi.app> as the "from" address via the default in sendEmail().
 */
 
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 // Keep templates as HTML strings to avoid importing react-dom/server into route modules
 
 type EmailPayload = {

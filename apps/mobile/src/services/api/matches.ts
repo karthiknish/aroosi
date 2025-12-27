@@ -3,38 +3,10 @@
  */
 
 import { api } from './client';
+import type { Match, MatchStatus, Like } from '@aroosi/shared';
 
-export type MatchStatus = 'pending' | 'matched' | 'rejected' | 'expired';
-
-export interface Match {
-    id: string;
-    matchedUserId: string;
-    matchedUser: {
-        id: string;
-        displayName: string | null;
-        photoURL: string | null;
-        age?: number;
-        bio?: string;
-        lastActive?: string;
-    };
-    status: MatchStatus;
-    matchedAt?: string;
-    createdAt: string;
-    lastMessage?: {
-        content: string;
-        createdAt: string;
-        senderId: string;
-    };
-    unreadCount: number;
-}
-
-export interface Like {
-    id: string;
-    userId: string;
-    likedUserId: string;
-    isSuperLike: boolean;
-    createdAt: string;
-}
+// Re-export types for convenience
+export type { Match, MatchStatus, Like } from '@aroosi/shared';
 
 /**
  * Get all matches

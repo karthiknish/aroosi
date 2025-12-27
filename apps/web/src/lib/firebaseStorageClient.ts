@@ -1,17 +1,18 @@
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { v4 as uuidv4 } from "uuid";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
 // Upload a file to Firebase Storage with progress tracking
 export async function uploadFileWithProgress(
   file: File,
   path: string,
   onProgress?: (progress: number) => void
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     const storageRef = ref(storage, path);
     const uploadTask = uploadBytesResumable(storageRef, file);
-    return await new Promise<{ url: string; storageId: string }>((resolve, reject) => {
+    return await new Promise<ProfileImageInfo>((resolve, reject) => {
       uploadTask.on("state_changed", (snap) => {
         if (onProgress) {
           const progress = (snap.bytesTransferred / snap.totalBytes) * 100;
@@ -23,7 +24,14 @@ export async function uploadFileWithProgress(
       }, async () => {
         try {
           const url = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve({ url, storageId: uploadTask.snapshot.ref.fullPath });
+          resolve({ 
+            url, 
+            storageId: uploadTask.snapshot.ref.fullPath,
+            fileName: file.name,
+            size: file.size,
+            contentType: file.type,
+            uploadedAt: new Date().toISOString()
+          });
         } catch (e) {
           reject(new Error("Failed to obtain download URL"));
         }
@@ -40,7 +48,7 @@ export async function uploadProfileImage(
   userId: string,
   file: File,
   onProgress?: (progress: number) => void
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     // Generate a unique filename
     const timestamp = Date.now();
@@ -60,7 +68,7 @@ export async function uploadBlogImage(
   file: File,
   customFileName?: string,
   onProgress?: (progress: number) => void
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     // Generate a unique filename if not provided
     const fileName = customFileName || `${Date.now()}_${uuidv4()}_${file.name}`;
@@ -78,7 +86,7 @@ export async function uploadVoiceMessage(
   userId: string,
   file: File,
   onProgress?: (progress: number) => void
-): Promise<{ url: string; storageId: string }> {
+): Promise<ProfileImageInfo> {
   try {
     // Generate a unique filename
     const timestamp = Date.now();

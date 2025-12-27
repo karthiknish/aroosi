@@ -42,9 +42,9 @@ export function computeMissingRequiredFields(
 export function buildProfilePayload(
   cleanedData: Record<string, unknown>,
   normalizedPhone?: string
-): Partial<import("@/types/profile").ProfileFormValues> {
+): Partial<import("@aroosi/shared/types").ProfileFormValues> {
   return {
-    ...(cleanedData as unknown as import("@/types/profile").ProfileFormValues),
+    ...(cleanedData as unknown as import("@aroosi/shared/types").ProfileFormValues),
     profileFor: (cleanedData.profileFor ?? "self") as "self" | "friend" | "family",
     dateOfBirth: String(cleanedData.dateOfBirth ?? ""),
     partnerPreferenceCity: Array.isArray(cleanedData.partnerPreferenceCity)

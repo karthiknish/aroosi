@@ -6,10 +6,11 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
-interface IcebreakerQuestionDoc {
+import type { Icebreaker } from "@aroosi/shared/types";
+
+// Keep internal doc interface but align with shared fields
+interface IcebreakerQuestionDoc extends Omit<Icebreaker, "id" | "question"> {
   text: string;
-  active?: boolean;
-  category?: string;
   weight?: number;
   createdAt?: number;
 }
@@ -109,6 +110,7 @@ export const GET = createApiHandler(
       return successResponse(
         picked.map((q) => ({
           ...q,
+          question: q.text,
           answered: answeredMap.has(q.id),
           answer: answeredMap.get(q.id) || undefined,
         })),

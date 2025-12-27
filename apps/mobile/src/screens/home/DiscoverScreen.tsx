@@ -178,7 +178,10 @@ export default function DiscoverScreen() {
 
     // Handle profile press
     const handleProfilePress = useCallback((profile: RecommendedProfile) => {
-        navigation.navigate('ProfileDetail', { userId: profile.id });
+        const profileId = profile.id || profile.userId;
+        if (profileId) {
+            navigation.navigate('ProfileDetail', { userId: profileId });
+        }
     }, [navigation]);
 
     // Apply filters
@@ -296,7 +299,7 @@ export default function DiscoverScreen() {
                 <FlatList
                     data={profiles}
                     renderItem={renderItem}
-                    keyExtractor={item => item.id}
+                    keyExtractor={(item, index) => item.id || item.userId || `profile-${index}`}
                     numColumns={2}
                     contentContainerStyle={styles.gridContent}
                     columnWrapperStyle={styles.gridRow}

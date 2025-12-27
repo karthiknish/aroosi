@@ -457,18 +457,19 @@ export default function CustomSignupForm({
               ) : null}
               
               <div className="flex flex-col items-center gap-4 mt-4">
-                <button
+                <Button
                   type="button"
+                  variant="link"
                   onClick={handleResend}
                   disabled={secondsLeft > 0 || resendLoading || isLoading}
-                  className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline font-sans"
+                  className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline font-sans h-auto p-0"
                 >
                   {resendLoading
                     ? "Resending..."
                     : secondsLeft > 0
                       ? `Resend code in ${secondsLeft}s`
                       : "Resend code"}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -488,9 +489,10 @@ export default function CustomSignupForm({
             </Button>
 
             <div className="text-center">
-              <button
+              <Button
                 type="button"
-                className="text-sm text-neutral-light hover:text-primary transition-colors font-sans"
+                variant="link"
+                className="text-sm text-neutral-light hover:text-primary transition-colors font-sans h-auto p-0"
                 onClick={() => {
                   setNeedsVerification(false);
                   setVerificationCode("");
@@ -502,7 +504,7 @@ export default function CustomSignupForm({
                 disabled={isLoading}
               >
                 Back to sign up
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -544,10 +546,12 @@ export default function CustomSignupForm({
                       passwordsMatch ? "border-success focus:ring-success/20" : ""
                     }`}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-light hover:text-neutral-dark"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-light hover:text-neutral-dark hover:bg-transparent"
                     disabled={isLoading}
                   >
                     {showPassword ? (
@@ -555,7 +559,7 @@ export default function CustomSignupForm({
                     ) : (
                       <Eye className="h-4 w-4" />
                     )}
-                  </button>
+                  </Button>
                 </div>
                 {fieldErrors.password && (
                   <p className="text-xs text-danger font-sans">{fieldErrors.password}</p>
@@ -579,10 +583,12 @@ export default function CustomSignupForm({
                       passwordsMatch ? "border-success focus:ring-success/20" : ""
                     }`}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-light hover:text-neutral-dark"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-light hover:text-neutral-dark hover:bg-transparent"
                     disabled={isLoading}
                   >
                     {showConfirmPassword ? (
@@ -590,7 +596,7 @@ export default function CustomSignupForm({
                     ) : (
                       <Eye className="h-4 w-4" />
                     )}
-                  </button>
+                  </Button>
                 </div>
                 {passwordsFilled && !fieldErrors.confirmPassword && (
                   <p className={`text-[10px] font-medium font-sans ${passwordsMatch ? "text-success" : "text-danger"}`}>

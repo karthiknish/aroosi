@@ -1,4 +1,4 @@
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 
 type MarketingEmailPayload = {
   subject: string;

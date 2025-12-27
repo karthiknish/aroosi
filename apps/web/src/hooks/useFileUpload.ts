@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
+import { uploadProfileImageWithProgress } from "@/lib/utils/imageUtil";
 
 interface UploadProgress {
   progress: number;
@@ -30,43 +31,35 @@ export function useFileUpload({ onUploadComplete, onUploadError }: UseFileUpload
         return;
       }
 
+      if (uploadType !== "profileImage") {
+        const errorMsg = `Unsupported upload type: ${uploadType}`;
+        setUploadProgress({ progress: 0, isUploading: false, error: errorMsg });
+        onUploadError?.(errorMsg);
+        throw new Error(errorMsg);
+      }
+
       setUploadProgress({ progress: 0, isUploading: true, error: null });
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-  formData.append("userId", user.uid);
+        const result = await uploadProfileImageWithProgress(
+          file,
+          (loaded, total) => {
+            const percent = total > 0 ? Math.round((loaded / total) * 100) : 0;
+            setUploadProgress((prev) => ({
+              ...prev,
+              progress: Math.max(0, Math.min(100, percent)),
+              isUploading: true,
+              error: null,
+            }));
+          }
+        );
 
-        // Determine the API endpoint based on upload type
-        let endpoint = "";
-        switch (uploadType) {
-          case "profileImage":
-            endpoint = "/api/profile-images/firebase";
-            break;
-          case "blogImage":
-            endpoint = "/api/images/blog";
-            break;
-          case "voiceMessage":
-            endpoint = "/api/voice-messages/firebase";
-            break;
-          default:
-            endpoint = "/api/profile-images/firebase";
-        }
-
-        const response = await fetch(endpoint, {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || "Upload failed");
-        }
+        const url = result?.url || "";
+        const storageId = String(result?.imageId || "");
 
         setUploadProgress({ progress: 100, isUploading: false, error: null });
-        onUploadComplete?.({ url: result.url, storageId: result.storageId });
-        return { url: result.url, storageId: result.storageId };
+        onUploadComplete?.({ url, storageId });
+        return { url, storageId };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Upload failed";
         setUploadProgress({ progress: 0, isUploading: false, error: errorMsg });

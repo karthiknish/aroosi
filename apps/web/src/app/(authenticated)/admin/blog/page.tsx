@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -22,7 +22,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Edit, Trash2, Eye, Grid, List } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Search, Plus, Edit, Trash2, Eye, Grid, List, FileText } from "lucide-react";
 
 export default function AdminBlogPage() {
   // Cookie-auth only; remove token from context
@@ -31,23 +41,29 @@ export default function AdminBlogPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
 
   // Use react-query to fetch blogs
   const {
-    data: blogs = [],
+    data: blogData = { posts: [], total: 0, page: 0, pageSize: 10 },
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery<BlogPost[]>({
+  } = useQuery({
     // query is keyed without token now
-    queryKey: ["adminBlogs"],
+    queryKey: ["adminBlogs", page, searchTerm],
     // Server will read HttpOnly cookies and authorize
-    queryFn: () => fetchAdminBlogPosts({ token: "" }),
+    queryFn: () => fetchAdminBlogPosts({ token: "", page, pageSize }),
     enabled: isLoaded && isAdmin,
   });
 
-  // Filter blogs based on search term
+  const blogs = blogData.posts;
+
+  // Filter blogs based on search term (if not already filtered by server)
+  // Note: The server API currently doesn't support 'search' param for blog posts, 
+  // so we still do client-side filtering on the current page's results.
   const filteredBlogs = blogs.filter(
     (blog) =>
       blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,6 +72,8 @@ export default function AdminBlogPage() {
         cat.toLowerCase().includes(searchTerm.toLowerCase()),
       ),
   );
+
+  const totalPages = Math.ceil(blogData.total / pageSize);
 
   // Handle bulk selection
   const handleSelectAll = () => {
@@ -203,121 +221,136 @@ export default function AdminBlogPage() {
 
       {/* Content */}
       {filteredBlogs.length === 0 ? (
-        <EmptyState
-          message={
-            searchTerm ? "No posts match your search." : "No blog posts found."
-          }
-          className="py-16"
-        />
+        <Empty className="py-16">
+          <EmptyIcon icon={FileText} />
+          <EmptyTitle>
+            {searchTerm ? "No posts match your search" : "No blog posts found"}
+          </EmptyTitle>
+          <EmptyDescription>
+            {searchTerm 
+              ? "Try adjusting your search terms to find what you're looking for." 
+              : "Get started by creating your first blog post."}
+          </EmptyDescription>
+          {!searchTerm && (
+            <Button asChild variant="outline" className="mt-4">
+              <Link href="/admin/blog/create">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Post
+              </Link>
+            </Button>
+          )}
+        </Empty>
       ) : viewMode === "table" ? (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <input
-                    type="checkbox"
-                    checked={selectedPosts.length === filteredBlogs.length}
-                    onChange={handleSelectAll}
-                    className="rounded"
-                  />
-                </TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Categories</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBlogs.map((blog) => (
-                <TableRow key={blog._id}>
-                  <TableCell>
+          <ScrollArea className="w-full overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
                     <input
                       type="checkbox"
-                      checked={selectedPosts.includes(blog._id!)}
-                      onChange={() => handleSelectPost(blog._id!)}
+                      checked={selectedPosts.length === filteredBlogs.length}
+                      onChange={handleSelectAll}
                       className="rounded"
                     />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      {blog.imageUrl && (
-                        <Image
-                          src={blog.imageUrl}
-                          alt={blog.title}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded object-cover"
-                        />
-                      )}
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {blog.title}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate max-w-xs">
-                          {blog.excerpt}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {blog.categories?.slice(0, 2).map((cat) => (
-                        <Badge
-                          key={cat}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {cat}
-                        </Badge>
-                      ))}
-                      {blog.categories && blog.categories.length > 2 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{blog.categories.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="bg-green-100 text-green-700">
-                      Published
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-gray-500">
-                    {blog.createdAt && formatDate(blog.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/blog/${blog.slug}`)}
-                        title="View post"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditClick(blog)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(blog._id!)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  </TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Categories</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="w-24">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredBlogs.map((blog) => (
+                  <TableRow key={blog._id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedPosts.includes(blog._id!)}
+                        onChange={() => handleSelectPost(blog._id!)}
+                        className="rounded"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        {blog.imageUrl && (
+                          <Image
+                            src={blog.imageUrl}
+                            alt={blog.title}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded object-cover"
+                          />
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {blog.title}
+                          </p>
+                          <p className="text-sm text-gray-500 truncate max-w-xs">
+                            {blog.excerpt}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {blog.categories?.slice(0, 2).map((cat) => (
+                          <Badge
+                            key={cat}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {cat}
+                          </Badge>
+                        ))}
+                        {blog.categories && blog.categories.length > 2 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{blog.categories.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="bg-green-100 text-green-700">
+                        Published
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {blog.createdAt && formatDate(blog.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/blog/${blog.slug}`)}
+                          title="View post"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditClick(blog)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(blog._id!)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -394,6 +427,84 @@ export default function AdminBlogPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page > 0) setPage(page - 1);
+                  }}
+                  className={page <= 0 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum = page;
+                if (page <= 2) pageNum = i;
+                else if (page >= totalPages - 3) pageNum = totalPages - 5 + i;
+                else pageNum = page - 2 + i;
+
+                if (pageNum < 0 || pageNum >= totalPages) return null;
+
+                return (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      href="#"
+                      isActive={page === pageNum}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPage(pageNum);
+                      }}
+                    >
+                      {pageNum + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+
+              {totalPages > 5 && page < totalPages - 3 && (
+                <>
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPage(totalPages - 1);
+                      }}
+                    >
+                      {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                </>
+              )}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page < totalPages - 1) setPage(page + 1);
+                  }}
+                  className={
+                    page >= totalPages - 1
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
     </div>

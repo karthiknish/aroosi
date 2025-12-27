@@ -164,7 +164,7 @@ export default function ShortlistsScreen() {
     }, [expandedId, notes]);
 
     // Format date
-    const formatDate = (timestamp: number) => {
+    const formatDate = (timestamp: string | number | Date) => {
         return new Date(timestamp).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',

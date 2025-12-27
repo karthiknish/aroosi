@@ -5,10 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
 import type { BlogPost } from "@/types/blog";
 import { fetchBlogPostBySlug, fetchBlogPosts } from "@/lib/blogUtil";
+import { FileQuestion } from "lucide-react";
 
 export default function BlogDetailClient({ slug }: { slug: string }) {
   const {
@@ -27,12 +28,12 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
     queryFn: async () => {
       if (!firstCategory) return [];
       try {
-        const posts = await fetchBlogPosts({
+        const response = await fetchBlogPosts({
           page: 0,
           pageSize: 6,
           category: firstCategory,
         });
-        return posts.filter((p: BlogPost) => p.slug !== slug).slice(0, 3);
+        return response.posts.filter((p: BlogPost) => p.slug !== slug).slice(0, 3);
       } catch {
         return [];
       }
@@ -65,11 +66,13 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
 
   if (!post) {
     return (
-      <EmptyState
-        message="Post not found"
-        description="The blog post you're looking for doesn't exist or was removed."
-        className="min-h-[50vh]"
-      />
+      <Empty className="min-h-[50vh]">
+        <EmptyIcon icon={FileQuestion} />
+        <EmptyTitle>Post not found</EmptyTitle>
+        <EmptyDescription>
+          The blog post you&apos;re looking for doesn&apos;t exist or was removed.
+        </EmptyDescription>
+      </Empty>
     );
   }
 

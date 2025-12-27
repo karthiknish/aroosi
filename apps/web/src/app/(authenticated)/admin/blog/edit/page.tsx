@@ -11,8 +11,9 @@ import type { BlogPost } from "@/types/blog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { useBlogAI } from "@/hooks/useBlogAI";
+import { FileQuestion } from "lucide-react";
 
 /**
  * Note: All admin blog routes now rely on cookie-based auth.
@@ -129,7 +130,13 @@ function AdminEditBlogPageInner() {
 
   if (!blogPost) {
     return (
-      <EmptyState message="Blog post not found." className="min-h-screen" />
+      <Empty className="min-h-screen">
+        <EmptyIcon icon={FileQuestion} />
+        <EmptyTitle>Blog post not found</EmptyTitle>
+        <EmptyDescription>
+          The blog post you are trying to edit could not be found. It may have been deleted.
+        </EmptyDescription>
+      </Empty>
     );
   }
 

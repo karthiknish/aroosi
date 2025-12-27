@@ -3,19 +3,10 @@
  */
 
 import { api } from './client';
+import type { Icebreaker, IcebreakerCategory, IcebreakerAnswer } from '@aroosi/shared';
 
-export interface Icebreaker {
-    id: string;
-    text: string;
-    category: string;
-}
-
-export interface IcebreakerCategory {
-    id: string;
-    name: string;
-    icon: string;
-    count: number;
-}
+// Re-export types for convenience
+export type { Icebreaker, IcebreakerCategory, IcebreakerAnswer } from '@aroosi/shared';
 
 /**
  * Get icebreaker categories
@@ -39,13 +30,6 @@ export async function getIcebreakers(category?: string) {
  */
 export async function getRandomIcebreaker() {
     return api.get<Icebreaker>('/icebreakers/random');
-}
-
-export interface IcebreakerAnswer {
-    questionId: string;
-    question: string;
-    answer: string;
-    answeredAt: string;
 }
 
 /**

@@ -1,35 +1,13 @@
 /**
  * Report API Service
- * Handle user reports for safety and moderation
+ * Handles user reporting and blocking
  */
 
 import { api } from './client';
+import type { ReportReason, ReportData, Report } from '@aroosi/shared';
 
-export type ReportReason = 
-    | 'harassment'
-    | 'inappropriate_content'
-    | 'fake_profile'
-    | 'spam'
-    | 'underage'
-    | 'threatening_behavior'
-    | 'other';
-
-export interface ReportData {
-    reportedUserId: string;
-    reason: ReportReason;
-    description?: string;
-    screenshots?: string[];
-}
-
-export interface Report {
-    id: string;
-    reportedUserId: string;
-    reporterId: string;
-    reason: ReportReason;
-    description?: string;
-    status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
-    createdAt: string;
-}
+// Re-export types for convenience
+export type { ReportReason, ReportData, Report } from '@aroosi/shared';
 
 /**
  * Human-readable labels for report reasons
@@ -37,7 +15,8 @@ export interface Report {
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
     harassment: 'Harassment or Bullying',
     inappropriate_content: 'Inappropriate Photos/Content',
-    fake_profile: 'Fake Profile or Scam',
+    fake_profile: 'Fake Profile',
+    scam: 'Scam or Fraud',
     spam: 'Spam or Advertising',
     underage: 'Appears Underage',
     threatening_behavior: 'Threatening Behavior',

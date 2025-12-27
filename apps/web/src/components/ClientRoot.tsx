@@ -49,25 +49,27 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
       <Toaster
         position="bottom-right"
         toastOptions={{
+          className: "aroosi-toast",
           style: {
-            background: "hsl(var(--neutral-dark) / 0.9)",
+            background: "hsl(var(--neutral-dark) / 0.95)",
             color: "hsl(var(--base-light))",
             border: "1px solid hsl(var(--base-light) / 0.1)",
-            borderRadius: "var(--radius)",
+            borderRadius: "1rem",
             fontSize: "14px",
             fontWeight: "500",
-            padding: "14px 18px",
+            padding: "16px 20px",
             fontFamily: "var(--font-family-sans)",
             boxShadow:
-              "0 4px 14px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.35)",
-            backdropFilter: "blur(8px)",
+              "0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(12px)",
           },
         }}
         theme="dark"
-        richColors={false}
+        richColors={true}
         closeButton={true}
         expand={true}
         visibleToasts={5}
+        gap={12}
         aria-live="polite"
       />
       <ChatBot />

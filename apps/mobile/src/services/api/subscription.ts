@@ -3,46 +3,28 @@
  */
 
 import { api } from './client';
+import type { 
+    Subscription, 
+    SubscriptionPlan, 
+    SubscriptionTier, 
+    SubscriptionStatus,
+    SubscriptionStatusInfo 
+} from '@aroosi/shared';
 
-export type SubscriptionTier = 'free' | 'plus' | 'gold' | 'platinum';
-export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial';
-
-export interface Subscription {
-    id: string;
-    tier: SubscriptionTier;
-    status: SubscriptionStatus;
-    features: string[];
-    startDate: string;
-    endDate?: string;
-    autoRenew: boolean;
-}
-
-export interface SubscriptionPlan {
-    id: string;
-    name: string;
-    tier: SubscriptionTier;
-    price: {
-        monthly: number;
-        yearly: number;
-        currency: string;
-    };
-    features: string[];
-    popular?: boolean;
-}
+// Re-export types for convenience
+export type { 
+    Subscription, 
+    SubscriptionPlan, 
+    SubscriptionTier, 
+    SubscriptionStatus,
+    SubscriptionStatusInfo 
+} from '@aroosi/shared';
 
 /**
  * Get current subscription
  */
 export async function getSubscription() {
     return api.get<Subscription>('/subscription');
-}
-
-// Extended status for UI display
-export interface SubscriptionStatusInfo {
-    plan: SubscriptionTier;
-    isPremium: boolean;
-    features: string[];
-    expiresAt?: string;
 }
 
 /**

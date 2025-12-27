@@ -27,27 +27,36 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Link from "next/link";
 import Image from "next/image";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 
 // Minimal local types for TS safety
-type AdminProfile = {
+type AdminProfile = Profile & {
   _id: string;
-  userId?: string;
-  fullName?: string;
-  city?: string;
-  phoneNumber?: string;
-  dateOfBirth?: string;
-  banned?: boolean;
-  subscriptionPlan?: string;
-  subscriptionExpiresAt?: number;
 };
-
-type ImageType = { _id: string; url: string | null };
 
 const statusOptions = [
   { label: "All", value: "all" },
@@ -136,7 +145,7 @@ export default function AdminProfilePage() {
         plan: planFilter,
       });
 
-      const profilesForImages = profiles.map((p: AdminProfile) => ({
+      const profilesForImages = profiles.map((p: any) => ({
         _id: p._id,
         userId: p.userId || p._id,
       }));
@@ -158,12 +167,12 @@ export default function AdminProfilePage() {
     staleTime: 20000,
   });
 
-  const profiles: AdminProfile[] = React.useMemo(
-    () => (data?.profiles as AdminProfile[]) || [],
+  const profiles: any[] = React.useMemo(
+    () => (data?.profiles as any[]) || [],
     [data]
   );
-  const profileImages: Record<string, ImageType[]> =
-    (data?.profileImages as Record<string, ImageType[]>) || {};
+  const profileImages: Record<string, ProfileImageInfo[]> =
+    (data?.profileImages as Record<string, ProfileImageInfo[]>) || {};
 
   const total: number = (data?.total as number) || 0;
   const serverPage: number = (data?.page as number) || page;
@@ -240,8 +249,8 @@ export default function AdminProfilePage() {
             {/* Search Input */}
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                <Input
                   type="text"
                   placeholder="Search by name, city, or phone..."
                   className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -259,20 +268,23 @@ export default function AdminProfilePage() {
               >
                 Status:
               </label>
-              <select
-                id="profile-status-select"
-                className="border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              <Select
                 value={status}
-                onChange={(e) =>
-                  setStatus(e.target.value as "all" | "active" | "banned")
+                onValueChange={(value) =>
+                  setStatus(value as "all" | "active" | "banned")
                 }
               >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="profile-status-select" className="w-[120px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Results Count */}
@@ -301,29 +313,67 @@ export default function AdminProfilePage() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={loading || serverPage <= 1}
-                className="min-w-[70px]"
-              >
-                Previous
-              </Button>
-              <div className="px-3 py-1 text-sm border rounded">
-                {serverPage}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={loading || serverPage >= totalPages}
-                className="min-w-[70px]"
-              >
-                Next
-              </Button>
-            </div>
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (serverPage > 1) setPage(serverPage - 1);
+                    }}
+                    className={cn(
+                      "cursor-pointer",
+                      (loading || serverPage <= 1) && "pointer-events-none opacity-50"
+                    )}
+                  />
+                </PaginationItem>
+                
+                {/* Simple page numbers - can be enhanced with ellipsis logic if needed */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  // Show pages around current page
+                  let pageNum = serverPage;
+                  if (serverPage <= 3) pageNum = i + 1;
+                  else if (serverPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                  else pageNum = serverPage - 2 + i;
+                  
+                  if (pageNum <= 0 || pageNum > totalPages) return null;
+                  
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        isActive={serverPage === pageNum}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(pageNum);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+
+                {totalPages > 5 && serverPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (serverPage < totalPages) setPage(serverPage + 1);
+                    }}
+                    className={cn(
+                      "cursor-pointer",
+                      (loading || serverPage >= totalPages) && "pointer-events-none opacity-50"
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         </div>
 
@@ -402,16 +452,18 @@ export default function AdminProfilePage() {
                 className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 group relative overflow-hidden flex flex-col"
               >
                 {/* Edit Button */}
-                <button
+                <Button
                   type="button"
-                  className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-white hover:shadow-md transition-all opacity-0 group-hover:opacity-100 border border-neutral-100"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-white hover:shadow-md transition-all opacity-0 group-hover:opacity-100 border border-neutral-100 h-8 w-8"
                   title="Edit Profile"
                   onClick={() =>
                     router.push(`/admin/profile/${profile._id}/edit`)
                   }
                 >
                   <Pencil className="w-4 h-4 text-neutral-600" />
-                </button>
+                </Button>
 
                 <div className="p-5 flex flex-col h-full">
                   {/* Profile Image */}

@@ -65,7 +65,7 @@ export default function AdminCreateProfilePage() {
             try {
               // Ensure dateOfBirth is a string
               const submitValues: Partial<
-                import("@/types/profile").ProfileFormValues
+                import("@aroosi/shared/types").ProfileFormValues
               > = {
                 ...values,
                 dateOfBirth: values.dateOfBirth,

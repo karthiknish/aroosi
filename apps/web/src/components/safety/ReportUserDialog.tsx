@@ -39,14 +39,19 @@ const reportReasons: { value: ReportReason; label: string; description: string }
     description: 'Sending repetitive or unwanted messages',
   },
   {
-    value: 'safety_concern',
+    value: 'threatening_behavior',
     label: 'Safety Concern',
     description: 'Behavior that makes you feel unsafe or uncomfortable',
   },
   {
-    value: 'inappropriate_behavior',
-    label: 'Inappropriate Behavior',
-    description: 'Behavior that violates community guidelines',
+    value: 'underage',
+    label: 'Underage User',
+    description: 'User appears to be under the minimum age requirement',
+  },
+  {
+    value: 'scam',
+    label: 'Scam or Fraud',
+    description: 'Suspicious activity or attempts to scam users',
   },
   {
     value: 'other',

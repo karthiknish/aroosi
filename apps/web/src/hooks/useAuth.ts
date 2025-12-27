@@ -2,10 +2,8 @@
 export { useFirebaseAuth as useAuth, useAuthContext } from "@/components/FirebaseAuthProvider";
 
 // Legacy types for backward compatibility
-export interface AuthUser {
-  id: string;
-  email: string;
-}
+import type { AuthUser } from "@aroosi/shared/types";
+export type { AuthUser } from "@aroosi/shared/types";
 
 export interface AuthState {
   user: AuthUser | null;

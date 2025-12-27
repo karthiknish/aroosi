@@ -1,7 +1,7 @@
 import "server-only";
 import React from "react";
 import ReactDOMServer from "react-dom/server";
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { ProfileCompletionReminder } from "@/emails/Marketing/ProfileCompletionReminder";
 import { RecommendedProfiles } from "@/emails/Marketing/RecommendedProfiles";
 

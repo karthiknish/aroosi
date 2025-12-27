@@ -1,25 +1,21 @@
 import { adminMessaging, adminDb as db } from '@/lib/firebaseAdminInit';
 import { v4 as uuid } from 'uuid';
+import type { InAppNotification } from "@aroosi/shared/types";
 
-export interface NotificationRecord {
-  id: string;
-  userId: string;
-  type: string;
-  title: string;
-  body: string;
-  data?: Record<string, any>;
-  createdAt: number;
-  readAt?: number;
-  sent?: boolean;
-  providerMessageId?: string;
-}
+// Local alias for shared type
+type NotificationRecord = InAppNotification;
 
 const COLLECTION = 'notifications';
 
-export async function createInAppNotification(payload: Omit<NotificationRecord, 'id' | 'createdAt'>) {
+export async function createInAppNotification(payload: Omit<NotificationRecord, 'id' | 'createdAt' | 'read'> & { read?: boolean }) {
   const now = Date.now();
   const id = uuid();
-  await db.collection(COLLECTION).doc(id).set({ ...payload, id, createdAt: now });
+  await db.collection(COLLECTION).doc(id).set({ 
+    read: false, // default
+    ...payload, 
+    id, 
+    createdAt: now 
+  });
   return { id, createdAt: now };
 }
 
@@ -41,7 +37,7 @@ export async function markNotificationsRead(userId: string, ids: string[]) {
   const ts = Date.now();
   for (const id of ids) {
     const ref = db.collection(COLLECTION).doc(id);
-    batch.update(ref, { readAt: ts });
+    batch.update(ref, { read: true, readAt: ts });
   }
   await batch.commit();
   return { updated: ids.length, readAt: ts };

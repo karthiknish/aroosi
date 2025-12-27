@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { notificationsAPI } from "@/lib/api/notifications";
 
 // Minimal OneSignal type definition supporting v15 and v16
 type AnyOS = any;
@@ -70,11 +70,7 @@ export function useOneSignal(): void {
       try {
         const id = await getPlayerIdCompat(os);
         if (id) {
-          await fetchWithFirebaseAuth("/api/push/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ playerId: id }),
-          });
+          await notificationsAPI.registerPushToken({ playerId: id, deviceType: "web" });
         }
       } catch (err) {
         console.error("push register (initial) failed", err);
@@ -85,17 +81,9 @@ export function useOneSignal(): void {
         try {
           const id = await getPlayerIdCompat(os);
           if (subscribed && id) {
-            await fetchWithFirebaseAuth("/api/push/register", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ playerId: id }),
-            });
+            await notificationsAPI.registerPushToken({ playerId: id, deviceType: "web" });
           } else if (!subscribed && id) {
-            await fetchWithFirebaseAuth("/api/push/register", {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ playerId: id }),
-            });
+            await notificationsAPI.unregisterPushToken({ playerId: id });
           }
         } catch (err) {
           console.error("push register/unregister failed", err);

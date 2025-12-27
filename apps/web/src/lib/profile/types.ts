@@ -1,1 +1,1 @@
-export type { Profile } from "@/types/profile";
+export type { Profile } from "@aroosi/shared/types";

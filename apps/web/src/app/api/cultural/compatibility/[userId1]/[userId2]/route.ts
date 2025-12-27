@@ -6,10 +6,10 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { NextRequest } from "next/server";
-import {
+import type {
   CulturalProfile,
   CulturalCompatibilityScore,
-} from "@/types/cultural";
+} from "@aroosi/shared/types";
 
 function calculateReligionCompatibility(profile1: CulturalProfile, profile2: CulturalProfile): { score: number; explanation: string } {
   if (!profile1.religion || !profile2.religion) {

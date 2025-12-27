@@ -44,7 +44,7 @@ type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'Icebreakers'
 
 interface IcebreakerWithAnswer extends Icebreaker {
     answer?: string;
-    answeredAt?: string;
+    answeredAt?: string | Date;
 }
 
 export default function IcebreakersScreen() {
@@ -201,7 +201,7 @@ export default function IcebreakersScreen() {
                     >
                         <View style={styles.questionContainer}>
                             <View style={[styles.statusDot, hasAnswer && styles.statusDotAnswered]} />
-                            <Text style={styles.questionText}>{item.text}</Text>
+                            <Text style={styles.questionText}>{item.text || item.question}</Text>
                         </View>
                         <Text style={styles.expandIcon}>{isExpanded ? '−' : '+'}</Text>
                     </TouchableOpacity>

@@ -20,16 +20,8 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import type { Profile } from "@/types/profile";
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 import { ErrorState } from "@/components/ui/error-state";
-
-type ImageType = {
-  _id: string;
-  url: string;
-  storageId: string;
-  fileName?: string;
-  uploadedAt?: number;
-};
 
 const ProfilePage: React.FC = (): React.ReactElement => {
   const {
@@ -81,7 +73,9 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   });
 
   // Fetch images
-  const { data: images = [], isLoading: imagesLoading } = useQuery<ImageType[]>(
+  const { data: images = [], isLoading: imagesLoading } = useQuery<
+    ProfileImageInfo[]
+  >(
     {
       queryKey: ["profileImages", profile?.userId],
       queryFn: async () => {
@@ -107,7 +101,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
         }
 
         if (Array.isArray(payload)) {
-          return payload as ImageType[];
+          return payload as ProfileImageInfo[];
         }
 
         if (
@@ -117,7 +111,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
           "images" in payload &&
           Array.isArray((payload as { images: unknown }).images)
         ) {
-          return (payload as { images: ImageType[] }).images;
+          return (payload as { images: ProfileImageInfo[] }).images;
         }
 
         return [];

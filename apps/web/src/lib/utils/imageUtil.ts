@@ -1,10 +1,10 @@
 import { postJson } from "@/lib/http/client";
 import { putJson } from "@/lib/http/client";
 // Firebase Storage migration helpers
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { auth, storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
 /**
  * Image utilities using the centralized HTTP client.
@@ -67,7 +67,7 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
-type UploadResult = { imageId: string; url?: string };
+type UploadResult = ProfileImageInfo & { imageId: string };
 
 async function registerFirebaseImageMetadata(args: {
   storageId: string;
@@ -76,7 +76,7 @@ async function registerFirebaseImageMetadata(args: {
   // (debug logs removed)
 
   // Call firebase metadata route (JSON branch) which persists to Firestore
-  const res = await fetchWithFirebaseAuth("/api/profile-images/firebase", {
+  const res = await fetch("/api/profile-images/firebase", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -85,23 +85,25 @@ async function registerFirebaseImageMetadata(args: {
       contentType: args.file.type,
       size: args.file.size,
     }),
+    credentials: "include",
   });
 
   // (debug logs removed)
   if (!res.ok) {
-    let txt = "";
-    try {
-      txt = await res.text();
-    } catch {}
-    throw new Error(txt || "Failed to save image metadata");
+    const json = (await res.json().catch(() => ({}))) as any;
+    throw new Error(
+      String(json?.message || json?.error || "Failed to save image metadata")
+    );
   }
-  const data = (await res.json().catch(() => ({}))) as {
-    imageId?: string;
-    url?: string;
-    storageId?: string;
+  const json = (await res.json().catch(() => ({}))) as any;
+  const data = (json?.data ?? json) as any;
+  const imageId = data?.imageId || data?.storageId || args.storageId;
+  return { 
+    ...data,
+    imageId, 
+    storageId: args.storageId,
+    url: data?.url
   };
-  const imageId = data.imageId || data.storageId || args.storageId;
-  return { imageId, url: data.url };
 }
 
 async function uploadViaFirebaseStorage(
@@ -158,7 +160,15 @@ async function uploadViaFirebaseStorage(
             file,
           });
           // prefer metadata url if provided
-          resolve({ imageId: meta.imageId, url: meta.url || url });
+          resolve({ 
+            ...meta,
+            url: meta.url || url || "",
+            storageId: path,
+            fileName: file.name,
+            size: file.size,
+            contentType: file.type,
+            uploadedAt: new Date().toISOString()
+          });
         } catch (e) {
           reject(e);
         }
@@ -209,11 +219,9 @@ export async function setMainProfileImage(imageId: string): Promise<void> {
 // Image list & delete utilities (server-backed)
 // ------------------------------------------------------------
 
-export type ProfileImageInfo = { url: string; storageId: string };
-
 /**
  * Fetch the authenticated user's profile images from the server.
- * Uses cookie session via fetchWithFirebaseAuth to ensure proper auth locally.
+ * Uses cookie session via `credentials: "include"`.
  */
 export async function fetchProfileImages(
   userId?: string
@@ -221,19 +229,18 @@ export async function fetchProfileImages(
   const url = userId
     ? `/api/profile-images/firebase?userId=${encodeURIComponent(userId)}`
     : "/api/profile-images/firebase";
-  const res = await fetchWithFirebaseAuth(url, {
+  const res = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
+    credentials: "include",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}) as any);
     throw new Error(err?.error || `HTTP ${res.status}`);
   }
-  const json = (await res.json().catch(() => ({}))) as {
-    success?: boolean;
-    images?: ProfileImageInfo[];
-  };
-  return Array.isArray(json.images) ? json.images : [];
+  const json = (await res.json().catch(() => ({}))) as any;
+  const images = (json?.data?.images ?? json?.images ?? []) as ProfileImageInfo[];
+  return Array.isArray(images) ? images : [];
 }
 
 /**
@@ -243,9 +250,10 @@ export async function deleteImageById(storageId: string): Promise<void> {
   const url = `/api/profile-images/firebase?storageId=${encodeURIComponent(
     storageId
   )}`;
-  const res = await fetchWithFirebaseAuth(url, {
+  const res = await fetch(url, {
     method: "DELETE",
     headers: { Accept: "application/json" },
+    credentials: "include",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({} as any));

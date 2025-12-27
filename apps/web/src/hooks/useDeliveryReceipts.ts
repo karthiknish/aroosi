@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { DeliveryStatus } from "@/components/chat/DeliveryStatus";
+import { deliveryReceiptsAPI } from "@/lib/api/deliveryReceipts";
+import { markConversationRead } from "@/lib/api/conversation";
 
 interface DeliveryReceipt {
   messageId: string;
@@ -43,22 +44,7 @@ export function useDeliveryReceipts({
   const sendDeliveryReceipt = useCallback(
     async (messageId: string, status: "delivered" | "read" | "failed") => {
       try {
-  const response = await fetchWithFirebaseAuth("/api/delivery-receipts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // Cookie-based session; no Authorization header
-    },
-    body: JSON.stringify({
-      messageId,
-      status,
-    }),
-  });
-
-        if (response.ok) {
-          const data: unknown = await response.json();
-          console.log("Delivery receipt sent:", data);
-        }
+        await deliveryReceiptsAPI.sendReceipt(messageId, status);
       } catch (error: unknown) {
         if (error instanceof Error) {
           console.error("Error sending delivery receipt:", error.message);
@@ -73,37 +59,21 @@ export function useDeliveryReceipts({
   // Fetch delivery receipts for conversation
   const fetchDeliveryReceipts = useCallback(async () => {
     try {
-  const response = await fetchWithFirebaseAuth(
-    `/api/delivery-receipts?conversationId=${encodeURIComponent(conversationId)}`,
-    {
-      headers: {
-        // Cookie-based session; no Authorization header
-      },
-    }
-  );
-
-      if (response.ok) {
-        const data: unknown = await response.json();
-        const receiptsByMessage: Record<string, DeliveryReceipt[]> = {};
-        if (
-          typeof data === "object" &&
-          data !== null &&
-          "deliveryReceipts" in data &&
-          Array.isArray(
-            (data as { deliveryReceipts: unknown }).deliveryReceipts,
-          )
-        ) {
-          (
-            data as { deliveryReceipts: DeliveryReceipt[] }
-          ).deliveryReceipts.forEach((receipt: DeliveryReceipt) => {
-            if (!receiptsByMessage[receipt.messageId]) {
-              receiptsByMessage[receipt.messageId] = [];
-            }
-            receiptsByMessage[receipt.messageId].push(receipt);
-          });
+      const list = await deliveryReceiptsAPI.getReceipts(conversationId);
+      const receiptsByMessage: Record<string, DeliveryReceipt[]> = {};
+      list.forEach((r) => {
+        const receipt: DeliveryReceipt = {
+          messageId: r.messageId,
+          userId: r.userId,
+          status: r.status,
+          timestamp: r.updatedAt,
+        };
+        if (!receiptsByMessage[receipt.messageId]) {
+          receiptsByMessage[receipt.messageId] = [];
         }
-        setReceipts(receiptsByMessage);
-      }
+        receiptsByMessage[receipt.messageId].push(receipt);
+      });
+      setReceipts(receiptsByMessage);
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error("Error fetching delivery receipts:", error.message);
@@ -166,16 +136,7 @@ export function useDeliveryReceipts({
   const markMessageAsRead = useCallback(
     async (messageId: string) => {
       try {
-  await fetchWithFirebaseAuth(
-    `/api/conversations/${encodeURIComponent(conversationId)}/mark-read`,
-    {
-      method: "POST",
-      headers: {
-        // Cookie-based session; no Authorization header
-        "Content-Type": "application/json",
-      },
-    }
-  );
+        await markConversationRead({ conversationId });
       } catch (e) {
         console.warn("markMessageAsRead failed, falling back to delivery receipt", e);
         await sendDeliveryReceipt(messageId, "read");

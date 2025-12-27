@@ -7,7 +7,7 @@ import {
   updateProfileById,
   deleteProfileById,
 } from "@/lib/admin/firestoreAdminProfiles";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 // (db import removed)
 
 function devLog(

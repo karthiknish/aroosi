@@ -1,7 +1,7 @@
 // Cultural and Religious Matching API Utilities
 // Follows the same pattern as other utility files in the codebase
 
-import {
+import type {
   CulturalProfile,
   CulturalProfileResponse,
   FamilyApprovalRequest,
@@ -13,8 +13,8 @@ import {
   CulturalMatchRecommendation,
   RecommendationsResponse,
   FamilyApprovalStatus,
-  SupervisedConversationStatus
-} from "@/types/cultural";
+  SupervisedConversationStatus,
+} from "@aroosi/shared/types";
 
 // API Response type following the pattern
 type ApiResponse<T> = {

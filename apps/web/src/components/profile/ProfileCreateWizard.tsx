@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import type { ProfileFormValues } from "@/types/profile";
-import type { ImageType } from "@/types/image";
+import type { ProfileFormValues } from "@aroosi/shared/types";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import ProfileFormStepBasicInfo from "./ProfileFormStepBasicInfo";
 import ProfileFormStepLocation from "./ProfileFormStepLocation";
 import ProfileFormStepCultural from "./ProfileFormStepCultural";
@@ -40,7 +40,7 @@ export default function ProfileCreateWizard({
   profileId = "",
 }: Props) {
   const [step, setStep] = useState(0);
-  const [uploadedImages, setUploadedImages] = useState<ImageType[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<ProfileImageInfo[]>([]);
 
   const rawForm = useForm<Partial<ProfileFormValues>>({
     mode: "onBlur",
@@ -56,19 +56,24 @@ export default function ProfileCreateWizard({
   const handleNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const handleBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  const handleImagesChanged = useCallback((images: ImageType[] | string[]) => {
+  const handleImagesChanged = useCallback(
+    (images: ProfileImageInfo[] | string[]) => {
     if (typeof images[0] === "string") {
       // If string[], do nothing or handle as needed
       return;
     }
-    setUploadedImages(images as ImageType[]);
-  }, []);
+      setUploadedImages(images as ProfileImageInfo[]);
+    },
+    []
+  );
 
   const handleImageDelete = useCallback(async (imageId: string) => {
-    setUploadedImages((prev) => prev.filter((img) => img.id !== imageId));
+    setUploadedImages((prev) =>
+      prev.filter((img) => img.storageId !== imageId)
+    );
   }, []);
 
-  const handleImageReorder = useCallback((newOrder: ImageType[]) => {
+  const handleImageReorder = useCallback((newOrder: ProfileImageInfo[]) => {
     setUploadedImages(newOrder);
   }, []);
 
@@ -80,7 +85,7 @@ export default function ProfileCreateWizard({
         ...data,
         profileImageIds:
           uploadedImages.length > 0
-            ? uploadedImages.map((img) => img.id)
+            ? uploadedImages.map((img) => img.storageId)
             : undefined,
       } as ProfileFormValues;
       void onSubmit(finalData);

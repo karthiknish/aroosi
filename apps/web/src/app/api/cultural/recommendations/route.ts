@@ -5,10 +5,10 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import {
+import type {
   CulturalProfile,
   CulturalMatchRecommendation,
-} from "@/types/cultural";
+} from "@aroosi/shared/types";
 
 function calculateCulturalMatchScore(userProfile: CulturalProfile, candidateProfile: CulturalProfile): number {
   let score = 0;

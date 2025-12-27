@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { useUnreadCounts } from "./useUnreadCounts";
 import { showErrorToast } from "@/lib/ui/toast";
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
+import { matchesAPI } from "@/lib/api/matches";
 
 export function useMatches(
   userId: string | undefined,
@@ -14,43 +14,15 @@ export function useMatches(
     {
       queryKey: ["matches", /* user inferred by cookie */ "self"],
       queryFn: async (): Promise<Profile[]> => {
-        const res = await fetchWithFirebaseAuth(`/api/matches`);
-        if (!res.ok) {
-          // Best-effort error surface
-          try {
-            const txt = await res.text();
-            if (txt) {
-              try {
-                const json = JSON.parse(txt);
-                const msg =
-                  (json?.error as string) ||
-                  (json?.message as string) ||
-                  `Failed to fetch matches (HTTP ${res.status})`;
-                showErrorToast?.(msg);
-              } catch {
-                showErrorToast?.(txt);
-              }
-            } else {
-              showErrorToast?.(`Failed to fetch matches (HTTP ${res.status})`);
-            }
-          } catch {
-            showErrorToast?.(`Failed to fetch matches (HTTP ${res.status})`);
-          }
+        try {
+          const res = await matchesAPI.getMatches();
+          // This endpoint returns a minimal Profile-like shape; cast to Profile for consumers.
+          return res as unknown as Profile[];
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Failed to fetch matches";
+          showErrorToast?.(msg);
           return [];
         }
-        const json = (await res.json().catch(() => ({}))) as unknown;
-        if (json && typeof json === "object") {
-          // Handle standard successResponse shape: { success: true, data: [...] }
-          if (Array.isArray((json as any).data)) {
-            return (json as any).data as Profile[];
-          }
-          // Fallback legacy: { matches: [...] }
-          if (Array.isArray((json as any).matches)) {
-            return (json as any).matches as Profile[];
-          }
-        }
-        if (Array.isArray(json)) return json as Profile[];
-        return [];
       },
       enabled: true,
     }

@@ -10,7 +10,7 @@ import {
   profileTTLManagerInstance,
   PROFILE_TTL_CONFIG,
 } from "@/lib/storage/profile-ttl-manager";
-import { Profile, ProfileFormValues } from "@/types/profile";
+import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
 import {
   getCurrentUserWithProfile,
   submitProfile,

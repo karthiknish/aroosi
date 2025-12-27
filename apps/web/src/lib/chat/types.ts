@@ -1,28 +1,9 @@
 /**
  * Shared chat types
  */
+import type { ReportReason, MessageType, Message } from "@aroosi/shared/types";
+export type { ReportReason };
+
 export type ChatConnectionStatus = "connected" | "connecting" | "disconnected";
 
-export type ReportReason =
-  | "harassment"
-  | "inappropriate_content"
-  | "spam"
-  | "other"
-  | string;
-
-export type MatchMessage = {
-  _id: string;
-  conversationId: string;
-  fromUserId: string;
-  toUserId: string;
-  text: string;
-  createdAt: number;
-  type?: "text" | "voice";
-  audioStorageId?: string | null;
-  duration?: number;
-  // Reply metadata (optional)
-  replyToMessageId?: string;
-  replyToText?: string; // denormalized snippet
-  replyToType?: "text" | "voice" | "image";
-  replyToFromUserId?: string;
-};
+export type MatchMessage = Message;

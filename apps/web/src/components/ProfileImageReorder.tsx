@@ -27,14 +27,15 @@ import { X as CloseIcon, Grip } from "lucide-react";
 // Use the correct import for the modal
 import ImageDeleteConfirmation from "@/components/ImageDeleteConfirmation";
 import ProfileImageModal from "@/components/ProfileImageModal";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { updateImageOrder } from "@/lib/utils/imageUtil";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 type Props = {
-  images: ImageType[];
+  images: ProfileImageInfo[];
   userId: string;
-  onReorder?: (newOrder: ImageType[]) => void;
-  renderAction?: (img: ImageType, idx: number) => React.ReactNode;
+  onReorder?: (newOrder: ProfileImageInfo[]) => void;
+  renderAction?: (img: ProfileImageInfo, idx: number) => React.ReactNode;
   onDeleteImage?: (imageId: string) => void;
   onOptimisticDelete?: (imageId: string) => void;
   isAdmin?: boolean;
@@ -57,7 +58,7 @@ const SortableImageBase = ({
   setModalState,
   onSetMain,
 }: {
-  img: ImageType;
+  img: ProfileImageInfo;
   dndId: string;
   onDeleteImage?: (id: string) => void;
   onOptimisticDelete?: (id: string) => void;
@@ -162,26 +163,28 @@ const SortableImageBase = ({
           aria-label={`View image ${imageIndex + 1}`}
           onClick={() => setModalState({ open: true, index: imageIndex })}
         >
-          <img
-            src={img.url.split("#")[0]}
-            alt="Profile"
-            loading="lazy"
-            className={"w-full h-full object-cover"}
-            onLoad={() => setLoaded(true)}
-            onError={(e) => {
-              // Attempt fallback using alt url encoded after hash (#alt=...)
-              try {
-                const hash = img.url.includes("#") ? img.url.split("#")[1] : "";
-                const params = new URLSearchParams(hash);
-                const alt = params.get("alt");
-                if (alt && (e.target as HTMLImageElement).src !== alt) {
-                  (e.target as HTMLImageElement).src = alt;
-                  return;
-                }
-              } catch {}
-              setError(true);
-            }}
-          />
+          <AspectRatio ratio={1 / 1} className="w-full h-full">
+            <img
+              src={img.url.split("#")[0]}
+              alt="Profile"
+              loading="lazy"
+              className={"w-full h-full object-cover"}
+              onLoad={() => setLoaded(true)}
+              onError={(e) => {
+                // Attempt fallback using alt url encoded after hash (#alt=...)
+                try {
+                  const hash = img.url.includes("#") ? img.url.split("#")[1] : "";
+                  const params = new URLSearchParams(hash);
+                  const alt = params.get("alt");
+                  if (alt && (e.target as HTMLImageElement).src !== alt) {
+                    (e.target as HTMLImageElement).src = alt;
+                    return;
+                  }
+                } catch {}
+                setError(true);
+              }}
+            />
+          </AspectRatio>
         </button>
       )}
       {/* Drag listeners are bound to the handle above */}
@@ -206,9 +209,9 @@ const SortableImageBase = ({
         onConfirm={async () => {
           // Optimistic delete: immediately remove from UI
           if (onOptimisticDelete) {
-            onOptimisticDelete(img.id);
+            onOptimisticDelete(img.storageId);
           }
-          await onDeleteImage?.(img.id);
+          await onDeleteImage?.(img.storageId);
           setShowDeleteConfirmation(false);
         }}
       />
@@ -234,7 +237,7 @@ export function ProfileImageReorder({
 
   // Controlled/uncontrolled mode fallback to avoid drift when parent doesn't reconcile promptly.
   // If onReorder is not provided, maintain an internal copy of images for rendering.
-  const [internalImages, setInternalImages] = useState<ImageType[] | null>(
+  const [internalImages, setInternalImages] = useState<ProfileImageInfo[] | null>(
     null
   );
 
@@ -245,10 +248,10 @@ export function ProfileImageReorder({
     }
   }, [images, onReorder]);
 
-  const currentImages: ImageType[] = internalImages ?? images;
+  const currentImages: ProfileImageInfo[] = internalImages ?? images;
 
   // Keep a snapshot of previous list to avoid stale closures for rollback on server errors
-  const prevImagesRef = useRef<ImageType[]>(currentImages);
+  const prevImagesRef = useRef<ProfileImageInfo[]>(currentImages);
 
   React.useEffect(() => {
     prevImagesRef.current = currentImages;
@@ -282,9 +285,8 @@ export function ProfileImageReorder({
   const dndIds: string[] = useMemo(() => {
     const seen = new Map<string, number>();
     return currentImages.map((img, idx) => {
-      // Base id selection order: id -> storageId -> hashed url -> fallback index
-      let base = String(img.id ?? "");
-      if (!base) base = String(img.storageId ?? "");
+      // Base id selection order: storageId -> hashed url -> fallback index
+      let base = String(img.storageId ?? "");
       if (!base) {
         try {
           // Deterministic short hash from URL for client-only items
@@ -353,13 +355,9 @@ export function ProfileImageReorder({
 
       // If modal is open, keep it anchored to the same image by id, recompute index
       if (modalState?.open) {
-        const anchorId = String(
-          currentImages[oldIndex]?.id ??
-            currentImages[oldIndex]?.storageId ??
-            ""
-        );
+        const anchorId = String(currentImages[oldIndex]?.storageId ?? "");
         const newIdxForAnchor = newOrdered.findIndex(
-          (im) => String(im.id ?? im.storageId ?? "") === anchorId
+          (im) => String(im.storageId ?? "") === anchorId
         );
         // Safely update modal index
         setModalState((prev) => ({
@@ -529,9 +527,19 @@ export function ProfileImageReorder({
                         if (!preUpload) {
                           (async () => {
                             try {
-                              const newOrderIds = reordered.map((im) =>
-                                im.storageId ? im.storageId : String(im.id)
-                              );
+                              const newOrderIds = reordered
+                                .map((im) => im.storageId)
+                                .filter(
+                                  (sid): sid is string =>
+                                    typeof sid === "string" && sid.length > 0
+                                );
+                              if (newOrderIds.length !== reordered.length) {
+                                showErrorToast(
+                                  null,
+                                  "Cannot update order yet. Some images are still pending upload."
+                                );
+                                return;
+                              }
                               const resp = await updateImageOrder({
                                 userId,
                                 imageIds: newOrderIds,
@@ -596,11 +604,13 @@ export function ProfileImageReorder({
                     style={{ width: 100, height: 100 }}
                     className="rounded-lg overflow-hidden shadow-lg"
                   >
-                    <img
-                      src={img.url}
-                      alt="Dragging"
-                      className="w-full h-full object-cover"
-                    />
+                    <AspectRatio ratio={1 / 1} className="w-full h-full">
+                      <img
+                        src={img.url}
+                        alt="Dragging"
+                        className="w-full h-full object-cover"
+                      />
+                    </AspectRatio>
                   </div>
                 );
               })()

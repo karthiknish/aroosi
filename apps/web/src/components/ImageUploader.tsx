@@ -4,8 +4,8 @@ import { subscriptionAPI } from "@/lib/api/subscription";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Upload } from "lucide-react";
-import type { ImageType } from "@/types/image";
+import { Upload, XCircle } from "lucide-react";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import Cropper, { Area } from "react-easy-crop";
 import { RotateCw, RotateCcw } from "lucide-react";
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { uploadProfileImageWithProgress } from "@/lib/utils/imageUtil";
+import { uploadProfileImageWithProgressCancellable } from "@/lib/utils/imageUtil";
 import {
   computeFileHash,
   DuplicateSession,
@@ -48,7 +48,7 @@ type ImageUploaderMode = "local" | "immediate";
 
 interface ImageUploaderProps {
   userId: string;
-  orderedImages: ImageType[];
+  orderedImages: ProfileImageInfo[];
   setIsUploading: (val: boolean) => void;
   disabled?: boolean;
   isUploading?: boolean;
@@ -57,7 +57,7 @@ interface ImageUploaderProps {
   fetchImages: () => Promise<unknown>;
   onStartUpload?: () => void;
   customUploadFile?: (file: File) => Promise<void>;
-  onOptimisticUpdate?: (newImage: ImageType) => void;
+  onOptimisticUpdate?: (newImage: ProfileImageInfo) => void;
   mode?: ImageUploaderMode;
 }
 
@@ -147,13 +147,15 @@ export function ImageUploader({
   const [aspect, setAspect] = useState<1 | 0.8 | 0.75>(1);
   const [rotate, setRotate] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [isClient, setIsClient] = useState(typeof window !== "undefined");
   const [plan, setPlan] = useState<string>("free");
   const [maxSizeBytes, setMaxSizeBytes] = useState<number>(
     CLIENT_PLAN_SIZE_LIMITS.free
   );
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string>("");
+  const [eta, setEta] = useState<string | null>(null);
+  const [uploadSpeed, setUploadSpeed] = useState<string | null>(null);
+  const cancelUploadRef = useRef<(() => void) | null>(null);
   const liveRegionRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch subscription plan once on mount
@@ -169,7 +171,6 @@ export function ImageUploader({
     };
   }, []);
 
-  useEffect(() => setIsClient(true), []);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -345,8 +346,7 @@ export function ImageUploader({
         }
 
         const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        const localImg: ImageType = {
-          id: tempId,
+        const localImg: ProfileImageInfo = {
           storageId: tempId,
           url: URL.createObjectURL(file),
           fileName: file.name,
@@ -375,30 +375,60 @@ export function ImageUploader({
         // Immediate upload with progress
         setStatusMessage("Uploading...");
         setUploadProgress(0);
-        console.log("[ImageUploader] Starting upload for file:", file.name, {
-          plan,
-          maxSizeBytes,
-        });
-        const json = await uploadProfileImageWithProgress(
+        setEta(null);
+        setUploadSpeed(null);
+        
+        const startTime = Date.now();
+        
+        const { promise, cancel } = uploadProfileImageWithProgressCancellable(
           file,
           (loaded, total) => {
-            const pct =
-              total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0;
+            const pct = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0;
             setUploadProgress(pct);
+            
+            // Calculate speed and ETA
+            const elapsedMs = Date.now() - startTime;
+            if (elapsedMs > 1000 && total > 0) {
+              const bytesPerMs = loaded / elapsedMs;
+              const remainingBytes = total - loaded;
+              const remainingMs = remainingBytes / bytesPerMs;
+              
+              // Format speed
+              const mbps = (bytesPerMs * 1000) / (1024 * 1024);
+              setUploadSpeed(`${mbps.toFixed(1)} MB/s`);
+              
+              // Format ETA
+              if (remainingMs > 0) {
+                const seconds = Math.ceil(remainingMs / 1000);
+                if (seconds < 60) {
+                  setEta(`${seconds}s remaining`);
+                } else {
+                  const mins = Math.floor(seconds / 60);
+                  const secs = seconds % 60;
+                  setEta(`${mins}m ${secs}s remaining`);
+                }
+              }
+            }
+
             if (liveRegionRef.current) {
               liveRegionRef.current.textContent = `Uploading ${pct}%`;
             }
           }
         );
+        
+        cancelUploadRef.current = cancel;
+        const json = await promise;
+        
         setUploadProgress(100);
         setStatusMessage("Processing...");
+        setEta(null);
+        setUploadSpeed(null);
 
         // Optimistic update
         if (onOptimisticUpdate && json?.imageId) {
-          const optimisticImage: ImageType = {
-            id: json.imageId,
-            url: json.url || "",
+          const optimisticImage: ProfileImageInfo = {
             storageId: json.imageId,
+            url: json.url || "",
             fileName: file.name,
           };
           onOptimisticUpdate(optimisticImage);
@@ -477,17 +507,45 @@ export function ImageUploader({
               </div>
               <div className="w-full space-y-3">
                 <div className="flex items-center justify-between text-xs text-neutral-light px-1">
-                  <span>{statusMessage || "Uploading"}</span>
-                  <span>{uploadProgress}%</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">{statusMessage || "Uploading"}</span>
+                    {pendingUpload && (
+                      <span className="text-[10px] opacity-70">
+                        {(pendingUpload.size / (1024 * 1024)).toFixed(1)} MB
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span>{uploadProgress}%</span>
+                    {eta && <span className="text-[10px] text-primary font-medium">{eta}</span>}
+                  </div>
                 </div>
-                <div className="w-full bg-neutral/10 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-neutral/10 rounded-full h-2 overflow-hidden relative">
                   <div
                     className="bg-primary h-2 rounded-full transition-all duration-150"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <div className="text-[11px] text-neutral-light">
-                  Please keep this tab open until processing finishes.
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] text-neutral-light">
+                    {uploadSpeed || "Please keep this tab open..."}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (cancelUploadRef.current) {
+                        cancelUploadRef.current();
+                        showErrorToast("Upload cancelled");
+                      }
+                    }}
+                    className="h-6 px-2 text-[10px] text-danger hover:text-danger hover:bg-danger/10"
+                  >
+                    <XCircle className="w-3 h-3 mr-1" />
+                    Cancel
+                  </Button>
                 </div>
               </div>
             </div>
@@ -554,7 +612,7 @@ export function ImageUploader({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
-            {isClient && imagePreview && (
+            {typeof window !== "undefined" && imagePreview && (
               <>
                 <div className="relative max-h-[60vh] h-[400px] w-full bg-neutral/5 rounded-lg border border-neutral/10">
                   <Cropper

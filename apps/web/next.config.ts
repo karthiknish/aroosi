@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
     ],
   },
   // Ensure proper transpilation for Safari compatibility
-  transpilePackages: [],
+  transpilePackages: ["@aroosi/shared"],
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),

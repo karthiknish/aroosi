@@ -6,7 +6,10 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import { SupervisedConversation, SupervisedConversationStatus } from "@/types/cultural";
+import type {
+  SupervisedConversation,
+  SupervisedConversationStatus,
+} from "@aroosi/shared/types";
 import { NextRequest } from "next/server";
 
 const updateSchema = z.object({

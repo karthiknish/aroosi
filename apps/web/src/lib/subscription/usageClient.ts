@@ -1,14 +1,9 @@
 // Lightweight client helper to invoke track-usage endpoint
+import { subscriptionAPI } from "@/lib/api/subscription";
+
 export async function trackFeatureUsageClient(feature: string, metadata?: Record<string, any>) {
   try {
-    const res = await fetch('/api/subscription/track-usage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feature, metadata })
-    });
-    if (!res.ok) {
-      return false;
-    }
+    await subscriptionAPI.trackUsage(feature, metadata);
     return true;
   } catch {
     return false;

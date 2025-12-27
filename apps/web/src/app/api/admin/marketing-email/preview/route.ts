@@ -14,7 +14,7 @@ import {
   successStoryTemplate,
   recommendedProfilesTemplate,
 } from "@/lib/marketingEmailTemplates";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 
 type PreviewBody = {
   templateKey?: string;

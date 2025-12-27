@@ -5,7 +5,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { signupTTLIntegration } from "@/lib/profile/signup-ttl-integration";
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 
 export const useSignupTTL = () => {
   const cacheProfileDraft = useMutation({

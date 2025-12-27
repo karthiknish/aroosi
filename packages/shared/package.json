@@ -7,12 +7,14 @@
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
-            "types": "./dist/index.d.ts",
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js"
+            "types": "./src/index.ts",
+            "import": "./src/index.ts",
+            "default": "./src/index.ts"
         },
         "./types": {
-            "types": "./src/types/index.ts"
+            "types": "./src/types/index.ts",
+            "import": "./src/types/index.ts",
+            "default": "./src/types/index.ts"
         }
     },
     "scripts": {

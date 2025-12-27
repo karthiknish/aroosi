@@ -13,9 +13,9 @@ import {
   fetchAdminProfileMatches,
 } from "@/lib/profile/adminProfileApi";
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { useQuery } from "@tanstack/react-query";
-import type { ProfileFormValues } from "@/types/profile";
+import type { ProfileFormValues } from "@aroosi/shared/types";
 import ProfileEditForm from "@/components/admin/ProfileEditForm";
 
 export default function AdminEditProfilePage() {

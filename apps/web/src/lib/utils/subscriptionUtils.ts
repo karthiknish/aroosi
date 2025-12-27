@@ -1,4 +1,4 @@
-import type { SubscriptionPlan } from "@/types/profile";
+import type { AppSubscriptionPlan as SubscriptionPlan } from "@aroosi/shared/types";
 
 export interface SubscriptionFeatures {
   // Basic features

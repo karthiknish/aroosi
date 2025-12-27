@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -33,6 +34,23 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { ConnectionIndicator } from "@/components/ui/offline-banner";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
@@ -470,55 +488,51 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           className="hidden md:flex items-center gap-2"
           aria-label="Primary Guest Navigation"
         >
-          <Link
-            href="/about"
-            className="block"
-            aria-current={pathname === "/about" ? "page" : undefined}
-          >
-            <Button
-              variant="ghost"
-              className="justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <Link href="/about" legacyBehavior passHref>
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    About
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link href="/how-it-works" legacyBehavior passHref>
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    How It Works
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+          <div className="flex items-center gap-2 ml-4">
+            <Link
+              href="/sign-in"
+              prefetch={false}
+              className="block"
+              aria-current={pathname.startsWith("/sign-in") ? "page" : undefined}
             >
-              About
-            </Button>
-          </Link>
-          <Link
-            href="/how-it-works"
-            className="block"
-            aria-current={pathname === "/how-it-works" ? "page" : undefined}
-          >
-            <Button
-              variant="ghost"
-              className="justify-start text-neutral-dark hover:text-primary hover:bg-primary/10"
+              <Button
+                variant="outline"
+                className="flex items-center gap-1.5 text-primary border-primary hover:bg-primary/10 hover:border-primary-dark"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>Sign In</span>
+              </Button>
+            </Link>
+            <Link
+              href="/"
+              prefetch={false}
+              className="block"
+              aria-current={pathname === "/" ? "page" : undefined}
             >
-              How It Works
-            </Button>
-          </Link>
-          <Link
-            href="/sign-in"
-            prefetch={false}
-            className="block"
-            aria-current={pathname.startsWith("/sign-in") ? "page" : undefined}
-          >
-            <Button
-              variant="outline"
-              className="flex items-center gap-1.5 text-primary border-primary hover:bg-primary/10 hover:border-primary-dark"
-            >
-              <LogIn className="h-4 w-4" />
-              <span>Sign In</span>
-            </Button>
-          </Link>
-          <Link
-            href="/"
-            prefetch={false}
-            className="block"
-            aria-current={pathname === "/" ? "page" : undefined}
-          >
-            <Button className="flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-white">
-              <UserPlus className="h-4 w-4" />
-              <span>Sign Up</span>
-            </Button>
-          </Link>
+              <Button className="flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-white">
+                <UserPlus className="h-4 w-4" />
+                <span>Sign Up</span>
+              </Button>
+            </Link>
+          </div>
         </nav>
       );
     }
@@ -530,152 +544,163 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
       .charAt(0)
       .toUpperCase();
 
-    const iconBtn = (
-      href: string,
-      IconComp: React.ComponentType<any>,
-      label: string,
-      opts: { onClick?: () => void; premiumTint?: boolean } = {}
-    ) => (
-      <Tooltip key={label}>
-        <TooltipTrigger asChild>
-          <Link href={href} onClick={opts.onClick} className="block">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={label}
-              className={
-                "h-10 w-10 rounded-xl text-neutral-light hover:text-primary hover:bg-primary/10 transition-colors" +
-                (opts.premiumTint ? " text-accent hover:text-accent" : "")
-              }
-            >
-              <IconComp className="h-5 w-5" />
-            </Button>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent>{label}</TooltipContent>
-      </Tooltip>
-    );
-
-    const items: React.ReactNode[] = [];
-
-    // Add connection indicator at the beginning
-    items.push(
-      <Tooltip key="connection">
-        <TooltipTrigger asChild>
-          <div className="flex items-center">
-            <ConnectionIndicator size="sm" />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>Network Status</TooltipContent>
-      </Tooltip>
-    );
-
-    items.push(iconBtn("/search", Search, "Search Profiles"));
-    items.push(iconBtn("/matches", Heart, "Matches"));
-    items.push(iconBtn("/engagement/quick-picks", Zap, "Quick Picks"));
-    items.push(iconBtn("/engagement/shortlists", Star, "Shortlists"));
-    if (isAdmin) items.push(iconBtn("/admin", ShieldUser, "Admin"));
-    if (profile) {
-      if (isPremium(profile.subscriptionPlan)) {
-        items.push(
-          iconBtn("/premium-settings", Gem, "Premium Settings", {
-            premiumTint: true,
-          })
-        );
-        items.push(
-          <Tooltip key="billing">
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Billing Portal"
-                className="h-10 w-10 rounded-xl text-neutral-light hover:text-primary hover:bg-primary/10 transition-colors"
-                onClick={async () => {
-                  try {
-                    const mod = await import("@/lib/api/subscription");
-                    const { subscriptionAPI } = mod;
-                    const { url } = await subscriptionAPI.openBillingPortal();
-                    if (url) window.location.assign(url);
-                  } catch {}
-                }}
-              >
-                <LayoutDashboard className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Billing Portal</TooltipContent>
-          </Tooltip>
-        );
-      } else {
-        // Upgrade CTA icon
-        items.push(
-          <Tooltip key="upgrade">
-            <TooltipTrigger asChild>
-              <Link href="/subscription" className="block">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Upgrade"
-                  className="h-10 w-10 rounded-xl text-primary hover:text-primary hover:bg-primary/10"
-                >
-                  <Star className="h-5 w-5" />
-                </Button>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>Upgrade</TooltipContent>
-          </Tooltip>
-        );
-      }
-    }
-    items.push(iconBtn("/usage", BarChart, "Usage"));
-    // Profile avatar
-    items.push(
-      <Tooltip key="profile">
-        <TooltipTrigger asChild>
-          <Link href="/profile" className="block" aria-label="Profile">
-            <Avatar className="h-10 w-10 border border-neutral/10 shadow-sm">
-              {avatarUrl ? (
-                <AvatarImage
-                  src={avatarUrl}
-                  alt={profile?.fullName || "Profile"}
-                  onError={(e) => {
-                    const img = e.currentTarget as HTMLImageElement;
-                    img.src = ""; // clear to let fallback show
-                  }}
-                />
-              ) : null}
-              <AvatarFallback className="bg-neutral/10 text-neutral-light text-sm font-medium">
-                {avatarInitial || <UserIcon className="h-4 w-4" />}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent>Profile</TooltipContent>
-      </Tooltip>
-    );
-    // Sign out
-    items.push(
-      <Tooltip key="signout">
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Sign Out"
-            className="h-10 w-10 rounded-xl text-neutral-light hover:text-danger hover:bg-danger/5"
-            onClick={() => signOut()}
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Sign Out</TooltipContent>
-      </Tooltip>
-    );
-
     return (
-      <TooltipProvider delayDuration={200} skipDelayDuration={0}>
-        <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
-          {items}
-        </nav>
-      </TooltipProvider>
+      <div className="hidden md:flex items-center gap-4">
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <Link href="/search" legacyBehavior passHref>
+                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>
+                <Heart className="h-4 w-4 mr-2 text-primary" />
+                Matches
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                  <li className="row-span-3">
+                    <NavigationMenuLink asChild>
+                      <Link
+                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-primary/50 to-primary p-6 no-underline outline-none focus:shadow-md"
+                        href="/matches"
+                      >
+                        <Heart className="h-6 w-6 text-white" />
+                        <div className="mb-2 mt-4 text-lg font-medium text-white">
+                          Your Matches
+                        </div>
+                        <p className="text-sm leading-tight text-white/90">
+                          View and manage your potential life partners.
+                        </p>
+                      </Link>
+                    </NavigationMenuLink>
+                  </li>
+                  <li>
+                    <Link href="/engagement/quick-picks" legacyBehavior passHref>
+                      <NavigationMenuLink className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                        <div className="text-sm font-medium leading-none flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-warning" />
+                          Quick Picks
+                        </div>
+                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                          Daily curated profiles just for you.
+                        </p>
+                      </NavigationMenuLink>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/engagement/shortlists" legacyBehavior passHref>
+                      <NavigationMenuLink className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                        <div className="text-sm font-medium leading-none flex items-center gap-2">
+                          <Star className="h-4 w-4 text-primary" />
+                          Shortlists
+                        </div>
+                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                          Profiles you've saved for later.
+                        </p>
+                      </NavigationMenuLink>
+                    </Link>
+                  </li>
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {isAdmin && (
+              <NavigationMenuItem>
+                <Link href="/admin" legacyBehavior passHref>
+                  <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "text-primary font-semibold")}>
+                    <ShieldUser className="h-4 w-4 mr-2" />
+                    Admin
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+            )}
+          </NavigationMenuList>
+        </NavigationMenu>
+
+        <div className="flex items-center gap-2">
+          <ConnectionIndicator size="sm" />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10 border border-neutral/10 shadow-sm">
+                  {avatarUrl ? (
+                    <AvatarImage
+                      src={avatarUrl}
+                      alt={profile?.fullName || "Profile"}
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-neutral/10 text-neutral-light text-sm font-medium">
+                    {avatarInitial || <UserIcon className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{profile?.fullName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {profile?.subscriptionPlan || "Free Plan"}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center">
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/usage" className="flex items-center">
+                  <BarChart className="mr-2 h-4 w-4" />
+                  <span>Usage</span>
+                </Link>
+              </DropdownMenuItem>
+              {isPremium(profile?.subscriptionPlan) ? (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/premium-settings" className="flex items-center text-accent">
+                      <Gem className="mr-2 h-4 w-4" />
+                      <span>Premium Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={async () => {
+                    try {
+                      const mod = await import("@/lib/api/subscription");
+                      const { subscriptionAPI } = mod;
+                      const { url } = await subscriptionAPI.openBillingPortal();
+                      if (url) window.location.assign(url);
+                    } catch {}
+                  }}>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    <span>Billing Portal</span>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem asChild>
+                  <Link href="/subscription" className="flex items-center text-primary">
+                    <Star className="mr-2 h-4 w-4" />
+                    <span>Upgrade to Premium</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => signOut()} className="text-danger focus:text-danger">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     );
   };
 

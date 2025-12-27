@@ -1,3 +1,6 @@
+import type { ReportReason, ReportData, Report } from "@aroosi/shared/types";
+export type { BlockedUser, BlockStatus, ReportData, ReportResponse, ReportReason, Report };
+
 interface BlockedUser {
   id: string; // block document id (blocker_blocked)
   blockerId: string; // current user id
@@ -18,34 +21,13 @@ interface BlockStatus {
   canInteract?: boolean; // derived convenience flag
 }
 
-type ReportReason =
-  | "inappropriate_content"
-  | "harassment"
-  | "fake_profile"
-  | "spam"
-  | "safety_concern"
-  | "inappropriate_behavior"
-  | "other";
-
-interface ReportData {
-  reportedUserId: string;
-  reason: ReportReason;
-  description?: string;
-}
-
-interface UserReport {
-  id: string;
-  reporterId: string;
-  reportedUserId: string;
-  reason: ReportReason;
-  description?: string;
-  status: "pending" | "reviewed" | "resolved";
-  createdAt: string;
-}
-
 interface ReportResponse {
   message: string;
 }
+
+// Local aliases for shared types
+type UserReport = Report;
+export type { UserReport };
 
 class SafetyAPI {
   private async makeRequest<T>(
@@ -163,4 +145,4 @@ class SafetyAPI {
 }
 
 export const safetyAPI = new SafetyAPI();
-export type { BlockedUser, BlockStatus, ReportData, ReportResponse, ReportReason, UserReport };
+// No redundant exports needed here as they are all at the top now

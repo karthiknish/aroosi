@@ -4,63 +4,51 @@
  */
 
 import { api } from './client';
+import type { ProfileViewer, ViewersResponse, ViewerFilter } from '@aroosi/shared';
 
-export interface ProfileViewer {
-    userId: string;
-    fullName?: string | null;
-    profileImageUrls?: string[] | null;
-    city?: string | null;
-    age?: number | null;
-    viewedAt: string | number;
-    viewCount?: number;
-    isNew?: boolean;
-}
-
-export interface ViewersResponse {
-    viewers: ProfileViewer[];
-    total: number;
-    newCount?: number;
-    hasMore?: boolean;
-    isPremiumRequired: boolean;
-}
-
-export type ViewerFilter = 'all' | 'today' | 'week' | 'month';
+// Re-export types for convenience
+export type { ProfileViewer, ViewersResponse, ViewerFilter } from '@aroosi/shared';
 
 /**
  * Get list of users who viewed your profile
+ * @param profileId - The user's own profile ID (required by backend)
  */
 export async function getProfileViewers(
+    profileId: string,
     page = 0,
     limit = 20,
     filter: ViewerFilter = 'all'
 ) {
     const offset = page * limit;
     return api.get<ViewersResponse>(
-        `/profile/viewers?page=${page}&limit=${limit}&offset=${offset}&filter=${filter}`
+        `/profile/view?profileId=${encodeURIComponent(profileId)}&limit=${limit}&offset=${offset}&filter=${filter}`
     );
 }
 
 /**
  * Track a profile view (call when viewing another user's profile)
  */
-export async function trackProfileView(viewedUserId: string) {
+export async function trackProfileView(profileId: string) {
     return api.post<{ success: boolean }>('/profile/view', {
-        viewedUserId,
+        profileId,
     });
 }
 
 /**
  * Get count of profile views
+ * @param profileId - The user's own profile ID
  */
-export async function getProfileViewCount() {
-    return api.get<{ count: number; newCount: number }>('/profile/viewers/count');
+export async function getProfileViewCount(profileId: string) {
+    return api.get<{ count: number; newCount: number }>(
+        `/profile/view?profileId=${encodeURIComponent(profileId)}&mode=count`
+    );
 }
 
 /**
  * Mark profile views as seen
  */
 export async function markViewsAsSeen() {
-    return api.post<{ success: boolean }>('/profile/viewers/seen');
+    return api.post<{ success: boolean }>('/profile/view/seen');
 }
 
 /**
@@ -81,9 +69,11 @@ export function groupViewersByDate(viewers: ProfileViewer[]): {
     const earlier: ProfileViewer[] = [];
 
     for (const viewer of viewers) {
-        const viewedAt = typeof viewer.viewedAt === 'string' 
-            ? new Date(viewer.viewedAt).getTime() 
-            : viewer.viewedAt;
+        const viewedAt = viewer.viewedAt instanceof Date
+            ? viewer.viewedAt.getTime()
+            : typeof viewer.viewedAt === 'string' 
+                ? new Date(viewer.viewedAt).getTime() 
+                : viewer.viewedAt;
 
         if (viewedAt >= todayStart.getTime()) {
             today.push(viewer);

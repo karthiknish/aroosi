@@ -1,12 +1,13 @@
 import { db, adminStorage } from "@/lib/firebaseAdmin";
 import { v4 as uuid } from "uuid";
+import type { MessageType } from "@aroosi/shared/types";
 
 export interface FirebaseMessage {
   id: string;
   conversationId: string;
   fromUserId: string;
   toUserId: string;
-  type: "text" | "voice" | "image";
+  type: MessageType;
   text?: string;
   audioStorageId?: string;
   duration?: number;

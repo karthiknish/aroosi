@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectTrigger,
@@ -49,14 +50,15 @@ export function Step1Basic(props: {
                 <Label className="text-neutral-dark mb-2 block font-medium font-sans">{requiredLabel("Gender")}</Label>
                 <div className="grid grid-cols-2 gap-4">
                 {["male", "female"].map((g) => (
-                    <button
+                    <Button
                         key={g}
                         type="button"
+                        variant="outline"
                         onClick={() => onChange("gender", g)}
                         className={cn(
                         "relative h-12 rounded-xl border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize font-sans",
                         formData.gender === g
-                            ? "border-primary bg-primary/5 text-primary shadow-sm"
+                            ? "border-primary bg-primary/5 text-primary shadow-sm hover:bg-primary/10"
                             : "border-neutral/10 bg-neutral/5 text-neutral-light hover:border-neutral/20 hover:bg-neutral/10"
                         )}
                     >
@@ -67,7 +69,7 @@ export function Step1Basic(props: {
                             className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"
                         />
                         )}
-                    </button>
+                    </Button>
                 ))}
                 </div>
             </div>

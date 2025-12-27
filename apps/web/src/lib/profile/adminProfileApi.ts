@@ -1,7 +1,33 @@
-import type { Profile } from "@/types/profile";
-import type { ImageType } from "@/types/image";
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 
 type AdminProfile = Profile & { _id: string; userId: string };
+
+function normalizeProfileImageInfo(raw: any): ProfileImageInfo | null {
+  const url = raw?.url;
+  const storageId = raw?.storageId ?? raw?.id ?? raw?._id;
+  if (typeof url !== "string" || url.length === 0) return null;
+  if (typeof storageId !== "string" || storageId.length === 0) return null;
+
+  return {
+    url,
+    storageId,
+    fileName: typeof raw?.fileName === "string" ? raw.fileName : undefined,
+    uploadedAt:
+      typeof raw?.uploadedAt === "string" ? raw.uploadedAt : undefined,
+    size:
+      typeof raw?.size === "number"
+        ? raw.size
+        : typeof raw?.fileSize === "number"
+          ? raw.fileSize
+          : undefined,
+    contentType:
+      typeof raw?.contentType === "string" || raw?.contentType === null
+        ? raw.contentType
+        : typeof raw?.mimeType === "string"
+          ? raw.mimeType
+          : undefined,
+  };
+}
 
 export async function fetchAdminProfiles({
   search,
@@ -75,7 +101,7 @@ export async function fetchAdminProfileImages({
   userId,
 }: {
   userId: string;
-}): Promise<{ userProfileImages: ImageType[] }> {
+}): Promise<{ userProfileImages: ProfileImageInfo[] }> {
   const headers: Record<string, string> = {
     "Cache-Control": "no-store",
     Pragma: "no-cache",
@@ -93,13 +119,15 @@ export async function fetchAdminProfileImages({
     }
     const response = await res.json();
 
-    // Handle the wrapped response format {success: true, data: {...}}
-    if (response.success && response.data) {
-      return response.data;
-    }
-
-    // Fallback for direct data format
-    return response;
+    const payload = response.success && response.data ? response.data : response;
+    const rawImages = (payload as any)?.userProfileImages;
+    const list = Array.isArray(rawImages) ? rawImages : [];
+    return {
+      ...(payload as any),
+      userProfileImages: list
+        .map(normalizeProfileImageInfo)
+        .filter((v): v is ProfileImageInfo => !!v),
+    };
   } catch (error) {
     throw new Error(
       `Error fetching profile images: ${(error as Error).message}`
@@ -206,7 +234,7 @@ export async function fetchAllAdminProfileImages({
   profiles,
 }: {
   profiles: { _id: string; userId: string }[];
-}): Promise<Record<string, ImageType[]>> {
+}): Promise<Record<string, ProfileImageInfo[]>> {
   if (!profiles || profiles.length === 0) {
     return {};
   }
@@ -240,18 +268,22 @@ export async function fetchAllAdminProfileImages({
       return profiles.reduce((acc, p) => {
         acc[p._id] = [];
         return acc;
-      }, {} as Record<string, ImageType[]>);
+      }, {} as Record<string, ProfileImageInfo[]>);
     }
 
     const json = await res.json();
     const batchData = json.data || {};
 
     // Map the batch response back to profile IDs
-    const result: Record<string, ImageType[]> = {};
+    const result: Record<string, ProfileImageInfo[]> = {};
     for (const profile of profiles) {
       const targetId = profile.userId || profile._id;
       const images = batchData[targetId];
-      result[profile._id] = Array.isArray(images) ? images : [];
+      result[profile._id] = Array.isArray(images)
+        ? images
+            .map(normalizeProfileImageInfo)
+            .filter((v: any): v is ProfileImageInfo => !!v)
+        : [];
     }
 
     return result;
@@ -261,7 +293,7 @@ export async function fetchAllAdminProfileImages({
     return profiles.reduce((acc, p) => {
       acc[p._id] = [];
       return acc;
-    }, {} as Record<string, ImageType[]>);
+    }, {} as Record<string, ProfileImageInfo[]>);
   }
 }
 
@@ -327,19 +359,35 @@ export async function setProfileBannedStatus(
 }
 
 export type AdminProfileMatchesResult = {
-  profileId: string;
-  matches: Profile[];
-  error?: string;
-}[];
+  matches: {
+    profileId: string;
+    matches: Profile[];
+    error?: string;
+  }[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 
-export async function fetchAdminAllMatches(): Promise<AdminProfileMatchesResult> {
+export async function fetchAdminAllMatches({
+  page = 1,
+  pageSize = 20,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<AdminProfileMatchesResult> {
   const headers: Record<string, string> = {
     "Cache-Control": "no-store",
     Pragma: "no-cache",
   };
   try {
     const v = Date.now();
-    const res = await fetch(`/api/admin/matches?v=${v}`, {
+    const qs = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+      v: String(v),
+    });
+    const res = await fetch(`/api/admin/matches?${qs.toString()}`, {
       headers,
       cache: "no-store",
       credentials: "include",
@@ -350,13 +398,23 @@ export async function fetchAdminAllMatches(): Promise<AdminProfileMatchesResult>
     }
     const response = await res.json();
 
-    // Handle the wrapped response format {success: true, matches: [...]}
-    if (response.success && response.matches) {
-      return response.matches;
+    // Handle the wrapped response format {success: true, matches: [...], total, page, pageSize}
+    if (response.success) {
+      return {
+        matches: response.matches || [],
+        total: response.total || 0,
+        page: response.page || 1,
+        pageSize: response.pageSize || 20,
+      };
     }
 
     // Fallback for direct data format
-    return response.matches || response || [];
+    return {
+      matches: response.matches || response || [],
+      total: (response.matches || response || []).length,
+      page: 1,
+      pageSize: 20,
+    };
   } catch (error) {
     throw new Error(`Error fetching all matches: ${(error as Error).message}`);
   }
@@ -435,7 +493,7 @@ export async function fetchAdminProfileImagesById({
   profileId,
 }: {
   profileId: string;
-}): Promise<ImageType[]> {
+}): Promise<ProfileImageInfo[]> {
   const headers: Record<string, string> = {
     "Cache-Control": "no-store",
     Pragma: "no-cache",
@@ -456,10 +514,15 @@ export async function fetchAdminProfileImagesById({
     // 1. Raw array: [ { storageId, url }, ... ] (legacy)
     // 2. Wrapped: { success: true, userProfileImages: [...] }
     // 3. Alternate: { images: [...] }
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data.userProfileImages)) return data.userProfileImages;
-    if (Array.isArray(data.images)) return data.images;
-    return [];
+    const rawList =
+      (Array.isArray(data) && data) ||
+      (Array.isArray(data.userProfileImages) && data.userProfileImages) ||
+      (Array.isArray(data.images) && data.images) ||
+      [];
+
+    return rawList
+      .map(normalizeProfileImageInfo)
+      .filter((v: ProfileImageInfo | null): v is ProfileImageInfo => !!v);
   } catch (error) {
     throw new Error(
       `Error fetching profile images: ${(error as Error).message}`
@@ -475,8 +538,8 @@ export async function updateAdminProfileImageById({
 }: {
   profileId: string;
   imageId: string;
-  updates: Partial<ImageType>;
-}): Promise<ImageType> {
+  updates: Partial<ProfileImageInfo>;
+}): Promise<ProfileImageInfo> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     // Cookie-based session; no Authorization header
@@ -495,7 +558,11 @@ export async function updateAdminProfileImageById({
       const errorText = await res.text();
       throw new Error(`Failed to update profile image: ${errorText}`);
     }
-    return await res.json();
+    const json = await res.json();
+    const normalized = normalizeProfileImageInfo(json);
+    if (!normalized)
+      throw new Error("Profile image update returned unexpected payload");
+    return normalized;
   } catch (error) {
     throw new Error(
       `Error updating profile image: ${(error as Error).message}`
@@ -538,7 +605,7 @@ export async function adminUploadProfileImage({
 }: {
   profileId: string;
   file: File;
-}): Promise<ImageType> {
+}): Promise<ProfileImageInfo> {
   if (!profileId) throw new Error("Profile ID required");
   if (!file) throw new Error("File required");
 
@@ -581,7 +648,10 @@ export async function adminUploadProfileImage({
     throw new Error(errData.error || "Failed to save metadata");
   }
   const data = await metaRes.json();
-  return data as ImageType;
+  const normalized = normalizeProfileImageInfo(data);
+  if (!normalized)
+    throw new Error("Profile image upload returned unexpected payload");
+  return normalized;
 }
 
 /**

@@ -14,7 +14,7 @@ import {
   weeklyMatchesDigestTemplate,
   welcomeDay1Template,
 } from "@/lib/marketingEmailTemplates";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { sendEmail as sendEmailNow } from "@/lib/email";
 
 type TestBody = {

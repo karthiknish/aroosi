@@ -3,6 +3,7 @@
  * Keeps backward compatibility for existing imports.
  */
 import { matchMessagesAPI, type MatchMessage, type ApiResponse } from "@/lib/api/matchMessages";
+import type { MessageType } from "@aroosi/shared/types";
 import { fetchJson, postJson, getJson } from "@/lib/http/client";
 import { showErrorToast } from "@/lib/ui/toast";
 
@@ -32,7 +33,7 @@ export const sendMessage = async (message: {
   toUserId: string;
   conversationId: string;
   fromUserId: string;
-  type?: "text" | "voice" | "image";
+  type?: MessageType;
   audioStorageId?: string;
   duration?: number;
   fileSize?: number;

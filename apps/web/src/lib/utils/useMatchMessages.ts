@@ -68,7 +68,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
       const response = await matchMessagesAPI.getMessages({
         conversationId,
         limit: 20,
-        before: oldestTimestamp,
+        before: Number(oldestTimestamp),
       });
 
       if ((response as any).success && (response as any).data) {
@@ -119,6 +119,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
           );
         } else {
           const optimisticMsg: Message = {
+            id: tmpId,
             _id: tmpId,
             conversationId,
             fromUserId,
@@ -151,7 +152,10 @@ export function useMatchMessages(conversationId: string, _token: string) {
                 );
                 // Deduplicate if server also arrives via SSE later
                 const unique = new Map<string, Message>();
-                for (const m of replaced) unique.set(m._id, m as Message);
+                for (const m of replaced) {
+                  const key = m.id || m._id;
+                  if (key) unique.set(key, m as Message);
+                }
                 return Array.from(unique.values());
               });
             } else {

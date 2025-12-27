@@ -147,8 +147,8 @@ export default function InterestsScreen() {
     }, []);
 
     // Format date
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
+    const formatDate = (dateValue: string | number | Date) => {
+        const date = new Date(dateValue);
         const now = new Date();
         const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 

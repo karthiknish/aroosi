@@ -261,10 +261,12 @@ export function IcebreakersPanel() {
             {(!isSaved || isEditing) && (
               <div className="mb-4 flex flex-wrap gap-2">
                 {starters.map((s) => (
-                  <button
+                  <Button
                     key={s}
                     type="button"
-                    className="text-xs font-medium text-neutral-light bg-neutral/5 hover:bg-primary/5 hover:text-primary border border-neutral/20 hover:border-primary/20 rounded-full px-3 py-1.5 transition-colors"
+                    variant="outline"
+                    size="sm"
+                    className="h-auto text-xs font-medium text-neutral-light bg-neutral/5 hover:bg-primary/5 hover:text-primary border-neutral/20 hover:border-primary/20 rounded-full px-3 py-1.5 transition-colors"
                     onClick={() => {
                       setAnswers((a) => ({
                         ...a,
@@ -274,7 +276,7 @@ export function IcebreakersPanel() {
                     }}
                   >
                     {s}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}

@@ -1,30 +1,13 @@
 /**
  * Engagement API Service
- * Handles Quick Picks, Shortlists, and Notes
+ * Handles shortlists, notes, and other engagement features
  */
 
 import { api } from './client';
+import type { QuickPickProfile, ShortlistEntry, NoteData } from '@aroosi/shared';
 
-// Types
-export interface QuickPickProfile {
-    userId: string;
-    fullName?: string | null;
-    city?: string | null;
-    imageUrl?: string | null;
-    profileImageUrls?: string[];
-}
-
-export interface ShortlistEntry {
-    userId: string;
-    fullName?: string | null;
-    profileImageUrls?: string[] | null;
-    createdAt: number;
-}
-
-export interface NoteData {
-    note?: string;
-    updatedAt?: number;
-}
+// Re-export types for convenience
+export type { QuickPickProfile, ShortlistEntry, NoteData } from '@aroosi/shared';
 
 // Quick Picks
 

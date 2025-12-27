@@ -157,12 +157,14 @@ export function ContactMessages({
             {viewed && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
                 <div className="bg-base-light rounded-lg shadow-xl max-w-md w-full p-6 relative">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="absolute top-2 right-2 text-neutral-light hover:text-neutral-dark"
                     onClick={() => setViewed(null)}
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                   <h2 className="text-lg font-bold text-neutral-dark mb-2">Contact Message</h2>
                   <div className="mb-2 text-neutral">
                     <span className="font-semibold">Name:</span> {viewed.name}

@@ -10,6 +10,13 @@ type BlogApiResponse<T> = {
   [key: string]: unknown;
 };
 
+export type BlogListResponse = {
+  posts: BlogPost[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 // Fetch paginated blog posts (public, no auth required)
 export async function fetchBlogPosts({
   page = 0,
@@ -21,49 +28,39 @@ export async function fetchBlogPosts({
   pageSize?: number;
   category?: string;
   token?: string;
-} = {}): Promise<BlogPost[]> {
+} = {}): Promise<BlogListResponse> {
   const params = new URLSearchParams();
   params.append("page", String(page));
   params.append("pageSize", String(pageSize));
   if (category) params.append("category", category);
 
-  const data = (await getJson(`/api/blog?${params.toString()}`)) as unknown;
-  // Support multiple envelope shapes
-  // 1. Bare array
-  if (Array.isArray(data)) return data;
+  const data = (await getJson(`/api/blog?${params.toString()}`)) as any;
 
-  // 2. { data: BlogPost[] }
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { data?: unknown[] }).data)
-  )
-    return (data as { data: BlogPost[] }).data;
-
-  // 3. { posts: BlogPost[] }
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { posts?: unknown[] }).posts)
-  )
-    return (data as { posts: BlogPost[] }).posts;
-
-  // 4. { success: true, data: { posts: BlogPost[] } }
-  if (
-    data &&
-    typeof data === "object" &&
-    "data" in (data as Record<string, unknown>)
-  ) {
-    const inner = (data as Record<string, unknown>).data as unknown;
-    if (
-      inner &&
-      typeof inner === "object" &&
-      Array.isArray((inner as { posts?: unknown[] }).posts)
-    ) {
-      return (inner as { posts: BlogPost[] }).posts;
-    }
+  // Handle the wrapped response format {success: true, data: {posts, total, page, pageSize}}
+  if (data && data.success && data.data) {
+    return {
+      posts: data.data.posts || [],
+      total: data.data.total || 0,
+      page: data.data.page || 0,
+      pageSize: data.data.pageSize || 6,
+    };
   }
-  return [];
+
+  // Fallback for direct data format or other shapes
+  const posts = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.posts)
+        ? data.posts
+        : [];
+
+  return {
+    posts,
+    total: posts.length,
+    page: 0,
+    pageSize: posts.length || 6,
+  };
 }
 
 // Admin: Fetch paginated blog posts with auth
@@ -77,7 +74,7 @@ export async function fetchAdminBlogPosts({
   page?: number;
   pageSize?: number;
   category?: string;
-}): Promise<BlogPost[]> {
+}): Promise<BlogListResponse> {
   return fetchBlogPosts({ page, pageSize, category, token });
 }
 

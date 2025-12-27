@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { format, parseISO, subYears } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { ProfileFormValues } from "@/types/profile";
+import type { ProfileFormValues } from "@aroosi/shared/types";
 import type { UseFormReturn } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays } from "lucide-react";

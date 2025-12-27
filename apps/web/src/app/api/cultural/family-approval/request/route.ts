@@ -6,7 +6,10 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import { FamilyApprovalRequest, FamilyRelationship } from "@/types/cultural";
+import type {
+  FamilyApprovalRequest,
+  FamilyRelationship,
+} from "@aroosi/shared/types";
 
 const requestSchema = z.object({
   familyMemberId: z.string().min(1),

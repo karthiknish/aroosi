@@ -52,8 +52,8 @@ export default function MessagesScreen() {
             id: c.matchId,
             matchedUser: {
                 id: c.userId,
-                displayName: c.user.displayName,
-                photoURL: c.user.photoURL,
+                displayName: c.user?.displayName,
+                photoURL: c.user?.photoURL,
             },
             status: 'matched' as const,
             createdAt: c.updatedAt,
@@ -63,8 +63,8 @@ export default function MessagesScreen() {
     const handleConversationPress = useCallback((conversation: Conversation) => {
         navigation.navigate('Chat', {
             matchId: conversation.matchId,
-            recipientName: conversation.user.displayName || 'Unknown',
-            recipientPhoto: conversation.user.photoURL || undefined,
+            recipientName: conversation.user?.displayName || 'Unknown',
+            recipientPhoto: conversation.user?.photoURL || undefined,
         });
     }, [navigation]);
 
@@ -80,7 +80,7 @@ export default function MessagesScreen() {
     // Filter conversations by search query
     const filteredConversations = searchQuery
         ? activeConversations.filter(c =>
-            c.user.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+            c.user?.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
         )
         : activeConversations;
 

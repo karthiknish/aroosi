@@ -5,7 +5,16 @@ import MessagesList from "@/components/chat/MessagesList";
 import Composer from "@/components/chat/Composer";
 import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
 import { useModernChat, type ReportReason } from "@/hooks/useModernChat";
-import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { canSendVoiceMessage } from "@/lib/utils/messageUtils";
 import { MessageCircle } from "lucide-react";
@@ -156,9 +165,9 @@ function ModernChat({
           onUnblock={handleBlockUser /* reuse; toggled in dialog elsewhere */}
           onSelectReply={(m) =>
             setReplyTo({
-              messageId: m._id,
-              text: (m as any).text,
-              type: (m as any).type || "text",
+              messageId: (m.id || m._id) as string,
+              text: m.text,
+              type: m.type,
               fromUserId: m.fromUserId,
             })
           }
@@ -171,6 +180,13 @@ function ModernChat({
             toggleReaction(messageId, emoji)
           }
           getReactionsForMessage={messagesState.getReactionsForMessage}
+          onSelectStarter={(text) => {
+            setText(text);
+            // Focus the input after selecting a starter
+            if (inputRef.current) {
+              (inputRef.current as any).focus();
+            }
+          }}
         />
       </div>
 
@@ -234,33 +250,49 @@ function ModernChat({
         }}
       />
 
-      <ConfirmationModal
-        isOpen={deleteModalOpen}
-        onClose={() => {
+      <AlertDialog
+        open={deleteModalOpen}
+        onOpenChange={(open) => {
           if (!deleting) {
-            setDeleteModalOpen(false);
-            setTargetDeleteId(null);
+            setDeleteModalOpen(open);
+            if (!open) setTargetDeleteId(null);
           }
         }}
-        onConfirm={async () => {
-          if (!targetDeleteId) return;
-          try {
-            setDeleting(true);
-            const { deleteMessage } = await import("@/lib/api/messages");
-            await deleteMessage(targetDeleteId);
-          } catch {
-            // optional toast could be added
-          } finally {
-            setDeleting(false);
-            setDeleteModalOpen(false);
-            setTargetDeleteId(null);
-          }
-        }}
-        title="Delete this message?"
-        description="This action will delete the message for you. It may not remove it for the other participant depending on policy."
-        isDeleting={deleting}
-        confirmText="Delete"
-      />
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will delete the message for you. It may not remove it
+              for the other participant depending on policy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!targetDeleteId) return;
+                try {
+                  setDeleting(true);
+                  const { deleteMessage } = await import("@/lib/api/messages");
+                  await deleteMessage(targetDeleteId);
+                  setDeleteModalOpen(false);
+                  setTargetDeleteId(null);
+                } catch {
+                  // optional toast could be added
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Refined loading state with elegant animation */}
       {loading && (

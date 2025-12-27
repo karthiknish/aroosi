@@ -1,6 +1,6 @@
 import React from "react";
 import { render as renderEmail } from "@react-email/render";
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { ProfileCompletionReminder } from "@/emails/Marketing/ProfileCompletionReminder";
 import { RecommendedProfiles } from "@/emails/Marketing/RecommendedProfiles";
 

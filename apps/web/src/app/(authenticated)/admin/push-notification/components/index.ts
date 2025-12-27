@@ -6,3 +6,5 @@ export { TestNotification } from './TestNotification';
 export { TemplateManager } from './TemplateManager';
 export { ConfirmSendUsersDialog } from './ConfirmSendUsersDialog';
 export { ConfirmSendDevicesDialog } from './ConfirmSendDevicesDialog';
+export { PushNotificationHeader } from './PushNotificationHeader';
+export { PushTabsNavigation } from './PushTabsNavigation';

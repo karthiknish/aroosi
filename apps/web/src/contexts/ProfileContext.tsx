@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import type { Profile, ProfileContextType } from "@/types/profile";
+import type { Profile, ProfileContextType } from "@aroosi/shared/types";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { getErrorMessage } from "@/lib/utils/apiResponse";

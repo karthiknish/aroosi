@@ -1,14 +1,10 @@
-import { auth, storage, db } from "@/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { v4 as uuidv4 } from "uuid";
+import { auth, db } from "@/lib/firebase";
 import {
   collection,
-  addDoc,
   getDocs,
   query,
   where,
   orderBy,
-  Timestamp,
   DocumentData,
 } from "firebase/firestore";
 
@@ -34,8 +30,11 @@ export interface VoiceMessage {
  */
 
 /**
- * Upload a recorded voice blob and create the corresponding message record in Firestore.
+ * Upload a recorded voice blob via the backend API endpoint.
  * Returns the saved message row so the caller can append it to chat state.
+ * 
+ * NOTE: Direct Firebase Storage uploads are disabled by security rules.
+ * All voice message uploads must go through the server-side API.
  */
 export async function uploadVoiceMessage({
   conversationId,
@@ -53,48 +52,51 @@ export async function uploadVoiceMessage({
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   if (!blob) throw new Error("No audio blob provided");
+
+  // Get auth token for API call
+  const token = await user.getIdToken();
+
+  // Build FormData for the API endpoint
+  const formData = new FormData();
   const ext = mimeType.includes("webm")
     ? "webm"
     : mimeType.includes("m4a")
       ? "m4a"
       : "webm";
-  const audioPath = `voice/${user.uid}/${conversationId}/${Date.now()}_${uuidv4()}.${ext}`;
-  const storageRef = ref(storage, audioPath);
-  const metadata = {
-    contentType: mimeType,
-    customMetadata: {
-      uploadedBy: user.uid,
-      originalName: `voice-${Date.now()}.${ext}`,
-    },
-  } as any;
-  const task = uploadBytesResumable(storageRef, blob, metadata);
+  formData.append("audio", blob, `voice-${Date.now()}.${ext}`);
+  formData.append("conversationId", conversationId);
+  formData.append("toUserId", toUserId);
+  formData.append("duration", String(duration));
 
-  await new Promise<void>((resolve, reject) => {
-    task.on(
-      "state_changed",
-      undefined,
-      (err) => reject(err),
-      () => resolve()
-    );
+  // Call the backend API endpoint
+  const response = await fetch("/api/voice-messages/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
   });
 
-  const audioUrl = await getDownloadURL(storageRef);
-  const now = Date.now();
-  const docRef = await addDoc(collection(db, "voiceMessages"), {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Upload failed: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  // Return a VoiceMessage-compatible object
+  return {
+    _id: result.data?.messageId || result.messageId || "",
     conversationId,
     fromUserId: user.uid,
     toUserId,
     type: "voice",
-    audioStorageId: audioPath,
-    audioUrl,
+    audioStorageId: result.data?.storageId || result.storageId || "",
     duration,
     fileSize: blob.size,
     mimeType,
-    createdAt: now,
-  });
-  const { getDoc } = await import("firebase/firestore");
-  const docSnap = await getDoc(docRef);
-  return { _id: docRef.id, ...docSnap.data() } as VoiceMessage;
+    createdAt: Date.now(),
+  };
 }
 
 /**

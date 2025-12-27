@@ -3,7 +3,7 @@
  * Integrates TTL caching with profile data fetching and management
  */
 
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { profileTTLManager } from "./ttl-manager";
 
 // TTL configurations for different profile data types

@@ -21,7 +21,16 @@ import React, { useState, useEffect } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   deleteAdminProfileImageById,
@@ -32,16 +41,12 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { updateSpotlightBadge } from "@/lib/utils/spotlightBadgeApi";
+import { Ban, Users as UsersIcon } from "lucide-react";
 
-// Define types for images and matches
-interface ImageType {
-  storageId: string;
-  url?: string | null;
-  [key: string]: unknown;
-}
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 interface MatchType {
   [key: string]: unknown;
 }
@@ -107,7 +112,7 @@ export default function AdminProfileDetailPage() {
   // Many user docs use _id equal to userId; fall back safely when userId absent
   const userId =
     profile?.userId || (profile?._id ? String(profile._id) : undefined);
-  const { data: images = [] } = useQuery<ImageType[]>({
+  const { data: images = [] } = useQuery<ProfileImageInfo[]>({
     queryKey: ["profileImages", userId, "admin"],
     queryFn: async () => {
       if (!userId) return [];
@@ -162,15 +167,15 @@ export default function AdminProfileDetailPage() {
   });
 
   const { orderedImages: orderedImagesRaw } = React.useMemo(() => {
-    const defaultReturn = { orderedImages: [] as ImageType[] };
+    const defaultReturn = { orderedImages: [] as ProfileImageInfo[] };
     if (!profile) return defaultReturn;
-    const validImages: ImageType[] = Array.isArray(images) ? images : [];
+    const validImages: ProfileImageInfo[] = Array.isArray(images) ? images : [];
     if (validImages.length === 0) return defaultReturn;
-    const map: Record<string, ImageType> = Object.fromEntries(
+    const map: Record<string, ProfileImageInfo> = Object.fromEntries(
       validImages.map((img) => [String(img.storageId), img])
     );
     const all = [...validImages];
-    let ordered: ImageType[] = [];
+    let ordered: ProfileImageInfo[] = [];
     const profileImageIds = Array.isArray(profile.profileImageIds)
       ? profile.profileImageIds
       : [];
@@ -186,7 +191,7 @@ export default function AdminProfileDetailPage() {
     };
   }, [images, profile]);
 
-  const orderedImages: ImageType[] = Array.isArray(orderedImagesRaw)
+  const orderedImages: ProfileImageInfo[] = Array.isArray(orderedImagesRaw)
     ? orderedImagesRaw
     : [];
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
@@ -216,7 +221,15 @@ export default function AdminProfileDetailPage() {
   }
 
   if (!profile) {
-    return <EmptyState message="Profile not found." className="min-h-screen" />;
+    return (
+      <Empty className="min-h-screen">
+        <EmptyIcon icon={Ban} />
+        <EmptyTitle>Profile not found</EmptyTitle>
+        <EmptyDescription>
+          The profile you are looking for does not exist or has been deleted.
+        </EmptyDescription>
+      </Empty>
+    );
   }
 
   const handleDeleteImage = async () => {
@@ -253,11 +266,6 @@ export default function AdminProfileDetailPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const closeDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-    setImageToDelete(null);
-  };
-
   const handlePrev = () => {
     setCurrentImageIdx((prev) =>
       prev === 0 ? orderedImages.length - 1 : prev - 1
@@ -273,14 +281,35 @@ export default function AdminProfileDetailPage() {
     if (!imageToDelete) return null;
 
     return (
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={handleDeleteImage}
-        isLoading={isDeleting}
-        title="Delete Image"
-        description="Are you sure you want to delete this image?"
-      />
+      <AlertDialog
+        open={isDeleteModalOpen}
+        onOpenChange={(open) => {
+          setIsDeleteModalOpen(open);
+          if (!open) setImageToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Image</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this image?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteImage();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     );
   };
 
@@ -316,7 +345,13 @@ export default function AdminProfileDetailPage() {
 
   const matchesSection =
     matches.length === 0 ? (
-      <EmptyState message="No matches found." />
+      <Empty>
+        <EmptyIcon icon={UsersIcon} />
+        <EmptyTitle>No matches found</EmptyTitle>
+        <EmptyDescription>
+          This user doesn&apos;t have any matches yet.
+        </EmptyDescription>
+      </Empty>
     ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {matches.map((m: Record<string, unknown>, idx: number) => {

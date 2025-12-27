@@ -5,11 +5,13 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlogPost } from "@/types/blog";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import { FileText } from "lucide-react";
 
 // Explicit return type for the fetch function
 const fetchBlogPostsAPI = async (
@@ -126,7 +128,7 @@ export default function BlogPage() {
           {/* Enhanced search input */}
           <div className="flex justify-center mb-8">
             <div className="relative w-full max-w-lg">
-              <input
+              <Input
                 type="text"
                 value={search}
                 onChange={(e) => {
@@ -134,7 +136,7 @@ export default function BlogPage() {
                   setPage(0);
                 }}
                 placeholder="Search blog posts..."
-                className="w-full px-6 py-4 rounded-2xl border-2 border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10 bg-base-light/90 backdrop-blur-sm text-neutral-dark shadow-lg font-sans text-lg transition-all duration-300 placeholder:text-neutral-light"
+                className="w-full px-6 py-7 rounded-2xl border-2 border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10 bg-base-light/90 backdrop-blur-sm text-neutral-dark shadow-lg font-sans text-lg transition-all duration-300 placeholder:text-neutral-light"
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
                 <svg
@@ -157,9 +159,10 @@ export default function BlogPage() {
           {/* Enhanced category filters */}
           <div className="flex gap-3  py-4 mb-8 justify-center scrollbar-hide">
             {categories.map((cat) => (
-              <button
+              <Button
                 key={cat}
-                className={`px-6 py-3 rounded-2xl border-2 transition-all duration-300 text-sm whitespace-nowrap font-semibold transform hover:scale-105 ${
+                variant={category === cat ? "default" : "outline"}
+                className={`px-6 py-6 rounded-2xl border-2 transition-all duration-300 text-sm whitespace-nowrap font-semibold transform hover:scale-105 h-auto ${
                   category === cat
                     ? "bg-gradient-to-r from-primary to-secondary text-base-light border-primary shadow-lg shadow-primary/20"
                     : "bg-base-light/90 backdrop-blur-sm text-primary-dark border-primary/20 hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 hover:border-primary/30 shadow-md"
@@ -170,7 +173,7 @@ export default function BlogPage() {
                 }}
               >
                 {cat === "all" ? "All Categories" : cat}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -215,10 +218,13 @@ export default function BlogPage() {
                 </Card>
               ))
             ) : filteredPosts.length === 0 && !isLoading ? (
-              <EmptyState
-                message="No posts found for this search or category."
-                className="col-span-full"
-              />
+              <Empty className="col-span-full">
+                <EmptyIcon icon={FileText} />
+                <EmptyTitle>No posts found</EmptyTitle>
+                <EmptyDescription>
+                  We couldn&apos;t find any blog posts matching your search or category selection.
+                </EmptyDescription>
+              </Empty>
             ) : (
               filteredPosts.map((post: BlogPost) => (
                 <Link
@@ -326,9 +332,10 @@ export default function BlogPage() {
 
               <div className="flex gap-2">
                 {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
+                  <Button
                     key={i}
-                    className={`px-4 py-3 rounded-2xl border-2 text-sm font-semibold transition-all duration-300 ${
+                    variant={i === page ? "default" : "outline"}
+                    className={`px-4 py-6 h-auto rounded-2xl border-2 text-sm font-semibold transition-all duration-300 ${
                       i === page
                         ? "bg-gradient-to-r from-primary to-secondary text-base-light border-primary shadow-lg shadow-primary/20 transform scale-110"
                         : "bg-base-light/80 backdrop-blur-sm text-primary-dark border-primary/20 hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 hover:border-primary/30 hover:scale-105"
@@ -337,7 +344,7 @@ export default function BlogPage() {
                     disabled={i === page}
                   >
                     {i + 1}
-                  </button>
+                  </Button>
                 ))}
               </div>
 

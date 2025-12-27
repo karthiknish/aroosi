@@ -1,35 +1,17 @@
 // Import centralized types
 import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
+import type { Message, Conversation, MessageType } from "@aroosi/shared/types";
 
-interface MatchMessage {
-  _id: string;
-  conversationId: string;
-  fromUserId: string;
-  toUserId: string;
-  text: string;
-  type: "text" | "voice" | "image";
-  audioStorageId?: string;
-  duration?: number;
-  fileSize?: number;
-  mimeType?: string;
-  createdAt: number;
-  readAt?: number;
-}
-
-interface Conversation {
-  _id: string;
-  participants: string[];
-  lastMessage?: MatchMessage;
-  lastMessageAt?: number;
-  createdAt: number;
-}
+// Local aliases for shared types if needed, or just use shared types directly
+type MatchMessage = Message;
+type ConversationData = Conversation;
 
 interface SendMessageParams {
   conversationId: string;
   fromUserId: string;
   toUserId: string;
   text?: string;
-  type?: "text" | "voice" | "image";
+  type?: MessageType;
   audioStorageId?: string;
   duration?: number;
   fileSize?: number;
@@ -206,15 +188,15 @@ class MatchMessagesAPI {
     return this.makeRequest<StorageItem[]>(`/list-images/${userId}`);
   }
 
-  async getConversations(userId: string): Promise<ApiResponse<Conversation[]>> {
-    return this.makeRequest<Conversation[]>(`/conversations/${userId}`);
+  async getConversations(userId: string): Promise<ApiResponse<ConversationData[]>> {
+    return this.makeRequest<ConversationData[]>(`/conversations/${userId}`);
   }
 }
 
 export const matchMessagesAPI = new MatchMessagesAPI();
 export type {
   MatchMessage,
-  Conversation,
+  ConversationData as Conversation,
   SendMessageParams,
   GetMessagesParams,
   MarkReadParams,

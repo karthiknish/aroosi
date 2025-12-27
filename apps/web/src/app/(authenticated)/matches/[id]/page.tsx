@@ -3,6 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import ModernChat from "@/components/chat/ModernChat";
+import { Button } from "@/components/ui/button";
 import { getConversationId } from "@/lib/utils/conversation";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUserProfile } from "@/lib/profile/userProfileApi";
@@ -93,12 +94,13 @@ export default function MatchChatPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 h-full flex flex-col">
           <div className="pt-6 pb-6 flex flex-col flex-1 min-h-0">
             {/* Optional back link */}
-            <button
+            <Button
+              variant="ghost"
               onClick={() => router.push("/matches")}
-              className="text-primary mb-4 text-left flex-shrink-0"
+              className="text-primary mb-4 text-left flex-shrink-0 w-fit p-0 hover:bg-transparent hover:text-primary-dark"
             >
               ← Back
-            </button>
+            </Button>
             {loadError && (
               <div className="mb-4 text-sm text-danger bg-danger/5 border border-danger/20 rounded-md px-3 py-2 flex-shrink-0">
                 {loadError}

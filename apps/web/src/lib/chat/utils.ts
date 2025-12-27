@@ -151,12 +151,8 @@ export function buildVoiceFilename(ext = "webm"): string {
 
 // ========== MODERATION HELPERS (moved from ModernChat) ==========
 
-export type ReportReason =
-  | "spam"
-  | "harassment"
-  | "inappropriate_content"
-  | "fake_profile"
-  | "other";
+import type { ReportReason } from "@aroosi/shared/types";
+export type { ReportReason };
 
 /** Params for blockUserUtil */
 export type BlockUserParams = {

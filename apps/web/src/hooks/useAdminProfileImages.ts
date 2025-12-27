@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAdminProfileImagesById } from "@/lib/profile/adminProfileApi";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { useEffect, useState } from "react";
 
 interface UseAdminProfileImagesOptions {
@@ -12,7 +12,7 @@ export function useAdminProfileImages({
   profileId,
   enabled = true,
 }: UseAdminProfileImagesOptions) {
-  const query = useQuery<ImageType[]>({
+  const query = useQuery<ProfileImageInfo[]>({
     queryKey: ["profileImages", profileId, "admin"],
     queryFn: async () => {
       if (!profileId) return [];
@@ -27,7 +27,7 @@ export function useAdminProfileImages({
     staleTime: 60_000,
   });
 
-  const [images, setImages] = useState<ImageType[]>(query.data || []);
+  const [images, setImages] = useState<ProfileImageInfo[]>(query.data || []);
   useEffect(() => {
     if (Array.isArray(query.data)) setImages(query.data);
   }, [query.data]);

@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
-import { uploadProfileImage, deleteFile } from "@/lib/firebaseStorageClient";
 import { FirebaseImageGallery } from "@/components/FirebaseImageGallery";
 import { FirebaseProfileImageUpload } from "@/components/FirebaseProfileImageUpload";
 import { Button } from "@/components/ui/button";

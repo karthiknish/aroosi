@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Email Verified - Aroosi" };
 
@@ -12,12 +13,16 @@ export default function EmailVerifiedPage() {
           Your email address has been successfully verified. You now have full access to all Aroosi features.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/search" className="inline-flex justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-base-light shadow hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors">
-            Find Matches
-          </Link>
-          <Link href="/profile" className="inline-flex justify-center rounded-md border border-neutral/20 px-5 py-2.5 text-sm font-medium text-neutral-dark bg-base-light hover:bg-neutral/5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors">
-            View Profile
-          </Link>
+          <Button asChild className="px-5 py-2.5">
+            <Link href="/search">
+              Find Matches
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="px-5 py-2.5">
+            <Link href="/profile">
+              View Profile
+            </Link>
+          </Button>
         </div>
       </div>
     </main>

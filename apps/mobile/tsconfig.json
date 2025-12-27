@@ -21,6 +21,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@aroosi/shared": [
+        "../../packages/shared/src"
+      ],
+      "@aroosi/shared/*": [
+        "../../packages/shared/src/*"
       ]
     }
   },

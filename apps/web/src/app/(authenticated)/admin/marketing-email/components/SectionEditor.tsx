@@ -9,18 +9,8 @@ import { Palette, Plus, Copy, Trash2, GripVertical } from "lucide-react";
 import { Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type UISection = Section & { _id: string };
-type Section = Hero | Paragraph | RichParagraph | ButtonSection | ImageOnly | ImageText | ColumnsSec | Divider | Spacer;
-type Hero = { type: "hero"; title: string; subtitle?: string; cta?: BuilderCTA; imageUrl?: string; align?: "left" | "center" };
-type Paragraph = { type: "paragraph"; text: string };
-type RichParagraph = { type: "richParagraph"; html: string; align?: "left" | "center" };
-type ButtonSection = { type: "button"; cta: BuilderCTA; align?: "left" | "center" };
-type BuilderCTA = { label: string; url: string };
-type ImageOnly = { type: "image"; src: string; alt?: string; width?: number; align?: "left" | "center" };
-type ImageText = { type: "imageText"; image: { src: string; alt?: string; width?: number }; html: string; imagePosition?: "left" | "right" };
-type ColumnsSec = { type: "columns"; columns: Array<{ html: string }>; columnCount?: 2 | 3 };
-type Divider = { type: "divider" };
-type Spacer = { type: "spacer"; size?: number };
+import { SectionItemEditor } from "../builder/components/SectionItemEditor";
+import { UISection, Section } from "../builder/types";
 
 interface SectionEditorProps {
   sections: UISection[];
@@ -131,154 +121,11 @@ export function SectionEditor({
 
                 {/* Section content */}
                 <div className="pl-6">
-                  {sec.type === "hero" && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label htmlFor={`hero-title-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                            Title
-                          </label>
-                          <Input
-                            id={`hero-title-${sec._id}`}
-                            value={sec.title}
-                            onChange={(e) => updateSection(sec._id, { title: e.target.value })}
-                            placeholder="Hero title"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor={`hero-subtitle-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                            Subtitle
-                          </label>
-                          <Input
-                            id={`hero-subtitle-${sec._id}`}
-                            value={sec.subtitle || ""}
-                            onChange={(e) => updateSection(sec._id, { subtitle: e.target.value })}
-                            placeholder="Hero subtitle"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label htmlFor={`hero-image-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                          Image URL
-                        </label>
-                        <div className="flex gap-2">
-                          <Input
-                            id={`hero-image-${sec._id}`}
-                            value={sec.imageUrl || ""}
-                            onChange={(e) => updateSection(sec._id, { imageUrl: e.target.value })}
-                            placeholder="https://..."
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setMediaOpenFor(sec._id)}
-                          >
-                            <ImageIcon className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {sec.type === "paragraph" && (
-                    <div>
-                      <label htmlFor={`paragraph-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                        Text Content
-                      </label>
-                      <Textarea
-                        id={`paragraph-${sec._id}`}
-                        value={sec.text}
-                        onChange={(e) => updateSection(sec._id, { text: e.target.value })}
-                        rows={4}
-                        placeholder="Enter your paragraph text..."
-                      />
-                    </div>
-                  )}
-
-                  {sec.type === "button" && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label htmlFor={`button-label-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                            Button Label
-                          </label>
-                          <Input
-                            id={`button-label-${sec._id}`}
-                            value={sec.cta.label}
-                            onChange={(e) => updateSection(sec._id, { cta: { ...sec.cta, label: e.target.value } })}
-                            placeholder="Click me"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor={`button-url-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                            Button URL
-                          </label>
-                          <Input
-                            id={`button-url-${sec._id}`}
-                            value={sec.cta.url}
-                            onChange={(e) => updateSection(sec._id, { cta: { ...sec.cta, url: e.target.value } })}
-                            placeholder="https://example.com"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {sec.type === "image" && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="md:col-span-2">
-                          <label htmlFor={`image-src-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                            Image URL
-                          </label>
-                          <div className="flex gap-2">
-                            <Input
-                              id={`image-src-${sec._id}`}
-                              value={sec.src}
-                              onChange={(e) => updateSection(sec._id, { src: e.target.value })}
-                              placeholder="https://..."
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setMediaOpenFor(sec._id)}
-                            >
-                              <ImageIcon className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <label htmlFor={`image-alt-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                            Alt Text
-                          </label>
-                          <Input
-                            id={`image-alt-${sec._id}`}
-                            value={sec.alt || ""}
-                            onChange={(e) => updateSection(sec._id, { alt: e.target.value })}
-                            placeholder="Image description"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {sec.type === "spacer" && (
-                    <div>
-                      <label htmlFor={`spacer-size-${sec._id}`} className="block text-sm font-medium text-slate-700 mb-1">
-                        Height (px)
-                      </label>
-                      <Input
-                        id={`spacer-size-${sec._id}`}
-                        type="number"
-                        value={sec.size ?? 16}
-                        onChange={(e) => updateSection(sec._id, { size: parseInt(e.target.value || "0", 10) })}
-                        min="1"
-                        max="200"
-                      />
-                    </div>
-                  )}
+                  <SectionItemEditor 
+                    sec={sec} 
+                    updateSection={updateSection} 
+                    setMediaOpenFor={setMediaOpenFor} 
+                  />
                 </div>
               </div>
             ))

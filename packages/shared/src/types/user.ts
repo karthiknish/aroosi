@@ -1,5 +1,5 @@
 /**
- * User Types - Shared between web and mobile
+ * User & Profile Types - Shared between web and mobile
  */
 
 export interface User {
@@ -12,20 +12,15 @@ export interface User {
     updatedAt?: Date | string;
 }
 
-export interface UserProfile extends User {
-    bio?: string;
-    age?: number;
-    gender?: 'male' | 'female' | 'other';
-    location?: {
-        city?: string;
-        state?: string;
-        country?: string;
+export interface UserLocation {
+    city?: string;
+    state?: string;
+    country?: string;
+    origin?: string;
+    coordinates?: {
+        latitude: number;
+        longitude: number;
     };
-    preferences?: UserPreferences;
-    photos?: string[];
-    isVerified?: boolean;
-    isPremium?: boolean;
-    lastActive?: Date | string;
 }
 
 export interface UserPreferences {
@@ -36,4 +31,63 @@ export interface UserPreferences {
     genderPreference?: 'male' | 'female' | 'both' | 'other';
     maxDistance?: number; // in kilometers
     showOnlyVerified?: boolean;
+}
+
+export interface UserProfile extends User {
+    fullName?: string;
+    profileFor?: 'self' | 'friend' | 'family';
+    bio?: string;
+    aboutMe?: string;
+    age?: number;
+    dateOfBirth?: string;
+    gender?: 'male' | 'female' | 'other';
+    preferredGender?: 'male' | 'female' | 'both' | 'other';
+    location?: UserLocation;
+    education?: string;
+    occupation?: string;
+    income?: string;
+    height?: string;
+    maritalStatus?: string;
+    religion?: string;
+    sect?: string;
+    caste?: string;
+    motherTongue?: string;
+    preferences?: UserPreferences;
+    photos?: string[];
+    profileImageIds?: string[];
+    interests?: string[];
+    isVerified?: boolean;
+    isPremium?: boolean;
+    isBlocked?: boolean;
+    isMutualInterest?: boolean;
+    lastActive?: Date | string;
+}
+
+export interface ProfileUpdateData {
+    displayName?: string;
+    fullName?: string;
+    profileFor?: 'self' | 'friend' | 'family';
+    bio?: string;
+    aboutMe?: string;
+    age?: number;
+    dateOfBirth?: string;
+    gender?: 'male' | 'female' | 'other';
+    preferredGender?: 'male' | 'female' | 'both' | 'other';
+    location?: Omit<UserLocation, 'coordinates'>;
+    education?: string;
+    occupation?: string;
+    income?: string;
+    height?: string;
+    maritalStatus?: string;
+    religion?: string;
+    sect?: string;
+    caste?: string;
+    motherTongue?: string;
+    interests?: string[];
+    onboardingComplete?: boolean;
+}
+
+export interface UploadPhotoResponse {
+    url: string;
+    imageId?: string;
 }

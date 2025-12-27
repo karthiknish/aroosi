@@ -8,10 +8,10 @@ import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import ProfileFormStepImages from "@/components/profile/ProfileFormStepImages";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import {
   showSuccessToast,
   showErrorToast,
@@ -27,7 +27,7 @@ import { DuplicateSession } from "@/lib/utils/imageUploadHelpers";
 
 export default function EditProfileImagesPage() {
   // Local images not yet persisted to backend
-  const [localImages, setLocalImages] = useState<ImageType[]>([]);
+  const [localImages, setLocalImages] = useState<ProfileImageInfo[]>([]);
   const { user, profile: authProfile } = useAuthContext();
   const userId =
     user?.uid ||
@@ -59,8 +59,8 @@ export default function EditProfileImagesPage() {
   const [batchCanceled, setBatchCanceled] = useState(false);
 
   // Local image state for optimistic edits
-  const [editedImages, setEditedImages] = useState<ImageType[]>([]);
-  const [initialImages, setInitialImages] = useState<ImageType[]>([]);
+  const [editedImages, setEditedImages] = useState<ProfileImageInfo[]>([]);
+  const [initialImages, setInitialImages] = useState<ProfileImageInfo[]>([]);
 
   // Clear duplicate session on mount and when user changes to avoid interference
   useEffect(() => {
@@ -98,15 +98,7 @@ export default function EditProfileImagesPage() {
   });
 
   // Memoize images to prevent infinite re-renders
-  const images: ImageType[] = useMemo(
-    () =>
-      rawImages.map((img) => ({
-        id: img.storageId || img.url,
-        url: img.url,
-        storageId: img.storageId,
-      })) as ImageType[],
-    [rawImages]
-  );
+  const images: ProfileImageInfo[] = useMemo(() => rawImages, [rawImages]);
 
   // Always sync editedImages and initialImages with backend images, but preserve any local (not yet persisted) images
   useEffect(() => {
@@ -116,30 +108,29 @@ export default function EditProfileImagesPage() {
     setInitialImages(persisted);
 
     // Preserve locally added images (id starts with 'local-' or contains ':' or lacks storageId)
-    const isLocal = (img: ImageType) =>
-      (img.id?.startsWith?.("local-") ?? false) ||
-      (typeof img.id === "string" && img.id.includes(":")) ||
-      !img.storageId;
+    const isLocal = (img: ProfileImageInfo) =>
+      (img.storageId?.startsWith?.("local-") ?? false) ||
+      (typeof img.storageId === "string" && img.storageId.includes(":"));
 
     setEditedImages((prev) => {
       // Only preserve local images that were already in editedImages
       const currentLocals = (prev || []).filter(isLocal);
 
       // Merge persisted with existing locals
-      const merged: ImageType[] = [...persisted, ...currentLocals];
+      const merged: ProfileImageInfo[] = [...persisted, ...currentLocals];
 
       // Only update if changed
-      const joinIds = (arr: ImageType[]) =>
-        arr.map((i) => i.id || i.url).join(",");
+      const joinIds = (arr: ProfileImageInfo[]) =>
+        arr.map((i) => i.storageId || i.url).join(",");
       if (joinIds(merged) !== joinIds(prev)) {
         return merged;
       }
       return prev;
     });
   }, [images, imagesLoading]); // Removed localImages to prevent infinite loop
-  // Child now always sends full ImageType[] including optimistic items.
+  // Child now always sends full objects including optimistic items.
   const handleImagesChanged = useCallback(
-    (updated: ImageType[] | string[]) => {
+    (updated: ProfileImageInfo[] | string[]) => {
       if (!Array.isArray(updated)) return;
       // If string array (legacy) ignore; we expect objects now
       if (updated.length === 0) {
@@ -148,23 +139,24 @@ export default function EditProfileImagesPage() {
         return;
       }
       if (typeof updated[0] === "string") return;
-      const updatedImages = updated as ImageType[];
-      const isLocal = (img: ImageType) =>
-        (img.id?.startsWith?.("local-") ?? false) ||
-        (typeof img.id === "string" && img.id.includes(":")) ||
-        !img.storageId;
+      const updatedImages = updated as ProfileImageInfo[];
+      const isLocal = (img: ProfileImageInfo) =>
+        (img.storageId?.startsWith?.("local-") ?? false) ||
+        (typeof img.storageId === "string" && img.storageId.includes(":"));
 
       const nextLocal = updatedImages.filter(isLocal);
 
       // Update local images
       setLocalImages((prev) => {
-        const joinIds = (arr: ImageType[]) => arr.map((i) => i.id).join(",");
+        const joinIds = (arr: ProfileImageInfo[]) =>
+          arr.map((i) => i.storageId).join(",");
         return joinIds(nextLocal) !== joinIds(prev) ? nextLocal : prev;
       });
 
       // Update edited images to include all images (both persisted and local)
       setEditedImages((prev) => {
-        const joinIds = (arr: ImageType[]) => arr.map((i) => i.id).join(",");
+        const joinIds = (arr: ProfileImageInfo[]) =>
+          arr.map((i) => i.storageId).join(",");
         return joinIds(updatedImages) !== joinIds(prev) ? updatedImages : prev;
       });
     },
@@ -173,26 +165,25 @@ export default function EditProfileImagesPage() {
 
   const handleImageDelete = useCallback(
     async (imageId: string) => {
-      let target: ImageType | undefined;
+      let target: ProfileImageInfo | undefined;
 
       // Check if it's a local image
-      const isLocal = (img: ImageType) =>
-        (img.id?.startsWith?.("local-") ?? false) ||
-        (typeof img.id === "string" && img.id.includes(":")) ||
-        !img.storageId;
+      const isLocal = (img: ProfileImageInfo) =>
+        (img.storageId?.startsWith?.("local-") ?? false) ||
+        (typeof img.storageId === "string" && img.storageId.includes(":"));
 
       // Find target in both editedImages and localImages
       setEditedImages((prev) => {
-        target = prev.find((i) => (i.storageId || i.id) === imageId);
-        return prev.filter((img) => (img.storageId || img.id) !== imageId);
+        target = prev.find((i) => i.storageId === imageId);
+        return prev.filter((img) => img.storageId !== imageId);
       });
 
       // Also remove from localImages if it's there
       setLocalImages((prev) => {
         if (!target) {
-          target = prev.find((i) => (i.storageId || i.id) === imageId);
+          target = prev.find((i) => i.storageId === imageId);
         }
-        return prev.filter((img) => (img.storageId || img.id) !== imageId);
+        return prev.filter((img) => img.storageId !== imageId);
       });
 
       // If it's a local image, no need to call API
@@ -203,7 +194,7 @@ export default function EditProfileImagesPage() {
 
       try {
         if (!target) return;
-        const storageId = target.storageId || target.id;
+        const storageId = target.storageId;
         await deleteImageById(storageId);
         showInfoToast("Photo deleted");
         // Invalidate caches
@@ -219,7 +210,7 @@ export default function EditProfileImagesPage() {
             setLocalImages((prev) => [...prev, target!]);
           } else {
             setEditedImages((prev) => {
-              if (prev.some((i) => (i.storageId || i.id) === imageId))
+              if (prev.some((i) => i.storageId === imageId))
                 return prev; // already back
               return [...prev, target!];
             });
@@ -230,7 +221,7 @@ export default function EditProfileImagesPage() {
     [profileUserId, queryClient, userId]
   );
 
-  const handleImageReorder = useCallback((newOrder: ImageType[]) => {
+  const handleImageReorder = useCallback((newOrder: ProfileImageInfo[]) => {
     setEditedImages(newOrder);
   }, []);
 
@@ -240,16 +231,15 @@ export default function EditProfileImagesPage() {
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   };
-  const normalizeIds = (arr: ImageType[]) =>
-    arr.map((img) => (img.storageId ? String(img.storageId) : String(img.id)));
+  const normalizeIds = (arr: ProfileImageInfo[]) =>
+    arr.map((img) => String(img.storageId));
   const initialIds = normalizeIds(initialImages);
   const editedIds = normalizeIds(editedImages);
   // Combine persisted and local images for display, avoiding duplicates
   const combinedForDisplay = useMemo(() => {
-    const isLocal = (img: ImageType) =>
-      (img.id?.startsWith?.("local-") ?? false) ||
-      (typeof img.id === "string" && img.id.includes(":")) ||
-      !img.storageId;
+    const isLocal = (img: ProfileImageInfo) =>
+      (img.storageId?.startsWith?.("local-") ?? false) ||
+      (typeof img.storageId === "string" && img.storageId.includes(":"));
 
     // If editedImages already contains local images, use it directly
     const hasLocalInEdited = editedImages.some(isLocal);
@@ -325,19 +315,21 @@ export default function EditProfileImagesPage() {
     setBatchCanceled(false);
     const _deletions = initialIds.filter((id) => !editedIds.includes(id));
     const _additions = editedImages.filter(
-      (img) => !initialIds.includes(img.storageId || img.id)
+      (img) => !initialIds.includes(img.storageId)
     );
 
     // Filter out local/temp IDs before sending to updateImageOrder
     const isLocalId = (id: string) =>
       id.startsWith("local-") || id.includes(":");
     // Upload local images in parallel with progress & cancel
-    let persistedImages: ImageType[] = [...editedImages];
-    const localToUpload = editedImages.filter((img) => isLocalId(img.id));
+    let persistedImages: ProfileImageInfo[] = [...editedImages];
+    const localToUpload = editedImages.filter((img) =>
+      isLocalId(img.storageId)
+    );
     if (localToUpload.length) {
       // Filter out any that already succeeded (user hit Save again after partial success)
       const queue = localToUpload.filter(
-        (li) => uploadStates[li.id]?.status !== "success"
+        (li) => uploadStates[li.storageId]?.status !== "success"
       );
       if (queue.length) {
         // Initialize upload state entries
@@ -345,11 +337,11 @@ export default function EditProfileImagesPage() {
           const next = { ...prev } as typeof prev;
           for (const li of queue) {
             if (
-              !next[li.id] ||
-              next[li.id].status === "idle" ||
-              next[li.id].status === "error"
+              !next[li.storageId] ||
+              next[li.storageId].status === "idle" ||
+              next[li.storageId].status === "error"
             ) {
-              next[li.id] = { status: "uploading", progress: 0 };
+              next[li.storageId] = { status: "uploading", progress: 0 };
             }
           }
           return next;
@@ -376,10 +368,10 @@ export default function EditProfileImagesPage() {
                   (loaded, total) => {
                     setUploadStates((prev) => ({
                       ...prev,
-                      [localImg.id]: {
-                        ...(prev[localImg.id] || { status: "uploading" }),
+                      [localImg.storageId]: {
+                        ...(prev[localImg.storageId] || { status: "uploading" }),
                         status:
-                          prev[localImg.id]?.status === "canceled"
+                          prev[localImg.storageId]?.status === "canceled"
                             ? "canceled"
                             : loaded < total
                               ? "uploading"
@@ -395,8 +387,8 @@ export default function EditProfileImagesPage() {
               // Store cancel immediately (in case progress cb hasn't fired yet)
               setUploadStates((prev) => ({
                 ...prev,
-                [localImg.id]: {
-                  ...(prev[localImg.id] || {
+                [localImg.storageId]: {
+                  ...(prev[localImg.storageId] || {
                     status: "uploading",
                     progress: 0,
                   }),
@@ -406,10 +398,9 @@ export default function EditProfileImagesPage() {
               const result = await promise;
               if (result?.imageId) {
                 persistedImages = persistedImages.map((p) =>
-                  p.id === localImg.id
+                  p.storageId === localImg.storageId
                     ? {
                         ...p,
-                        id: result.imageId,
                         storageId: result.imageId,
                         url: result.url || p.url,
                       }
@@ -417,8 +408,8 @@ export default function EditProfileImagesPage() {
                 );
                 setUploadStates((prev) => ({
                   ...prev,
-                  [localImg.id]: {
-                    ...(prev[localImg.id] || {}),
+                  [localImg.storageId]: {
+                    ...(prev[localImg.storageId] || {}),
                     status: "success",
                     progress: 100,
                   },
@@ -428,11 +419,11 @@ export default function EditProfileImagesPage() {
               const aborted = /aborted|canceled/i.test(e?.message || "");
               setUploadStates((prev) => ({
                 ...prev,
-                [localImg.id]: {
-                  ...(prev[localImg.id] || {}),
+                [localImg.storageId]: {
+                  ...(prev[localImg.storageId] || {}),
                   status: aborted ? "canceled" : "error",
                   error: aborted ? "Canceled" : e?.message || "Upload failed",
-                  progress: prev[localImg.id]?.progress || 0,
+                  progress: prev[localImg.storageId]?.progress || 0,
                 },
               }));
             }
@@ -467,7 +458,7 @@ export default function EditProfileImagesPage() {
     }
 
     const validEditedIds = persistedImages
-      .map((img) => img.storageId || img.id)
+      .map((img) => img.storageId)
       .filter((id): id is string => typeof id === "string" && id.length > 0)
       .filter((id) => !isLocalId(id));
 
@@ -584,10 +575,10 @@ export default function EditProfileImagesPage() {
             profileId={profileUserId}
             renderAction={(img) => {
               // Show status badges for local images (no storageId) or uploading states
-              const st = uploadStates[img.id];
+              const st = uploadStates[img.storageId];
               const base =
                 "text-[10px] rounded px-1.5 py-0.5 font-medium shadow-sm whitespace-nowrap";
-              if (!img.storageId) {
+              if (img.storageId.startsWith("local-") || img.storageId.includes(":")) {
                 if (st?.status === "uploading") {
                   return (
                     <span className={`${base} bg-primary text-base-light`}>
@@ -604,7 +595,7 @@ export default function EditProfileImagesPage() {
                         e.stopPropagation();
                         setUploadStates((prev) => ({
                           ...prev,
-                          [img.id]: { status: "idle", progress: 0 },
+                          [img.storageId]: { status: "idle", progress: 0 },
                         }));
                       }}
                     >

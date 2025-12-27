@@ -35,7 +35,7 @@ import {
   CreditCard,
   ChevronRight,
 } from "lucide-react";
-import type { SubscriptionPlan } from "@/types/profile";
+import type { AppSubscriptionPlan as SubscriptionPlan } from "@aroosi/shared/types";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion } from "framer-motion";
 

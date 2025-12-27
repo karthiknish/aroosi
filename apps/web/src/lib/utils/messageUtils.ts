@@ -1,29 +1,10 @@
 // Cookie-based Convex Auth is used in server routes; this is a pure UI utility module.
 
-// Message types and interfaces
-export interface MessageData {
-  _id: string;
-  conversationId: string;
-  fromUserId: string;
-  toUserId: string;
-  text: string;
-  type: "text" | "voice" | "image";
-  isRead: boolean;
-  readAt?: number;
-  _creationTime: number;
-  audioStorageId?: string;
-  duration?: number;
-  fileSize?: number;
-  mimeType?: string;
-}
+import type { Conversation as SharedConversation, Message as SharedMessage, MessageType } from "@aroosi/shared/types";
 
-export interface ConversationData {
-  _id: string;
-  participants: string[];
-  lastMessage?: MessageData;
-  lastMessageAt?: number;
-  unreadCount?: number;
-}
+// Message types and interfaces
+export type MessageData = SharedMessage;
+export type ConversationData = SharedConversation;
 
 export interface TypingIndicator {
   userId: string;
@@ -61,7 +42,7 @@ export function getOtherUserId(
 }
 
 // Message formatting utilities
-export function formatMessageTime(timestamp: number): string {
+export function formatMessageTime(timestamp: number | string | Date): string {
   const now = new Date();
   const messageDate = new Date(timestamp);
   const diffInMs = now.getTime() - messageDate.getTime();
@@ -102,7 +83,8 @@ export function groupMessagesByDate(
   const groups: Record<string, MessageData[]> = {};
 
   messages.forEach((message) => {
-    const date = new Date(message._creationTime);
+    const timestamp = message._creationTime || message.createdAt || Date.now();
+    const date = new Date(timestamp);
     const dateKey = date.toDateString();
 
     if (!groups[dateKey]) {
@@ -120,7 +102,9 @@ export function shouldShowTimestamp(
 ): boolean {
   if (!previousMessage) return true;
 
-  const timeDiff = currentMessage._creationTime - previousMessage._creationTime;
+  const currentTs = Number(currentMessage._creationTime || currentMessage.createdAt) || 0;
+  const prevTs = Number(previousMessage._creationTime || previousMessage.createdAt) || 0;
+  const timeDiff = currentTs - prevTs;
   const minutesDiff = timeDiff / (1000 * 60);
 
   // Show timestamp if more than 15 minutes apart or different sender
@@ -220,8 +204,8 @@ export function getMessageStatus(message: MessageData): MessageStatus {
   return {
     sent: true, // If we have the message, it was sent
     delivered: true, // In this system, delivered = sent
-    read: message.isRead,
-    timestamp: message.readAt || message._creationTime,
+    read: !!message.isRead,
+    timestamp: Number(message.readAt || message._creationTime || message.createdAt) || Date.now(),
   };
 }
 
@@ -264,13 +248,13 @@ export function searchMessages(
 ): MessageData[] {
   const lowercaseQuery = query.toLowerCase();
   return messages.filter((message) =>
-    message.text.toLowerCase().includes(lowercaseQuery)
+    (message.text || "").toLowerCase().includes(lowercaseQuery)
   );
 }
 
 export function filterMessagesByType(
   messages: MessageData[],
-  type: "text" | "voice" | "image"
+  type: MessageType
 ): MessageData[] {
   return messages.filter((message) => message.type === type);
 }
@@ -289,13 +273,14 @@ export function exportConversationToText(
     exportText += `--- ${date} ---\n`;
 
     msgs.forEach((message) => {
-      const senderName = userNames[message.fromUserId] || "Unknown User";
-      const time = new Date(message._creationTime).toLocaleTimeString();
+      const senderName = userNames[message.fromUserId || ""] || "Unknown User";
+      const timestamp = message._creationTime || message.createdAt || Date.now();
+      const time = new Date(timestamp).toLocaleTimeString();
 
       if (message.type === "voice") {
         exportText += `[${time}] ${senderName}: [Voice Message - ${formatVoiceDuration(message.duration || 0)}]\n`;
       } else {
-        exportText += `[${time}] ${senderName}: ${message.text}\n`;
+        exportText += `[${time}] ${senderName}: ${message.text || ""}\n`;
       }
     });
 
@@ -318,7 +303,7 @@ export function getMessagePreview(message: MessageData): string {
   } else if (message.type === "image") {
     return "📷 Image";
   } else {
-    return truncateMessage(message.text, 40);
+    return truncateMessage(message.text || "", 40);
   }
 }
 

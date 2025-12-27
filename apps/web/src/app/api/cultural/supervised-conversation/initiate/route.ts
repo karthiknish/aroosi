@@ -6,7 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import { SupervisedConversation } from "@/types/cultural";
+import type { SupervisedConversation } from "@aroosi/shared/types";
 
 const initiateSchema = z.object({
   targetUserId: z.string().min(1),

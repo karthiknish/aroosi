@@ -164,6 +164,7 @@ export function showErrorToast(
   }
 
   toast.error(message, {
+    className: "aroosi-toast",
     style: {
       // Force vivid error background (fallback to gradient if CSS vars missing)
       background:
@@ -188,6 +189,7 @@ export function showErrorToast(
 
 export function showSuccessToast(message: string) {
   toast.success(message, {
+    className: "aroosi-toast",
     style: {
       background: "linear-gradient(135deg, hsl(var(--success)) 0%, #059669 100%)",
       color: "#ffffff",
@@ -210,6 +212,7 @@ export function showUndoToast(
   duration = 6000
 ) {
   toast.success(message, {
+    className: "aroosi-toast",
     style: {
       background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
       color: "#ffffff",
@@ -238,6 +241,7 @@ export function showUndoToast(
 // Informational toast (e.g., prompts or neutral messages)
 export function showInfoToast(message: string) {
   toast.info(message, {
+    className: "aroosi-toast",
     style: {
       background: "linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary-dark)) 100%)",
       color: "#ffffff",
@@ -255,6 +259,7 @@ export function showInfoToast(message: string) {
 // Warning toast for important notifications
 export function showWarningToast(message: string) {
   toast.warning(message, {
+    className: "aroosi-toast",
     style: {
       background: "linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--accent-dark)) 100%)",
       color: "#ffffff",
@@ -272,6 +277,7 @@ export function showWarningToast(message: string) {
 // Primary branded toast for special announcements
 export function showPrimaryToast(message: string) {
   toast(message, {
+    className: "aroosi-toast",
     style: {
       background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-dark)) 100%)",
       color: "#ffffff",

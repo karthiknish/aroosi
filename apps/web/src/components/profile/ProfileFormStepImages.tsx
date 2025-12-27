@@ -1,18 +1,18 @@
 import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 
 interface Props {
-  images: ImageType[];
+  images: ProfileImageInfo[];
   onImageDelete?: (imageId: string) => Promise<void>;
-  onImageReorder?: (newOrder: ImageType[]) => void;
-  onImagesChanged?: (images: ImageType[] | string[]) => void;
+  onImageReorder?: (newOrder: ProfileImageInfo[]) => void;
+  onImagesChanged?: (images: ProfileImageInfo[] | string[]) => void;
   isLoading: boolean;
   isAdmin?: boolean;
   profileId?: string;
-  renderAction?: (img: ImageType, idx: number) => React.ReactNode;
+  renderAction?: (img: ProfileImageInfo, idx: number) => React.ReactNode;
 }
 
 const ProfileFormStepImages: React.FC<Props> = ({

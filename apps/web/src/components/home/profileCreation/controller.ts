@@ -9,7 +9,7 @@ import {
   submitProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
 import { computeNextStep, normalizeStartStep } from "./flow";
 import { normalizeStepData } from "./step2";
@@ -173,7 +173,7 @@ export function useProfileCreationController(params: {
   }, [partnerPreferenceCityDep]);
 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [pendingImages, setPendingImages] = React.useState<ImageType[]>([]);
+  const [pendingImages, setPendingImages] = React.useState<ProfileImageInfo[]>([]);
 
   const validationData = React.useMemo(() => {
     if (step !== 2) return formData;
@@ -226,7 +226,7 @@ export function useProfileCreationController(params: {
     onChange(field, value);
   };
 
-  const handleProfileImagesChange = async (imgs: (string | ImageType)[]) => {
+  const handleProfileImagesChange = async (imgs: (string | ProfileImageInfo)[]) => {
     const onFieldChange = createOnChangeHandler(updateContextData as any);
     const handler = createOnProfileImagesChangeHandler(
       onFieldChange,

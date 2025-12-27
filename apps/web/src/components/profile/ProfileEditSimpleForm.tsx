@@ -1,29 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { cmToFeetInches } from "@/lib/utils/height";
-import ProfileFormStepBasicInfo from "./ProfileFormStepBasicInfo";
-import ProfileFormStepLocation from "./ProfileFormStepLocation";
-import ProfileFormStepCultural from "./ProfileFormStepCultural";
-import ProfileFormStepEducation from "./ProfileFormStepEducation";
-import ProfileFormStepAbout from "./ProfileFormStepAbout";
-import { Button } from "@/components/ui/button";
-import type { ProfileFormValues } from "@/types/profile";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import type { ProfileFormValues } from "@aroosi/shared/types";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRouter } from "next/navigation";
 
 // Reuse option sources used by ProfileCreationModal
-import {
-  MOTHER_TONGUE_OPTIONS,
-  RELIGION_OPTIONS,
-  ETHNICITY_OPTIONS,
-} from "@/lib/constants/languages";
 import { COUNTRIES } from "@/lib/constants/countries";
-
-// Reuse validated UI used by ProfileCreationModal
-import { ValidatedInput } from "@/components/ui/ValidatedInput";
-import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
-import { ValidatedTextarea } from "@/components/ui/ValidatedTextarea";
 
 // Bring over validation summary/progress like onboarding
 import { ErrorSummary } from "@/components/ui/ErrorSummary";
@@ -31,49 +14,36 @@ import { SimpleProgress } from "@/components/ui/ProgressIndicator";
 
 // Validation schemas used in onboarding/profile creation
 import { enhancedValidationSchemas } from "@/lib/validation/profileValidation";
-import { EnhancedValidationSchemas } from "@/lib/validation/onboarding";
 import * as z from "zod";
+
+// Extracted components
+import { BasicInfoSection } from "./edit/BasicInfoSection";
+import { LocationPhysicalSection } from "./edit/LocationPhysicalSection";
+import { CulturalLifestyleSection } from "./edit/CulturalLifestyleSection";
+import { EducationCareerSection } from "./edit/EducationCareerSection";
+import { AboutPreferencesSection } from "./edit/AboutPreferencesSection";
+import { StickyActionBar } from "./edit/StickyActionBar";
 
 type Props = {
   initialValues: Partial<ProfileFormValues>;
   onSubmit: (values: ProfileFormValues) => void;
+  onAutoSave?: (values: ProfileFormValues) => Promise<void>;
+  onDirtyChange?: (isDirty: boolean) => void;
   loading?: boolean;
   serverError?: string | null;
   onCancel?: () => void;
-  // profileId: string;
-  // no image props
+  autoSaveStatus?: "idle" | "saving" | "saved" | "error";
 };
-
-
-const FormSection: React.FC<{
-  title: string;
-  children: React.ReactNode;
-  gridClassName?: string;
-}> = ({ title, children, gridClassName }) => (
-  <Card className="mb-6 border border-neutral/10 shadow-sm rounded-3xl overflow-hidden bg-base-light/50 backdrop-blur-sm">
-    <CardHeader className="border-b border-neutral/5 bg-base-light/50">
-      <CardTitle className="text-lg md:text-xl font-semibold text-neutral-dark">
-        {title}
-      </CardTitle>
-    </CardHeader>
-    <CardContent
-      className={
-        gridClassName || "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 p-6"
-      }
-    >
-      {children}
-    </CardContent>
-  </Card>
-);
 
 export default function ProfileEditSimpleForm({
   initialValues,
   onSubmit,
+  onAutoSave,
+  onDirtyChange,
   loading = false,
   serverError,
   onCancel,
-  // profileId: _profileId,
-  // no image props
+  autoSaveStatus = "idle",
 }: Props) {
   const form = useForm<Partial<ProfileFormValues>>({
     defaultValues: initialValues,
@@ -82,6 +52,81 @@ export default function ProfileEditSimpleForm({
 
   const { handleSubmit, formState, watch, setValue, getValues } = form;
   const router = useRouter();
+
+  // Notify parent of dirty state
+  useEffect(() => {
+    onDirtyChange?.(formState.isDirty);
+  }, [formState.isDirty, onDirtyChange]);
+
+  // LocalStorage backup & Server Auto-save
+  const watchedValues = watch();
+  useEffect(() => {
+    if (formState.isDirty) {
+      const timer = setTimeout(async () => {
+        // 1. LocalStorage backup (immediate safety)
+        localStorage.setItem(
+          "profile_edit_backup",
+          JSON.stringify(watchedValues)
+        );
+
+        // 2. Server Auto-save (if valid)
+        if (onAutoSave) {
+          const isValid = await validateAll();
+          if (isValid) {
+            // Normalize values before auto-save
+            const data = { ...watchedValues };
+
+            // Handle partnerPreferenceCity like onboarding
+            if (preferredCitiesInput) {
+              const parsed = String(preferredCitiesInput)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              (data as any).partnerPreferenceCity = parsed;
+            }
+
+            // Ensure consistent value normalization
+            if ((data as any).preferredGender === "both") {
+              (data as any).preferredGender = "any";
+            }
+
+            onAutoSave(data as ProfileFormValues);
+          }
+        }
+      }, 3000); // 3 second debounce for server auto-save
+      return () => clearTimeout(timer);
+    }
+  }, [watchedValues, formState.isDirty, onAutoSave]);
+
+  // Load from localStorage on mount if available and user confirms
+  useEffect(() => {
+    const backup = localStorage.getItem("profile_edit_backup");
+    if (backup && !formState.isDirty) {
+      try {
+        const parsed = JSON.parse(backup);
+        // Simple check to see if backup is different from initial
+        if (JSON.stringify(parsed) !== JSON.stringify(initialValues)) {
+          if (
+            window.confirm(
+              "You have unsaved changes from a previous session. Would you like to restore them?"
+            )
+          ) {
+            form.reset(parsed);
+          } else {
+            localStorage.removeItem("profile_edit_backup");
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse profile backup", e);
+      }
+    }
+  }, []); // Only on mount
+
+  // Clear backup on successful submit
+  const handleFormSubmit = async (data: any) => {
+    localStorage.removeItem("profile_edit_backup");
+    onSubmit(data);
+  };
 
   // Build Zod schema for edit form, using the same schemas as onboarding
   const editSchema = useMemo(
@@ -272,28 +317,37 @@ export default function ProfileEditSimpleForm({
     if (!initialValues) return false;
 
     // If we have initialValues, check if it has any meaningful data
-    const hasMeaningfulData = Object.entries(initialValues).some(([key, value]) => {
-      // Skip technical fields that don't indicate data readiness
-      if (key === '_id' || key === 'userId' || key === 'profileImageIds' ||
-          key === 'profileImageUrls' || key === 'createdAt' || key === 'updatedAt' ||
-          key === 'banned' || key === 'profileFor') {
-        return false;
-      }
+    const hasMeaningfulData = Object.entries(initialValues).some(
+      ([key, value]) => {
+        // Skip technical fields that don't indicate data readiness
+        if (
+          key === "_id" ||
+          key === "userId" ||
+          key === "profileImageIds" ||
+          key === "profileImageUrls" ||
+          key === "createdAt" ||
+          key === "updatedAt" ||
+          key === "banned" ||
+          key === "profileFor"
+        ) {
+          return false;
+        }
 
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
+        if (Array.isArray(value)) {
+          return value.length > 0;
+        }
 
-      if (typeof value === "object" && value !== null) {
-        return Object.keys(value).length > 0;
-      }
+        if (typeof value === "object" && value !== null) {
+          return Object.keys(value).length > 0;
+        }
 
-      if (typeof value === "string" || typeof value === "number") {
-        return String(value).trim().length > 0;
-      }
+        if (typeof value === "string" || typeof value === "number") {
+          return String(value).trim().length > 0;
+        }
 
-      return !!value;
-    });
+        return !!value;
+      }
+    );
 
     return hasMeaningfulData;
   }, [initialValues]);
@@ -359,7 +413,7 @@ export default function ProfileEditSimpleForm({
           (data as any).preferredGender = "any"; // Convert back to API format
         }
 
-        onSubmit(data as ProfileFormValues);
+        handleFormSubmit(data as ProfileFormValues);
       })}
       className="space-y-8 w-full max-w-4xl mx-auto pb-24"
     >
@@ -398,378 +452,24 @@ export default function ProfileEditSimpleForm({
           />
         </div>
       </div>
-      {/* Basic Information (keep existing step component) */}
-      <FormSection title="Basic Information">
-        <ProfileFormStepBasicInfo form={form} cmToFeetInches={cmToFeetInches} />
-        {/* Profile For (parity with onboarding) */}
-        <ValidatedSelect
-          label="Profile For"
-          field="profileFor"
-          step={1 as any}
-          value={(watch("profileFor") as string) ?? "self"}
-          onValueChange={(v) =>
-            setValue("profileFor", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "self", label: "Myself" },
-            { value: "friend", label: "Friend" },
-            { value: "family", label: "Family" },
-          ]}
-          placeholder="Who is this profile for?"
-        />
-      </FormSection>
 
-      {/* Location & Physical - align with ProfileCreationModal Step 2 */}
-      <FormSection title="Location & Physical">
-        {/* Country */}
-        <div>
-          <ValidatedSelect
-            label="Country"
-            field="country"
-            step={2 as any}
-            value={watch("country") as string}
-            onValueChange={(v) =>
-              setValue("country", v as any, { shouldDirty: true })
-            }
-            options={countries.map((c) => ({ value: c, label: c }))}
-            placeholder="Select country"
-          />
-        </div>
+      <BasicInfoSection form={form} cmToFeetInches={cmToFeetInches} />
 
-        {/* City */}
-        <ValidatedInput
-          label="City"
-          field="city"
-          step={2 as any}
-          value={(watch("city") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("city", v as any, { shouldDirty: true })
-          }
-          placeholder="Enter your city"
-          required
-          hint="Enter the city where you currently live"
-        />
+      <LocationPhysicalSection
+        form={form}
+        countries={countries}
+        cmToFeetInches={cmToFeetInches}
+      />
 
-        {/* Height */}
-        <div>
-          <ValidatedSelect
-            label="Height"
-            field="height"
-            step={2 as any}
-            value={
-              typeof watch("height") === "string" &&
-              /^\d{2,3}$/.test(String(watch("height")).trim())
-                ? `${String(watch("height")).trim()} cm`
-                : ((watch("height") as string) ?? "")
-            }
-            onValueChange={(v) =>
-              setValue("height", v as any, { shouldDirty: true })
-            }
-            options={Array.from({ length: 198 - 137 + 1 }, (_, i) => {
-              const cm = 137 + i;
-              const normalized = `${cm} cm`;
-              return {
-                value: normalized,
-                label: `${cmToFeetInches(cm)} (${cm} cm)`,
-              };
-            })}
-            placeholder="Select height"
-          />
-        </div>
+      <CulturalLifestyleSection form={form} />
 
-        {/* Marital Status - using same options as onboarding */}
-        <ValidatedSelect
-          label="Marital Status"
-          field="maritalStatus"
-          step={2 as any}
-          value={(watch("maritalStatus") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("maritalStatus", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "single", label: "Single" },
-            { value: "divorced", label: "Divorced" },
-            { value: "widowed", label: "Widowed" },
-            { value: "separated", label: "Separated" },
-          ]}
-          placeholder="Select marital status"
-          required
-        />
+      <EducationCareerSection form={form} />
 
-        {/* Physical Status */}
-        <ValidatedSelect
-          label="Physical Status"
-          field="physicalStatus"
-          step={2 as any}
-          value={(watch("physicalStatus") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("physicalStatus", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "normal", label: "Normal" },
-            { value: "differently-abled", label: "Differently Abled" },
-          ]}
-          placeholder="Select physical status"
-        />
-      </FormSection>
-
-      {/* Cultural & Lifestyle - align with ProfileCreationModal Step 3 */}
-      <FormSection title="Cultural & Lifestyle">
-        {/* Mother Tongue */}
-        <ValidatedSelect
-          label="Mother Tongue"
-          field="motherTongue"
-          step={3 as any}
-          value={(watch("motherTongue") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("motherTongue", v as any, { shouldDirty: true })
-          }
-          options={MOTHER_TONGUE_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-          }))}
-          placeholder="Select language"
-        />
-
-        {/* Religion */}
-        <ValidatedSelect
-          label="Religion"
-          field="religion"
-          step={3 as any}
-          value={(watch("religion") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("religion", v as any, { shouldDirty: true })
-          }
-          options={RELIGION_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-          }))}
-          placeholder="Select religion"
-        />
-
-        {/* Ethnicity */}
-        <ValidatedSelect
-          label="Ethnicity"
-          field="ethnicity"
-          step={3 as any}
-          value={(watch("ethnicity") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("ethnicity", v as any, { shouldDirty: true })
-          }
-          options={ETHNICITY_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-          }))}
-          placeholder="Select ethnicity"
-        />
-
-        {/* Diet - using same options as onboarding */}
-        <ValidatedSelect
-          label="Diet"
-          field="diet"
-          step={3 as any}
-          value={(watch("diet") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("diet", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "vegetarian", label: "Vegetarian" },
-            { value: "non-vegetarian", label: "Non-Vegetarian" },
-            { value: "vegan", label: "Vegan" },
-            { value: "halal", label: "Halal" },
-            { value: "kosher", label: "Kosher" },
-          ]}
-          placeholder="Select diet preference"
-        />
-
-        {/* Smoking - using same options as onboarding */}
-        <ValidatedSelect
-          label="Smoking"
-          field="smoking"
-          step={3 as any}
-          value={(watch("smoking") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("smoking", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "never", label: "Never" },
-            { value: "occasionally", label: "Occasionally" },
-            { value: "regularly", label: "Regularly" },
-            { value: "socially", label: "Socially" },
-          ]}
-          placeholder="Select smoking preference"
-        />
-
-        {/* Drinking - using same options as onboarding */}
-        <ValidatedSelect
-          label="Drinking"
-          field="drinking"
-          step={3 as any}
-          value={(watch("drinking") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("drinking", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "never", label: "Never" },
-            { value: "occasionally", label: "Occasionally" },
-            { value: "socially", label: "Socially" },
-            { value: "regularly", label: "Regularly" },
-          ]}
-          placeholder="Select drinking preference"
-        />
-
-        {/* New Cultural Fields */}
-        <ProfileFormStepCultural form={form} />
-      </FormSection>
-
-      {/* Education & Career - align with Step 4 */}
-      <FormSection title="Education & Career">
-        <ValidatedInput
-          label="Education"
-          field="education"
-          step={4 as any}
-          value={(watch("education") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("education", v as any, { shouldDirty: true })
-          }
-          placeholder="e.g. Bachelor's, Master's"
-          required
-        />
-
-        <ValidatedInput
-          label="Occupation"
-          field="occupation"
-          step={4 as any}
-          value={(watch("occupation") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("occupation", v as any, { shouldDirty: true })
-          }
-          placeholder="Occupation"
-          required
-        />
-
-        <ValidatedInput
-          label="Annual Income"
-          field="annualIncome"
-          step={4 as any}
-          value={String((watch("annualIncome") as any) ?? "")}
-          onValueChange={(v) =>
-            setValue("annualIncome", v as any, { shouldDirty: true })
-          }
-          placeholder="e.g. £30,000"
-        />
-      </FormSection>
-
-      {/* About & Preferences - align with Step 4/5 */}
-      <FormSection title="About & Preferences">
-        <ValidatedTextarea
-          label="About Me"
-          field="aboutMe"
-          step={4 as any}
-          value={(watch("aboutMe") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("aboutMe", v as any, { shouldDirty: true })
-          }
-          placeholder="Tell us a little about yourself..."
-          rows={4}
-          required
-        />
-
-        {/* Preferred Gender - using same options as onboarding */}
-        <ValidatedSelect
-          label="Preferred Gender"
-          field="preferredGender"
-          step={5 as any}
-          value={(watch("preferredGender") as string) ?? ""}
-          onValueChange={(v) =>
-            setValue("preferredGender", v as any, { shouldDirty: true })
-          }
-          options={[
-            { value: "male", label: "Male" },
-            { value: "female", label: "Female" },
-            { value: "both", label: "Both" },
-            { value: "other", label: "Other" },
-          ]}
-          placeholder="Select preferred gender"
-          required
-        />
-
-        {/* Age range */}
-        <div className="grid grid-cols-1 md:grid-cols-[auto,auto,auto] items-end gap-2">
-          <ValidatedInput
-            label="Preferred Age Min"
-            field="partnerPreferenceAgeMin"
-            step={5 as any}
-            value={
-              (watch("partnerPreferenceAgeMin") as any) !== undefined
-                ? String(watch("partnerPreferenceAgeMin") as any)
-                : ""
-            }
-            type="number"
-            onValueChange={(v) =>
-              setValue(
-                "partnerPreferenceAgeMin",
-                (v === "" ? "" : Number(v)) as any,
-                {
-                  shouldDirty: true,
-                }
-              )
-            }
-            className="w-24"
-            placeholder="18"
-          />
-          <div className="hidden md:block text-center mb-2">to</div>
-          <ValidatedInput
-            label="Preferred Age Max"
-            field="partnerPreferenceAgeMax"
-            step={5 as any}
-            value={
-              (watch("partnerPreferenceAgeMax") as any) !== undefined
-                ? String(watch("partnerPreferenceAgeMax") as any)
-                : ""
-            }
-            type="number"
-            onValueChange={(v) =>
-              setValue(
-                "partnerPreferenceAgeMax",
-                (v === "" ? "" : Number(v)) as any,
-                {
-                  shouldDirty: true,
-                }
-              )
-            }
-            className="w-24"
-            placeholder="120"
-          />
-        </div>
-
-        {/* Preferred Cities helper input (comma separated) */}
-        <ValidatedInput
-          label="Preferred Cities"
-          field="partnerPreferenceCity"
-          step={5 as any}
-          value={preferredCitiesInput}
-          validationValue={preferredCitiesInput
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)}
-          onValueChange={(raw) => {
-            const str = String(raw);
-            setPreferredCitiesInput(str);
-            const parsed = str
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            setValue("partnerPreferenceCity", parsed as any, {
-              shouldDirty: true,
-            });
-          }}
-          placeholder="e.g. London, Kabul"
-          hint="Comma-separated list"
-        />
-      </FormSection>
-
-      {/* Profile photos are edited on a separate page, same as onboarding */}
+      <AboutPreferencesSection
+        form={form}
+        preferredCitiesInput={preferredCitiesInput}
+        setPreferredCitiesInput={setPreferredCitiesInput}
+      />
 
       {serverError && (
         <p className="text-sm font-medium text-destructive mt-4">
@@ -777,28 +477,12 @@ export default function ProfileEditSimpleForm({
         </p>
       )}
 
-      {/* Sticky action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-base-light/80 backdrop-blur-xl border-t border-neutral/10 z-50 py-4 px-4 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.05)]">
-        <div className="max-w-4xl mx-auto flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel ? onCancel : () => router.back()}
-            className="min-w-[120px] rounded-full border-neutral/20 hover:bg-neutral/5"
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={loading || !formState.isDirty}
-            className="min-w-[140px] flex items-center justify-center rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
-          >
-            {loading && <LoadingSpinner size={18} className="mr-2" />}
-            Save Changes
-          </Button>
-        </div>
-      </div>
+      <StickyActionBar
+        autoSaveStatus={autoSaveStatus}
+        isDirty={formState.isDirty}
+        loading={loading}
+        onCancel={onCancel ? onCancel : () => router.back()}
+      />
     </form>
   );
 }

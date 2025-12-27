@@ -1,4 +1,4 @@
-import type { Profile, ProfileFormValues } from "@/types/profile";
+import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
 
 type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
 

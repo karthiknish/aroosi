@@ -8,7 +8,7 @@ import {
 } from "@/lib/admin/firestoreAdminProfiles";
 import { db } from "@/lib/firebaseAdmin";
 import { Notifications } from "@/lib/notify";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);

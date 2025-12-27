@@ -1,456 +1,56 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useParams } from "next/navigation";
-import {
-  showErrorToast,
-  showSuccessToast,
-  showUndoToast,
-} from "@/lib/ui/toast";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  UserCircle,
-  ChevronLeft,
-  ChevronRight,
-  Heart,
-  HeartOff,
-  MapPin,
-  BookOpen,
-  Briefcase,
-  Ruler,
-  Info,
-  Calendar,
-  DollarSign,
-  Heart as HeartIcon,
-  Utensils,
-  Cigarette,
-  Wine,
-  Accessibility,
-  Users,
-  Target,
-  Building2,
-  Eye,
-  Scale,
-} from "lucide-react";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import React from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { useQuery } from "@tanstack/react-query";
-import { fetchUserProfile } from "@/lib/profile/userProfileApi";
-import { useProfileImages } from "@/hooks/useProfileImages";
-import { useInterestStatus } from "@/hooks/useInterestStatus";
-import { recordProfileView } from "@/lib/utils/profileApi";
-import type { Profile } from "@/types/profile";
-import {
-  RELIGIOUS_PRACTICES,
-  FAMILY_VALUES,
-  MARRIAGE_VIEWS,
-  TRADITIONAL_VALUES,
-} from "@/types/cultural";
-import { ErrorState } from "@/components/ui/error-state";
-import { useOffline } from "@/hooks/useOffline";
-// Legacy SafetyActionButton replaced by unified ReportModal (chat parity)
-import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
-import { useBlockStatus } from "@/hooks/useSafety";
-import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { Button } from "@/components/ui/button";
-import { useSubscriptionGuard } from "@/hooks/useSubscription";
-import {
-  calculateAge,
-  formatHeight,
-  formatCurrency,
-  formatArrayToString,
-  formatBoolean,
-} from "@/lib/utils/profileFormatting";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
+import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { IcebreakersPanel } from "./IcebreakersPanel";
-import { fetchIcebreakers } from "@/lib/engagementUtil";
-import { getJson } from "@/lib/http/client";
-import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
-import {
-  unblockUserUtil,
-  blockUserUtil,
-  handleErrorUtil,
-} from "@/lib/chat/utils";
-import { buildProfileImageUrl } from "@/lib/images/profileImageUtils";
+
+import { useProfileDetailLogic } from "@/hooks/useProfileDetailLogic";
+import { ProfileGallery } from "@/components/profile/detail/ProfileGallery";
+import { ProfileHeader } from "@/components/profile/detail/ProfileHeader";
+import { ProfileInfoSections } from "@/components/profile/detail/ProfileInfoSections";
+import { ProfileInteraction } from "@/components/profile/detail/ProfileInteraction";
+import { PageLoader } from "@/components/ui/PageLoader";
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, type: "spring" as const },
+  },
+  exit: { opacity: 0, y: 40, transition: { duration: 0.3 } },
+};
 
 export default function ProfileDetailPage() {
-  const params = useParams();
   const {
-    profile: rawCurrentUserProfile,
-    isLoaded,
-    isAuthenticated,
-  } = useAuthContext();
-  // Current user profile model (Firebase) uses `id` (doc id) and `uid` (auth uid).
-  // Previous logic incorrectly looked for `_id` / `userId` causing fromUserId to be undefined.
-  const currentUserProfile = rawCurrentUserProfile as
-    | (typeof rawCurrentUserProfile & {
-        id?: string;
-        uid?: string;
-      })
-    | null;
-  const networkStatus = useOffline();
-  const { trackUsage } = useUsageTracking(undefined);
-  const { isPremiumPlus } = useSubscriptionGuard();
-  const id = params?.id as string;
-  const userId = id as string;
-  // Use Firebase uid first, fall back to document id for interest interactions
-  const fromUserId = currentUserProfile?.uid || currentUserProfile?.id;
-  const toUserId = userId;
-
-  // Determine if viewing own profile (support both uid & doc id comparisons)
-  const isOwnProfile = Boolean(
-    currentUserProfile &&
-      userId &&
-      (currentUserProfile.id === userId || currentUserProfile.uid === userId)
-  );
-  const viewingOwn = isOwnProfile;
-  const skipRemoteProfile = viewingOwn && !!currentUserProfile;
-  const {
-    data: profileData,
-    isLoading: loadingProfileRemote,
-    isFetching: fetchingProfile,
-    error: profileError,
-    refetch: refetchProfile,
-  } = useQuery({
-    queryKey: ["profileData", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const result = await fetchUserProfile(userId);
-      // Throw on auth errors to trigger retry logic
-      if (!result.success && result.error?.code === "AUTH_REQUIRED") {
-        const error = new Error(result.error.message || "Authentication not ready");
-        (error as any).code = "AUTH_REQUIRED";
-        throw error;
-      }
-      return result;
-    },
-    enabled: !!userId && isLoaded && isAuthenticated && !skipRemoteProfile,
-    // Retry on AUTH_REQUIRED errors (auth token not synced to Firestore yet)
-    retry: (failureCount, error) => {
-      // Check if it's an auth timing issue - retry up to 5 times
-      const apiError = error as { code?: string } | undefined;
-      if (apiError?.code === "AUTH_REQUIRED" && failureCount < 5) {
-        return true;
-      }
-      return false;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 3000),
-  });
-  // Consider loading if fetching or loading initially
-  const loadingProfile = skipRemoteProfile ? false : (loadingProfileRemote || fetchingProfile);
-  
-  // Handle the API response which has shape { success: boolean, data?: Profile, error?: object }
-  const profileApiResponse = profileData as { success?: boolean; data?: any; error?: any } | null;
-  const profileRaw = skipRemoteProfile
-    ? (currentUserProfile as any)
-    : profileApiResponse?.success ? profileApiResponse.data : null;
-  // profileData?.data is already the Profile object from fetchUserProfile
-  // currentUserProfile from auth context is also already the profile object
-  const profile: Profile | null = profileRaw ?? null;
-  
-  // Capture API error for display
-  const profileApiError = profileApiResponse?.success === false ? profileApiResponse.error : null;
-
-  // Auto-retry on auth error after a delay (forces token refresh)
-  useEffect(() => {
-    const isAuthError = (profileError as any)?.code === "AUTH_REQUIRED";
-    if (isAuthError && !fetchingProfile) {
-      const timer = setTimeout(() => {
-        console.log("[ProfileDetail] Auto-retrying after auth error...");
-        refetchProfile();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [profileError, fetchingProfile, refetchProfile]);
-
-  // Debug logging for profile loading
-  useEffect(() => {
-    console.log("[ProfileDetail] Debug state:", {
-      userId,
-      isLoaded,
-      isAuthenticated,
-      isOwnProfile,
-      skipRemoteProfile,
-      loadingProfileRemote,
-      fetchingProfile,
-      loadingProfile,
-      profileError: profileError ? { message: (profileError as Error).message, code: (profileError as any).code } : null,
-      profileApiError, // Log the API-level error
-      profileDataExists: !!profileData,
-      profileDataFull: profileData, // Log the full object
-      profileDataData: profileApiResponse?.data ? "exists" : "null/undefined",
-      profileDataSuccess: profileApiResponse?.success,
-      profileRawExists: !!profileRaw,
-      profileRaw: profileRaw, // Log full profileRaw
-      profileExists: !!profile,
-      profileFullName: profile?.fullName,
-      currentUserProfileExists: !!currentUserProfile,
-    });
-  }, [
     userId,
-    isLoaded,
-    isAuthenticated,
+    profile,
     isOwnProfile,
-    skipRemoteProfile,
-    loadingProfileRemote,
-    fetchingProfile,
     loadingProfile,
     profileError,
     profileApiError,
-    profileData,
-    profileApiResponse,
-    profileRaw,
-    profile,
-    currentUserProfile,
-  ]);
-  const { images: fetchedImages } = useProfileImages({
-    userId,
-    enabled: isLoaded && isAuthenticated,
-    // When profileImageUrls exist, still normalize them so next/image doesn't
-    // try to fetch stale signed URLs directly.
-    preferInlineUrls: Array.isArray(profile?.profileImageUrls)
-      ? profile!.profileImageUrls.map((u) => buildProfileImageUrl(String(u)))
-      : profile?.profileImageUrls,
-  });
-  const localCurrentUserImageOrder: string[] = useMemo(() => {
-    if (isOwnProfile && profile && (profile as any).profileImageIds) {
-      return (profile as any).profileImageIds || [];
-    }
-    return [];
-  }, [isOwnProfile, profile]);
-  const imagesToShow: string[] = useMemo(() => {
-    if (profile?.profileImageUrls?.length) {
-      return profile.profileImageUrls
-        .map((u) => buildProfileImageUrl(String(u)))
-        .filter(Boolean);
-    }
-    if (isOwnProfile && localCurrentUserImageOrder.length) {
-      const lookup = new Map(
-        fetchedImages.map((i) => [i.storageId || i.url, i.url])
-      );
-      return localCurrentUserImageOrder
-        .map((id) => lookup.get(id) || "")
-        .filter(Boolean) as string[];
-    }
-    return fetchedImages
-      .map((i) => buildProfileImageUrl(String(i.url || "")))
-      .filter(Boolean);
-  }, [
-    profile?.profileImageUrls,
-    isOwnProfile,
-    localCurrentUserImageOrder,
-    fetchedImages,
-  ]);
-  const skeletonCount = profile?.profileImageUrls?.length ?? 0;
-  const imagesLoading = skeletonCount > 0 && imagesToShow.length === 0;
-  const { data: iceQs } = useQuery({
-    queryKey: ["icebreakers", "today"],
-    queryFn: fetchIcebreakers,
-    enabled: isLoaded && isAuthenticated,
-  });
-  const trackWrapper = (evt: {
-    feature: string;
-    metadata?: Record<string, any>;
-  }) => {
-    // Adapt to useUsageTracking's expected params if needed
-    trackUsage({ feature: evt.feature as any, metadata: evt.metadata });
-  };
-  const {
-    interestStatusData,
-    loadingInterestStatus,
-    alreadySentInterest,
-    handleToggleInterest,
-    showHeartPop,
-    interestError,
-    mutationPending,
-  } = useInterestStatus({
-    fromUserId,
-    toUserId: String(toUserId),
-    enabled: isLoaded && isAuthenticated,
-    track: trackWrapper,
-  });
-
-  // Removed legacy duplicated interest/status logic block after hook integration.
-
-  // Check if user is blocked (remote) & maintain local optimistic state
-  const { data: blockStatus } = useBlockStatus(toUserId);
-  const isBlockedRemote = blockStatus?.isBlocked || false;
-  const isBlockedBy = blockStatus?.isBlockedBy || false;
-  const [isBlocked, setIsBlocked] = useState<boolean>(isBlockedRemote);
-  useEffect(() => setIsBlocked(isBlockedRemote), [isBlockedRemote]);
-  const canInteract = !isBlocked && !isBlockedBy;
-  const [showReportModal, setShowReportModal] = useState(false);
-
-  // Moderation handlers (parity with chat modal)
-  const handleUnblockUser = async () => {
-    try {
-      await unblockUserUtil({
-        matchUserId: userId,
-        setIsBlocked,
-        setShowReportModal,
-      });
-      trackUsage({
-        feature: "user_unblock" as any,
-        metadata: { targetUserId: userId },
-      });
-      showUndoToast("User unblocked", async () => {
-        try {
-          await blockUserUtil({
-            matchUserId: userId,
-            setIsBlocked,
-            setShowReportModal,
-          });
-          trackUsage({
-            feature: "user_block" as any,
-            metadata: { targetUserId: userId },
-          });
-          showSuccessToast("User re-blocked");
-        } catch (e) {
-          const mapped2 = handleErrorUtil(e);
-          console.error("Undo block failed (profile page):", mapped2.message);
-          showErrorToast(null, "Failed to re-block user");
-        }
-      });
-    } catch (err) {
-      const mapped = handleErrorUtil(err);
-      console.error("Error unblocking user (profile page):", mapped.message);
-      if (mapped.type === "RATE_LIMITED")
-        showErrorToast(null, "Too many actions. Please wait and try again.");
-      else showErrorToast(null, "Failed to unblock user");
-    }
-  };
-
-  // Removed legacy Convex ID shape validation (no longer applicable after Firebase migration)
-  const invalidIdError: string | null = null;
-
-  const [currentImageIdx, setCurrentImageIdx] = useState<number>(0);
-  const imagesKey = imagesToShow.join(",");
-
-  const interestLoading = loadingInterestStatus;
-  const missingInteractionIds = !fromUserId || !toUserId;
-  if (typeof window !== "undefined") {
-    // Lightweight debug (won't spam because values stabilize quickly)
-    (window as any).__lastInterestDebug = {
-      fromUserId,
-      toUserId,
-      missingInteractionIds,
-      // include raw ids for deeper debugging
-      rawProfileIds: {
-        profile_id: currentUserProfile?.id,
-        profile_uid: currentUserProfile?.uid,
-      },
-    };
-  }
-
-  // Keyboard navigation for image gallery (Left/Right arrows)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        setCurrentImageIdx((idx) => Math.max(0, idx - 1));
-      } else if (e.key === "ArrowRight") {
-        setCurrentImageIdx((idx) =>
-          Math.min(Math.max(imagesToShow.length - 1, 0), idx + 1)
-        );
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // Only depend on imagesToShow length to avoid re-adding listeners on every idx change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imagesToShow.length]);
-
-  // Viewers count (Premium Plus + own profile)
-  const { data: viewersCount } = useQuery({
-    queryKey: ["profileViewersCount", profile?._id],
-    queryFn: async () => {
-      if (!isOwnProfile || !profile?._id) return 0;
-      const { fetchProfileViewersCount } = await import(
-        "@/lib/utils/profileApi"
-      );
-      return await fetchProfileViewersCount(String(profile._id));
-    },
-    enabled: Boolean(profile?._id) && isOwnProfile && isPremiumPlus,
-    staleTime: 60_000,
-  });
-
-  // Record profile view when this component mounts (only if viewing someone else's profile)
-  useEffect(() => {
-    if (!isOwnProfile && profile?._id) {
-      void recordProfileView({
-        profileId: String(profile._id ?? ""),
-      });
-      // Track profile view usage
-      trackUsage({
-        feature: "profile_view",
-        metadata: {
-          targetUserId: userId,
-        },
-      });
-    }
-  }, [isOwnProfile, profile?._id, trackUsage, userId]);
-
-  // Heart pop animation state now comes from hook; retain local variant definitions below
-
-  // Get the current image to display (just by index)
-  const mainProfileImageUrl =
-    imagesToShow.length > 0 ? imagesToShow[currentImageIdx] : undefined;
-
-  // Helper for icon+label row
-  function IconRow({
-    icon,
-    label,
-    value,
-    className = "",
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    value: string | undefined;
-    className?: string;
-  }) {
-    return (
-      <div
-        className={`flex items-center gap-3 mb-2 text-neutral-dark ${className}`}
-      >
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
-          {icon}
-        </div>
-        <div className="flex flex-col">
-          <span className="text-xs text-neutral-light font-medium uppercase tracking-wider">{label}</span>
-          <span className="text-sm md:text-base font-medium text-neutral-dark">{value ?? "-"}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Heart pop animation variants
-  const heartPopVariants = {
-    initial: { scale: 0, opacity: 0 },
-    animate: {
-      scale: [0, 1.4, 1],
-      opacity: [0, 0.8, 0],
-      transition: { duration: 0.6, times: [0, 0.3, 1] },
-    },
-  };
-
-  // Compatibility score for viewed profile (not your own)
-  // Must be called before any early return!
-  const { data: compatData } = useQuery<{
-    score: number | null;
-    reasons: string[];
-  } | null>({
-    queryKey: ["compatibility", userId],
-    queryFn: async () => {
-      if (!userId || isOwnProfile) return null;
-      return await getJson(
-        `/api/compatibility/${encodeURIComponent(String(userId))}`
-      );
-    },
-    enabled: !!userId && !isOwnProfile && isLoaded && isAuthenticated,
-    staleTime: 60_000,
-  });
+    refetchProfile,
+    imagesToShow,
+    currentImageIdx,
+    setCurrentImageIdx,
+    interestState,
+    isBlocked,
+    isBlockedBy,
+    showReportModal,
+    setShowReportModal,
+    handleUnblockUser,
+    compatData,
+    isPremiumPlus,
+    networkStatus,
+    trackUsage,
+  } = useProfileDetailLogic();
 
   if (!networkStatus.isOnline) {
     return (
@@ -460,7 +60,6 @@ export default function ProfileDetailPage() {
     );
   }
 
-  // Handle AUTH_REQUIRED error specifically - show loading with auto-retry
   const isAuthError = (profileError as any)?.code === "AUTH_REQUIRED";
   if (profileError && !isAuthError) {
     return (
@@ -470,30 +69,11 @@ export default function ProfileDetailPage() {
     );
   }
 
-  // Show loading state while auth is initializing, profile is being fetched, or auth token syncing
-  const isInitializing = !isLoaded || (!skipRemoteProfile && !isAuthenticated);
-  if (loadingProfile || isInitializing || isAuthError) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Skeleton className="w-20 h-20 rounded-full" />
-          <Skeleton className="h-6 w-40 rounded" />
-          <Skeleton className="h-4 w-32 rounded" />
-          {isAuthError && (
-            <button
-              onClick={() => refetchProfile()}
-              className="mt-2 text-sm text-primary hover:underline"
-            >
-              Tap to retry
-            </button>
-          )}
-        </div>
-      </div>
-    );
+  if (loadingProfile || isAuthError) {
+    return <PageLoader message={isAuthError ? "Authorizing..." : "Loading profile..."} />;
   }
 
   if (!profile) {
-    // Show more detailed error if we have one from the API
     const errorMessage = profileApiError?.message || profileApiError?.code || "Profile not found.";
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -502,47 +82,7 @@ export default function ProfileDetailPage() {
     );
   }
 
-  // invalidIdError always null now
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 40 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, type: "spring" as const },
-    },
-    exit: { opacity: 0, y: 40, transition: { duration: 0.3 } },
-  };
-
-  const imageVariants = {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } },
-    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.3 } },
-  };
-
-  const galleryImageVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: (i: number) => ({
-      opacity: 1,
-      scale: 1,
-      transition: {
-        delay: 0.1 + i * 0.07,
-        duration: 0.35,
-        type: "spring" as const,
-      },
-    }),
-    exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } },
-  };
-
-  const buttonVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: { type: "spring" as const, stiffness: 300, damping: 20 },
-    },
-    tap: { scale: 0.92 },
-  };
+  const canInteract = !isBlocked && !isBlockedBy;
 
   return (
     <>
@@ -564,11 +104,12 @@ export default function ProfileDetailPage() {
           });
         }}
       />
-      <div className="relative w-full min-h-screen overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
-        {/* Decorative color pop circles */}
-        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/10 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-        
+
+      <div className="relative w-full min-h-screen overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center">
+        {/* Background Decor */}
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary/10 rounded-full blur-3xl opacity-40 pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
+
         <motion.div
           key="profile-card"
           variants={cardVariants}
@@ -579,763 +120,95 @@ export default function ProfileDetailPage() {
         >
           <Card className="shadow-xl rounded-3xl overflow-hidden bg-base-light/80 backdrop-blur-sm border border-base-light/50 z-10">
             <CardHeader className="p-0 relative">
-              {/* Unified safety controls */}
+              {/* Safety Actions */}
               {!isOwnProfile && (
                 <div className="absolute top-4 right-4 z-20 flex gap-2">
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     type="button"
                     onClick={() => setShowReportModal(true)}
                     className="bg-base-light/95 hover:bg-base-light text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     Safety
-                  </button>
+                  </Button>
                   {isBlocked && (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       type="button"
                       onClick={handleUnblockUser}
                       className="bg-base-light/95 hover:bg-base-light text-neutral-dark border border-neutral/20 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       Unblock
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
-              <AnimatePresence>
-                {mainProfileImageUrl ? (
-                  <motion.div
-                    key={`main-image-${imagesKey}-${currentImageIdx}`}
-                    variants={imageVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="relative w-full aspect-[4/5] md:aspect-[4/3] md:max-h-[520px] overflow-hidden"
-                  >
-                    {/* Left Arrow */}
-                    {imagesToShow.length > 1 && (
-                      <button
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-base-light/80 hover:bg-base-light rounded-full p-2 shadow"
-                        onClick={() =>
-                          setCurrentImageIdx((idx) => Math.max(0, idx - 1))
-                        }
-                        disabled={currentImageIdx === 0}
-                        aria-label="Previous image"
-                        type="button"
-                      >
-                        <ChevronLeft className="w-6 h-6 text-neutral" />
-                      </button>
-                    )}
-                    <Image
-                      src={mainProfileImageUrl || "/placeholder.jpg"}
-                      alt={
-                        profile?.fullName
-                          ? `${profile.fullName}'s profile image`
-                          : "Profile"
-                      }
-                      fill
-                      className="object-cover object-center select-none"
-                      priority
-                      sizes="(max-width: 768px) 100vw, 768px"
-                      onError={(
-                        e: React.SyntheticEvent<HTMLImageElement, Event>
-                      ) => {
-                        const target = e.target as HTMLImageElement;
-                        if (!target.src.includes("placeholder")) {
-                          target.src = "/placeholder.jpg";
-                        }
-                      }}
-                    />
-                    {/* Mobile overlay (Tinder-style) */}
-                    <div className="md:hidden absolute inset-x-0 bottom-0 pt-24 pb-5 px-4 bg-gradient-to-t from-black/75 via-black/25 to-transparent flex flex-col gap-2 text-base-light">
-                      <div className="flex items-end justify-between">
-                        <div className="flex flex-col gap-1">
-                          <h1 className="text-2xl font-semibold drop-shadow flex items-center gap-2">
-                            {profile?.fullName || "-"}
-                            {compatData?.score != null && (
-                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-warning text-base-light">
-                                {compatData.score}%
-                              </span>
-                            )}
-                          </h1>
-                          <div className="text-sm text-base-light flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              {profile?.city || "-"}
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {calculateAge(profile?.dateOfBirth || "") || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        {!isOwnProfile && canInteract && (
-                          <motion.button
-                            key={
-                              alreadySentInterest
-                                ? "withdraw-mobile"
-                                : "express-mobile"
-                            }
-                            className={`flex items-center justify-center rounded-full w-14 h-14 shadow-lg border backdrop-blur bg-base-light/90 active:scale-95 transition ${
-                              alreadySentInterest
-                                ? "border-primary/20 text-primary"
-                                : "bg-primary text-base-light border-primary"
-                            }`}
-                            variants={buttonVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="hidden"
-                            whileTap="tap"
-                            onClick={() => {
-                              if (missingInteractionIds) return;
-                              handleToggleInterest();
-                            }}
-                            title={
-                              alreadySentInterest
-                                ? "Withdraw Interest"
-                                : "Express Interest"
-                            }
-                            aria-label={
-                              alreadySentInterest
-                                ? "Withdraw Interest"
-                                : "Express Interest"
-                            }
-                            disabled={
-                              loadingInterestStatus ||
-                              mutationPending ||
-                              missingInteractionIds
-                            }
-                          >
-                            {mutationPending ? (
-                              <svg
-                                className="w-6 h-6 animate-spin"
-                                viewBox="0 0 24 24"
-                              >
-                                <circle
-                                  className="opacity-25"
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  stroke="currentColor"
-                                  strokeWidth="4"
-                                  fill="none"
-                                />
-                                <path
-                                  className="opacity-75"
-                                  fill="currentColor"
-                                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                />
-                              </svg>
-                            ) : alreadySentInterest ? (
-                              <HeartOff className="w-7 h-7 text-primary" />
-                            ) : (
-                              <Heart className="w-7 h-7" />
-                            )}
-                          </motion.button>
-                        )}
-                      </div>
-                    </div>
-                    {/* Right Arrow */}
-                    {imagesToShow.length > 1 && (
-                      <button
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-base-light/80 hover:bg-base-light rounded-full p-2 shadow"
-                        onClick={() =>
-                          setCurrentImageIdx((idx) =>
-                            Math.min(imagesToShow.length - 1, idx + 1)
-                          )
-                        }
-                        disabled={currentImageIdx === imagesToShow.length - 1}
-                        aria-label="Next image"
-                        type="button"
-                      >
-                        <ChevronRight className="w-6 h-6 text-neutral" />
-                      </button>
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="main-placeholder"
-                    variants={imageVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="w-full aspect-[4/5] md:aspect-[4/3] md:max-h-[520px]"
-                  >
-                    <div className="w-full h-full flex items-center justify-center bg-neutral/10">
-                      <Image
-                        src="/placeholder.jpg"
-                        alt="Profile placeholder"
-                        fill
-                        className="object-cover object-center"
-                        sizes="(max-width: 768px) 100vw, 768px"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
+              <ProfileGallery
+                imagesToShow={imagesToShow}
+                currentImageIdx={currentImageIdx}
+                setCurrentImageIdx={setCurrentImageIdx}
+                fullName={profile.fullName}
+              />
             </CardHeader>
-            <CardContent className="p-6 md:p-10 font-nunito bg-transparent">
-              {/* Mini photo strip */}
-              {imagesToShow.length > 1 && (
-                <div className="hidden md:flex items-center justify-center gap-2 mb-6">
-                  {imagesToShow.map((url, i) => (
-                    <button
-                      key={`${url}-${i}`}
-                      type="button"
-                      className={`w-14 h-14 rounded-lg overflow-hidden border ${i === currentImageIdx ? "ring-2 ring-primary" : ""}`}
-                      onClick={() => setCurrentImageIdx(i)}
-                    >
-                      <Image
-                        src={url}
-                        alt="thumb"
-                        width={56}
-                        height={56}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
+
+            <CardContent className="p-0 font-nunito bg-transparent overflow-hidden">
               {/* Blocked User Banner */}
               {!isOwnProfile && (isBlocked || isBlockedBy) && (
-                <BlockedUserBanner
-                  isBlocked={isBlocked}
-                  isBlockedBy={isBlockedBy}
-                  userName={profile?.fullName}
-                  onUnblock={handleUnblockUser}
-                  className="mb-6"
-                />
+                <div className="px-6 md:px-10 pt-6">
+                  <BlockedUserBanner
+                    isBlocked={isBlocked}
+                    isBlockedBy={isBlockedBy}
+                    userName={profile?.fullName}
+                    onUnblock={handleUnblockUser}
+                    className="mb-6"
+                  />
+                </div>
               )}
-              {/* Removed inline shortlist & note actions (moved to bottom) */}
 
-              {/* Quick actions: Previous/Next image buttons */}
-              {imagesToShow.length > 1 && (
-                <div className="flex gap-2 mb-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentImageIdx((idx) => Math.max(0, idx - 1))
-                    }
-                    disabled={currentImageIdx === 0}
-                  >
-                    Previous Photo
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentImageIdx((idx) =>
-                        Math.min(imagesToShow.length - 1, idx + 1)
-                      )
-                    }
-                    disabled={currentImageIdx >= imagesToShow.length - 1}
-                  >
-                    Next Photo
-                  </Button>
+              <div className="pt-8">
+                <ProfileHeader
+                  profile={profile}
+                  isOwnProfile={isOwnProfile}
+                  isPremiumPlus={isPremiumPlus}
+                  interestStatus={interestState.interestStatusData?.status}
+                  compatScore={compatData?.score}
+                />
+
+                <ProfileInfoSections profile={profile} />
+
+                {/* About Me */}
+                <div className="space-y-4 mb-8 px-6 md:px-10">
+                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
+                    About Me
+                  </h3>
+                  <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
+                    <p className="text-neutral-dark leading-relaxed whitespace-pre-wrap">
+                      {profile?.aboutMe ?? "No description provided."}
+                    </p>
+                  </div>
                 </div>
-              )}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                  transition: { delay: 0.15, duration: 0.5 },
-                }}
-                className="hidden md:flex flex-col items-center mb-8"
-              >
-                <div
-                  className="flex items-center gap-2 text-4xl font-serif font-bold text-primary mb-1 flex-wrap"
-                  style={{ fontFamily: "var(--font-serif)" }}
-                >
-                  <UserCircle className="w-8 h-8 text-primary" />
-                  {profile?.fullName ?? "-"}
-                  {/* Compatibility badge is displayed below near location when available */}
-                  {/* Inline interest status chip (only when viewing others) */}
-                  {!isOwnProfile &&
-                    ["pending", "accepted", "mutual"].includes(
-                      interestStatusData?.status || ""
-                    ) && (
-                      <Badge
-                        variant="secondary"
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          interestStatusData?.status === "pending"
-                            ? "bg-warning/10 text-warning"
-                            : "bg-success/10 text-success"
-                        }`}
-                      >
-                        {interestStatusData?.status === "pending"
-                          ? "Interest sent"
-                          : "Matched"}
-                      </Badge>
-                    )}
-                  {/* Profile viewers count (own profile + Premium Plus) */}
-                  {isOwnProfile &&
-                    isPremiumPlus &&
-                    typeof viewersCount === "number" && (
-                      <Badge
-                        variant="outline"
-                        className="text-neutral-dark border-neutral/30 text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-                      >
-                        <Eye className="w-3 h-3" />
-                        {viewersCount}
-                      </Badge>
-                    )}
-                </div>
-                <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
-                  <MapPin className="w-5 h-5 text-accent" />
-                  {profile?.city ?? "-"}, {profile?.country ?? "-"}
-                  {compatData?.score != null && (
-                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-warning/10 text-warning border border-warning/20">
-                      Compatibility: {compatData.score}%
-                    </span>
-                  )}
-                </div>
-                {/* Prompt chips using today's icebreakers */}
-                {Array.isArray(iceQs) && iceQs.length > 0 && (
-                  <div className="flex items-center gap-2 mb-2 flex-wrap justify-center">
-                    {iceQs.slice(0, 2).map((q) => (
-                      <span
-                        key={q.id}
-                        className="text-[10px] px-2 py-1 rounded-full bg-primary/5 text-primary border border-primary/10"
-                      >
-                        {q.text}
-                      </span>
-                    ))}
+
+                {isOwnProfile && (
+                  <div className="px-6 md:px-10 mb-8">
+                    <IcebreakersPanel />
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-sm text-accent mb-2 font-nunito">
-                  <Calendar className="w-4 h-4 text-accent-light" />
-                  <span>
-                    Age: {calculateAge(profile?.dateOfBirth || "") || "-"}
-                  </span>
-                  <span>•</span>
-                  <span>Member since:</span>
-                  <span>
-                    {profile?.createdAt
-                      ? new Date(profile.createdAt).toLocaleDateString()
-                      : "-"}
-                  </span>
-                </div>
-              </motion.div>
 
-              {/* Similar profiles section removed */}
+                <ProfileInteraction
+                  interestState={interestState}
+                  canInteract={canInteract}
+                  isOwnProfile={isOwnProfile}
+                />
 
-              {imagesLoading && skeletonCount > 0 && (
-                <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
-                  {Array.from({ length: skeletonCount }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="w-full aspect-square bg-neutral/5 animate-pulse rounded-lg"
-                    />
-                  ))}
-                </motion.div>
-              )}
-              {imagesToShow && imagesToShow.length > 0 && (
-                <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8"
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <AnimatePresence>
-                    {imagesToShow.map((url: string, idx: number) => (
-                      <motion.div
-                        key={url}
-                        className="relative w-full"
-                        style={{ aspectRatio: "1 / 1" }}
-                        custom={idx}
-                        variants={galleryImageVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                      >
-                        {url ? (
-                          <div className="relative w-full h-full">
-                            <Image
-                              src={url}
-                              alt={`${profile?.fullName ?? "Profile"}'s image ${idx + 1}`}
-                              fill
-                              sizes="(max-width: 768px) 50vw, 25vw"
-                              className="object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => setCurrentImageIdx(idx)}
-                              onError={(
-                                e: React.SyntheticEvent<HTMLImageElement, Event>
-                              ) => {
-                                const target = e.target as HTMLImageElement;
-                                if (!target.src.includes("placeholder")) {
-                                  target.src = "/placeholder.jpg";
-                                }
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-neutral/5 rounded-lg overflow-hidden">
-                            <Image
-                              src="/placeholder.jpg"
-                              alt="Profile placeholder"
-                              fill
-                              className="object-cover"
-                              sizes="(max-width: 768px) 50vw, 25vw"
-                            />
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mt-8 mb-8">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Basic Information
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<Calendar className="w-4 h-4" />}
-                      label="Age"
-                      value={
-                        calculateAge(profile?.dateOfBirth || "")?.toString() ||
-                        "-"
-                      }
-                    />
-                    <IconRow
-                      icon={<Ruler className="w-4 h-4" />}
-                      label="Height"
-                      value={formatHeight(profile?.height || "")}
-                    />
-                    <IconRow
-                      icon={<Users className="w-4 h-4" />}
-                      label="Marital Status"
-                      value={formatBoolean(profile?.maritalStatus || "")}
-                    />
-                    <IconRow
-                      icon={<DollarSign className="w-4 h-4" />}
-                      label="Annual Income"
-                      value={formatCurrency(profile?.annualIncome || "")}
-                    />
+                {!isOwnProfile && (
+                  <div className="flex justify-center my-10 px-6 md:px-10">
+                    <ProfileActions toUserId={String(userId)} />
                   </div>
-                </div>
-
-                {/* Education & Career */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Education & Career
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<BookOpen className="w-4 h-4" />}
-                      label="Education"
-                      value={profile?.education ?? "-"}
-                    />
-                    <IconRow
-                      icon={<Briefcase className="w-4 h-4" />}
-                      label="Occupation"
-                      value={profile?.occupation ?? "-"}
-                    />
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Location
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<MapPin className="w-4 h-4" />}
-                      label="City"
-                      value={profile?.city ?? "-"}
-                    />
-                    <IconRow
-                      icon={<MapPin className="w-4 h-4" />}
-                      label="Country"
-                      value={profile?.country ?? "-"}
-                    />
-                  </div>
-                </div>
-
-                {/* Lifestyle */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Lifestyle
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<Utensils className="w-4 h-4" />}
-                      label="Diet"
-                      value={formatBoolean(profile?.diet || "")}
-                    />
-                    <IconRow
-                      icon={<Cigarette className="w-4 h-4" />}
-                      label="Smoking"
-                      value={formatBoolean(profile?.smoking || "")}
-                    />
-                    <IconRow
-                      icon={<Wine className="w-4 h-4" />}
-                      label="Drinking"
-                      value={formatBoolean(profile?.drinking || "")}
-                    />
-                    <IconRow
-                      icon={<Accessibility className="w-4 h-4" />}
-                      label="Physical Status"
-                      value={formatBoolean(profile?.physicalStatus || "")}
-                    />
-                  </div>
-                </div>
-
-                {/* Religious Information */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Religious Information
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<Building2 className="w-4 h-4" />}
-                      label="Religion"
-                      value={formatBoolean(profile?.religion || "")}
-                    />
-                    <IconRow
-                      icon={<Users className="w-4 h-4" />}
-                      label="Mother Tongue"
-                      value={formatBoolean(profile?.motherTongue || "")}
-                    />
-                    <IconRow
-                      icon={<Users className="w-4 h-4" />}
-                      label="Ethnicity"
-                      value={formatBoolean(profile?.ethnicity || "")}
-                    />
-                  </div>
-                </div>
-
-                {/* Cultural Values */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Cultural Values
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<Building2 className="w-4 h-4" />}
-                      label="Religious Practice"
-                      value={
-                        profile?.religiousPractice
-                          ? RELIGIOUS_PRACTICES[profile.religiousPractice]
-                          : "-"
-                      }
-                    />
-                    <IconRow
-                      icon={<Users className="w-4 h-4" />}
-                      label="Family Values"
-                      value={
-                        profile?.familyValues
-                          ? FAMILY_VALUES[profile.familyValues]
-                          : "-"
-                      }
-                    />
-                    <IconRow
-                      icon={<HeartIcon className="w-4 h-4" />}
-                      label="Marriage Views"
-                      value={
-                        profile?.marriageViews
-                          ? MARRIAGE_VIEWS[profile.marriageViews]
-                          : "-"
-                      }
-                    />
-                    <IconRow
-                      icon={<Scale className="w-4 h-4" />}
-                      label="Traditional Values"
-                      value={
-                        profile?.traditionalValues
-                          ? TRADITIONAL_VALUES[profile.traditionalValues]
-                          : "-"
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* Partner Preferences */}
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                    Partner Preferences
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <IconRow
-                      icon={<Calendar className="w-4 h-4" />}
-                      label="Age Range"
-                      value={
-                        profile?.partnerPreferenceAgeMin &&
-                        profile?.partnerPreferenceAgeMax
-                          ? `${profile.partnerPreferenceAgeMin} - ${profile.partnerPreferenceAgeMax}`
-                          : "-"
-                      }
-                    />
-                    <IconRow
-                      icon={<MapPin className="w-4 h-4" />}
-                      label="Preferred Location"
-                      value={formatArrayToString(profile?.partnerPreferenceCity)}
-                    />
-                    <IconRow
-                      icon={<Users className="w-4 h-4" />}
-                      label="Preferred Gender"
-                      value={formatBoolean(profile?.preferredGender || "")}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
-
-              {/* About Me */}
-              <div className="space-y-4 mb-8">
-                <h3 className="font-serif font-semibold mb-4 flex items-center gap-2 text-neutral-dark text-xl border-b border-neutral/10 pb-2">
-                  About Me
-                </h3>
-                <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
-                  <p className="text-neutral-dark leading-relaxed whitespace-pre-wrap">
-                    {profile?.aboutMe ?? "No description provided."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Icebreakers (own profile) */}
-              {isOwnProfile && <IcebreakersPanel />}
-
-              <div className="hidden md:flex justify-center gap-8 mt-8 mb-2 relative">
-                <AnimatePresence>
-                  {!isOwnProfile &&
-                    canInteract &&
-                    !["mutual", "accepted"].includes(
-                      interestStatusData?.status || ""
-                    ) &&
-                    (interestLoading ? (
-                      <div className="flex items-center justify-center">
-                        <Skeleton className="w-16 h-16 rounded-full" />
-                      </div>
-                    ) : (
-                      <motion.button
-                        key={
-                          alreadySentInterest
-                            ? "withdraw-interest"
-                            : "express-interest"
-                        }
-                        className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 font-nunito text-lg font-semibold ${
-                          alreadySentInterest
-                            ? "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
-                            : "bg-primary hover:bg-primary-dark text-base-light"
-                        }`}
-                        variants={buttonVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="hidden"
-                        whileTap="tap"
-                        onClick={() => {
-                          if (missingInteractionIds) return; // silently ignore until IDs ready
-                          handleToggleInterest();
-                        }}
-                        // Dynamic labels; disabled state shows loading context
-                        title={
-                          alreadySentInterest
-                            ? "Withdraw Interest"
-                            : "Express Interest"
-                        }
-                        aria-label={
-                          alreadySentInterest
-                            ? "Withdraw Interest"
-                            : "Express Interest"
-                        }
-                        type="button"
-                        disabled={
-                          loadingInterestStatus ||
-                          mutationPending ||
-                          missingInteractionIds
-                        }
-                        aria-disabled={
-                          loadingInterestStatus ||
-                          mutationPending ||
-                          missingInteractionIds
-                        }
-                      >
-                        <motion.span
-                          initial={{ scale: 0.8, opacity: 0.7 }}
-                          animate={{
-                            scale: 1,
-                            opacity: 1,
-                            transition: { duration: 0.3 },
-                          }}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.92 }}
-                        >
-                          {mutationPending ? (
-                            <svg
-                              className="w-10 h-10 animate-spin text-base-light"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                fill="none"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                              />
-                            </svg>
-                          ) : alreadySentInterest ? (
-                            <div className="relative">
-                              <HeartOff className="w-10 h-10 fill-primary text-primary" />
-                            </div>
-                          ) : (
-                            <Heart className="w-10 h-10 text-base-light" />
-                          )}
-                        </motion.span>
-                      </motion.button>
-                    ))}
-                </AnimatePresence>
-                {canInteract &&
-                  ["mutual", "accepted"].includes(
-                    interestStatusData?.status || ""
-                  ) && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-success text-base-light rounded-full shadow font-semibold">
-                      <svg
-                        className="w-5 h-5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                      Matched
-                    </div>
-                  )}
-                {/* Heart pop animation overlay */}
-                <AnimatePresence>
-                  {showHeartPop && (
-                    <motion.div
-                      key="heart-pop"
-                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                      variants={heartPopVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="initial"
-                    >
-                      <Heart className="w-24 h-24 text-primary" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Shortlist action moved to bottom of card */}
-              {!isOwnProfile && (
-                <div className="flex justify-center mt-6">
-                  <ProfileActions toUserId={String(userId)} />
-                </div>
-              )}
             </CardContent>
           </Card>
         </motion.div>

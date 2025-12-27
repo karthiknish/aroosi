@@ -1,5 +1,5 @@
 "use client";
-import { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import Image from "next/image";
 import React, { useState } from "react";
 import {
@@ -19,12 +19,12 @@ import {
   Languages,
   Globe,
 } from "lucide-react";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 interface ProfileViewProps {
   profiledata: Profile;
-  images: ImageType[] | null | undefined;
+  images: ProfileImageInfo[] | null | undefined;
   imageUrls?: string[];
 }
 

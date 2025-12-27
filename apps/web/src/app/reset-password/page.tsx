@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
@@ -140,12 +141,12 @@ function ResetPasswordInner() {
           )}
 
           <div className="mb-4">
-            <label
+            <Label
               htmlFor="code"
               className="block text-sm font-medium text-neutral-dark mb-1"
             >
               Reset Code
-            </label>
+            </Label>
             <Input
               id="code"
               placeholder="Reset code from email"
@@ -156,12 +157,12 @@ function ResetPasswordInner() {
           </div>
 
           <div className="mb-4">
-            <label
+            <Label
               htmlFor="password"
               className="block text-sm font-medium text-neutral-dark mb-1"
             >
               New Password
-            </label>
+            </Label>
             <div className="relative">
               <Input
                 id="password"
@@ -173,9 +174,11 @@ function ResetPasswordInner() {
                 minLength={8}
                 className="pr-10"
               />
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-light hover:text-neutral-dark"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-light hover:text-neutral-dark h-8 w-8"
                 onClick={() => setShowPwd((v) => !v)}
                 aria-label={showPwd ? "Hide password" : "Show password"}
               >
@@ -184,17 +187,17 @@ function ResetPasswordInner() {
                 ) : (
                   <Eye className="h-4 w-4" />
                 )}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="mb-6">
-            <label
+            <Label
               htmlFor="confirm"
               className="block text-sm font-medium text-neutral-dark mb-1"
             >
               Confirm New Password
-            </label>
+            </Label>
             <div className="relative">
               <Input
                 id="confirm"
@@ -206,9 +209,11 @@ function ResetPasswordInner() {
                 minLength={8}
                 className="pr-10"
               />
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-light hover:text-neutral-dark"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-light hover:text-neutral-dark h-8 w-8"
                 onClick={() => setShowConf((v) => !v)}
                 aria-label={
                   showConf ? "Hide confirm password" : "Show confirm password"
@@ -219,7 +224,7 @@ function ResetPasswordInner() {
                 ) : (
                   <Eye className="h-4 w-4" />
                 )}
-              </button>
+              </Button>
             </div>
           </div>
 

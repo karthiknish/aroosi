@@ -5,21 +5,13 @@
 import { Platform } from 'react-native';
 import { api } from './client';
 import messaging from '@react-native-firebase/messaging';
+import type { NotificationSettings, PushToken } from '@aroosi/shared';
 
-export interface PushNotificationToken {
-    token: string;
-    deviceId: string;
-    platform: 'ios' | 'android';
-}
+// Re-export types for convenience
+export type { NotificationSettings, PushToken } from '@aroosi/shared';
 
-export interface NotificationSettings {
-    matches: boolean;
-    messages: boolean;
-    likes: boolean;
-    superLikes: boolean;
-    dailyPicks: boolean;
-    promotions: boolean;
-}
+/** Legacy alias for backwards compatibility */
+export type PushNotificationToken = PushToken;
 
 /**
  * Register push notification token

@@ -1,5 +1,5 @@
 import { db, adminStorage } from "@/lib/firebaseAdmin";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 
 export interface ListProfilesOptions {
   search?: string;

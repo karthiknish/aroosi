@@ -45,6 +45,19 @@ export interface SubscriptionUsageResponse {
   };
 }
 
+export type TrackUsageResult = {
+  feature: string;
+  plan: string;
+  tracked: boolean;
+  currentUsage: number;
+  limit: number;
+  remainingQuota: number;
+  isUnlimited: boolean;
+  duplicate?: boolean;
+  // server may include additional fields depending on feature
+  [key: string]: unknown;
+};
+
 class SubscriptionAPI {
   /**
    * Low-level request with token-based auth and no redirect following.
@@ -310,24 +323,59 @@ class SubscriptionAPI {
   }
 
   /**
-   * Track feature usage (optional helper if endpoint exists)
-   * POST /api/subscription/track with { feature }
+   * Track feature usage
+   * POST /api/subscription/track-usage with { feature, metadata? }
    */
   async trackUsage(
     feature: string,
-    token?: string
-  ): Promise<{ success: boolean }> {
-    try {
-      const res = (await this.makeRequest(
-        "/api/subscription/track",
-        { method: "POST", body: JSON.stringify({ feature }) },
-        token
-      )) as { success?: boolean };
-      return { success: Boolean(res?.success) };
-    } catch {
-      // Silently ignore if endpoint not present
-      return { success: false };
+    metadata?: Record<string, unknown>
+  ): Promise<TrackUsageResult> {
+    // Use a dedicated fetch to preserve clean error messages from { error: string }
+    const res = await fetch("/api/subscription/track-usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ feature, ...(metadata ? { metadata } : {}) }),
+    });
+
+    const json = (await res.json().catch(() => ({}))) as any;
+    if (!res.ok || json?.success === false) {
+      const msg = String(json?.error || json?.message || `HTTP ${res.status}`);
+      throw new Error(msg);
     }
+
+    const data = (json && typeof json === "object" && "data" in json ? json.data : json) as any;
+    return {
+      feature: String(data?.feature ?? feature),
+      plan: String(data?.plan ?? "free"),
+      tracked: Boolean(data?.tracked),
+      currentUsage: Number(data?.currentUsage ?? 0),
+      limit: Number(data?.limit ?? 0),
+      remainingQuota: Number(data?.remainingQuota ?? 0),
+      isUnlimited: Boolean(data?.isUnlimited),
+      ...(data && typeof data === "object" ? data : {}),
+    };
+  }
+
+  /**
+   * Can the current user use a given feature right now?
+   * GET /api/subscription/can-use/:feature
+   */
+  async canUseFeature(feature: string): Promise<{ canUse: boolean; reason?: string }> {
+    const res = await fetch(`/api/subscription/can-use/${encodeURIComponent(feature)}` as string, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: "include",
+    });
+    const json = (await res.json().catch(() => ({}))) as any;
+    if (!res.ok || json?.success === false) {
+      throw new Error(String(json?.error || json?.message || "Failed to check feature availability"));
+    }
+    const data = (json && typeof json === "object" && "data" in json ? json.data : json) as any;
+    const canUse = Boolean(data?.canUse);
+    const remaining = typeof data?.remaining === "number" ? data.remaining : undefined;
+    const reason = !canUse && remaining === 0 ? "limit reached" : undefined;
+    return { canUse, ...(reason ? { reason } : {}) };
   }
 
   /**

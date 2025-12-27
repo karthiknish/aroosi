@@ -13,6 +13,7 @@ import {
   showWarningToast,
   showInfoToast,
 } from "@/lib/ui/toast";
+import type { Message, MessageType } from "@aroosi/shared/types";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   handleScrollUtil,
@@ -66,7 +67,7 @@ export function useModernChat({
       (m) => m.fromUserId === currentUserId && m.isRead
     );
     if (sentMessages.length === 0) return 0;
-    return Math.max(...sentMessages.map((m) => m.readAt || 0));
+    return Math.max(...sentMessages.map((m) => Number(m.readAt || 0)));
   };
 
   // Typing indicators
@@ -100,7 +101,7 @@ export function useModernChat({
   const [replyTo, setReplyTo] = useState<{
     messageId: string;
     text?: string;
-    type?: "text" | "voice" | "image";
+    type?: MessageType;
     fromUserId?: string;
   } | null>(null);
   // Edit state: when set, composer edits an existing message instead of sending new
@@ -126,8 +127,6 @@ export function useModernChat({
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // reset blocked flag when match changes
-  useEffect(() => setIsBlocked(false), [matchUserId]);
 
   // Presence: poll other user's presence + heartbeat self
   // Reduced frequency to 30s to minimize API calls
@@ -212,7 +211,7 @@ export function useModernChat({
     const incoming = messages.filter((m) => m.fromUserId === matchUserId);
     const latest = incoming[incoming.length - 1];
     if (latest) {
-      markMessageAsDelivered(latest._id);
+      markMessageAsDelivered((latest.id || latest._id) as string);
     }
   }, [connectionStatus, messages, matchUserId, markMessageAsDelivered]);
 
@@ -349,7 +348,8 @@ export function useModernChat({
               sendMessageFs(
                 payload.text,
                 payload.toUserId,
-                replyTo || undefined
+                replyTo || undefined,
+                tempId
               ).catch((err) => {
                 throw err;
               }),

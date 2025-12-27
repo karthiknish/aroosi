@@ -22,7 +22,7 @@ const sendMessageSchema = z.object({
   fromUserId: z.string().min(1, "fromUserId is required"),
   toUserId: z.string().min(1, "toUserId is required"),
   text: z.string().optional(),
-  type: z.enum(["text", "voice", "image"]).optional(),
+  type: z.enum(["text", "voice", "image", "icebreaker"]).optional(),
   audioStorageId: z.string().optional(),
   duration: z.number().optional(),
   fileSize: z.number().optional(),

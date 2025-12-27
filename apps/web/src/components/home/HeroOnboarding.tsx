@@ -378,14 +378,15 @@ function HeroOnboardingInner() {
                     </Label>
                     <div className="grid grid-cols-2 gap-4">
                       {["male", "female"].map((g) => (
-                        <button
+                        <Button
                           key={g}
                           type="button"
+                          variant="outline"
                           onClick={() => handleInputChange("gender", g)}
                           className={cn(
                             "relative h-12 rounded-xl border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize font-sans",
                             (heroData.gender ?? "") === g
-                              ? "border-primary bg-primary/5 text-primary shadow-sm"
+                              ? "border-primary bg-primary/5 text-primary shadow-sm hover:bg-primary/10"
                               : "border-neutral/5 bg-neutral/5 text-neutral hover:border-neutral/10 hover:bg-neutral/10"
                           )}
                         >
@@ -396,7 +397,7 @@ function HeroOnboardingInner() {
                               className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"
                             />
                           )}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     {heroErrors.gender && (

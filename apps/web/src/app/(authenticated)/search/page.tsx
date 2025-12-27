@@ -19,6 +19,7 @@ import { SearchFilters } from "@/components/search/SearchFilters";
 import { SearchResults } from "@/components/search/SearchResults";
 import { IcebreakerBanner } from "@/components/search/IcebreakerBanner";
 import { ProfileSearchResult } from "@/components/search/ProfileCard";
+import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function SearchProfilesPage() {
   const {
@@ -445,80 +446,52 @@ export default function SearchProfilesPage() {
     );
   }
 
+  if (!isSignedIn) {
+    return <PageLoader message="Authorizing..." />;
+  }
+
   return (
     <>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <SearchHeader />
 
-      {/* Removed debug auth status banner */}
-      <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
-        {/* Decorative color pop circles */}
-        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent rounded-full blur-3xl opacity-10 z-0 pointer-events-none"></div>
-        {/* Subtle SVG background pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='hsl(39, 41%25, 61%25)' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        ></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <SearchHeader />
+        <SearchFilters
+          city={city}
+          setCity={setCity}
+          country={country}
+          setCountry={setCountry}
+          ageMin={ageMin}
+          setAgeMin={setAgeMin}
+          ageMax={ageMax}
+          setAgeMax={setAgeMax}
+          ethnicity={ethnicity}
+          setEthnicity={setEthnicity}
+          motherTongue={motherTongue}
+          setMotherTongue={setMotherTongue}
+          language={language}
+          setLanguage={setLanguage}
+          isPremiumUser={isPremium(profile?.subscriptionPlan)}
+          onUpgrade={() => router.push("/pricing")}
+          activeFilterPills={activeFilterPills}
+          clearAllFilters={clearAllFilters}
+          setPage={setPage}
+        />
 
-          <SearchFilters
-            city={city}
-            setCity={setCity}
-            country={country}
-            setCountry={setCountry}
-            ageMin={ageMin}
-            setAgeMin={setAgeMin}
-            ageMax={ageMax}
-            setAgeMax={setAgeMax}
-            ethnicity={ethnicity}
-            setEthnicity={setEthnicity}
-            motherTongue={motherTongue}
-            setMotherTongue={setMotherTongue}
-            language={language}
-            setLanguage={setLanguage}
-            isPremiumUser={isPremium(profile?.subscriptionPlan)}
-            onUpgrade={() => (window.location.href = "/subscription")}
-            activeFilterPills={activeFilterPills}
-            clearAllFilters={clearAllFilters}
-            setPage={setPage}
-          />
+        <IcebreakerBanner answeredCount={currentUser?.answeredIcebreakersCount || 0} />
 
-          <IcebreakerBanner answeredCount={currentUser?.answeredIcebreakersCount} />
-
-          {!isSignedIn ? (
-            <div className="text-center py-20">
-              <h2 className="text-xl font-semibold mb-2">Authorizing…</h2>
-              <p className="text-neutral-dark">
-                Waiting for authentication to load. If this persists, cookies
-                may be blocked.
-              </p>
-            </div>
-          ) : (
-            <SearchResults
-              profiles={filtered}
-              loading={loadingProfiles || loadingImages || (profiles === undefined && isAuthenticated)}
-              error={profilesError}
-              onRetry={() => refetchProfiles()}
-              page={page}
-              setPage={setPage}
-              totalPages={totalPages}
-              imgLoaded={imgLoaded}
-              setImgLoaded={(userId) => setImgLoaded((prev) => ({ ...prev, [userId]: true }))}
-              hasFilters={
-                !!(city ||
-                  country !== "any" ||
-                  ageMin ||
-                  ageMax ||
-                  ethnicity !== "any" ||
-                  motherTongue !== "any" ||
-                  language !== "any")
-              }
-              clearAllFilters={clearAllFilters}
-            />
-          )}
-        </div>
+        <SearchResults
+          profiles={filtered}
+          loading={loadingProfiles}
+          error={profilesError}
+          onRetry={() => refetchProfiles()}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          imgLoaded={imgLoaded}
+          setImgLoaded={(userId) => setImgLoaded((prev) => ({ ...prev, [userId]: true }))}
+          hasFilters={activeFilterPills.length > 0}
+          clearAllFilters={clearAllFilters}
+        />
       </div>
     </>
   );

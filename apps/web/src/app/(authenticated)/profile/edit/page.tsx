@@ -9,7 +9,7 @@ import type {
   SmokingDrinking,
   Diet,
   PhysicalStatus,
-} from "@/types/profile";
+} from "@aroosi/shared/types";
 import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   submitProfile,
 } from "@/lib/profile/userProfileApi";
 import { mapProfileToFormValues } from "@/lib/profile/formMapping";
-import type { ProfileFormValues as ProfileFormComponentValues } from "@/types/profile";
+import type { ProfileFormValues as ProfileFormComponentValues } from "@aroosi/shared/types";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import React from "react";
 
@@ -177,6 +177,40 @@ export default function EditProfilePage() {
     null
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  // Navigation blocker for internal Next.js navigation
+  useEffect(() => {
+    if (!isDirty || isSaving) return;
+
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a");
+      if (anchor && anchor.href && anchor.href.startsWith(window.location.origin)) {
+        const targetPath = new URL(anchor.href).pathname;
+        if (targetPath !== window.location.pathname) {
+          if (!window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (!window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
+        window.history.pushState(null, "", window.location.pathname);
+      }
+    };
+
+    window.addEventListener("click", handleAnchorClick, true);
+    window.addEventListener("popstate", handlePopState);
+    
+    return () => {
+      window.removeEventListener("click", handleAnchorClick, true);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isDirty, isSaving]);
 
   // Memoize the query key to prevent unnecessary refetches
   const profileQueryKey = useMemo(() => ["profile", userId], [userId]);
@@ -237,7 +271,7 @@ export default function EditProfilePage() {
   // Warn users about navigating away with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!isSaving) {
+      if (isDirty && !isSaving) {
         e.preventDefault();
         e.returnValue =
           "You have unsaved changes. Are you sure you want to leave?";
@@ -246,7 +280,7 @@ export default function EditProfilePage() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isSaving]);
+  }, [isDirty, isSaving]);
 
   // Memoized profile data for type safety and consistency
   const profileDataStateString = JSON.stringify(profileDataState);
@@ -348,6 +382,37 @@ export default function EditProfilePage() {
       setIsSaving(false);
     },
   });
+
+  // Auto-save mutation (no navigation, no success toast)
+  const autoSaveMutation = useMutation({
+    mutationFn: async (values: ProfileFormValues) => {
+      const { userId: _u, _id: _i, ...safeValues } = values;
+      const apiResult = await submitProfile(userId, safeValues, "edit");
+      if (!apiResult.success) throw new Error("Auto-save failed");
+      return apiResult.data as Profile;
+    },
+    onMutate: () => setAutoSaveStatus("saving"),
+    onSuccess: (profile) => {
+      setProfileDataState(profile);
+      setAutoSaveStatus("saved");
+      // Reset saved status after 3 seconds
+      setTimeout(() => setAutoSaveStatus("idle"), 3000);
+    },
+    onError: () => setAutoSaveStatus("error"),
+  });
+
+  const handleAutoSave = useCallback(
+    async (values: ProfileFormComponentValues) => {
+      if (isSaving || autoSaveMutation.isPending) return;
+      
+      const canonicalValues = fromProfileFormComponentValues(
+        values as ProfileFormComponentValues & { profileImageIds: string[] }
+      );
+      
+      autoSaveMutation.mutate(canonicalValues);
+    },
+    [isSaving, autoSaveMutation, userId]
+  );
 
   // Form submit handler
   const handleProfileSubmit = useCallback(
@@ -479,6 +544,9 @@ export default function EditProfilePage() {
         <ProfileEditSimpleForm
           initialValues={mapProfileToFormValues(profileData)}
           onSubmit={handleProfileFormComponentSubmit}
+          onAutoSave={handleAutoSave}
+          onDirtyChange={setIsDirty}
+          autoSaveStatus={autoSaveStatus}
           loading={updateProfileMutation.status === "pending"}
           serverError={serverError || undefined}
           key={profileData._id}

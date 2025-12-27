@@ -13,7 +13,7 @@ import {
 } from "@/lib/marketingEmailTemplates";
 import { db, adminAuth } from "@/lib/firebaseAdmin";
 import { sendUserNotification } from "@/lib/email";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { renderMarketingReactTemplate } from "@/lib/reactEmailRenderers";
 import { renderTemplate as renderCustomTemplate } from "@/lib/marketingTemplateRegistry";
 import { renderBuiltTemplate } from "@/lib/templateBuilder";

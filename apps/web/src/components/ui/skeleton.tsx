@@ -1,14 +1,15 @@
-// Skeleton component from shadcn/ui
-import React from "react";
+import { cn } from "@/lib/utils"
 
-interface SkeletonProps {
-  className?: string;
+function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("animate-pulse rounded-md bg-primary/10", className)}
+      {...props}
+    />
+  )
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ className = "" }) => (
-  <div
-    className={`animate-pulse rounded-md bg-neutral/5 dark:bg-neutral/20 ${className}`}
-  />
-);
-
-export default Skeleton;
+export { Skeleton }

@@ -4,7 +4,7 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { validateImageMeta } from "@/lib/utils/imageMeta";
 import { Pause, Play, X } from "lucide-react";
 import * as imported from "@/components/ImageUploader";
@@ -12,9 +12,9 @@ import type { ProfileCreationData } from "../profileCreation/types";
 
 export function Step6Photos(props: {
   userId: string;
-  pendingImages: ImageType[];
-  setPendingImages: (imgs: ImageType[]) => void;
-  onImagesChanged: (imgs: (string | ImageType)[]) => void;
+  pendingImages: ProfileImageInfo[];
+  setPendingImages: (imgs: ProfileImageInfo[]) => void;
+  onImagesChanged: (imgs: (string | ProfileImageInfo)[]) => void;
 }) {
   const { userId, pendingImages, setPendingImages, onImagesChanged } = props;
 
@@ -34,12 +34,13 @@ export function Step6Photos(props: {
     setItemState((prev) => {
       const next = { ...prev } as typeof prev;
       for (const img of pendingImages) {
-        if (!next[img.id]) {
-          next[img.id] = { status: "idle", progress: 0 };
+        const key = img.storageId;
+        if (!next[key]) {
+          next[key] = { status: "idle", progress: 0 };
         }
       }
       for (const id of Object.keys(next)) {
-        if (!pendingImages.find((p) => p.id === id)) {
+        if (!pendingImages.find((p) => p.storageId === id)) {
           delete next[id];
         }
       }
@@ -53,7 +54,7 @@ export function Step6Photos(props: {
     // Only proceed if authenticated (userId present) and we have local images.
     if (!userId) return;
     const localImages = pendingImages.filter(
-      (img) => img.id.startsWith("local-") && img.url?.startsWith("blob:")
+      (img) => img.storageId.startsWith("local-") && img.url?.startsWith("blob:")
     );
     if (localImages.length === 0) return;
     let canceled = false;
@@ -68,7 +69,7 @@ export function Step6Photos(props: {
           try {
             setItemState((prev) => ({
               ...prev,
-              [img.id]: { status: "uploading", progress: 0 },
+              [img.storageId]: { status: "uploading", progress: 0 },
             }));
             const blob = await fetch(img.url!).then((r) => r.blob());
             const file = new File([blob], img.fileName || "photo.jpg", {
@@ -79,12 +80,12 @@ export function Step6Photos(props: {
               (loaded, total) => {
                 setItemState((prev) => ({
                   ...prev,
-                  [img.id]: {
+                  [img.storageId]: {
                     status: loaded < total ? "uploading" : "success",
                     progress:
                       total > 0
                         ? Math.round((loaded / total) * 100)
-                        : prev[img.id]?.progress || 0,
+                        : prev[img.storageId]?.progress || 0,
                   },
                 }));
               }
@@ -92,14 +93,13 @@ export function Step6Photos(props: {
             if (result?.imageId) {
               // Replace local image entry with server image id
               {
-                const current: ImageType[] = Array.isArray(pendingImages)
+                const current: ProfileImageInfo[] = Array.isArray(pendingImages)
                   ? pendingImages
                   : [];
-                const next: ImageType[] = current.map((p: ImageType) =>
-                  p.id === img.id
+                const next: ProfileImageInfo[] = current.map((p) =>
+                  p.storageId === img.storageId
                     ? {
                         ...p,
-                        id: result.imageId!,
                         storageId: result.imageId!,
                         url: result.url || p.url,
                       }
@@ -113,9 +113,9 @@ export function Step6Photos(props: {
             } else {
               setItemState((prev) => ({
                 ...prev,
-                [img.id]: {
+                [img.storageId]: {
                   status: "error",
-                  progress: prev[img.id]?.progress || 0,
+                  progress: prev[img.storageId]?.progress || 0,
                   error: "No imageId returned",
                 },
               }));
@@ -123,9 +123,9 @@ export function Step6Photos(props: {
           } catch (e: any) {
             setItemState((prev) => ({
               ...prev,
-              [img.id]: {
+              [img.storageId]: {
                 status: "error",
-                progress: prev[img.id]?.progress || 0,
+                progress: prev[img.storageId]?.progress || 0,
                 error: e?.message || "Upload failed",
               },
             }));
@@ -142,10 +142,10 @@ export function Step6Photos(props: {
   React.useEffect(() => {
     if (!userId) return;
     if (!Array.isArray(pendingImages) || pendingImages.length === 0) return;
-    const hasLocal = pendingImages.some((img) => img.id.startsWith("local-"));
+    const hasLocal = pendingImages.some((img) => img.storageId.startsWith("local-"));
     if (hasLocal) return;
     const ids = pendingImages
-      .map((img) => img.storageId || img.id)
+      .map((img) => img.storageId)
       .filter((id): id is string => typeof id === "string" && id.length > 0);
     let t: any;
     (async () => {
@@ -209,10 +209,10 @@ export function Step6Photos(props: {
   }, [subscribeProgress]);
 
   const handleRetry = React.useCallback(
-    async (img: ImageType) => {
+    async (img: ProfileImageInfo) => {
       setItemState((prev) => ({
         ...prev,
-        [img.id]: { status: "idle", progress: 0, error: undefined },
+        [img.storageId]: { status: "idle", progress: 0, error: undefined },
       }));
       const nextImages = [...pendingImages];
       onImagesChanged(nextImages);
@@ -224,7 +224,7 @@ export function Step6Photos(props: {
   const setPaused = (id: string, val: boolean) =>
     setPausedIds((p) => ({ ...p, [id]: val }));
 
-  const _preflightValidate = React.useCallback(async (img: ImageType) => {
+  const _preflightValidate = React.useCallback(async (img: ProfileImageInfo) => {
     try {
       if (!img?.url || !img.url.startsWith("blob:")) {
         return { ok: false, reason: "Invalid local image URL" };
@@ -271,9 +271,11 @@ export function Step6Photos(props: {
                 {Math.max(0, Math.min(100, s.progress))}%
               </span>
               <div className="flex items-center gap-1">
-                <button
+                <Button
                   type="button"
-                  className="p-1 rounded bg-black/40 text-white hover:bg-black/60"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-1 rounded bg-black/40 text-white hover:bg-black/60 hover:text-white"
                   aria-label={pausedIds[id || ""] ? "Resume" : "Pause"}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -285,10 +287,12 @@ export function Step6Photos(props: {
                   ) : (
                     <Pause className="w-3 h-3" />
                   )}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="p-1 rounded bg-black/40 text-white hover:bg-black/60"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-1 rounded bg-black/40 text-white hover:bg-black/60 hover:text-white"
                   aria-label="Cancel upload"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -303,7 +307,7 @@ export function Step6Photos(props: {
                   }}
                 >
                   <X className="w-3 h-3" />
-                </button>
+                </Button>
               </div>
             </div>
             <div className="h-1 bg-black/10">
@@ -323,7 +327,7 @@ export function Step6Photos(props: {
               <Button
                 size="sm"
                 variant="outline"
-                className="text-danger border-danger/30 hover:bg-danger/10"
+                className="text-danger border-danger/30 hover:bg-danger/10 hover:text-danger"
                 onClick={onRetry}
               >
                 Retry
@@ -356,11 +360,11 @@ export function Step6Photos(props: {
           <div className="mb-8">
             <ProfileImageReorder
               preUpload
-              images={pendingImages as ImageType[]}
+              images={pendingImages}
               userId={userId || ""}
               loading={false}
               renderAction={(img) => {
-                const state = itemState[img.id];
+                const state = itemState[img.storageId];
                 if (!state) return null;
                 const base =
                   "text-[10px] rounded-full px-2 py-1 font-medium shadow-sm font-sans";
@@ -378,23 +382,25 @@ export function Step6Photos(props: {
                   );
                 if (state.status === "error")
                   return (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         void handleRetry(img);
                       }}
-                      className={`${base} bg-danger text-white hover:bg-danger`}
+                      className={`${base} bg-danger text-white hover:bg-danger hover:text-white h-auto p-1 px-2`}
                     >
                       Retry
-                    </button>
+                    </Button>
                   );
                 return null;
               }}
-              onReorder={async (ordered: ImageType[]) => {
+              onReorder={async (ordered: ProfileImageInfo[]) => {
                 setPendingImages(ordered);
                 try {
-                  const ids = ordered.map((img) => img.id);
+                  const ids = ordered.map((img) => img.storageId);
                   const { persistPendingImageOrderToLocal } = await import(
                     "../profileCreation/step6"
                   );
@@ -402,16 +408,16 @@ export function Step6Photos(props: {
                 } catch {}
               }}
               onOptimisticDelete={(imageId: string) => {
-                const next = pendingImages.filter((im) => im.id !== imageId);
+                const next = pendingImages.filter((im) => im.storageId !== imageId);
                 setPendingImages(next);
                 onImagesChanged(next);
               }}
               onDeleteImage={async (imageId: string) => {
-                const next = pendingImages.filter((im) => im.id !== imageId);
+                const next = pendingImages.filter((im) => im.storageId !== imageId);
                 setPendingImages(next);
                 onImagesChanged(next);
                 try {
-                  const ids = next.map((img) => img.id);
+                  const ids = next.map((img) => img.storageId);
                   const { persistPendingImageOrderToLocal } = await import(
                     "../profileCreation/step6"
                   );
@@ -426,12 +432,12 @@ export function Step6Photos(props: {
           <imported.ImageUploader
             mode="local"
             userId={userId}
-            orderedImages={pendingImages as ImageType[]}
+            orderedImages={pendingImages}
             setIsUploading={() => {}}
             isUploading={false}
             fetchImages={async () => {}}
             maxFiles={5}
-            onOptimisticUpdate={(img: ImageType) => {
+            onOptimisticUpdate={(img: ProfileImageInfo) => {
               try {
                 const next = [...pendingImages, img];
                 setPendingImages(next);

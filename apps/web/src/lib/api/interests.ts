@@ -46,7 +46,7 @@ class InterestsAPI {
   async send(toUserId: string): Promise<any> {
     return this.makeRequest("/api/interests", {
       method: "POST",
-      body: JSON.stringify({ toUserId }),
+      body: JSON.stringify({ action: "send", toUserId }),
     });
   }
 
@@ -55,8 +55,8 @@ class InterestsAPI {
    */
   async remove(toUserId: string): Promise<any> {
     return this.makeRequest("/api/interests", {
-      method: "DELETE",
-      body: JSON.stringify({ toUserId }),
+      method: "POST",
+      body: JSON.stringify({ action: "remove", toUserId }),
     });
   }
 
@@ -86,9 +86,9 @@ class InterestsAPI {
    * Respond to an interest (accept or reject)
    */
   async respond(interestId: string, status: "accepted" | "rejected"): Promise<any> {
-    return this.makeRequest("/api/interests/respond", {
+    return this.makeRequest("/api/interests", {
       method: "POST",
-      body: JSON.stringify({ interestId, status }),
+      body: JSON.stringify({ action: "respond", interestId, status }),
     });
   }
 }

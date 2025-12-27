@@ -1,12 +1,12 @@
 import React from "react";
 import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
-import type { ProfileFormValues } from "@/types/profile";
+import type { ProfileFormValues } from "@aroosi/shared/types";
 import {
   RELIGIOUS_PRACTICES,
   FAMILY_VALUES,
   MARRIAGE_VIEWS,
   TRADITIONAL_VALUES,
-} from "@/types/cultural";
+} from "@aroosi/shared";
 
 type Props = {
   form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;

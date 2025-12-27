@@ -1,6 +1,6 @@
 import React from "react";
 import { FormField } from "./ProfileFormFields";
-import type { ProfileFormValues } from "@/types/profile";
+import type { ProfileFormValues } from "@aroosi/shared/types";
 
 type Props = {
   form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;

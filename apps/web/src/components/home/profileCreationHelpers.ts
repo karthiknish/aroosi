@@ -4,7 +4,7 @@
  */
 // onboarding storage keys are used in utils
 // image order utility now used within step6 module
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { showErrorToast } from "@/lib/ui/toast";
 
 // Import step-specific helpers
@@ -229,10 +229,12 @@ export function createOnChangeHandler(
  */
 export function createOnProfileImagesChangeHandler(
   onFieldChange: (field: string, value: unknown) => void,
-  setPendingImages: (imgs: ImageType[]) => void
+  setPendingImages: (imgs: ProfileImageInfo[]) => void
 ) {
-  return async (imgs: (string | ImageType)[]) => {
-    const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
+  return async (imgs: (string | ProfileImageInfo)[]) => {
+    const ids = imgs.map((img) =>
+      typeof img === "string" ? img : img.storageId
+    );
     onFieldChange("profileImageIds", ids);
 
     try {
@@ -242,7 +244,7 @@ export function createOnProfileImagesChangeHandler(
     }
 
     const imgObjects = imgs.filter(
-      (img): img is ImageType => typeof img !== "string"
+      (img): img is ProfileImageInfo => typeof img !== "string"
     );
     setPendingImages(imgObjects);
   };
@@ -439,7 +441,7 @@ export { useProfileCreationController } from "./profileCreation/controller";
   }, [partnerPreferenceCityDep]);
 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [pendingImages, setPendingImages] = React.useState<ImageType[]>([]);
+  const [pendingImages, setPendingImages] = React.useState<ProfileImageInfo[]>([]);
 
   const validationData = React.useMemo(() => {
     if (step !== 2) return formData;
@@ -460,7 +462,9 @@ export { useProfileCreationController } from "./profileCreation/controller";
   });
 
   const { user: authUser, refreshUser, isAuthenticated, signOut } = useAuth();
-  const userId = (authUser as any)?.id as string | undefined;
+  const userId =
+    ((authUser as any)?.uid as string | undefined) ||
+    ((authUser as any)?.id as string | undefined);
 
   const handleClose = React.useCallback(() => {
     try {
@@ -485,7 +489,7 @@ export { useProfileCreationController } from "./profileCreation/controller";
     onChange(field, value);
   };
 
-  const handleProfileImagesChange = async (imgs: (string | ImageType)[]) => {
+  const handleProfileImagesChange = async (imgs: (string | ProfileImageInfo)[]) => {
     const onFieldChange = createOnChangeHandler(updateContextData as any);
     const handler = createOnProfileImagesChangeHandler(
       onFieldChange,
@@ -842,7 +846,7 @@ export interface UploadPendingImagesResult {
  */
 // Delegate to step6 module (keeps public name stable)
 export async function uploadPendingImages(params: {
-  pendingImages: ImageType[];
+  pendingImages: ProfileImageInfo[];
   userId: string;
   onProgress?: UploadProgressHandler;
 }): Promise<UploadPendingImagesResult> {

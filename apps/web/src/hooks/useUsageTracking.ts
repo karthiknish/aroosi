@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
+import { subscriptionAPI } from "@/lib/api/subscription";
 import {
   showErrorToast,
   showWarningToast,
@@ -51,43 +51,8 @@ export function useUsageTracking(_providedToken?: string): {
 
   const trackUsage = useMutation({
     mutationFn: async ({ feature, metadata }: TrackUsageParams) => {
-      const response = await fetchWithFirebaseAuth(
-        "/api/subscription/track-usage",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ feature, metadata }),
-        }
-      );
-
-      if (!response.ok) {
-        let error: unknown;
-        try {
-          error = await response.json();
-        } catch {
-          error = {};
-        }
-        if (typeof error === "object" && error !== null && "error" in error) {
-          throw new Error(
-            (error as { error?: string }).error || "Failed to track usage",
-          );
-        }
-        throw new Error("Failed to track usage");
-      }
-
-      const result: unknown = await response.json();
-      if (
-        typeof result === "object" &&
-        result !== null &&
-        "data" in result &&
-        typeof (result as { data: unknown }).data === "object"
-      ) {
-        return result as { data: UsageResponse };
-      }
-      throw new Error("Unexpected response format");
+      const usage = await subscriptionAPI.trackUsage(feature, metadata);
+      return { data: usage as unknown as UsageResponse };
     },
     onSuccess: (data) => {
       // Invalidate usage stats query to refresh the UI
@@ -147,27 +112,7 @@ export function useCanUseFeature(
   return useQuery({
     queryKey: ["can-use-feature", feature],
     queryFn: async (): Promise<{ canUse: boolean; reason?: string }> => {
-      const response = await fetchWithFirebaseAuth(
-        `/api/subscription/can-use/${feature}`,
-        {
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to check feature availability");
-      }
-
-      const result: unknown = await response.json();
-      if (
-        typeof result === "object" &&
-        result !== null &&
-        "canUse" in result &&
-        typeof (result as { canUse: unknown }).canUse === "boolean"
-      ) {
-        return result as { canUse: boolean; reason?: string };
-      }
-      throw new Error("Unexpected response format");
+      return await subscriptionAPI.canUseFeature(feature);
     },
     staleTime: 30000, // Cache for 30 seconds
   });

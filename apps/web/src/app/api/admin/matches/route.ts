@@ -19,6 +19,10 @@ export async function GET(req: NextRequest) {
     );
   }
   try {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const pageSize = parseInt(searchParams.get("pageSize") || "20");
+
     const matchesSnap = await db.collection("matches").get();
     const rawMatches: Array<Record<string, any>> = matchesSnap.docs.map(
       (d: any) => ({ id: d.id, ...d.data() })
@@ -37,12 +41,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Fetch partner profiles
-    const partnerIds = new Set<string>();
-    adjacency.forEach((set) => set.forEach((id) => partnerIds.add(id)));
+    const allGrouped = Array.from(adjacency.entries()).map(([uid, partners]) => ({
+      profileId: uid,
+      partnerIds: Array.from(partners),
+    }));
+
+    const total = allGrouped.length;
+    const start = (page - 1) * pageSize;
+    const paginatedGroups = allGrouped.slice(start, start + pageSize);
+
+    // Fetch partner profiles only for the paginated groups
+    const partnerIdsToFetch = new Set<string>();
+    paginatedGroups.forEach((g) => {
+      g.partnerIds.forEach((id) => partnerIdsToFetch.add(id));
+    });
+
     const idToProfile = new Map<string, any>();
     await Promise.all(
-      Array.from(partnerIds).map(async (uid) => {
+      Array.from(partnerIdsToFetch).map(async (uid) => {
         try {
           const doc = await db.collection("users").doc(uid).get();
           if (doc.exists) {
@@ -60,9 +76,9 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    const grouped = Array.from(adjacency.entries()).map(([uid, partners]) => ({
-      profileId: uid,
-      matches: Array.from(partners)
+    const grouped = paginatedGroups.map((g) => ({
+      profileId: g.profileId,
+      matches: g.partnerIds
         .map((pid) => idToProfile.get(pid))
         .filter(Boolean),
     }));
@@ -72,10 +88,18 @@ export async function GET(req: NextRequest) {
       statusCode: 200,
       durationMs: Date.now() - startedAt,
       groups: grouped.length,
+      total,
       edges: rawMatches.length,
     });
     return NextResponse.json(
-      { success: true, matches: grouped, correlationId },
+      {
+        success: true,
+        matches: grouped,
+        total,
+        page,
+        pageSize,
+        correlationId,
+      },
       { status: 200 }
     );
   } catch (e) {

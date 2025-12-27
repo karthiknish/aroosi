@@ -7,7 +7,7 @@ import {
   createManualMatch,
   fetchAdminProfileImagesById,
 } from "@/lib/profile/adminProfileApi";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

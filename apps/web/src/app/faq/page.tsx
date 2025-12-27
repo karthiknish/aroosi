@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeInUp, fadeIn } from "@/components/animation/motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import {
   Accordion,
@@ -209,22 +210,26 @@ export default function FaqPage() {
               {/* Quick Links */}
               <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8">
                 {faqCategories.map((cat, index) => (
-                  <motion.button
+                  <motion.div
                     key={index}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
-                    onClick={() => {
-                      const element = document.getElementById(
-                        slugify(cat.category)
-                      );
-                      element?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="px-4 py-2.5 rounded-lg bg-white border border-neutral-200 text-neutral-dark text-sm font-medium hover:border-primary hover:bg-primary/5 hover:text-primary hover:shadow-md transition-all duration-200 flex items-center gap-2"
                   >
-                    <span className="text-primary">{cat.icon}</span>
-                    {cat.category}
-                  </motion.button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const element = document.getElementById(
+                          slugify(cat.category)
+                        );
+                        element?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="px-4 py-2.5 h-auto rounded-lg bg-white border border-neutral-200 text-neutral-dark text-sm font-medium hover:border-primary hover:bg-primary/5 hover:text-primary hover:shadow-md transition-all duration-200 flex items-center gap-2"
+                    >
+                      <span className="text-primary">{cat.icon}</span>
+                      {cat.category}
+                    </Button>
+                  </motion.div>
                 ))}
               </div>
 
@@ -236,11 +241,11 @@ export default function FaqPage() {
                 className="max-w-2xl mx-auto"
               >
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-light w-5 h-5" />
-                  <input
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-light w-5 h-5 z-10" />
+                  <Input
                     type="text"
                     placeholder="Search for answers..."
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-neutral/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                    className="w-full pl-12 pr-4 py-7 rounded-xl border border-neutral/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-lg"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
@@ -250,13 +255,14 @@ export default function FaqPage() {
                     Showing results for &quot;{query.trim()}&quot; —{" "}
                     {filtered.reduce((acc, c) => acc + c.questions.length, 0)}{" "}
                     matches
-                    <button
+                    <Button
+                      variant="link"
                       type="button"
-                      className="ml-2 underline text-primary hover:text-primary-dark"
+                      className="h-auto p-0 ml-2 underline text-primary hover:text-primary-dark"
                       onClick={() => setQuery("")}
                     >
                       Clear
-                    </button>
+                    </Button>
                   </div>
                 )}
               </motion.div>

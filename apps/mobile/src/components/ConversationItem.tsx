@@ -33,7 +33,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
     const { user, lastMessage, unreadCount, updatedAt } = conversation;
 
     // Format time
-    const formatTime = (dateStr: string) => {
+    const formatTime = (dateStr: string | Date) => {
         const date = new Date(dateStr);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
@@ -78,7 +78,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
         >
             {/* Avatar */}
             <View style={styles.avatarContainer}>
-                {user.photoURL ? (
+                {user?.photoURL ? (
                     <Image
                         source={{ uri: user.photoURL }}
                         style={styles.avatar}
@@ -88,7 +88,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
                 ) : (
                     <View style={styles.avatarPlaceholder}>
                         <Text style={styles.avatarText}>
-                            {user.displayName?.charAt(0) || '?'}
+                            {user?.displayName?.charAt(0) || '?'}
                         </Text>
                     </View>
                 )}
@@ -99,7 +99,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
             <View style={styles.content}>
                 <View style={styles.topRow}>
                     <Text style={[styles.name, hasUnread && styles.nameBold]} numberOfLines={1}>
-                        {user.displayName || 'Unknown'}
+                        {user?.displayName || 'Unknown'}
                     </Text>
                     <Text style={[styles.time, hasUnread && styles.timeUnread]}>
                         {formatTime(lastMessage?.createdAt || updatedAt)}

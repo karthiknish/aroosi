@@ -1,22 +1,17 @@
-import { fetchWithFirebaseAuth } from "../api/fetchWithFirebaseAuth";
+/**
+ * Profile API utilities - Migrated to use centralized profileAPI
+ */
+import { profileAPI } from "../api/profile";
+import type { ProfileViewer, ViewerFilter } from "@aroosi/shared/types";
+
+export type { ProfileViewer, ViewerFilter };
 
 export async function updateProfile({
   updates,
 }: {
   updates: Record<string, unknown>;
 }): Promise<void> {
-  const res = await fetchWithFirebaseAuth("/api/profile", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(updates),
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const msg = await res.text().catch(() => "");
-    throw new Error(msg || "Failed to update profile");
-  }
+  await profileAPI.updateProfile(updates as any);
 }
 
 /**
@@ -26,35 +21,29 @@ export async function updateProfile({
 export async function boostProfileCookieAuth(): Promise<{
   boostsRemaining: number;
 }> {
-  const res = await fetchWithFirebaseAuth("/api/profile/boost", {
-    method: "POST",
-    credentials: "include",
-  });
-  const json = await res.json().catch(() => ({}) as any);
-  if (!res.ok || (json && json.success === false)) {
-    const msg = (json && json.error) || `Failed to boost profile`;
-    throw new Error(msg);
-  }
-  return { boostsRemaining: (json && json.boostsRemaining) ?? 0 };
+  const result = await profileAPI.boost();
+  return { boostsRemaining: (result as any).boostsRemaining ?? 0 };
 }
 
 export async function deleteProfile(): Promise<void> {
-  // Prefer unified user profile DELETE; fall back to legacy route
-  let res = await fetchWithFirebaseAuth("/api/user/profile", {
+  // Use fetch directly for delete as it requires special handling
+  const res = await fetch("/api/user/profile", {
     method: "DELETE",
-    headers: {},
     credentials: "include",
   });
   if (!res.ok && (res.status === 404 || res.status === 405)) {
-    res = await fetchWithFirebaseAuth("/api/profile/delete", {
+    const fallback = await fetch("/api/profile/delete", {
       method: "DELETE",
-      headers: {},
       credentials: "include",
     });
+    if (!fallback.ok) {
+      const msg = (await fallback.text().catch(() => "")) || "Failed to delete profile";
+      throw new Error(msg);
+    }
+    return;
   }
   if (!res.ok) {
-    const msg =
-      (await res.text().catch(() => "")) || "Failed to delete profile";
+    const msg = (await res.text().catch(() => "")) || "Failed to delete profile";
     throw new Error(msg);
   }
 }
@@ -66,34 +55,17 @@ export async function recordProfileView({
   profileId: string;
 }): Promise<void> {
   if (!profileId) return;
-  await fetch("/api/profile/view", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ profileId }),
-  }).catch(() => {});
+  try {
+    await profileAPI.trackView(profileId);
+  } catch {
+    // Silently ignore errors for view tracking
+  }
 }
-
-// Fetch list of viewers for the given profile (Premium Plus only)
-export type ProfileViewer = {
-  userId: string;
-  fullName?: string | null;
-  profileImageUrls?: string[] | null;
-  age?: number | null;
-  city?: string | null;
-  viewedAt: number;
-  viewCount?: number;
-  isNew?: boolean;
-};
-
-export type ViewerFilter = "all" | "today" | "week" | "month";
 
 export async function fetchProfileViewers({
   profileId,
-  limit,
-  offset,
+  limit = 20,
+  offset = 0,
   filter,
 }: {
   profileId: string;
@@ -101,10 +73,12 @@ export async function fetchProfileViewers({
   offset?: number;
   filter?: ViewerFilter;
 }): Promise<{ viewers: ProfileViewer[]; total?: number; newCount?: number; hasMore?: boolean }> {
+  // Use direct fetch as getViewers doesn't support all filter options yet
   const params = new URLSearchParams({ profileId });
   if (typeof limit === "number") params.set("limit", String(limit));
   if (typeof offset === "number") params.set("offset", String(offset));
   if (filter) params.set("filter", filter);
+  
   const res = await fetch(`/api/profile/view?${params.toString()}`, {
     credentials: "include",
   });
@@ -112,6 +86,7 @@ export async function fetchProfileViewers({
   if (!res.ok || json?.success === false) {
     throw new Error(json?.error || "Failed to fetch viewers");
   }
+  
   const raw = (json?.viewers ?? json?.data?.viewers ?? []) as any[];
   const mapped: ProfileViewer[] = raw.map((v) => ({
     userId: (v?.viewerId ?? v?.userId ?? v?._id ?? "") as string,
@@ -123,17 +98,15 @@ export async function fetchProfileViewers({
     viewCount: v?.viewCount ?? 1,
     isNew: v?.isNew ?? false,
   }));
-  const total =
-    typeof json?.total === "number" ? (json.total as number) : undefined;
-  const newCount =
-    typeof json?.newCount === "number" ? (json.newCount as number) : undefined;
+  
+  const total = typeof json?.total === "number" ? (json.total as number) : undefined;
+  const newCount = typeof json?.newCount === "number" ? (json.newCount as number) : undefined;
   const hasMore = json?.hasMore ?? false;
+  
   return { viewers: mapped, total, newCount, hasMore };
 }
 
-export async function fetchProfileViewersCount(
-  profileId: string
-): Promise<number> {
+export async function fetchProfileViewersCount(profileId: string): Promise<number> {
   if (!profileId) return 0;
   const params = new URLSearchParams({ profileId, mode: "count" });
   const res = await fetch(`/api/profile/view?${params.toString()}`, {
@@ -145,3 +118,4 @@ export async function fetchProfileViewersCount(
   }
   return Number(json?.count ?? 0);
 }
+

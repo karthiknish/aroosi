@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Image as ImageIcon, Sparkles, X } from "lucide-react";
 import React from "react";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label
+          <Label
             htmlFor="blog-title"
             className="text-sm font-medium text-neutral-dark flex items-center justify-between"
           >
@@ -88,7 +89,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
               <Sparkles className="w-3 h-3 mr-1" />
               {aiLoading.title ? "Generating..." : "Generate Title"}
             </Button>
-          </label>
+          </Label>
           <Input
             id="blog-title"
             placeholder="Enter an engaging post title"
@@ -106,12 +107,12 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
         </div>
         
         <div className="space-y-2">
-          <label
+          <Label
             htmlFor="blog-slug"
             className="text-sm font-medium text-neutral-dark"
           >
             Slug (URL)
-          </label>
+          </Label>
           <div className="relative">
             <Input
               id="blog-slug"
@@ -134,7 +135,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       </div>
 
       <div className="space-y-2">
-        <label
+        <Label
           htmlFor="blog-excerpt"
           className="text-sm font-medium text-neutral-dark flex items-center justify-between"
         >
@@ -153,7 +154,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             <Sparkles className="w-3 h-3 mr-1" />
             {aiLoading.excerpt ? "Generating..." : "Generate Excerpt"}
           </Button>
-        </label>
+        </Label>
         <Input
           id="blog-excerpt"
           placeholder="A short summary that appears in search results and cards"
@@ -168,7 +169,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       </div>
 
       <div className="space-y-2">
-        <label
+        <Label
           htmlFor="blog-categories"
           className="text-sm font-medium text-neutral-dark flex items-center justify-between"
         >
@@ -193,7 +194,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             <Sparkles className="w-3 h-3 mr-1" />
             {aiLoading.category ? "Generating..." : "Suggest Categories"}
           </Button>
-        </label>
+        </Label>
         <Input
           id="blog-categories"
           placeholder="Relationship, Marriage, Advice (comma separated)"
@@ -219,12 +220,12 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       </div>
 
       <div className="space-y-3 pt-2">
-        <label
+        <Label
           htmlFor="blog-image-url"
           className="text-sm font-medium text-neutral-dark block"
         >
           Featured Image <span className="text-danger">*</span>
-        </label>
+        </Label>
         
         <div className="flex flex-col md:flex-row gap-4 items-start">
           <div className="flex-1 w-full">
@@ -276,13 +277,15 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setImageUrl("")}
-                  className="absolute top-2 right-2 p-1 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 h-6 w-6 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </>
             ) : (
               <div className="text-center p-4">

@@ -1,10 +1,9 @@
-import { Profile, ProfileFormValues } from "@/types/profile";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
+import { doc, deleteDoc } from "firebase/firestore";
 // NOTE: Client-side usage tracking for boosts removed; server is authoritative now.
 import { db } from "@/lib/firebase";
 import { showErrorToast } from "@/lib/ui/toast";
-import { getJson } from "@/lib/http/client";
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
+import { profileAPI } from "@/lib/api/profile";
 
 // Types for API responses
 // Import centralized types
@@ -69,26 +68,9 @@ export async function fetchUserProfile(
   }
 
   try {
-    // Use the API endpoint for fetching profile
-    const response = await fetchWithFirebaseAuth(`/api/profile?userId=${userId}`, {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: {
-          code: "API_ERROR",
-          message: errorData.message || `Failed to fetch profile (${response.status})`,
-        },
-      };
-    }
-
-    const result = await response.json();
     return {
       success: true,
-      data: result.profile || result.data || null,
+      data: (await profileAPI.getProfileForUser(userId)) || null,
     };
   } catch (error: unknown) {
     if (retries > 0) {
@@ -118,30 +100,7 @@ export async function fetchUserProfileImages(
   }
 
   try {
-    const response = await fetchWithFirebaseAuth(`/api/profile-detail/${userId}/images`, {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { success: true, data: [] };
-      }
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: {
-          code: "API_ERROR",
-          message: errorData.message || `Failed to fetch images (${response.status})`,
-        },
-      };
-    }
-
-    const result = await response.json();
-    const images = (result.userProfileImages || result.data || []).map((img: any) => ({
-      url: img.url || "",
-      storageId: img.storageId || img.id || "",
-    }));
-
+    const images = await profileAPI.getProfileImagesById(userId);
     return { success: true, data: images };
   } catch (error) {
     if (retries > 0) {
@@ -174,26 +133,9 @@ export async function updateUserProfile(
   }
 
   try {
-    const response = await fetchWithFirebaseAuth("/api/profile", {
-      method: "PATCH",
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: {
-          code: "API_ERROR",
-          message: errorData.message || `Failed to update profile (${response.status})`,
-        },
-      };
-    }
-
-    const result = await response.json();
     return {
       success: true,
-      data: result.profile || result.data || null,
+      data: (await profileAPI.updateProfile(updates)) || null,
     };
   } catch (error) {
     if (retries > 0) {
@@ -227,26 +169,12 @@ export async function submitProfile(
   }
 
   try {
-    const response = await fetchWithFirebaseAuth("/api/profile", {
-      method: mode === "create" ? "POST" : "PATCH",
-      body: JSON.stringify(values),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: {
-          code: "API_ERROR",
-          message: errorData.message || `Failed to submit profile (${response.status})`,
-        },
-      };
-    }
-
-    const result = await response.json();
     return {
       success: true,
-      data: result.profile || result.data || null,
+      data:
+        mode === "create"
+          ? ((await profileAPI.createProfile(values as any)) || null)
+          : ((await profileAPI.updateProfile(values as any)) || null),
     };
   } catch (error) {
     if (retries > 0) {
@@ -394,27 +322,16 @@ export async function boostProfile(
 }> {
   // The server derives the user from cookies (Firebase session token). We ignore the userId param now.
   try {
-    const res = await fetch("/api/profile/boost", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    });
-    const json = (await res.json().catch(() => ({}))) as any;
-    if (!res.ok || json?.success === false) {
-      return {
-        success: false,
-        message:
-          json?.message ||
-          json?.error ||
-          `Failed (${res.status}) to boost profile`,
-      };
+    const json = await profileAPI.boost();
+    if (!json?.success) {
+      return { success: false, message: json?.message || "Failed to boost profile" };
     }
     return {
       success: true,
-      boostsRemaining: json.boostsRemaining,
-      boostedUntil: json.boostedUntil,
-      message: json.message,
-      unlimited: json.unlimited,
+      boostsRemaining: json?.boostsRemaining,
+      boostedUntil: json?.boostedUntil,
+      message: json?.message,
+      unlimited: json?.unlimited,
     };
   } catch (err) {
     if (
@@ -445,26 +362,18 @@ export async function activateSpotlight(retries = 1): Promise<{
   message?: string;
 }> {
   try {
-    const res = await fetch("/api/profile/spotlight", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || json?.success === false) {
+    const json = await profileAPI.spotlight();
+    if (!json?.success) {
       return {
         success: false,
-        message:
-          json?.message ||
-          json?.error ||
-          `Failed (${res.status}) to activate spotlight`,
+        message: json?.message || "Failed to activate spotlight",
       };
     }
     return {
       success: true,
-      hasSpotlightBadge: json.hasSpotlightBadge,
-      spotlightBadgeExpiresAt: json.spotlightBadgeExpiresAt,
-      message: json.message,
+      hasSpotlightBadge: json?.hasSpotlightBadge,
+      spotlightBadgeExpiresAt: json?.spotlightBadgeExpiresAt,
+      message: json?.message,
     };
   } catch (err) {
     if (
@@ -519,39 +428,9 @@ export async function fetchUserProfileImagesViaApi(
   }
 
   try {
-    const result = await getJson<any>(`/api/profile-detail/${userId}/images`);
-
-    // Back-compat: some endpoints may return a raw array of URLs
-    if (Array.isArray(result)) {
-      return { success: true, data: result as string[] };
-    }
-
-    // Current API: { success: true, userProfileImages: [{ url, storageId, ... }], ... }
-    if (result?.success && Array.isArray(result?.userProfileImages)) {
-      const urls = (result.userProfileImages as any[])
-        .map((img) => img?.url)
-        .filter((u) => typeof u === "string" && u.length > 0);
-      return { success: true, data: urls };
-    }
-
-    // Legacy shapes
-    const images: string[] =
-      (Array.isArray(result?.profileImageUrls) ? result.profileImageUrls : null) ||
-      (Array.isArray(result?.profileImages)
-        ? result.profileImages.map((img: any) => img?.url).filter(Boolean)
-        : null) ||
-      (Array.isArray(result?.data?.profileImageUrls)
-        ? result.data.profileImageUrls
-        : []);
-
-    return { success: true, data: images };
+    const images = await profileAPI.getProfileImagesById(userId);
+    return { success: true, data: images.map((i) => i.url).filter(Boolean) };
   } catch (error) {
-    // Gracefully handle 404: treat as no images without noisy toast
-    const status = (error as any)?.status as number | undefined;
-    if (status === 404) {
-      return { success: true, data: [] };
-    }
-
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch profile images";
     showErrorToast(null, errorMessage);
@@ -563,4 +442,4 @@ export async function fetchUserProfileImagesViaApi(
 }
 
 // Export types
-export type { Profile } from "@/types/profile";
+export type { Profile } from "@aroosi/shared/types";

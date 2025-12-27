@@ -2,7 +2,16 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   onConfirm: () => void;
@@ -32,19 +41,33 @@ export const CancelSubscriptionButton: React.FC<Props> = ({
         {children ?? "Cancel Subscription"}
       </Button>
 
-      <ConfirmationModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        onConfirm={() => {
-          setOpen(false);
-          onConfirm();
-        }}
-        title="Cancel subscription?"
-        description="Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period."
-        confirmText="Confirm Cancel"
-        cancelText="Keep Subscription"
-        isLoading={isLoading}
-      />
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel your subscription? You will lose
+              access to premium features at the end of your billing period.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>
+              Keep Subscription
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                onConfirm();
+                setOpen(false);
+              }}
+              disabled={isLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLoading ? "Cancelling..." : "Confirm Cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

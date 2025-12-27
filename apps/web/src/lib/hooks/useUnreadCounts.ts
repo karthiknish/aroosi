@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { matchesAPI } from "@/lib/api/matches";
 
 export function useUnreadCounts(
   _userId: string | undefined,
@@ -21,24 +21,11 @@ export function useUnreadCounts(
           });
         });
       }
-      let res = await fetchWithFirebaseAuth(`/api/matches/unread`);
-      if (res.status === 401 && auth.currentUser) {
-        try {
-          await auth.currentUser.getIdToken(true); // force refresh
-          res = await fetchWithFirebaseAuth(`/api/matches/unread`);
-        } catch {}
+      try {
+        return await matchesAPI.getUnreadCounts();
+      } catch {
+        return {};
       }
-      if (!res.ok) return {};
-      const data = await res.json().catch(() => ({}) as any);
-      if (
-        data &&
-        typeof data === "object" &&
-        data.counts &&
-        typeof data.counts === "object"
-      ) {
-        return data.counts as Record<string, number>;
-      }
-      return {};
     },
     enabled: true,
     refetchInterval: 10000,

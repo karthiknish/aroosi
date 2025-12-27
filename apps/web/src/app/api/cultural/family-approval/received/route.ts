@@ -5,7 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import { FamilyApprovalRequest } from "@/types/cultural";
+import type { FamilyApprovalRequest } from "@aroosi/shared/types";
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {

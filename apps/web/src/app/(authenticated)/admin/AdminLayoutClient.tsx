@@ -6,6 +6,7 @@ import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 export default function AdminLayoutClient({
   children,
@@ -56,30 +57,26 @@ export default function AdminLayoutClient({
   }
 
   return (
-    <div className="min-h-screen bg-neutral/5 flex">
-      {/* Sidebar */}
-      <AdminSidebar 
-        collapsed={sidebarCollapsed}
-        setCollapsed={setSidebarCollapsed}
-        currentPath={pathname}
-      />
-      
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <AdminHeader 
-          sidebarCollapsed={sidebarCollapsed}
-          setSidebarCollapsed={setSidebarCollapsed}
-          currentPath={pathname}
-        />
+    <SidebarProvider defaultOpen={!sidebarCollapsed}>
+      <div className="min-h-screen bg-neutral/5 flex w-full">
+        {/* Sidebar */}
+        <AdminSidebar currentPath={pathname} />
         
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
+        {/* Main Content Area */}
+        <SidebarInset className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <AdminHeader 
+            currentPath={pathname}
+          />
+          
+          {/* Page Content */}
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

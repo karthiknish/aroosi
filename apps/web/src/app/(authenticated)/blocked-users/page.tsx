@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Shield, ShieldCheck, Users, ExternalLink } from "lucide-react";
 import { useBlockedUsers, useUnblockUser } from "@/hooks/useSafety";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { ErrorState } from "@/components/ui/error-state";
 import Link from "next/link";
+import { Ban } from "lucide-react";
 
 
 export default function BlockedUsersPage() {
@@ -113,21 +114,20 @@ export default function BlockedUsersPage() {
 
       {/* Blocked Users List */}
       {!items || items.length === 0 ? (
-        <Card>
-          <CardContent className="p-8">
-            <EmptyState
-              message="No blocked users"
-              description="You haven't blocked anyone yet. When you block someone, they'll appear here and you can unblock them at any time."
-            />
-            <div className="mt-4">
-              <Button variant="outline" asChild>
-                <Link href="/safety-guidelines">
-                  Learn about safety features
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Empty>
+          <EmptyIcon icon={Ban} />
+          <EmptyTitle>No blocked users</EmptyTitle>
+          <EmptyDescription>
+            You haven&apos;t blocked anyone yet. When you block someone, they&apos;ll appear here and you can unblock them at any time.
+          </EmptyDescription>
+          <div className="mt-4">
+            <Button variant="outline" asChild>
+              <Link href="/safety-guidelines">
+                Learn about safety features
+              </Link>
+            </Button>
+          </div>
+        </Empty>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">

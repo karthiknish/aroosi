@@ -13,7 +13,7 @@ import { ProfileImageReorder } from "./ProfileImageReorder";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 import {
   deleteAdminProfileImageById,
   adminUploadProfileImage,
@@ -22,6 +22,7 @@ import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
+import type { NormalizedProfileImage } from "@/lib/images/profileImageUtils";
 
 // Types
 // Note: Upload responses are handled internally by ImageUploader and utilities
@@ -37,7 +38,7 @@ type ProfileImageUploadWithUserId = {
   userId: string;
   isAdmin?: boolean;
   profileId?: string;
-  onImagesChanged?: (newImageIds: string[] | ImageType[]) => void;
+  onImagesChanged?: (newImageIds: string[] | ProfileImageInfo[]) => void;
   adminUpdateProfile?: (args: {
     id: string;
     updates: { profileImageIds: string[] };
@@ -83,8 +84,8 @@ export function ProfileImageUpload({
   const lastNotifiedImageIds = useRef<string>("");
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const prevImageCount = useRef<number>(0);
-  const [localImages, setLocalImages] = useState<ImageType[]>([]);
-  const [optimisticImages, setOptimisticImages] = useState<ImageType[]>([]);
+  const [localImages, setLocalImages] = useState<NormalizedProfileImage[]>([]);
+  const [optimisticImages, setOptimisticImages] = useState<NormalizedProfileImage[]>([]);
   const MAX_IMAGES_PER_USER = 5;
 
   const { images: adminImages, query: adminImagesQuery } =
@@ -139,17 +140,21 @@ export function ProfileImageUpload({
   // Memoize the ordered images with proper typing first
   const memoizedOrderedImages = useMemo(() => {
     // Base set depending on mode and admin/user context
-    let base: ImageType[] = [];
+    let base: Array<string | { _id: string; url?: string; storageId?: string }> = [];
     if (mode === "create") {
       base = [...localImages];
     } else if (authIsAdmin) {
-      base = (adminImages as any[]) || [];
+      base = (adminImages || []).map((i) => ({
+        _id: i.storageId,
+        storageId: i.storageId,
+        url: i.url,
+      }));
     } else {
       base = userImages.map((i) => ({
-        id: i.storageId || i.url,
-        url: i.url,
+        _id: i.storageId,
         storageId: i.storageId,
-      })) as any[];
+        url: i.url,
+      }));
     }
     // Normalize to ensure consistent url/id/storageId shapes
     const normalized = normalizeProfileImages({
@@ -157,7 +162,7 @@ export function ProfileImageUpload({
       profileImageUrls: undefined,
       profileImageIds: undefined,
     });
-    // Append optimistic images (already in ImageType shape)
+    // Append optimistic images (already in normalized shape)
     const optimistic = optimisticImages.map((o) => ({
       id: o.id,
       _id: o.id,
@@ -176,7 +181,7 @@ export function ProfileImageUpload({
 
   // Memoize the profile image IDs
   const profileImageIds = useMemo(() => {
-    return memoizedOrderedImages.map((img) => img.id);
+    return memoizedOrderedImages.map((img) => img.storageId);
   }, [memoizedOrderedImages]);
 
   useEffect(() => {
@@ -300,8 +305,16 @@ export function ProfileImageUpload({
   });
 
   // Optimistic update handlers
-  const handleOptimisticUpload = useCallback((newImage: ImageType) => {
-    setOptimisticImages((prev) => [...prev, newImage]);
+  const handleOptimisticUpload = useCallback((newImage: ProfileImageInfo) => {
+    setOptimisticImages((prev) => [
+      ...prev,
+      {
+        id: newImage.storageId,
+        _id: newImage.storageId,
+        url: newImage.url,
+        storageId: newImage.storageId,
+      } as NormalizedProfileImage,
+    ]);
   }, []);
 
   const handleOptimisticDelete = useCallback(
@@ -317,11 +330,11 @@ export function ProfileImageUpload({
   );
 
   const handleOptimisticReorder = useCallback(
-    (newOrder: ImageType[]) => {
+    (newOrder: ProfileImageInfo[]) => {
       // Clear optimistic images since the new order includes everything
       setOptimisticImages([]);
       if (mode === "create") {
-        setLocalImages(newOrder);
+        setLocalImages(newOrder as NormalizedProfileImage[]);
       }
     },
     [mode]

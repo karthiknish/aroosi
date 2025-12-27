@@ -1,7 +1,7 @@
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 import { validateImageMeta } from "@/lib/utils/imageMeta";
 import { uploadProfileImageWithProgress } from "@/lib/utils/imageUtil";
-import type { ImageType } from "@/types/image";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
 export type UploadProgressHandler = (
   localId: string,
@@ -150,7 +150,7 @@ export function fileFromBlob(blob: Blob, fileName = "photo.jpg"): File {
 
 export interface UploadPendingImagesResultItem {
   index: number;
-  id?: string;
+  storageId?: string; // storageId is the identifier in ProfileImageInfo
   name: string;
   reason: string;
 }
@@ -161,7 +161,7 @@ export interface UploadPendingImagesResult {
 }
 
 export async function uploadPendingImages(params: {
-  pendingImages: ImageType[];
+  pendingImages: ProfileImageInfo[];
   userId: string;
   onProgress?: UploadProgressHandler;
 }): Promise<UploadPendingImagesResult> {
@@ -179,7 +179,7 @@ export async function uploadPendingImages(params: {
       if (!img.url || !img.url.startsWith("blob:")) {
         failedImages.push({
           index,
-          id: img.id,
+          storageId: img.storageId,
           name: img.fileName || "photo.jpg",
           reason: "Invalid local image URL",
         });
@@ -212,7 +212,7 @@ export async function uploadPendingImages(params: {
         if (!ok) {
           failedImages.push({
             index,
-            id: img.id,
+            storageId: img.storageId,
             name: img.fileName || "photo.jpg",
             reason: reason || "Image does not meet size requirements",
           });
@@ -227,7 +227,7 @@ export async function uploadPendingImages(params: {
       if (!sizeCheck.ok) {
         failedImages.push({
           index,
-          id: img.id,
+          storageId: img.storageId,
           name: img.fileName || "photo.jpg",
           reason: sizeCheck.reason,
         });
@@ -249,7 +249,7 @@ export async function uploadPendingImages(params: {
             (loaded, total) => {
               if (typeof mgr.onProgress === "function") {
                 try {
-                  mgr.onProgress(img.id, loaded, total);
+                  mgr.onProgress(img.storageId, loaded, total);
                 } catch {}
               }
             }
@@ -273,11 +273,11 @@ export async function uploadPendingImages(params: {
 
       if (!uploadSuccess) {
         const message = lastError instanceof Error ? lastError.message : "Upload failed after retries";
-        failedImages.push({ index, id: img.id, name: file.name, reason: message });
+        failedImages.push({ index, storageId: img.storageId, name: file.name, reason: message });
       }
     } catch (err: any) {
       const message = err instanceof Error ? err.message : "Unknown image upload error";
-      failedImages.push({ index, id: img.id, name: img.fileName || "photo.jpg", reason: message });
+      failedImages.push({ index, storageId: img.storageId, name: img.fileName || "photo.jpg", reason: message });
     }
   }
 

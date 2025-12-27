@@ -1,136 +1,21 @@
-"use client";
-
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Calendar,
-  MapPin,
-  Mail,
-  Phone,
-  Heart,
-  Camera,
-  UserCircle,
-  GraduationCap,
-  Briefcase,
-  Info,
-  Edit3,
-  BadgeCheck,
-  BarChart,
-  AlertTriangle,
-} from "lucide-react";
-import { SpotlightIcon } from "@/components/ui/spotlight-badge";
-// Stripe portal helper
-import { openBillingPortal } from "@/lib/utils/stripeUtil";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardHeader,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Profile } from "@/types/profile";
-// Lazy-load heavier image reorder component to reduce initial JS
-import dynamic from "next/dynamic";
-const ProfileImageReorder = dynamic(
-  () =>
-    import("@/components/ProfileImageReorder").then(
-      (m) => m.ProfileImageReorder
-    ),
-  { ssr: false }
-);
-import { planDisplayName } from "@/lib/utils/plan";
-import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
-import { normalisePlan } from "@/lib/subscription/planLimits";
-import type { FC } from "react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { deleteProfile } from "@/lib/utils/profileApi";
-import { boostProfile, activateSpotlight } from "@/lib/profile/userProfileApi";
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
+import { normalisePlan } from "@/lib/subscription/planLimits";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
-// Re-export types for backward compatibility
-type ApiImage = unknown;
-type MappedImage = unknown;
+import { deleteProfile } from "@/lib/utils/profileApi";
 
-export type { ApiImage, MappedImage };
-
-// Types for components
-interface ProfileDetailViewProps {
-  label: string;
-  value?: string | null | number;
-  isTextArea?: boolean;
-  isSubtle?: boolean;
-  icon?: React.ReactNode;
-  className?: string;
-}
-
-interface DisplaySectionProps {
-  title: React.ReactNode;
-  children: React.ReactNode;
-  noBorder?: boolean;
-  fullWidth?: boolean;
-  className?: string;
-}
-
-/**
- * Reusable component for displaying profile details in a consistent format
- */
-const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
-  label,
-  value,
-  isTextArea = false,
-  isSubtle = false,
-  icon,
-  className = "",
-}) => {
-  const displayValue = value == null || value === "" ? "-" : String(value);
-  const textClass = isSubtle
-    ? "text-sm text-neutral-light"
-    : "text-md text-neutral-dark";
-
-  return (
-    <div
-      className={`py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral/10 last:border-b-0 ${className}`}
-    >
-      <dt className="text-sm font-medium text-neutral-light flex items-center gap-2">
-        {icon}
-        {label}
-      </dt>
-      <dd
-        className={`mt-1 sm:mt-0 sm:col-span-2 ${
-          isTextArea ? "whitespace-pre-wrap" : ""
-        } ${textClass}`}
-      >
-        {displayValue}
-      </dd>
-    </div>
-  );
-};
-
-// Section component
-const DisplaySection: React.FC<DisplaySectionProps> = ({
-  title,
-  children,
-  noBorder = false,
-  fullWidth = false,
-  className = "",
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5 }}
-    className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-neutral/10" : ""} ${
-      fullWidth ? "w-full" : ""
-    } first:border-t-0 first:pt-0 ${className}`}
-  >
-    <h2 className="text-lg font-semibold text-neutral-dark mb-3 flex items-center gap-2 font-serif">
-      {title}
-    </h2>
-    {children}
-  </motion.div>
-);
+// Extracted components
+import { ProfileHeader } from "./view/ProfileHeader";
+import { ProfileImagesSection } from "./view/ProfileImagesSection";
+import { ProfileInfoSections } from "./view/ProfileInfoSections";
+import { PartnerPreferencesSection } from "./view/PartnerPreferencesSection";
+import { SubscriptionAndDangerSection } from "./view/SubscriptionAndDangerSection";
 
 export interface ProfileViewProps {
   profileData: Profile;
@@ -140,11 +25,11 @@ export interface ProfileViewProps {
   isLoadingImages?: boolean;
   onDelete?: () => void;
   deleting?: boolean;
-  images?: Array<string | { _id: string; url?: string; storageId?: string }>;
+  images?: ProfileImageInfo[];
   className?: string;
 }
 
-const ProfileView: FC<ProfileViewProps> = ({
+const ProfileView: React.FC<ProfileViewProps> = ({
   profileData,
   images,
   userConvexData = null,
@@ -168,30 +53,6 @@ const ProfileView: FC<ProfileViewProps> = ({
       profileData.spotlightBadgeExpiresAt &&
       profileData.spotlightBadgeExpiresAt > Date.now()
   );
-
-  const formatCurrency = (v?: string | number) => {
-    if (v === undefined || v === null || v === "") return "-";
-    const n =
-      typeof v === "number" ? v : Number(String(v).replace(/[^\d.-]/g, ""));
-    if (!Number.isFinite(n)) return String(v);
-    try {
-      return new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "GBP",
-        maximumFractionDigits: 0,
-      }).format(n);
-    } catch {
-      return String(v);
-    }
-  };
-
-  const handleOpenBillingPortal = async () => {
-    try {
-      await openBillingPortal();
-    } catch {
-      router.push("/subscription");
-    }
-  };
 
   const profileImageUrls = (profileData as any)?.profileImageUrls;
   const profileImageIds = profileData?.profileImageIds;
@@ -219,10 +80,6 @@ const ProfileView: FC<ProfileViewProps> = ({
     }
   };
 
-  function refreshProfileLocalStorage() {
-    // Onboarding status logging removed
-  }
-
   return (
     <div
       className={`w-full overflow-y-hidden py-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
@@ -239,577 +96,38 @@ const ProfileView: FC<ProfileViewProps> = ({
       ></div>
       <div className="max-w-4xl mx-auto relative z-10">
         <Card className="bg-base-light rounded-2xl shadow-sm border overflow-hidden">
-          <CardHeader className="border-b pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <h1 className="text-2xl text-neutral-dark font-semibold tracking-tight mb-1 flex items-center gap-2">
-                My profile
-                {isPremium(plan) && (
-                  <BadgeCheck className="w-5 h-5 text-accent" />
-                )}
-              </h1>
-              <CardDescription className="text-neutral-light text-sm">
-                View and manage your information
-              </CardDescription>
-            </div>
-            <div className="w-full lg:w-auto flex flex-wrap items-stretch gap-2">
-              {/* Primary actions cluster */}
-              <div className="flex flex-1 lg:flex-none flex-wrap gap-2">
-                {isPremiumPlus(plan) ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-accent-dark border-accent"
-                    onClick={async () => {
-                      try {
-                        const boosted =
-                          !!profileData.boostedUntil &&
-                          (profileData.boostedUntil as number) > Date.now();
-                        if (boosted) {
-                          router.push("/premium-settings");
-                          return;
-                        }
-                        const result = await boostProfile(currentUserId);
-                        try {
-                          const { showSuccessToast, showErrorToast } =
-                            await import("@/lib/ui/toast");
-                          if (result.success) {
-                            showSuccessToast(
-                              `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
-                            );
-                          } else {
-                            showErrorToast(result.message, "Boost failed");
-                          }
-                        } catch {}
-                        // Refresh to reflect boosted state ribbon/badges
-                        router.refresh?.();
-                      } catch (e) {
-                        try {
-                          const { showErrorToast } = await import(
-                            "@/lib/ui/toast"
-                          );
-                          showErrorToast(e as Error, "Boost failed");
-                        } catch {
-                          console.warn("Boost failed", e);
-                        }
-                        // Quota/rate-limits or any error -> send user to settings for context
-                        router.push("/premium-settings");
-                      }
-                    }}
-                    title="Profile Boost is available on Premium Plus."
-                  >
-                    Boost Profile
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-accent-dark border-accent"
-                    onClick={() => router.push("/subscription")}
-                    title="Upgrade to Premium Plus to boost your profile"
-                  >
-                    Upgrade to Premium Plus to boost
-                  </Button>
-                )}
-                <Button
-                  onClick={() => {
-                    refreshProfileLocalStorage();
-                    router.push("/profile/edit");
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="border-primary text-primary hover:bg-primary/10 hover:text-primary-dark flex items-center gap-1.5 rounded-full px-4"
-                  title="Edit Profile Details"
-                >
-                  <Edit3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Edit Profile</span>
-                </Button>
-                <Button
-                  onClick={() => router.push("/profile/edit/images")}
-                  variant="outline"
-                  size="sm"
-                  className="border-secondary text-secondary hover:bg-secondary/10 hover:text-secondary-dark flex items-center gap-1.5 rounded-full px-4"
-                  title="Manage Photos"
-                >
-                  <Camera className="h-4 w-4" />
-                  <span className="hidden sm:inline">Photos</span>
-                </Button>
-                <Button
-                  onClick={() => router.push("/usage")}
-                  variant="outline"
-                  size="sm"
-                  className="border-success text-success hover:bg-success/10 hover:text-success flex items-center gap-1.5 rounded-full px-4"
-                  title="Usage Analytics"
-                >
-                  <BarChart className="h-4 w-4" />
-                  <span className="hidden sm:inline">Usage</span>
-                </Button>
-              </div>
-              {/* Destructive action moved to Danger Zone at the end */}
-            </div>
-          </CardHeader>
+          <ProfileHeader
+            profileData={profileData}
+            plan={plan}
+            currentUserId={currentUserId}
+          />
           <CardContent className="p-6 sm:p-8">
             {deleteError && (
               <div className="mb-4 text-danger text-sm">{deleteError}</div>
             )}
             {profileData ? (
               <>
-                {/* Profile Images section */}
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Camera className="h-5 w-5 text-accent" />
-                      Profile Images
-                    </span>
-                  }
-                  noBorder
-                  fullWidth
-                >
-                  <div className="mt-2">
-                    {imageList.length > 0 ? (
-                      <ProfileImageReorder
-                        images={imageList}
-                        userId={profileData.userId}
-                        renderAction={() => null}
-                      />
-                    ) : isLoadingImages ? (
-                      <div className="grid grid-cols-3 gap-4">
-                        {Array.from({ length: 3 }).map((_, idx) => (
-                          <Skeleton
-                            key={idx}
-                            className="w-full aspect-square rounded-xl"
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="w-full">
-                        <div className="border-2 border-dashed border-neutral/20 rounded-xl p-6 text-center bg-base-light/60">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="h-12 w-12 rounded-full bg-neutral/5 flex items-center justify-center">
-                              <Camera className="h-6 w-6 text-neutral-light" />
-                            </div>
-                            <p className="text-sm text-neutral-light">
-                              You haven’t added any photos yet
-                            </p>
-                            <p className="text-xs text-neutral-light">
-                              Add 2–6 clear photos to get more matches
-                            </p>
-                            <div className="flex gap-2 mt-2">
-                              <Button
-                                onClick={() =>
-                                  router.push("/profile/edit/images")
-                                }
-                                className="bg-primary hover:bg-primary-dark text-white"
-                                size="sm"
-                              >
-                                Add Photos
-                              </Button>
-                              <Button
-                                onClick={() => router.push("/profile/edit")}
-                                variant="outline"
-                                size="sm"
-                              >
-                                Edit Profile
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </DisplaySection>
+                <ProfileImagesSection
+                  imageList={imageList}
+                  userId={profileData.userId}
+                  isLoadingImages={isLoadingImages}
+                />
 
-                {/* Basic Information section follows */}
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <UserCircle className="h-5 w-5 text-accent" />
-                      Basic Information
-                    </span>
-                  }
-                >
-                  {/* Full Name with spotlight tick for premium users */}
-                  <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral/10">
-                    <dt className="text-sm font-medium text-neutral-light flex items-center gap-2">
-                      Full Name
-                    </dt>
-                    <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-neutral-dark flex items-center gap-1">
-                      {profileData.fullName}
-                      {isPremium(plan) && (
-                        <BadgeCheck className="w-4 h-4 text-accent" />
-                      )}
-                      {isPremium(plan) && activeSpotlight && (
-                        <SpotlightIcon className="w-4 h-4" />
-                      )}
-                      <PremiumFeatureGuard
-                        feature="spotlight_badge"
-                        requiredTier="premiumPlus"
-                        showUpgradePrompt={false}
-                      >
-                        {/* If user has Plus, show nothing extra here */}
-                        <></>
-                      </PremiumFeatureGuard>
-                      {!activeSpotlight && isPremiumPlus(plan) && (
-                        <button
-                          type="button"
-                          className="ml-2 text-[11px] text-accent-dark underline"
-                          onClick={async () => {
-                            try {
-                              const { showSuccessToast, showErrorToast } =
-                                await import("@/lib/ui/toast");
-                              const res = await activateSpotlight();
-                              if (res.success) {
-                                showSuccessToast(
-                                  "Spotlight activated – you’re highlighted for 30 days"
-                                );
-                                router.refresh?.();
-                              } else {
-                                showErrorToast(
-                                  res.message,
-                                  "Activation failed"
-                                );
-                              }
-                            } catch (e) {
-                              console.warn("activate spotlight failed", e);
-                            }
-                          }}
-                          title="Activate Spotlight to increase profile visibility"
-                        >
-                          Activate Spotlight (30 days)
-                        </button>
-                      )}
-                      {!isPremiumPlus(plan) && (
-                        <button
-                          type="button"
-                          className="ml-2 text-[11px] text-accent-dark underline"
-                          onClick={() =>
-                            (window.location.href = "/subscription")
-                          }
-                          title="Upgrade to Premium Plus to unlock Spotlight and boosts"
-                        >
-                          Get Spotlight (stand out more)
-                        </button>
-                      )}
-                    </dd>
-                  </div>
-                  <ProfileDetailView
-                    label="Date of Birth"
-                    value={
-                      profileData.dateOfBirth
-                        ? new Date(profileData.dateOfBirth).toLocaleDateString(
-                            "en-GB"
-                          )
-                        : "-"
-                    }
-                    icon={<Calendar className="h-4 w-4" />}
-                  />
-                  <ProfileDetailView
-                    label="Gender"
-                    value={profileData.gender}
-                  />
-                  <ProfileDetailView
-                    label="Height"
-                    value={profileData.height}
-                  />
-                  <ProfileDetailView
-                    label="Phone Number"
-                    value={profileData.phoneNumber}
-                    icon={<Phone className="h-4 w-4" />}
-                  />
-                </DisplaySection>
+                <ProfileInfoSections
+                  profileData={profileData}
+                  userConvexData={userConvexData}
+                  plan={plan}
+                  activeSpotlight={activeSpotlight}
+                />
 
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-accent" />
-                      Account Information
-                    </span>
-                  }
-                >
-                  <ProfileDetailView
-                    label="Email"
-                    value={profileData.email}
-                    icon={<Mail className="h-4 w-4" />}
-                  />
-                  <ProfileDetailView
-                    label="Joined Aroosi"
-                    value={
-                      userConvexData?._creationTime
-                        ? new Date(
-                            userConvexData._creationTime
-                          ).toLocaleDateString()
-                        : "-"
-                    }
-                    icon={<Calendar className="h-4 w-4" />}
-                  />
-                </DisplaySection>
+                <PartnerPreferencesSection profileData={profileData} />
 
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-accent" />
-                      Location & Lifestyle
-                    </span>
-                  }
-                >
-                  <ProfileDetailView label="City" value={profileData.city} />
-                  <ProfileDetailView
-                    label="Country"
-                    value={profileData.country}
-                  />
-                  <ProfileDetailView label="Diet" value={profileData.diet} />
-                  <ProfileDetailView
-                    label="Smoking"
-                    value={profileData.smoking}
-                  />
-                  <ProfileDetailView
-                    label="Drinking"
-                    value={profileData.drinking}
-                  />
-                  <ProfileDetailView
-                    label="Physical Status"
-                    value={profileData.physicalStatus}
-                  />
-                </DisplaySection>
-
-                {/* Cultural Background - added for parity with onboarding/edit */}
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <UserCircle className="h-5 w-5 text-accent" />
-                      Cultural Background
-                    </span>
-                  }
-                >
-                  <ProfileDetailView
-                    label="Mother Tongue"
-                    value={profileData.motherTongue}
-                  />
-                  <ProfileDetailView
-                    label="Religion"
-                    value={profileData.religion}
-                  />
-                  <ProfileDetailView
-                    label="Ethnicity"
-                    value={profileData.ethnicity}
-                  />
-                </DisplaySection>
-
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <GraduationCap className="h-5 w-5 text-accent" />
-                      Education & Career
-                    </span>
-                  }
-                >
-                  <ProfileDetailView
-                    label="Education"
-                    value={profileData.education}
-                  />
-                  <ProfileDetailView
-                    label="Occupation"
-                    value={profileData.occupation}
-                    icon={<Briefcase className="h-4 w-4" />}
-                  />
-                  <ProfileDetailView
-                    label="Annual Income"
-                    value={formatCurrency(profileData.annualIncome)}
-                  />
-                </DisplaySection>
-
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Info className="h-5 w-5 text-accent" />
-                      About Me
-                    </span>
-                  }
-                >
-                  <ProfileDetailView
-                    label="Bio"
-                    value={profileData.aboutMe}
-                    isTextArea
-                  />
-                </DisplaySection>
-
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-accent" />
-                      Partner Preferences
-                    </span>
-                  }
-                >
-                  <ProfileDetailView
-                    label="Min Preferred Partner Age"
-                    value={
-                      profileData.partnerPreferenceAgeMin === 0 ||
-                      profileData.partnerPreferenceAgeMin === undefined ||
-                      profileData.partnerPreferenceAgeMin === null
-                        ? "18"
-                        : profileData.partnerPreferenceAgeMin?.toString()
-                    }
-                  />
-                  <ProfileDetailView
-                    label="Max Preferred Partner Age"
-                    value={profileData.partnerPreferenceAgeMax?.toString()}
-                  />
-                  <ProfileDetailView
-                    label="Preferred Partner City/Cities"
-                    value={
-                      Array.isArray(profileData.partnerPreferenceCity) &&
-                      profileData.partnerPreferenceCity.length > 0
-                        ? profileData.partnerPreferenceCity.join(", ")
-                        : "-"
-                    }
-                  />
-                </DisplaySection>
-
-                {/* Subscription Section */}
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Heart className="w-5 h-5 text-primary" /> Subscription
-                    </span>
-                  }
-                >
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-md font-semibold">
-                      {planDisplayName(plan)}
-                    </span>
-                    {isPremium(plan) && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary-dark border border-primary/30 flex items-center gap-1">
-                        {profileData.subscriptionExpiresAt &&
-                        profileData.subscriptionExpiresAt > Date.now() ? (
-                          <>
-                            Renews{" "}
-                            {new Date(
-                              profileData.subscriptionExpiresAt
-                            ).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </>
-                        ) : (
-                          <>Expired</>
-                        )}
-                      </span>
-                    )}
-
-                    {/* Action buttons based on plan */}
-                    {!isPremium(plan) && (
-                      <Button
-                        size="sm"
-                        className="bg-primary hover:bg-primary-dark text-white rounded-lg"
-                        onClick={() => router.push("/plans")}
-                      >
-                        Upgrade
-                      </Button>
-                    )}
-
-                    {isPremium(plan) && !isPremiumPlus(plan) && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-primary border-primary"
-                          onClick={() => router.push("/plans")}
-                        >
-                          Upgrade to Plus
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleOpenBillingPortal}
-                          title="Open Stripe Billing Portal"
-                        >
-                          Manage
-                        </Button>
-                      </div>
-                    )}
-
-                    {isPremiumPlus(plan) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleOpenBillingPortal}
-                        title="Open Stripe Billing Portal"
-                      >
-                        Manage Subscription
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Spotlight upsell hint for non-Plus plans */}
-                  {!isPremiumPlus(plan) && (
-                    <div className="mt-2 text-xs text-accent-dark">
-                      Boost visibility & attract more matches with Spotlight.{" "}
-                      <button
-                        type="button"
-                        className="underline"
-                        onClick={() => (window.location.href = "/subscription")}
-                        title="Upgrade to Premium Plus for Spotlight and unlimited boosts"
-                      >
-                        Upgrade to unlock
-                      </button>
-                    </div>
-                  )}
-                  {isPremium(plan) && profileData.subscriptionExpiresAt && (
-                    <div className="mt-3 text-xs text-neutral-light flex flex-wrap items-center gap-2">
-                      <span>
-                        {(() => {
-                          const ms =
-                            profileData.subscriptionExpiresAt! - Date.now();
-                          if (ms <= 0) return "Your subscription has expired.";
-                          const days = Math.floor(ms / 86400000);
-                          if (days > 1)
-                            return `${days} days remaining in your billing period.`;
-                          if (days === 1)
-                            return `1 day remaining in your billing period.`;
-                          const hours = Math.floor(ms / 3600000);
-                          if (hours > 1) return `${hours} hours remaining.`;
-                          const minutes = Math.max(1, Math.floor(ms / 60000));
-                          return `${minutes} minute${minutes === 1 ? "" : "s"} remaining.`;
-                        })()}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleOpenBillingPortal}
-                        className="underline text-primary"
-                      >
-                        Manage
-                      </button>
-                    </div>
-                  )}
-                </DisplaySection>
-
-                {/* Danger Zone */}
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2 text-danger">
-                      <AlertTriangle className="h-5 w-5" /> Danger zone
-                    </span>
-                  }
-                  noBorder
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg bg-danger/10 border border-danger/30">
-                    <div className="text-sm text-danger">
-                      Permanently delete your profile and all related data. This
-                      action cannot be undone.
-                    </div>
-                    <Button
-                      className="bg-danger hover:bg-danger text-white"
-                      onClick={() => setShowDeleteDialog(true)}
-                      variant="destructive"
-                      size="sm"
-                      disabled={deleteLoading}
-                      title="Delete Profile"
-                    >
-                      Delete Profile
-                    </Button>
-                  </div>
-                </DisplaySection>
+                <SubscriptionAndDangerSection
+                  profileData={profileData}
+                  plan={plan}
+                  onDeleteAccount={() => setShowDeleteDialog(true)}
+                  isDeleting={deleteLoading}
+                />
               </>
             ) : (
               <div className="space-y-6">

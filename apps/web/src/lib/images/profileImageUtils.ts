@@ -1,11 +1,6 @@
-// Centralized helpers for normalizing profile image data across components
-// Supports several legacy shapes:
-//  - profileImageUrls: string[] of fully-qualified or relative/storage paths
-//  - profileImageIds:  string[] of storage object paths (e.g. users/<uid>/profile-images/<file>)
-//  - rawImages override: array of strings (ids or urls) or objects with {_id,url,storageId}
-// Returns a consistent array of { id, _id, url, storageId }
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
-export interface NormalizedProfileImage {
+export interface NormalizedProfileImage extends ProfileImageInfo {
   id: string;
   _id: string; // kept for components expecting _id
   url: string; // always best-effort absolute (or original if cannot resolve)

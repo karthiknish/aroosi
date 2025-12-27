@@ -6,7 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { Notifications } from "@/lib/notify";
-import type { Profile } from "@/types/profile";
+import type { Profile } from "@aroosi/shared/types";
 import { db } from "@/lib/firebaseAdmin";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 

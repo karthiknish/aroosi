@@ -16,24 +16,15 @@ import {
   LayoutTemplate,
 } from "lucide-react";
 
-interface Template {
-  name: string;
-  title: string;
-  message: string;
-  imageUrl?: string;
-  category?: string;
-  url?: string;
-  dataJson?: string;
-  buttonsJson?: string;
-}
+import { TemplateUI } from "../types";
 
 interface TemplateManagerProps {
   // Template state
-  templates: Template[];
+  templates: TemplateUI[];
   templateSearch: string;
   setTemplateSearch: (value: string) => void;
-  selectedTemplate: Template | null;
-  setSelectedTemplate: (template: Template | null) => void;
+  selectedTemplate: TemplateUI | null;
+  setSelectedTemplate: (template: TemplateUI | null) => void;
 
   // Form state
   templateName: string;
@@ -51,8 +42,8 @@ interface TemplateManagerProps {
 
   // Action handlers
   handleSaveTemplate: () => void;
-  handleDeleteTemplate: (template: Template) => void;
-  handleApplyTemplate: (template: Template) => void;
+  handleDeleteTemplate: (template: TemplateUI) => void;
+  handleApplyTemplate: (template: TemplateUI) => void;
 }
 
 export function TemplateManager({

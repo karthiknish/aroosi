@@ -3,7 +3,7 @@
  * Integrates TTL manager with signup flow for profile creation
  */
 
-import { Profile, ProfileFormValues } from "@/types/profile";
+import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
 import { profileTTLManagerInstance } from "@/lib/storage/profile-ttl-manager";
 import { profileTTLStorage } from "@/lib/storage/profile-ttl-manager";
 

@@ -7,20 +7,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Bell, Menu, User, Settings, LogOut, Home } from "lucide-react";
+import { Bell, User, Settings, LogOut, Home } from "lucide-react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface AdminHeaderProps {
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: (collapsed: boolean) => void;
   currentPath: string;
 }
 
 export function AdminHeader({
-  sidebarCollapsed,
-  setSidebarCollapsed,
   currentPath,
 }: AdminHeaderProps) {
   const { profile: rawProfile, signOut } = useAuthContext();
@@ -59,14 +55,7 @@ export function AdminHeader({
       <div className="flex items-center justify-between">
         {/* Left side - Title and Breadcrumbs */}
         <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
+          <SidebarTrigger className="lg:hidden" />
 
           <div>
             <h1 className="text-xl font-semibold text-neutral-dark">
@@ -76,12 +65,13 @@ export function AdminHeader({
               {breadcrumbs.map((crumb, index) => (
                 <div key={crumb.href} className="flex items-center">
                   {index > 0 && <span className="mx-2">/</span>}
-                  <button
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-neutral-light hover:text-primary transition-colors font-normal"
                     onClick={() => router.push(crumb.href)}
-                    className="hover:text-primary transition-colors"
                   >
                     {crumb.label}
-                  </button>
+                  </Button>
                 </div>
               ))}
             </nav>

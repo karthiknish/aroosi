@@ -3,30 +3,10 @@
  */
 
 import { api } from './client';
+import type { RecommendedProfile, QuickPick, SearchFilters } from '@aroosi/shared';
 
-export interface RecommendedProfile {
-    id: string;
-    displayName: string | null;
-    photoURL: string | null;
-    photos: string[];
-    age?: number;
-    bio?: string;
-    location?: {
-        city?: string;
-        distance?: number; // in km
-    };
-    interests?: string[];
-    compatibility?: number; // 0-100
-    isVerified?: boolean;
-    isPremium?: boolean;
-}
-
-export interface QuickPick {
-    id: string;
-    user: RecommendedProfile;
-    reason: string;
-    expiresAt: string;
-}
+// Re-export types for convenience
+export type { RecommendedProfile, QuickPick, SearchFilters } from '@aroosi/shared';
 
 /**
  * Get recommended profiles (for swiping)
@@ -54,17 +34,4 @@ export async function getCompatibility(userId: string) {
  */
 export async function searchProfiles(query: string, filters?: SearchFilters) {
     return api.post<RecommendedProfile[]>('/search', { query, filters });
-}
-
-export interface SearchFilters {
-    ageRange?: { min: number; max: number };
-    gender?: 'male' | 'female' | 'other';
-    distance?: number;
-    verified?: boolean;
-    interests?: string[];
-    religion?: string;
-    maritalStatus?: string;
-    motherTongue?: string;
-    education?: string;
-    occupation?: string;
 }

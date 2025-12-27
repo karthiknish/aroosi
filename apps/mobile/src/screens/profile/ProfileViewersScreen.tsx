@@ -39,6 +39,7 @@ import {
     type ViewerFilter,
 } from '../../services/api/profileViewers';
 import { getSubscriptionStatus } from '../../services/api/subscription';
+import { useAuthStore } from '../../store';
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileViewers'>;
 
@@ -53,6 +54,7 @@ const PAGE_SIZE = 20;
 
 export default function ProfileViewersScreen() {
     const navigation = useNavigation<Navigation>();
+    const { user } = useAuthStore();
     const [viewers, setViewers] = useState<ProfileViewer[]>([]);
     const [total, setTotal] = useState(0);
     const [newCount, setNewCount] = useState(0);
@@ -79,6 +81,13 @@ export default function ProfileViewersScreen() {
         filter: ViewerFilter = activeFilter,
         pageNum = 0
     ) => {
+        const userId = user?.id;
+        if (!userId) {
+            setError('User not authenticated');
+            setLoading(false);
+            return;
+        }
+
         try {
             if (isRefresh) {
                 setRefreshing(true);
@@ -91,7 +100,7 @@ export default function ProfileViewersScreen() {
             setError(null);
 
             const [viewersRes, subRes] = await Promise.all([
-                getProfileViewers(pageNum, PAGE_SIZE, filter),
+                getProfileViewers(userId, pageNum, PAGE_SIZE, filter),
                 pageNum === 0 ? getSubscriptionStatus() : Promise.resolve({ data: null }),
             ]);
 
@@ -158,7 +167,7 @@ export default function ProfileViewersScreen() {
     };
 
     // Format date
-    const formatDate = (dateValue: string | number) => {
+    const formatDate = (dateValue: string | number | Date) => {
         const date = new Date(dateValue);
         const now = new Date();
         const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));

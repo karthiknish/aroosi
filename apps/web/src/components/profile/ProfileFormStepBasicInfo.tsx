@@ -8,7 +8,7 @@ import {
   FormPhoneField,
 } from "./ProfileFormFields";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import type { ProfileFormValues } from "@/types/profile";
+import type { ProfileFormValues } from "@aroosi/shared/types";
 
 type Props = {
   form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;

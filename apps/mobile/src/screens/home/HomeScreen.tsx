@@ -76,8 +76,11 @@ export default function HomeScreen() {
         const currentProfile = profiles[currentIndex];
         if (!currentProfile) return;
 
+        const profileId = currentProfile.id || currentProfile.userId;
+        if (!profileId) return;
+
         try {
-            const response = await likeUser(currentProfile.id, false);
+            const response = await likeUser(profileId, false);
 
             if (response.data?.matched) {
                 Alert.alert(
@@ -99,8 +102,11 @@ export default function HomeScreen() {
         const currentProfile = profiles[currentIndex];
         if (!currentProfile) return;
 
+        const profileId = currentProfile.id || currentProfile.userId;
+        if (!profileId) return;
+
         try {
-            const response = await likeUser(currentProfile.id, true);
+            const response = await likeUser(profileId, true);
 
             if (response.data?.matched) {
                 Alert.alert(
@@ -121,8 +127,11 @@ export default function HomeScreen() {
         const currentProfile = profiles[currentIndex];
         if (!currentProfile) return;
 
+        const profileId = currentProfile.id || currentProfile.userId;
+        if (!profileId) return;
+
         try {
-            await passUser(currentProfile.id);
+            await passUser(profileId);
             setCurrentIndex(prev => prev + 1);
         } catch (err) {
             console.error('Pass failed:', err);

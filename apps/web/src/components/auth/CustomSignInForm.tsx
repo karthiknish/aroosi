@@ -161,10 +161,12 @@ export default function CustomSignInForm({
               disabled={isLoading}
               className="pr-10"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-neutral transition-colors"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-neutral hover:bg-transparent transition-colors"
               disabled={isLoading}
             >
               {showPassword ? (
@@ -172,7 +174,7 @@ export default function CustomSignInForm({
               ) : (
                 <Eye className="h-4 w-4" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -225,13 +227,14 @@ export default function CustomSignInForm({
         <span className="text-muted-foreground">
           Don&apos;t have an account?{" "}
         </span>
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => router.push("/sign-up")}
-          className="text-primary hover:underline font-medium"
+          className="text-primary hover:underline font-medium h-auto p-0"
         >
           Sign up
-        </button>
+        </Button>
       </div>
     </div>
   );
