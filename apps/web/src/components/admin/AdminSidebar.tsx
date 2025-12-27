@@ -14,13 +14,17 @@ import Link from "next/link";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { Home, LogOut } from "lucide-react";
 
 interface AdminSidebarProps {
   currentPath: string;
@@ -30,6 +34,7 @@ export function AdminSidebar({
   currentPath,
 }: AdminSidebarProps) {
   const { state } = useSidebar();
+  const { signOut } = useAuthContext();
   const collapsed = state === "collapsed";
 
   const navigationItems = [
@@ -92,7 +97,7 @@ export function AdminSidebar({
   ];
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="h-screen">
       <SidebarHeader className="p-6 border-b border-neutral/10">
         {collapsed ? (
           <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -105,7 +110,7 @@ export function AdminSidebar({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-neutral-dark">Aroosi</h2>
-              <p className="text-xs text-neutral-light">Admin Panel</p>
+              <p className="text-xs text-neutral-dark/60">Admin Panel</p>
             </div>
           </div>
         )}
@@ -135,6 +140,37 @@ export function AdminSidebar({
           ))}
         </SidebarMenu>
       </SidebarContent>
+      
+      <SidebarFooter className="p-4 border-t border-neutral/10">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip="Back to Site"
+              className="text-neutral-light hover:bg-neutral/5 hover:text-neutral-dark h-10"
+            >
+              <Link href="/">
+                <Home className="h-4 w-4" />
+                <span>Back to Site</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => signOut()}
+              tooltip="Logout"
+              className="text-danger hover:bg-danger/5 hover:text-danger h-10"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem className="mt-2 hidden md:flex justify-center">
+            <SidebarTrigger className="h-9 w-9 hover:bg-neutral/5" />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      
       <SidebarRail />
     </Sidebar>
   );

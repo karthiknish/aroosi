@@ -72,7 +72,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
         return "p-2 text-sm";
       case "banner":
       default:
-        return "w-full";
+        return "w-full relative z-50";
     }
   };
 

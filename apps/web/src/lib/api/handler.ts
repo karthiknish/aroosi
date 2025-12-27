@@ -362,13 +362,14 @@ export function createApiHandler<TBody = unknown>(
         }
       }
 
-      // 2. Authentication (if required)
-      if (options.requireAuth) {
-        try {
-          const auth = await requireAuth(request);
-          // Normalize the user object for consistent access
-          ctx.user = normalizeUser(auth);
-        } catch (e) {
+      // 2. Authentication (Required or Optional)
+      try {
+        // Always attempt to authenticate if a token/cookie is present
+        const auth = await requireAuth(request);
+        ctx.user = normalizeUser(auth);
+      } catch (e) {
+        // If authentication is required, we must fail
+        if (options.requireAuth) {
           if (e instanceof AuthError) {
             return applySecurityHeaders(
               errorResponse(e.message, e.status, {
@@ -379,6 +380,8 @@ export function createApiHandler<TBody = unknown>(
           }
           throw e;
         }
+        // If not required, we silently ignore auth failures (e.g. missing token or invalid token)
+        // and proceed with an unauthenticated context.
       }
 
       // 3. Rate limiting

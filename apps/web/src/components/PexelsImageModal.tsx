@@ -174,7 +174,7 @@ export function PexelsImageModal({
                 <DialogTitle className="text-lg font-semibold text-neutral-dark">
                   Select Image
                 </DialogTitle>
-                <p className="text-xs text-neutral-light mt-0.5">
+                <p className="text-xs text-neutral-dark/70 mt-0.5">
                   Search high-quality photos from Pexels
                 </p>
               </div>
@@ -209,7 +209,7 @@ export function PexelsImageModal({
             </Button>
           </form>
           
-          <div className="flex items-center justify-between mt-3 text-xs text-neutral-light px-1">
+          <div className="flex items-center justify-between mt-3 text-xs text-neutral-dark/70 px-1">
             <div>
               {loading
                 ? "Searching..."
@@ -344,7 +344,7 @@ export function PexelsImageModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-neutral/10 bg-base-light shrink-0 flex items-center justify-between text-xs text-neutral-light">
+        <div className="p-4 border-t border-neutral/10 bg-base-light shrink-0 flex items-center justify-between text-xs text-neutral-dark/70">
           <div className="flex items-center gap-2">
             <span>Photos provided by</span>
             <a

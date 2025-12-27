@@ -24,7 +24,7 @@ export default function BlogEditor({
     },
     editorProps: {
       attributes: {
-        class: "prose max-w-none min-h-[400px] p-8 focus:outline-none",
+        class: "prose max-w-none min-h-[400px] p-8 focus:outline-none text-neutral-dark",
       },
     },
   });
@@ -46,7 +46,7 @@ export default function BlogEditor({
         <EditorContent editor={editor} />
       </div>
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-neutral/5 border-t border-neutral/10 text-xs text-neutral-light">
+      <div className="flex items-center justify-between px-4 py-2 bg-neutral/5 border-t border-neutral/10 text-xs text-neutral-dark/60">
         <div className="flex items-center gap-4">
           <span>
             {editor.storage.characterCount?.characters() ?? 0} characters

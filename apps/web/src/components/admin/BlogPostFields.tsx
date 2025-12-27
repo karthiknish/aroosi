@@ -64,7 +64,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
         <div className="space-y-2">
           <Label
             htmlFor="blog-title"
-            className="text-sm font-medium text-neutral-dark flex items-center justify-between"
+            className="text-sm font-medium text-neutral-dark flex items-center justify-between !text-neutral-dark"
           >
             Title
             <Button
@@ -102,42 +102,40 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
               }
             }}
             disabled={disabled}
-            className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20"
+            className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20 text-neutral-dark !text-neutral-dark"
           />
         </div>
         
         <div className="space-y-2">
           <Label
             htmlFor="blog-slug"
-            className="text-sm font-medium text-neutral-dark"
+            className="text-sm font-medium text-neutral-dark !text-neutral-dark"
           >
             Slug (URL)
           </Label>
-          <div className="relative">
-            <Input
-              id="blog-slug"
-              placeholder="my-first-post"
-              value={slug}
-              onChange={(e) => {
-                setSlug(stripTags(e.target.value).trim());
-                setSlugManuallyEdited(true);
-              }}
-              disabled={disabled}
-              className="h-11 bg-neutral/5 border-neutral/20 text-neutral-dark font-mono text-sm"
-            />
-            {slug && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-light pointer-events-none">
-                /blog/{slug}
-              </div>
-            )}
-          </div>
+          <Input
+            id="blog-slug"
+            placeholder="my-first-post"
+            value={slug}
+            onChange={(e) => {
+              setSlug(stripTags(e.target.value).trim());
+              setSlugManuallyEdited(true);
+            }}
+            disabled={disabled}
+            className="h-11 bg-neutral/5 border-neutral/20 text-neutral-dark font-mono text-sm !text-neutral-dark"
+          />
+          {slug && (
+            <p className="text-xs text-neutral-dark/50 mt-1 !text-neutral-dark/50">
+              Preview: <span className="font-mono">/blog/{slug}</span>
+            </p>
+          )}
         </div>
       </div>
 
       <div className="space-y-2">
         <Label
           htmlFor="blog-excerpt"
-          className="text-sm font-medium text-neutral-dark flex items-center justify-between"
+          className="text-sm font-medium text-neutral-dark flex items-center justify-between !text-neutral-dark"
         >
           <span>Excerpt <span className="text-danger">*</span></span>
           <Button
@@ -160,7 +158,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           placeholder="A short summary that appears in search results and cards"
           value={excerpt}
           onChange={(e) => setExcerpt(stripTags(e.target.value))}
-          className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20"
+          className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20 text-neutral-dark !text-neutral-dark"
           required
         />
         {excerpt.trim() === "" && (
@@ -171,7 +169,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       <div className="space-y-2">
         <Label
           htmlFor="blog-categories"
-          className="text-sm font-medium text-neutral-dark flex items-center justify-between"
+          className="text-sm font-medium text-neutral-dark flex items-center justify-between !text-neutral-dark"
         >
           <span>Categories <span className="text-danger">*</span></span>
           <Button
@@ -207,7 +205,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
                 .filter(Boolean)
             )
           }
-          className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20"
+          className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20 text-neutral-dark !text-neutral-dark"
           required
         />
         <div className="flex flex-wrap gap-2 mt-2">
@@ -222,7 +220,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       <div className="space-y-3 pt-2">
         <Label
           htmlFor="blog-image-url"
-          className="text-sm font-medium text-neutral-dark block"
+          className="text-sm font-medium text-neutral-dark block !text-neutral-dark"
         >
           Featured Image <span className="text-danger">*</span>
         </Label>
@@ -237,7 +235,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
                 onChange={(e) => setImageUrl(e.target.value)}
                 disabled={disabled}
                 required
-                className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20 font-mono text-xs"
+                className="h-11 bg-white border-neutral/20 focus:border-primary focus:ring-primary/20 font-mono text-xs text-neutral-dark !text-neutral-dark"
               />
               <Button
                 type="button"
@@ -290,7 +288,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             ) : (
               <div className="text-center p-4">
                 <ImageIcon className="w-8 h-8 text-neutral/20 mx-auto mb-2" />
-                <span className="text-xs text-neutral-light">No image selected</span>
+                <span className="text-xs text-neutral-dark/60">No image selected</span>
               </div>
             )}
           </div>

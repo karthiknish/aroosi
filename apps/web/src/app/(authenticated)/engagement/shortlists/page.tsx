@@ -73,7 +73,13 @@ export default function MyShortlistsPage() {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen bg-base-light pt-24 pb-12 relative overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -left-24 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-4">
           <h1 className="text-xl font-semibold mb-4">My Shortlists</h1>

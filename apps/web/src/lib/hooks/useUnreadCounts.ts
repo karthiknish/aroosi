@@ -4,22 +4,14 @@ import { onAuthStateChanged } from "firebase/auth";
 import { matchesAPI } from "@/lib/api/matches";
 
 export function useUnreadCounts(
-  _userId: string | undefined,
+  userId: string | undefined,
   _token: string | undefined
 ) {
   return useQuery<Record<string, number>>({
-    queryKey: ["unreadCounts", "self"],
+    queryKey: ["unreadCounts", userId || "self"],
     queryFn: async () => {
-      // Wait briefly for auth user to initialize (avoids early 401 spam)
-      if (!auth.currentUser) {
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => resolve(), 2000);
-          const unsub = onAuthStateChanged(auth, () => {
-            clearTimeout(timeout);
-            unsub();
-            resolve();
-          });
-        });
+      if (!userId && !auth.currentUser) {
+        return {};
       }
       try {
         return await matchesAPI.getUnreadCounts();
@@ -27,8 +19,8 @@ export function useUnreadCounts(
         return {};
       }
     },
-    enabled: true,
-    refetchInterval: 10000,
-    staleTime: 5000,
+    enabled: !!userId,
+    refetchInterval: 30000, // Increased from 10s to 30s to reduce API load
+    staleTime: 15000, // Increased from 5s to 15s
   });
 }

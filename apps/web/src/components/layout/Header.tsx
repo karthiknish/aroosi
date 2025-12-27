@@ -284,11 +284,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                         try {
                           const mod = await import("@/lib/api/subscription");
                           const { subscriptionAPI } = mod;
-                          const { url } =
-                            await subscriptionAPI.openBillingPortal();
-                          if (url) {
-                            window.location.assign(url);
-                          }
+                          await subscriptionAPI.openBillingPortal();
                         } catch {
                           // swallow; toast handled inside util if thrown
                         }
@@ -491,18 +487,18 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           <NavigationMenu>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <Link href="/about" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                  <Link href="/about">
                     About
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/how-it-works" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                  <Link href="/how-it-works">
                     How It Works
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
@@ -549,12 +545,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         <NavigationMenu>
           <NavigationMenuList>
             <NavigationMenuItem>
-              <Link href="/search" legacyBehavior passHref>
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+              <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                <Link href="/search">
                   <Search className="h-4 w-4 mr-2" />
                   Search
-                </NavigationMenuLink>
-              </Link>
+                </Link>
+              </NavigationMenuLink>
             </NavigationMenuItem>
             
             <NavigationMenuItem>
@@ -563,7 +559,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 Matches
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                <ul className="grid w-[320px] max-w-[calc(100vw-2rem)] gap-3 p-4 md:w-[450px] md:grid-cols-2 lg:w-[550px]">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
                       <Link
@@ -581,8 +577,8 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     </NavigationMenuLink>
                   </li>
                   <li>
-                    <Link href="/engagement/quick-picks" legacyBehavior passHref>
-                      <NavigationMenuLink className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                    <NavigationMenuLink asChild className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                      <Link href="/engagement/quick-picks">
                         <div className="text-sm font-medium leading-none flex items-center gap-2">
                           <Zap className="h-4 w-4 text-warning" />
                           Quick Picks
@@ -590,12 +586,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                         <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
                           Daily curated profiles just for you.
                         </p>
-                      </NavigationMenuLink>
-                    </Link>
+                      </Link>
+                    </NavigationMenuLink>
                   </li>
                   <li>
-                    <Link href="/engagement/shortlists" legacyBehavior passHref>
-                      <NavigationMenuLink className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                    <NavigationMenuLink asChild className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                      <Link href="/engagement/shortlists">
                         <div className="text-sm font-medium leading-none flex items-center gap-2">
                           <Star className="h-4 w-4 text-primary" />
                           Shortlists
@@ -603,8 +599,8 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                         <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
                           Profiles you've saved for later.
                         </p>
-                      </NavigationMenuLink>
-                    </Link>
+                      </Link>
+                    </NavigationMenuLink>
                   </li>
                 </ul>
               </NavigationMenuContent>
@@ -612,12 +608,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
 
             {isAdmin && (
               <NavigationMenuItem>
-                <Link href="/admin" legacyBehavior passHref>
-                  <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "text-primary font-semibold")}>
+                <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-primary font-semibold")}>
+                  <Link href="/admin">
                     <ShieldUser className="h-4 w-4 mr-2" />
                     Admin
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
             )}
           </NavigationMenuList>
@@ -676,8 +672,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     try {
                       const mod = await import("@/lib/api/subscription");
                       const { subscriptionAPI } = mod;
-                      const { url } = await subscriptionAPI.openBillingPortal();
-                      if (url) window.location.assign(url);
+                      await subscriptionAPI.openBillingPortal();
                     } catch {}
                   }}>
                     <Wallet className="mr-2 h-4 w-4" />

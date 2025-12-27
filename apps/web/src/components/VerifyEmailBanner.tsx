@@ -6,10 +6,14 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { requestEmailVerification } from "@/lib/auth/clientAuth";
 
 export default function VerifyEmailBanner() {
-  const { profile, isSignedIn } = useAuthContext();
+  const { user, profile, isSignedIn, refreshProfile } = useAuthContext();
   const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [sentAt, setSentAt] = useState<number | null>(null);
-  const emailVerified = (profile as any)?.emailVerified;
+  
+  // Check both Firebase Auth and Firestore profile for verification status
+  const emailVerified = user?.emailVerified || profile?.emailVerified;
+  
   if (!isSignedIn || emailVerified) return null;
 
   const recentlySent = !!(sentAt && Date.now() - sentAt < 60_000); // 60s cooldown
@@ -23,6 +27,22 @@ export default function VerifyEmailBanner() {
           features.
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-accent-dark hover:bg-accent/10"
+            disabled={checking}
+            onClick={async () => {
+              setChecking(true);
+              try {
+                await refreshProfile();
+              } finally {
+                setChecking(false);
+              }
+            }}
+          >
+            {checking ? "Checking..." : "Check Status"}
+          </Button>
           <Button
             size="sm"
             variant="outline"

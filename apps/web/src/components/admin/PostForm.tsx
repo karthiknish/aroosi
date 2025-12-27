@@ -80,7 +80,7 @@ export function PostForm({
         <h1 className="text-3xl font-bold text-neutral-dark">
           {mode === "create" ? "Create New Post" : "Edit Blog Post"}
         </h1>
-        <p className="text-neutral-light">
+        <p className="text-neutral-dark/70">
           {mode === "create"
             ? "Write and publish a new blog post for your audience."
             : "Update existing blog post details and content."}
@@ -200,7 +200,7 @@ export function PostForm({
                 variant="ghost"
                 onClick={onReset}
                 disabled={isSubmitting}
-                className="mr-auto text-neutral-light hover:text-neutral-dark"
+                className="mr-auto text-neutral-dark/60 hover:text-neutral-dark"
               >
                 Reset Form
               </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -12,9 +13,12 @@ import { useOneSignal } from "@/hooks/useOneSignal";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import BackToTop from "@/components/BackToTop";
 import { OfflineBanner } from "@/components/ui/offline-banner";
+import { cn } from "@/lib/utils";
 
 export default function ClientRoot({ children }: { children: ReactNode }) {
   const { profile } = useAuthContext();
+  const pathname = usePathname();
+  
   useEffect(() => {
     try {
       if (profile?.banned === true && typeof window !== "undefined") {
@@ -29,22 +33,26 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
   useOneSignal();
 
   const hideLinks = false; // onboarding gating removed
+  const isAdminRoute = pathname?.startsWith("/admin");
 
   return (
     <>
-      <Header hideLinks={!!profile?.banned || hideLinks} />
-      <OfflineBanner variant="banner" dismissible={false} />
+      {!isAdminRoute && <Header hideLinks={!!profile?.banned || hideLinks} />}
       <main
         id="main-content"
-        className="pt-16 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.16))] overflow-x-hidden"
+        className={cn(
+          "min-h-[calc(100vh-theme(spacing.24)-theme(spacing.16))] overflow-x-hidden",
+          !isAdminRoute && "pt-16"
+        )}
         tabIndex={-1}
       >
+        <OfflineBanner variant="banner" dismissible={false} />
         <VerifyEmailBanner />
         <ErrorBoundary>
           <RouteTransition>{children}</RouteTransition>
         </ErrorBoundary>
       </main>
-      <Footer />
+      {!isAdminRoute && <Footer />}
       <BackToTop />
       <Toaster
         position="bottom-right"

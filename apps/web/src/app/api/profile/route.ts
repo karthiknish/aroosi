@@ -75,7 +75,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
       requestedUserId: requestedUserId || "(self)",
     });
     
-    return successResponse({ profile }, 200, ctx.correlationId);
+    return successResponse(profile, 200, ctx.correlationId);
   } catch (e) {
     console.error("Profile GET firebase error", {
       message: e instanceof Error ? e.message : String(e),
@@ -127,7 +127,7 @@ export const PUT = createAuthenticatedHandler(async (ctx: ApiContext, body: any)
     });
     
     return successResponse({ 
-      profile: updatedProfile, 
+      ...updatedProfile, 
       message: "Profile updated successfully" 
     }, 200, ctx.correlationId);
   } catch (e) {
@@ -204,7 +204,7 @@ export const POST = createAuthenticatedHandler(async (ctx: ApiContext, body: any
     });
     
     return successResponse({ 
-      profile: newProfile, 
+      ...newProfile, 
       message: "Profile created successfully" 
     }, 200, ctx.correlationId);
   } catch (error) {

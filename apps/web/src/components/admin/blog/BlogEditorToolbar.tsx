@@ -255,7 +255,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
           ref={emojiButtonRef}
           type="button"
           onClick={() => setEmojiPickerOpen((v) => !v)}
-          className="p-2 rounded-md transition-all duration-150 text-neutral-light hover:bg-neutral/5 hover:text-neutral-dark"
+          className="p-2 rounded-md transition-all duration-150 text-neutral-dark hover:bg-neutral/5"
           title="Insert Emoji"
         >
           <Smile className="w-4 h-4" />
@@ -289,7 +289,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-neutral-light mb-1.5">
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">
                   Rows
                 </label>
                 <input
@@ -302,7 +302,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-light mb-1.5">
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">
                   Columns
                 </label>
                 <input
@@ -317,7 +317,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-dark/60 hover:bg-neutral/5 transition-colors"
                 onClick={() => setTableModalOpen(false)}
               >
                 Cancel
@@ -365,7 +365,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
               </h2>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-light mb-1.5">
+              <label className="block text-sm font-medium text-neutral-dark mb-1.5">
                 URL
               </label>
               <input
@@ -379,7 +379,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-dark/60 hover:bg-neutral/5 transition-colors"
                 onClick={() => setLinkModalOpen(false)}
               >
                 Cancel
@@ -450,7 +450,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
               <h2 className="text-lg font-semibold text-neutral-dark">Insert Image</h2>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-light mb-1.5">
+              <label className="block text-sm font-medium text-neutral-dark mb-1.5">
                 Image URL
               </label>
               <input
@@ -476,7 +476,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-dark/60 hover:bg-neutral/5 transition-colors"
                 onClick={() => {
                   setImageModalOpen(false);
                   setUploadedUrl("");
@@ -522,7 +522,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
               <h2 className="text-lg font-semibold text-neutral-dark">Insert Youtube Video</h2>
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-light mb-1.5">
+              <label className="block text-sm font-medium text-neutral-dark mb-1.5">
                 Video URL
               </label>
               <input
@@ -536,7 +536,7 @@ export const BlogEditorToolbar = ({ editor }: MenuBarProps) => {
             </div>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 rounded-lg text-neutral-light hover:bg-neutral/5 transition-colors"
+                className="px-4 py-2 rounded-lg text-neutral-dark/60 hover:bg-neutral/5 transition-colors"
                 onClick={() => {
                   setYoutubeModalOpen(false);
                   setYoutubeUrl("");

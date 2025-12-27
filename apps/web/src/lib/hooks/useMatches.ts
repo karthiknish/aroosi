@@ -25,6 +25,7 @@ export function useMatches(
         }
       },
       enabled: true,
+      staleTime: 60000, // 1 minute stale time for matches list
     }
   );
 

@@ -14,7 +14,7 @@ export function ProfileFormHeader({ onCancel, loading }: ProfileFormHeaderProps)
     <div className="flex items-center justify-between border-b border-neutral/10 pb-6">
       <div>
         <h2 className="text-2xl font-bold text-neutral-dark">Edit Profile</h2>
-        <p className="text-sm text-neutral-light mt-1">Update user information and settings</p>
+        <p className="text-sm text-neutral-dark/70 mt-1">Update user information and settings</p>
       </div>
       <div className="flex gap-3">
         <Button

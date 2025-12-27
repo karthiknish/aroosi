@@ -5,7 +5,6 @@ import { UsageTracker } from "@/components/usage/UsageTracker";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { useUnreadCounts } from "@/lib/hooks/useUnreadCounts";
 import { format } from "date-fns";
 import {
   Bar,
@@ -75,7 +74,6 @@ const FEATURE_CONFIG: Record<string, { label: string; icon: React.ReactNode; col
 
 export default function UsagePage() {
   useAuthContext();
-  const { data: unreadCounts } = useUnreadCounts(undefined as any, undefined as any);
 
   // Fetch history
   const { data: history, isLoading, isError } = useQuery({
@@ -164,7 +162,13 @@ export default function UsagePage() {
   }, [history, page]);
 
   return (
-    <div className="min-h-screen bg-base-light pt-24 pb-12">
+    <div className="min-h-screen bg-base-light pt-24 pb-12 relative overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -left-24 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
         {/* Header */}

@@ -5,8 +5,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { 
+  SidebarProvider, 
+  SidebarInset, 
+  SidebarTrigger 
+} from "@/components/ui/sidebar";
 
 export default function AdminLayoutClient({
   children,
@@ -63,11 +66,11 @@ export default function AdminLayoutClient({
         <AdminSidebar currentPath={pathname} />
         
         {/* Main Content Area */}
-        <SidebarInset className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <AdminHeader 
-            currentPath={pathname}
-          />
+        <SidebarInset className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Mobile Floating Trigger */}
+          <div className="md:hidden fixed top-4 left-4 z-50">
+            <SidebarTrigger className="bg-base-light shadow-md border border-neutral/10 rounded-full h-10 w-10" />
+          </div>
           
           {/* Page Content */}
           <main className="flex-1 overflow-y-auto p-6">
