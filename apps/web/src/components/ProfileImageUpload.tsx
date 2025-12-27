@@ -14,12 +14,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
-import {
-  deleteAdminProfileImageById,
-  adminUploadProfileImage,
-} from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
-import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { profileAPI } from "@/lib/api/profile";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
 import type { NormalizedProfileImage } from "@/lib/images/profileImageUtils";
@@ -129,11 +126,14 @@ export function ProfileImageUpload({
   const { data: currentUserProfile } = useQuery({
     queryKey: ["currentUserWithProfile"],
     queryFn: async () => {
-      const result = await getCurrentUserWithProfile(
-        derivedUserId || userId || ""
-      );
-      if (!result.success) return null;
-      return result.data;
+      const id = derivedUserId || userId || "";
+      if (!id) return null;
+      try {
+        return await profileAPI.getProfileForUser(id);
+      } catch (error) {
+        console.error("Failed to fetch current user profile:", error);
+        return null;
+      }
     },
   });
 
@@ -253,7 +253,7 @@ export function ProfileImageUpload({
   const uploadImageFileAdmin = async (file: File) => {
     if (!profileId)
       throw new Error("Profile ID not available for admin upload.");
-    await adminUploadProfileImage({ profileId, file });
+    await adminProfilesAPI.uploadImage(profileId, file);
     showSuccessToast("Image uploaded successfully");
     await refetchImages();
   };
@@ -275,7 +275,7 @@ export function ProfileImageUpload({
       if (!userId) throw new Error("Missing userId");
       if (authIsAdmin && profileId) {
         // Use admin util for deleting images (cookie-auth)
-        await deleteAdminProfileImageById({ profileId, imageId });
+        await adminProfilesAPI.deleteImage(profileId, imageId);
         return imageId;
       }
       // Default user delete path currently lacks a client util; perform optimistic removal only.

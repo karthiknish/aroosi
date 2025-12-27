@@ -7,11 +7,8 @@ import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import {
-  fetchAdminProfileById,
-  updateAdminProfileById,
-  fetchAdminProfileMatches,
-} from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
 import type { Profile } from "@aroosi/shared/types";
 import { useQuery } from "@tanstack/react-query";
@@ -40,7 +37,7 @@ export default function AdminEditProfilePage() {
     queryKey: ["adminProfile", id],
     queryFn: async () => {
       if (!id) return null;
-      return await fetchAdminProfileById({ id });
+      return await adminProfilesAPI.get(id);
     },
     enabled: !!id,
   });
@@ -50,7 +47,7 @@ export default function AdminEditProfilePage() {
     queryKey: ["profileMatches", id],
     queryFn: async () => {
       if (!id) return [];
-      return await fetchAdminProfileMatches({ profileId: id });
+      return await adminMatchesAPI.getProfileMatches(id);
     },
     enabled: !!id,
   });
@@ -164,7 +161,7 @@ export default function AdminEditProfilePage() {
       preferredGender,
     };
     try {
-      await updateAdminProfileById({ id, updates });
+      await adminProfilesAPI.update(id, updates);
       showSuccessToast("Profile updated successfully!");
       router.push(`/admin/profile/${id}`);
     } catch (error) {

@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { contactAPI } from "@/lib/api/contact";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 export default function BannedPage() {
+  const { user } = useAuthContext();
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -15,15 +18,11 @@ export default function BannedPage() {
   const submitAppeal = async () => {
     setSubmitting(true);
     try {
-      const res = await fetch("/api/appeals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason, details }),
+      await contactAPI.submitAppeal({
+        email: user?.email || "",
+        reason,
+        details,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error((data as any)?.error || `HTTP ${res.status}`);
-      }
       showSuccessToast("Appeal submitted. We'll review and email you.");
       setReason("");
       setDetails("");

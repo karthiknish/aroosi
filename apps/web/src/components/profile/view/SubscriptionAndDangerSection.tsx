@@ -5,7 +5,7 @@ import { DisplaySection } from "./ProfileViewComponents";
 import { Button } from "@/components/ui/button";
 import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 import { planDisplayName } from "@/lib/utils/plan";
-import { openBillingPortal } from "@/lib/utils/stripeUtil";
+import { subscriptionAPI } from "@/lib/api/subscription";
 import type { Profile } from "@aroosi/shared/types";
 
 interface SubscriptionAndDangerSectionProps {
@@ -25,7 +25,7 @@ export const SubscriptionAndDangerSection: React.FC<SubscriptionAndDangerSection
 
   const handleOpenBillingPortal = async () => {
     try {
-      await openBillingPortal();
+      await subscriptionAPI.openBillingPortal();
     } catch {
       router.push("/subscription");
     }

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, Send, Copy, Trash2, Save, Link2, Link2Off } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DOMPurify from "dompurify";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -22,9 +23,53 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+const safeParseJSON = (text: string): any => {
+  try {
+    const t = (text || "").trim();
+    if (!t) return {};
+    return JSON.parse(t);
+  } catch {
+    return {};
+  }
+};
+
+const computeSchemaHints = (
+  expectedSchema: Record<string, any>,
+  currentVars: Record<string, any>
+) => {
+  const expectedKeys = Object.keys(expectedSchema || {});
+  const currentKeys = Object.keys(currentVars || {});
+  const missing = expectedKeys.filter((k) => !currentKeys.includes(k));
+  const extra = currentKeys.filter((k) => !expectedKeys.includes(k));
+  const typeMismatches: Array<{ key: string; expected: string; actual: string }> = [];
+  for (const key of expectedKeys) {
+    const exp = expectedSchema[key];
+    const act = currentVars[key];
+    if (act === undefined) continue;
+    const expType = Array.isArray(exp) ? "array" : exp === null ? "null" : typeof exp;
+    const actType = Array.isArray(act) ? "array" : act === null ? "null" : typeof act;
+    if (expType !== actType) {
+      typeMismatches.push({ key, expected: expType, actual: actType });
+    }
+  }
+  return { missing, extra, typeMismatches };
+};
+
+const mergeVariables = (htmlStr: string, vars: Record<string, any>) => {
+  // simple mustache-style replacement: {{varName}}
+  return htmlStr.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
+    const val = key
+      .split(".")
+      .reduce((acc: any, k: string) => (acc && acc[k] !== undefined ? acc[k] : undefined), vars as any);
+    return val === undefined || val === null ? "" : String(val);
+  });
+};
 
 export default function AdminEmailPage() {
   useAuthContext();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"compose" | "templates" | "preview">("compose");
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -32,17 +77,46 @@ export default function AdminEmailPage() {
   const [html, setHtml] = useState("<p>Hello from Aroosi</p>");
   const [text, setText] = useState("");
   const [dryRun, setDryRun] = useState(true);
-  const [confirm, setConfirm] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
+  
   // Templates
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateDesc, setNewTemplateDesc] = useState("");
   const [variablesJson, setVariablesJson] = useState("{\n  \"userName\": \"Alice\"\n}");
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
   const [schemaHints, setSchemaHints] = useState<{ missing: string[]; extra: string[]; typeMismatches: Array<{ key: string; expected: string; actual: string }>; } | null>(null);
+
+  // Use react-query for templates
+  const { data: templates = [], isLoading: templatesLoading } = useQuery({
+    queryKey: ["emailTemplates"],
+    queryFn: () => adminEmailAPI.listSavedTemplates(),
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: string) => adminEmailAPI.deleteSavedTemplate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
+      showSuccessToast("Template deleted");
+    },
+    onError: (err: Error) => {
+      showErrorToast(err, "Failed to delete template");
+    },
+  });
+
+  const saveTemplateMutation = useMutation({
+    mutationFn: (template: any) => adminEmailAPI.createSavedTemplate(template),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
+      setNewTemplateName("");
+      setNewTemplateDesc("");
+      showSuccessToast("Template saved");
+    },
+    onError: (err: Error) => {
+      showErrorToast(err, "Failed to save template");
+    },
+  });
 
   // Tiptap editor for HTML
   const editor = useEditor({
@@ -69,13 +143,6 @@ export default function AdminEmailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load templates on first render
-  useEffect(() => {
-    (async () => {
-      await loadTemplates();
-    })();
-  }, []);
-
   const handleSend = async () => {
     if (!subject.trim()) {
       showErrorToast(null, "Subject is required");
@@ -85,60 +152,40 @@ export default function AdminEmailPage() {
       showErrorToast(null, "Provide HTML or text content");
       return;
     }
-    if (!dryRun && !confirm) {
+    if (!dryRun && !isConfirmed) {
       showErrorToast(null, "Confirm live send");
       return;
     }
     setLoading(true);
     try {
       const vars = safeParseJSON(variablesJson);
-      const res = await fetch("/api/admin/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dryRun,
-          confirm: !dryRun && confirm,
-          templateId: !dryRun && appliedTemplateId ? appliedTemplateId : undefined,
-          to: to
-            .split(/[\,\s]+/)
-            .map((s) => s.trim())
-            .filter(Boolean),
-          subject: subject.trim(),
-          text: text.trim() || undefined,
-          html: preheader.trim()
-            ? `<span style=\"display:none;opacity:0;\">${preheader}</span>\n` + mergeVariables(html, vars)
-            : mergeVariables(html, vars),
-        }),
+      const res = await adminEmailAPI.sendAdminEmail({
+        dryRun,
+        confirm: !dryRun && isConfirmed,
+        templateId: !dryRun && appliedTemplateId ? appliedTemplateId : undefined,
+        to: to
+          .split(/[\,\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+        subject: subject.trim(),
+        text: text.trim() || undefined,
+        html: preheader.trim()
+          ? `<span style=\"display:none;opacity:0;\">${preheader}</span>\n` + mergeVariables(html, vars)
+          : mergeVariables(html, vars),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Request failed");
+      
       if (dryRun) {
-        setPreview(json?.data?.preview || null);
+        setPreview(res?.data?.preview || null);
         showSuccessToast("Email preview generated");
       } else {
         showSuccessToast("Email queued for delivery");
-        setConfirm(false);
+        setIsConfirmed(false);
         setAppliedTemplateId(null);
       }
     } catch (e) {
       showErrorToast(null, (e as Error).message || "Failed");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Templates API helpers (component-scoped)
-  const loadTemplates = async () => {
-    setTemplatesLoading(true);
-    try {
-      const res = await fetch("/api/admin/email-templates");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Failed to load templates");
-      setTemplates(json?.data?.items || json?.data || json?.items || []);
-    } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed to load templates");
-    } finally {
-      setTemplatesLoading(false);
     }
   };
 
@@ -169,13 +216,8 @@ export default function AdminEmailPage() {
   };
 
   const deleteTemplate = async (id: string) => {
-    try {
-      const res = await fetch(`/api/admin/email-templates/${id}`, { method: "DELETE" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Delete failed");
-      await loadTemplates();
-    } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed to delete template");
+    if (confirm("Are you sure you want to delete this template?")) {
+      deleteTemplateMutation.mutate(id);
     }
   };
 
@@ -188,70 +230,14 @@ export default function AdminEmailPage() {
       showErrorToast(null, "Subject is required to save a template");
       return;
     }
-    try {
-      const res = await fetch("/api/admin/email-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newTemplateName.trim(),
-          description: newTemplateDesc.trim() || undefined,
-          subject: subject.trim(),
-          html: html || undefined,
-          text: text || undefined,
-          variablesSchema: safeParseJSON(variablesJson),
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Failed to save template");
-      setNewTemplateName("");
-      setNewTemplateDesc("");
-      await loadTemplates();
-      showSuccessToast("Template saved");
-    } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed to save template");
-    }
-  };
-
-  const safeParseJSON = (text: string): any => {
-    try {
-      const t = (text || "").trim();
-      if (!t) return {};
-      return JSON.parse(t);
-    } catch {
-      showErrorToast(null, "Invalid JSON in variables");
-      return {};
-    }
-  };
-
-  const computeSchemaHints = (
-    expectedSchema: Record<string, any>,
-    currentVars: Record<string, any>
-  ) => {
-    const expectedKeys = Object.keys(expectedSchema || {});
-    const currentKeys = Object.keys(currentVars || {});
-    const missing = expectedKeys.filter((k) => !currentKeys.includes(k));
-    const extra = currentKeys.filter((k) => !expectedKeys.includes(k));
-    const typeMismatches: Array<{ key: string; expected: string; actual: string }> = [];
-    for (const key of expectedKeys) {
-      const exp = expectedSchema[key];
-      const act = currentVars[key];
-      if (act === undefined) continue;
-      const expType = Array.isArray(exp) ? "array" : exp === null ? "null" : typeof exp;
-      const actType = Array.isArray(act) ? "array" : act === null ? "null" : typeof act;
-      if (expType !== actType) {
-        typeMismatches.push({ key, expected: expType, actual: actType });
-      }
-    }
-    return { missing, extra, typeMismatches };
-  };
-
-  const mergeVariables = (htmlStr: string, vars: Record<string, any>) => {
-    // simple mustache-style replacement: {{varName}}
-    return htmlStr.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
-      const val = key
-        .split(".")
-        .reduce((acc: any, k: string) => (acc && acc[k] !== undefined ? acc[k] : undefined), vars as any);
-      return val === undefined || val === null ? "" : String(val);
+    
+    saveTemplateMutation.mutate({
+      name: newTemplateName.trim(),
+      description: newTemplateDesc.trim() || undefined,
+      subject: subject.trim(),
+      html: html || undefined,
+      text: text || undefined,
+      variablesSchema: safeParseJSON(variablesJson),
     });
   };
 
@@ -432,12 +418,12 @@ export default function AdminEmailPage() {
               </label>
               {!dryRun && (
                 <label className="flex items-center gap-2 text-sm text-red-600">
-                  <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} />
+                  <input type="checkbox" checked={isConfirmed} onChange={(e) => setIsConfirmed(e.target.checked)} />
                   Confirm live send
                 </label>
               )}
             </div>
-            <Button className="w-full" onClick={handleSend} disabled={loading || (!dryRun && !confirm)}>
+            <Button className="w-full" onClick={handleSend} disabled={loading || (!dryRun && !isConfirmed)}>
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
@@ -474,7 +460,7 @@ export default function AdminEmailPage() {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-600">{templatesLoading ? "Loading..." : `${templates.length} templates`}</div>
-                  <Button variant="outline" size="sm" onClick={() => loadTemplates()}>Refresh</Button>
+                  <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["emailTemplates"] })}>Refresh</Button>
                 </div>
                 <div className="border rounded-md divide-y">
                   {templates.length === 0 && (
@@ -542,4 +528,3 @@ export default function AdminEmailPage() {
     </div>
   );
 }
-

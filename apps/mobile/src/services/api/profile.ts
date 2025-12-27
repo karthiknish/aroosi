@@ -2,7 +2,7 @@
  * Profile API Service
  */
 
-import { api } from './client';
+import { api, ApiResponse } from './client';
 import type { 
     UserProfile, 
     UserPreferences, 
@@ -22,39 +22,39 @@ export type {
 /**
  * Get current user's profile
  */
-export async function getProfile() {
+export async function getProfile(): Promise<ApiResponse<UserProfile>> {
     return api.get<UserProfile>('/profile');
 }
 
 /**
  * Update profile
  */
-export async function updateProfile(data: ProfileUpdateData) {
+export async function updateProfile(data: ProfileUpdateData): Promise<ApiResponse<UserProfile>> {
     return api.patch<UserProfile>('/profile', data as Record<string, unknown>);
 }
 
 /**
  * Get another user's profile
  */
-export async function getProfileById(userId: string) {
+export async function getProfileById(userId: string): Promise<ApiResponse<UserProfile>> {
     return api.get<UserProfile>(`/profile-detail/${userId}`);
 }
 
 /**
  * Get public profile (limited data)
  */
-export async function getPublicProfile(userId: string) {
+export async function getPublicProfile(userId: string): Promise<ApiResponse<Partial<UserProfile>>> {
     return api.get<Partial<UserProfile>>(`/public-profile/${userId}`);
 }
 
 /**
  * Update preferences
  */
-export async function updatePreferences(preferences: UserPreferences) {
+export async function updatePreferences(preferences: UserPreferences): Promise<ApiResponse<UserProfile>> {
     return api.patch<UserProfile>('/profile', { preferences });
 }
 
-export async function uploadProfilePhoto(imageUri: string, index: number) {
+export async function uploadProfilePhoto(imageUri: string, index: number): Promise<ApiResponse<UploadPhotoResponse>> {
     // Create form data for image upload
     const formData = new FormData();
     formData.append('image', {
@@ -70,27 +70,27 @@ export async function uploadProfilePhoto(imageUri: string, index: number) {
 /**
  * Delete profile photo
  */
-export async function deleteProfilePhoto(photoUrl: string) {
+export async function deleteProfilePhoto(photoUrl: string): Promise<ApiResponse<{ success: boolean }>> {
     return api.delete(`/profile-images/delete?url=${encodeURIComponent(photoUrl)}`);
 }
 
 /**
  * Reorder profile photos
  */
-export async function reorderPhotos(photoUrls: string[]) {
+export async function reorderPhotos(photoUrls: string[]): Promise<ApiResponse<{ success: boolean }>> {
     return api.post('/profile-images/reorder', { photos: photoUrls });
 }
 
 /**
  * Boost profile
  */
-export async function boostProfile() {
+export async function boostProfile(): Promise<ApiResponse<{ success: boolean; expiresAt?: string }>> {
     return api.post('/profile/boost');
 }
 
 /**
  * Toggle spotlight
  */
-export async function toggleSpotlight(enabled: boolean) {
+export async function toggleSpotlight(enabled: boolean): Promise<ApiResponse<{ success: boolean }>> {
     return api.post('/profile/spotlight', { enabled });
 }

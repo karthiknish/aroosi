@@ -2,8 +2,8 @@
  * Auth API Service
  */
 
-import { api } from './client';
-import auth from '@react-native-firebase/auth';
+import { api, ApiResponse } from './client';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import type { AuthUser, LoginCredentials, RegisterData } from '@aroosi/shared';
 
@@ -13,23 +13,23 @@ export type { AuthUser, LoginCredentials, RegisterData } from '@aroosi/shared';
 /**
  * Sign in with email and password
  */
-export async function loginWithEmail(credentials: LoginCredentials) {
+export async function loginWithEmail(credentials: LoginCredentials): Promise<ApiResponse<FirebaseAuthTypes.User>> {
     try {
         const result = await auth().signInWithEmailAndPassword(
             credentials.email,
             credentials.password
         );
-        return { user: result.user, error: null };
+        return { data: result.user, status: 200 };
     } catch (error: unknown) {
         const firebaseError = error as { code?: string; message?: string };
-        return { user: null, error: firebaseError.message || 'Login failed' };
+        return { error: firebaseError.message || 'Login failed', status: 401 };
     }
 }
 
 /**
  * Register with email and password
  */
-export async function registerWithEmail(data: RegisterData) {
+export async function registerWithEmail(data: RegisterData): Promise<ApiResponse<FirebaseAuthTypes.User>> {
     try {
         const result = await auth().createUserWithEmailAndPassword(
             data.email,
@@ -48,17 +48,17 @@ export async function registerWithEmail(data: RegisterData) {
             displayName: data.displayName,
         });
 
-        return { user: result.user, error: null };
+        return { data: result.user, status: 201 };
     } catch (error: unknown) {
         const firebaseError = error as { code?: string; message?: string };
-        return { user: null, error: firebaseError.message || 'Registration failed' };
+        return { error: firebaseError.message || 'Registration failed', status: 400 };
     }
 }
 
 /**
  * Sign in with Google
  */
-export async function loginWithGoogle() {
+export async function loginWithGoogle(): Promise<ApiResponse<FirebaseAuthTypes.User>> {
     try {
         // Check if device supports Google Play Services
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -85,17 +85,17 @@ export async function loginWithGoogle() {
             photoURL: result.user.photoURL,
         });
 
-        return { user: result.user, error: null };
+        return { data: result.user, status: 200 };
     } catch (error: unknown) {
         const googleError = error as { code?: string; message?: string };
-        return { user: null, error: googleError.message || 'Google sign-in failed' };
+        return { error: googleError.message || 'Google sign-in failed', status: 401 };
     }
 }
 
 /**
  * Sign out
  */
-export async function logout() {
+export async function logout(): Promise<ApiResponse<{ success: boolean }>> {
     try {
         // Sign out from Google if signed in
         try {
@@ -110,30 +110,30 @@ export async function logout() {
         // Notify backend
         await api.post('/auth/logout');
 
-        return { success: true, error: null };
+        return { data: { success: true }, status: 200 };
     } catch (error: unknown) {
         const logoutError = error as { message?: string };
-        return { success: false, error: logoutError.message || 'Logout failed' };
+        return { error: logoutError.message || 'Logout failed', status: 500 };
     }
 }
 
 /**
  * Send password reset email
  */
-export async function forgotPassword(email: string) {
+export async function forgotPassword(email: string): Promise<ApiResponse<{ success: boolean }>> {
     try {
         await auth().sendPasswordResetEmail(email);
-        return { success: true, error: null };
+        return { data: { success: true }, status: 200 };
     } catch (error: unknown) {
         const resetError = error as { message?: string };
-        return { success: false, error: resetError.message || 'Password reset failed' };
+        return { error: resetError.message || 'Password reset failed', status: 400 };
     }
 }
 
 /**
  * Delete account
  */
-export async function deleteAccount() {
+export async function deleteAccount(): Promise<ApiResponse<{ success: boolean }>> {
     try {
         // Notify backend first
         await api.delete('/auth/delete-account');
@@ -144,16 +144,16 @@ export async function deleteAccount() {
             await user.delete();
         }
 
-        return { success: true, error: null };
+        return { data: { success: true }, status: 200 };
     } catch (error: unknown) {
         const deleteError = error as { message?: string };
-        return { success: false, error: deleteError.message || 'Account deletion failed' };
+        return { error: deleteError.message || 'Account deletion failed', status: 500 };
     }
 }
 
 /**
  * Get current user
  */
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<ApiResponse<AuthUser>> {
     return api.get<AuthUser>('/auth/me');
 }

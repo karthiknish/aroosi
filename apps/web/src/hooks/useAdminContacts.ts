@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllContactsAdmin, fetchAllVipContactsAdmin, Contact } from "@/lib/contactUtil";
+import { adminContactAPI, Contact } from "@/lib/api/admin/contact";
 
 interface UseAdminContactsOptions {
   page: number;
@@ -10,12 +10,7 @@ interface UseAdminContactsOptions {
 export function useAdminContacts({ page, pageSize, source }: UseAdminContactsOptions) {
   const queryKey = ["admin-contacts", source, { page, pageSize }];
   
-  const queryFn = () => {
-    if (source === "vip") {
-      return fetchAllVipContactsAdmin("", { page, pageSize });
-    }
-    return fetchAllContactsAdmin("", { page, pageSize });
-  };
+  const queryFn = () => adminContactAPI.list({ page, pageSize, source });
 
   const {
     data: contacts,
@@ -30,7 +25,7 @@ export function useAdminContacts({ page, pageSize, source }: UseAdminContactsOpt
   });
 
   return {
-    contacts,
+    contacts: (contacts || []) as Contact[],
     isLoading,
     isError,
     error,

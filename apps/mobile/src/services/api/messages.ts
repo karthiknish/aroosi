@@ -2,7 +2,7 @@
  * Messages API Service
  */
 
-import { api } from './client';
+import { api, ApiResponse } from './client';
 import auth from '@react-native-firebase/auth';
 import { API_BASE_URL } from '../../config';
 import type { Message, MessageType, Conversation } from '@aroosi/shared';
@@ -13,14 +13,14 @@ export type { Message, MessageType, Conversation } from '@aroosi/shared';
 /**
  * Get conversations
  */
-export async function getConversations() {
+export async function getConversations(): Promise<ApiResponse<Conversation[]>> {
     return api.get<Conversation[]>('/conversations');
 }
 
 /**
  * Get messages for a conversation
  */
-export async function getMessages(conversationId: string, cursor?: string) {
+export async function getMessages(conversationId: string, cursor?: string): Promise<ApiResponse<{ messages: Message[]; nextCursor?: string }>> {
     const url = cursor
         ? `/messages?conversationId=${conversationId}&cursor=${cursor}`
         : `/messages?conversationId=${conversationId}`;
@@ -35,7 +35,7 @@ export async function sendMessage(
     fromUserId: string,
     toUserId: string,
     content: string
-) {
+): Promise<ApiResponse<Message>> {
     return api.post<Message>('/messages/send', {
         conversationId,
         fromUserId,
@@ -53,7 +53,7 @@ export async function sendIcebreaker(
     fromUserId: string,
     toUserId: string,
     icebreakerText: string
-) {
+): Promise<ApiResponse<Message>> {
     return api.post<Message>('/messages/send', {
         conversationId,
         fromUserId,
@@ -66,7 +66,7 @@ export async function sendIcebreaker(
 /**
  * Send an image message
  */
-export async function sendImageMessage(conversationId: string, imageUri: string) {
+export async function sendImageMessage(conversationId: string, imageUri: string): Promise<ApiResponse<Message>> {
     // First upload the image
     const formData = new FormData();
     formData.append('image', {
@@ -76,22 +76,13 @@ export async function sendImageMessage(conversationId: string, imageUri: string)
     } as unknown as Blob);
     formData.append('conversationId', conversationId);
 
-    const token = await getAuthToken();
-    const response = await fetch(`${API_BASE_URL}/messages/upload-image`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-    });
-
-    return response.json();
+    return api.post<Message>('/messages/upload-image', formData);
 }
 
 /**
  * Mark messages as read
  */
-export async function markMessagesAsRead(conversationId: string) {
+export async function markMessagesAsRead(conversationId: string): Promise<ApiResponse<{ success: boolean }>> {
     return api.post('/messages/mark-read', { conversationId });
 }
 
@@ -99,21 +90,21 @@ export async function markMessagesAsRead(conversationId: string) {
  * Send typing indicator
  * @param action - 'start' when user begins typing, 'stop' when user stops
  */
-export async function sendTypingIndicator(conversationId: string, action: 'start' | 'stop') {
+export async function sendTypingIndicator(conversationId: string, action: 'start' | 'stop'): Promise<ApiResponse<{ success: boolean }>> {
     return api.post('/typing-indicators', { conversationId, action });
 }
 
 /**
  * Send delivery receipt
  */
-export async function sendDeliveryReceipt(messageIds: string[]) {
+export async function sendDeliveryReceipt(messageIds: string[]): Promise<ApiResponse<{ success: boolean }>> {
     return api.post('/delivery-receipts', { messageIds });
 }
 
 /**
  * React to a message
  */
-export async function reactToMessage(messageId: string, emoji: string) {
+export async function reactToMessage(messageId: string, emoji: string): Promise<ApiResponse<{ success: boolean }>> {
     return api.post('/reactions', { messageId, emoji });
 }
 
@@ -126,7 +117,7 @@ export async function uploadVoiceMessage(
     toUserId: string,
     audioUri: string, 
     durationMs: number
-) {
+): Promise<ApiResponse<Message>> {
     const formData = new FormData();
     formData.append('audio', {
         uri: audioUri,
@@ -137,21 +128,5 @@ export async function uploadVoiceMessage(
     formData.append('toUserId', toUserId);
     formData.append('duration', String(durationMs));
 
-    const token = await getAuthToken();
-    const response = await fetch(`${API_BASE_URL}/voice-messages/upload`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-    });
-
-    return response.json();
-}
-
-// Helper
-async function getAuthToken(): Promise<string | null> {
-    const user = auth().currentUser;
-    if (!user) return null;
-    return user.getIdToken();
+    return api.post<Message>('/voice-messages/upload', formData);
 }

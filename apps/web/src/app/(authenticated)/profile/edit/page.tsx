@@ -11,8 +11,14 @@ import type {
   PhysicalStatus,
 } from "@aroosi/shared/types";
 import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
+import ProfileView from "@/components/profile/ProfileView";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
@@ -179,6 +185,7 @@ export default function EditProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [previewValues, setPreviewValues] = useState<Partial<ProfileFormValues>>({});
 
   // Navigation blocker for internal Next.js navigation
   useEffect(() => {
@@ -530,28 +537,58 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 via-base-light to-base-light pb-24">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-neutral-dark mb-2">
-            Edit Profile
-          </h1>
-          <p className="text-neutral-light">
-            Update your profile information to help others get to know you better.
-          </p>
-        </div>
+    <div className="h-screen bg-base-light overflow-hidden flex flex-col">
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel defaultSize={60} minSize={40}>
+          <div className="h-full overflow-y-auto bg-gradient-to-b from-primary/5 via-base-light to-base-light pb-24">
+            <div className="max-w-3xl mx-auto px-4 py-8 lg:px-8">
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-neutral-dark mb-2">
+                  Edit Profile
+                </h1>
+                <p className="text-neutral-light">
+                  Update your profile information to help others get to know you better.
+                </p>
+              </div>
 
-        <ProfileEditSimpleForm
-          initialValues={mapProfileToFormValues(profileData)}
-          onSubmit={handleProfileFormComponentSubmit}
-          onAutoSave={handleAutoSave}
-          onDirtyChange={setIsDirty}
-          autoSaveStatus={autoSaveStatus}
-          loading={updateProfileMutation.status === "pending"}
-          serverError={serverError || undefined}
-          key={profileData._id}
-        />
-      </div>
+              <ProfileEditSimpleForm
+                initialValues={mapProfileToFormValues(profileData)}
+                onSubmit={handleProfileFormComponentSubmit}
+                onAutoSave={handleAutoSave}
+                onValuesChange={setPreviewValues}
+                onDirtyChange={setIsDirty}
+                autoSaveStatus={autoSaveStatus}
+                loading={updateProfileMutation.status === "pending"}
+                serverError={serverError || undefined}
+                key={profileData._id}
+              />
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle className="hidden lg:flex" />
+
+        <ResizablePanel defaultSize={40} minSize={30} className="hidden lg:block">
+          <div className="h-full overflow-y-auto bg-white border-l border-neutral/10 p-8">
+            <div className="max-w-md mx-auto">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-primary font-serif">Live Preview</h2>
+                <span className="text-xs text-neutral-light bg-neutral/5 px-2 py-1 rounded-full">
+                  How others see you
+                </span>
+              </div>
+              <div className="rounded-3xl shadow-2xl border border-neutral/10 overflow-hidden">
+                <ProfileView 
+                  profile={{
+                    ...profileData,
+                    ...previewValues,
+                  } as any} 
+                />
+              </div>
+            </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import {
-  sendMarketingEmail,
-  listEmailTemplates,
-  previewMarketingEmail,
-  sendTestEmail,
-  getEmailCampaigns,
-} from "@/lib/marketingEmailApi";
+import { useRouter, useSearchParams } from "next/navigation";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { CampaignForm } from "./components/CampaignForm";
@@ -19,15 +13,17 @@ import { CampaignActions } from "./components/CampaignActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, RefreshCw } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 type TemplateItem = { key: string; label: string; category: string };
 
 export default function MarketingEmailAdminPage() {
   // Cookie-auth; remove token from context and API
   useAuthContext(); // keep hook for gating if needed
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const initFromQuery = useRef(false);
-  const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [templateKey, setTemplateKey] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
@@ -73,31 +69,30 @@ export default function MarketingEmailAdminPage() {
   const [showTestSection, setShowTestSection] = useState<boolean>(false);
   
   // Campaign history
-  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [showCampaignHistory, setShowCampaignHistory] = useState<boolean>(false);
   const [processingOutbox, setProcessingOutbox] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const res = await listEmailTemplates();
-      if (res.success && (res.data as any)?.templates) {
-        const t = (res.data as any).templates as TemplateItem[];
-        setTemplates(t);
-        // If no template selected yet and no query override, default to first
-        if (!templateKey && !initFromQuery.current && t.length > 0) {
-          setTemplateKey(t[0].key);
-        }
-        // If current selection is invalid (e.g., query param was unknown), snap to first template
-        if (
-          templateKey &&
-          !t.find((tpl) => tpl.key === templateKey) &&
-          t.length > 0
-        ) {
-          setTemplateKey(t[0].key);
-        }
+  // Use react-query for templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ["marketingTemplates"],
+    queryFn: async () => {
+      const t = await adminEmailAPI.listTemplates();
+      // If no template selected yet and no query override, default to first
+      if (!templateKey && !initFromQuery.current && t.length > 0) {
+        setTemplateKey(t[0].key);
       }
-    })();
-  }, []);
+      return t as TemplateItem[];
+    },
+  });
+
+  // Use react-query for campaigns
+  const { data: campaignData = { campaigns: [] } } = useQuery({
+    queryKey: ["marketingCampaigns"],
+    queryFn: () => adminEmailAPI.listCampaigns({ limit: 20 }),
+    enabled: showCampaignHistory,
+  });
+
+  const campaigns = campaignData.campaigns || [];
 
   // Preselect template from query string (?template=key) once on mount
   useEffect(() => {
@@ -128,7 +123,7 @@ export default function MarketingEmailAdminPage() {
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
 
-      const res = await sendMarketingEmail("", {
+      const res = await adminEmailAPI.sendMarketingEmail({
         templateKey: mode === "template" ? templateKey : undefined,
         subject: mode === "custom" ? customSubject : undefined,
         body: mode === "custom" ? customBody : undefined,
@@ -165,15 +160,16 @@ export default function MarketingEmailAdminPage() {
               }
             : undefined,
       });
-      if (res.success) {
-        showSuccessToast(
-          dryRun ? "Preview generated" : "Campaign started successfully"
-        );
-        // Refresh campaign history if it's open
-        if (showCampaignHistory) {
-          loadCampaignHistory();
-        }
+      
+      showSuccessToast(
+        dryRun ? "Preview generated" : "Campaign started successfully"
+      );
+      // Refresh campaign history if it's open
+      if (showCampaignHistory) {
+        void queryClient.invalidateQueries({ queryKey: ["marketingCampaigns"] });
       }
+    } catch (e) {
+      showErrorToast(null, (e as Error).message || "Failed to send emails");
     } finally {
       setSending(false);
     }
@@ -186,15 +182,16 @@ export default function MarketingEmailAdminPage() {
       if (templateKey === "profileCompletionReminder")
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
-      const res = await previewMarketingEmail({
+      const res = await adminEmailAPI.previewMarketingEmail({
         templateKey: mode === "template" ? templateKey : undefined,
         subject: mode === "custom" ? customSubject : undefined,
         body: mode === "custom" ? customBody : undefined,
         params,
         preheader: mode === "custom" ? preheader : undefined,
       });
-      if (res.success && (res.data as any)?.html) {
-        setHtmlPreview((res.data as any).html);
+      
+      if (res?.data?.html || res?.html) {
+        setHtmlPreview(res.data?.html || res.html);
         showSuccessToast("Preview updated");
       }
     } catch {
@@ -216,7 +213,7 @@ export default function MarketingEmailAdminPage() {
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
 
-      const res = await sendTestEmail("", {
+      await adminEmailAPI.sendMarketingTestEmail({
         testEmail: testEmail.trim(),
         templateKey: mode === "template" ? templateKey : undefined,
         subject: mode === "custom" ? customSubject : undefined,
@@ -232,23 +229,18 @@ export default function MarketingEmailAdminPage() {
             : undefined,
       });
 
-      if (res.success) {
-        showSuccessToast(`Test email sent to ${testEmail}`);
-        setTestEmail("");
-        setShowTestSection(false);
-      }
+      showSuccessToast(`Test email sent to ${testEmail}`);
+      setTestEmail("");
+      setShowTestSection(false);
+    } catch (e) {
+      showErrorToast(null, (e as Error).message || "Failed to send test email");
     } finally {
       setSendingTest(false);
     }
   };
 
   const loadCampaignHistory = async () => {
-    if (campaigns.length === 0) {
-      const res = await getEmailCampaigns("", { limit: 20 });
-      if (res.success && (res.data as any)?.campaigns) {
-        setCampaigns((res.data as any).campaigns);
-      }
-    }
+    void queryClient.invalidateQueries({ queryKey: ["marketingCampaigns"] });
   };
 
   const validateEmailForm = () => {
@@ -277,11 +269,7 @@ export default function MarketingEmailAdminPage() {
   const handleProcessOutbox = async () => {
     setProcessingOutbox(true);
     try {
-      const res = await fetch("/api/admin/email/outbox/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await adminEmailAPI.processOutbox();
       showSuccessToast("Processed email outbox batch");
     } catch (e) {
       showErrorToast(null, "Failed to process outbox");
@@ -298,43 +286,38 @@ export default function MarketingEmailAdminPage() {
         params.args = [completionPct];
       if (templateKey === "reEngagement")
         params.args = [daysSinceLastLogin];
-      const res = await fetch("/api/admin/marketing-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateKey: mode === "template" ? templateKey : undefined,
-          subject: mode === "custom" ? customSubject : undefined,
-          body: mode === "custom" ? customBody : undefined,
-          params,
-          dryRun: true,
-          exportCsv: true,
-          maxAudience,
-          search: search || undefined,
-          plan: plan !== "all" ? plan : undefined,
-          banned: banned !== "all" ? banned : undefined,
-          lastActiveDays: Number.isFinite(lastActiveDays)
-            ? Number(lastActiveDays)
-            : undefined,
-          createdAtFrom: createdAtFrom
-            ? Date.parse(createdAtFrom)
-            : undefined,
-          createdAtTo: createdAtTo
-            ? Date.parse(createdAtTo)
-            : undefined,
-          completionMin: Number.isFinite(completionMin)
-            ? Number(completionMin)
-            : undefined,
-          completionMax: Number.isFinite(completionMax)
-            ? Number(completionMax)
-            : undefined,
-          city: city || undefined,
-          country: country || undefined,
-          page,
-          pageSize,
-        }),
+      
+      const text = await adminEmailAPI.exportAudienceCsv({
+        templateKey: mode === "template" ? templateKey : undefined,
+        subject: mode === "custom" ? customSubject : undefined,
+        body: mode === "custom" ? customBody : undefined,
+        params,
+        dryRun: true,
+        maxAudience,
+        search: search || undefined,
+        plan: plan !== "all" ? plan : undefined,
+        banned: banned !== "all" ? banned : undefined,
+        lastActiveDays: Number.isFinite(lastActiveDays)
+          ? Number(lastActiveDays)
+          : undefined,
+        createdAtFrom: createdAtFrom
+          ? Date.parse(createdAtFrom)
+          : undefined,
+        createdAtTo: createdAtTo
+          ? Date.parse(createdAtTo)
+          : undefined,
+        completionMin: Number.isFinite(completionMin)
+          ? Number(completionMin)
+          : undefined,
+        completionMax: Number.isFinite(completionMax)
+          ? Number(completionMax)
+          : undefined,
+        city: city || undefined,
+        country: country || undefined,
+        page,
+        pageSize,
       });
-      const text = await res.text();
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const blob = new Blob([text], {
         type: "text/csv;charset=utf-8;",
       });

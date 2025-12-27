@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  LayoutGrid,
+  List,
   UserCircle,
   MapPin,
   Search,
@@ -38,6 +40,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
+import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -62,18 +68,42 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { matchesAPI } from "@/lib/api/matches";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 
 type SortOption = "recent" | "newest" | "unread" | "name";
 
 function MatchCard({
   match,
   index,
+  viewMode = "list",
 }: {
   match: Partial<Profile> & { userId: string; unread: number };
   index: number;
+  viewMode?: "grid" | "list";
 }) {
+  const queryClient = useQueryClient();
   // Cookie-auth: server reads cookies; hook signature may still accept token, pass empty shim if required.
   const { imageUrl: avatar } = useProfileImage(match.userId, "" as string);
+
+  const unmatchMutation = useMutation({
+    mutationFn: (matchId: string) => matchesAPI.unmatch(matchId),
+    onSuccess: () => {
+      showSuccessToast("Unmatched successfully");
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+    },
+    onError: (error: Error) => {
+      showErrorToast(error.message || "Failed to unmatch");
+    },
+  });
 
   const initials = match.fullName
     ? match.fullName
@@ -90,160 +120,347 @@ function MatchCard({
     ? "from-blue-100 to-blue-200 text-blue-500"
     : "from-secondary-light to-accent-light text-secondary";
 
+  if (viewMode === "grid") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, delay: index * 0.05 }}
+      >
+        <ContextMenu>
+          <ContextMenuTrigger>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-base-light rounded-3xl overflow-hidden cursor-pointer h-full flex flex-col">
+                  <CardContent className="p-0 flex-1 flex flex-col">
+                    {/* Profile Image Section */}
+                    <div className="relative aspect-[4/5] overflow-hidden">
+                      {avatar ? (
+                        <Image
+                          src={avatar}
+                          alt={match.fullName || "Avatar"}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className={cn(
+                          "absolute inset-0 bg-gradient-to-br flex flex-col items-center justify-center",
+                          genderColor
+                        )}>
+                          <span className="text-3xl font-bold tracking-tighter">{initials}</span>
+                          <UserCircle className="w-8 h-8 opacity-40 mt-2" />
+                        </div>
+                      )}
+                      
+                      {/* Unread Badge */}
+                      {(match.unread ?? 0) > 0 && (
+                        <div className="absolute top-3 right-3 z-10">
+                          <span className="flex items-center justify-center h-7 min-w-7 rounded-full bg-primary text-white text-[11px] font-bold shadow-lg px-1.5 border-2 border-white">
+                            {match.unread > 9 ? "9+" : match.unread}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Overlay Info */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 pt-12">
+                        <h3 className="font-bold text-white text-lg truncate font-serif">
+                          {match.fullName || "Unknown"}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-white/80 text-xs mt-1">
+                          <MapPin className="w-3 h-3" />
+                          <span className="truncate">{match.city || "Location hidden"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions */}
+                    <div className="p-3 flex items-center justify-between gap-2 bg-white/50 backdrop-blur-sm">
+                      <Link href={`/matches/${match.userId}`} className="flex-1">
+                        <Button
+                          size="sm"
+                          className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-white border-0 rounded-xl h-9 text-xs font-semibold transition-all"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                          Chat
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80 rounded-2xl p-0 overflow-hidden border-0 shadow-2xl">
+                {/* ... existing HoverCardContent ... */}
+                <div className="relative h-32 bg-gradient-to-br from-primary/20 to-secondary/20">
+                  {avatar && (
+                    <Image
+                      src={avatar}
+                      alt={match.fullName || "Avatar"}
+                      fill
+                      className="object-cover opacity-40 blur-sm"
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative">
+                      {avatar ? (
+                        <Image
+                          src={avatar}
+                          alt={match.fullName || "Avatar"}
+                          width={64}
+                          height={64}
+                          className="rounded-full border-4 border-base-light shadow-lg object-cover"
+                        />
+                      ) : (
+                        <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border-4 border-base-light shadow-lg", genderColor)}>
+                          <span className="text-xl font-bold">{initials}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="text-center">
+                    <h4 className="text-lg font-bold text-neutral-dark">{match.fullName}</h4>
+                    <p className="text-sm text-neutral-light">{match.city}, {match.country}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-neutral/5 p-2 rounded-xl">
+                      <span className="text-neutral-light block mb-0.5">Occupation</span>
+                      <span className="text-neutral-dark font-medium truncate block">{match.occupation || "Not specified"}</span>
+                    </div>
+                    <div className="bg-neutral/5 p-2 rounded-xl">
+                      <span className="text-neutral-light block mb-0.5">Education</span>
+                      <span className="text-neutral-dark font-medium truncate block">{match.education || "Not specified"}</span>
+                    </div>
+                  </div>
+                  {match.aboutMe && (
+                    <p className="text-xs text-neutral-light line-clamp-2 italic">
+                      "{match.aboutMe}"
+                    </p>
+                  )}
+                  <Link href={`/matches/${match.userId}`} className="block">
+                    <Button className="w-full rounded-xl bg-primary hover:bg-primary-dark text-white text-xs h-9">
+                      View Full Profile
+                    </Button>
+                  </Link>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-56 rounded-2xl shadow-2xl border-neutral/10 p-1.5 bg-white/95 backdrop-blur-xl">
+            <ContextMenuItem asChild className="rounded-xl px-3 py-2.5 focus:bg-primary/5 focus:text-primary cursor-pointer gap-2.5 font-medium">
+              <Link href={`/matches/${match.userId}`}>
+                <MessageCircle className="w-4 h-4" />
+                Open Chat
+              </Link>
+            </ContextMenuItem>
+            <ContextMenuItem asChild className="rounded-xl px-3 py-2.5 focus:bg-primary/5 focus:text-primary cursor-pointer gap-2.5 font-medium">
+              <Link href={`/profile/${match.userId}`}>
+                <UserCircle className="w-4 h-4" />
+                View Profile
+              </Link>
+            </ContextMenuItem>
+            <ContextMenuSeparator className="bg-neutral/10 my-1" />
+            <ContextMenuItem 
+              className="rounded-xl px-3 py-2.5 focus:bg-danger/5 focus:text-danger text-danger cursor-pointer gap-2.5 font-medium"
+              onClick={() => {
+                if (confirm(`Are you sure you want to unmatch with ${match.fullName}?`)) {
+                  unmatchMutation.mutate(match.userId);
+                }
+              }}
+            >
+              <Ban className="w-4 h-4" />
+              Unmatch
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
     >
-      <HoverCard>
-        <HoverCardTrigger asChild>
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-base-light rounded-2xl overflow-hidden cursor-pointer">
-            <CardContent className="p-0">
-              <div className="flex items-center p-4 sm:p-6 gap-4 sm:gap-6">
-                {/* Profile Image */}
-                <div className="relative flex-shrink-0">
-                  {avatar ? (
-                    <div className="relative">
-                      <Image
-                        src={avatar}
-                        alt={match.fullName || "Avatar"}
-                        width={80}
-                        height={80}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300 ring-2 ring-base-light"
-                      />
-                      {(match.unread ?? 0) > 0 ? (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute -top-1 -right-1"
-                        >
-                          <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-base-light text-[10px] leading-none font-bold shadow-lg px-1 border-2 border-base-light">
-                            {match.unread > 9 ? "9+" : match.unread}
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-base-light rounded-2xl overflow-hidden cursor-pointer">
+                <CardContent className="p-0">
+                  <div className="flex items-center p-4 sm:p-6 gap-4 sm:gap-6">
+                    {/* Profile Image */}
+                    <div className="relative flex-shrink-0">
+                      {avatar ? (
+                        <div className="relative">
+                          <Image
+                            src={avatar}
+                            alt={match.fullName || "Avatar"}
+                            width={80}
+                            height={80}
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300 ring-2 ring-base-light"
+                          />
+                          {(match.unread ?? 0) > 0 ? (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="absolute -top-1 -right-1"
+                            >
+                              <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-base-light text-[10px] leading-none font-bold shadow-lg px-1 border-2 border-base-light">
+                                {match.unread > 9 ? "9+" : match.unread}
+                              </span>
+                            </motion.div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className={cn(
+                          "w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br flex flex-col items-center justify-center shadow-md ring-2 ring-base-light relative",
+                          genderColor
+                        )}>
+                          <span className="text-lg sm:text-xl font-bold tracking-tighter">{initials}</span>
+                          <UserCircle className="w-4 h-4 sm:w-5 sm:h-5 opacity-40 -mt-1" />
+                          <span className="absolute -bottom-1 bg-neutral-dark/10 text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest opacity-60">
+                            No Photo
                           </span>
-                        </motion.div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <div className={cn(
-                      "w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br flex flex-col items-center justify-center shadow-md ring-2 ring-base-light relative",
-                      genderColor
-                    )}>
-                      <span className="text-lg sm:text-xl font-bold tracking-tighter">{initials}</span>
-                      <UserCircle className="w-4 h-4 sm:w-5 sm:h-5 opacity-40 -mt-1" />
-                      <span className="absolute -bottom-1 bg-neutral-dark/10 text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest opacity-60">
-                        No Photo
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Profile Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-lg sm:text-xl text-neutral-dark truncate group-hover:text-primary transition-colors font-serif">
-                      {match.fullName || "Unknown"}
-                    </h3>
-
-                    <div className="flex items-center gap-4 text-sm text-neutral-light">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-                        <span className="truncate max-w-[100px] sm:max-w-xs">
-                          {match.city || "Location hidden"}
-                        </span>
-                      </div>
-                      
-                      {match.occupation && (
-                        <div className="hidden sm:flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-                          <span className="truncate max-w-[150px]">{match.occupation}</span>
                         </div>
                       )}
-                      
-                      <span className="text-xs text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full hidden sm:inline-block flex-shrink-0">
-                        Matched
-                      </span>
                     </div>
-                    
-                    <p className="text-sm text-neutral-light truncate mt-1">
-                      {(match.unread ?? 0) > 0 
-                        ? <span className="text-primary font-medium">You have new messages</span>
-                        : "Start a conversation..."}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Action Button */}
-                <div className="flex-shrink-0">
-                  <Link href={`/matches/${match.userId}`}>
-                    <Button
-                      className="bg-primary/10 hover:bg-primary text-primary hover:text-base-light border-0 shadow-none hover:shadow-lg transition-all duration-300 rounded-full w-10 h-10 sm:w-auto sm:h-10 sm:px-6 p-0 flex items-center justify-center"
-                    >
-                      <MessageCircle className="w-5 h-5 sm:mr-2" />
-                      <span className="hidden sm:inline">Chat</span>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </HoverCardTrigger>
-        <HoverCardContent className="w-80 rounded-2xl p-0 overflow-hidden border-0 shadow-2xl">
-          <div className="relative h-32 bg-gradient-to-br from-primary/20 to-secondary/20">
-            {avatar && (
-              <Image
-                src={avatar}
-                alt={match.fullName || "Avatar"}
-                fill
-                className="object-cover opacity-40 blur-sm"
-              />
-            )}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                {avatar ? (
+                    {/* Profile Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-lg sm:text-xl text-neutral-dark truncate group-hover:text-primary transition-colors font-serif">
+                          {match.fullName || "Unknown"}
+                        </h3>
+
+                        <div className="flex items-center gap-4 text-sm text-neutral-light">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
+                            <span className="truncate max-w-[100px] sm:max-w-xs">
+                              {match.city || "Location hidden"}
+                            </span>
+                          </div>
+                          
+                          {match.occupation && (
+                            <div className="hidden sm:flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
+                              <span className="truncate max-w-[150px]">{match.occupation}</span>
+                            </div>
+                          )}
+                          
+                          <span className="text-xs text-primary/60 bg-primary/10 px-2 py-0.5 rounded-full hidden sm:inline-block flex-shrink-0">
+                            Matched
+                          </span>
+                        </div>
+                        
+                        <p className="text-sm text-neutral-light truncate mt-1">
+                          {(match.unread ?? 0) > 0 
+                            ? <span className="text-primary font-medium">You have new messages</span>
+                            : "Start a conversation..."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="flex-shrink-0">
+                      <Link href={`/matches/${match.userId}`}>
+                        <Button
+                          className="bg-primary/10 hover:bg-primary text-primary hover:text-base-light border-0 shadow-none hover:shadow-lg transition-all duration-300 rounded-full w-10 h-10 sm:w-auto sm:h-10 sm:px-6 p-0 flex items-center justify-center"
+                        >
+                          <MessageCircle className="w-5 h-5 sm:mr-2" />
+                          <span className="hidden sm:inline">Chat</span>
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-80 rounded-2xl p-0 overflow-hidden border-0 shadow-2xl">
+              <div className="relative h-32 bg-gradient-to-br from-primary/20 to-secondary/20">
+                {avatar && (
                   <Image
                     src={avatar}
                     alt={match.fullName || "Avatar"}
-                    width={64}
-                    height={64}
-                    className="rounded-full border-4 border-base-light shadow-lg object-cover"
+                    fill
+                    className="object-cover opacity-40 blur-sm"
                   />
-                ) : (
-                  <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border-4 border-base-light shadow-lg", genderColor)}>
-                    <span className="text-xl font-bold">{initials}</span>
-                  </div>
                 )}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    {avatar ? (
+                      <Image
+                        src={avatar}
+                        alt={match.fullName || "Avatar"}
+                        width={64}
+                        height={64}
+                        className="rounded-full border-4 border-base-light shadow-lg object-cover"
+                      />
+                    ) : (
+                      <div className={cn("w-16 h-16 rounded-full flex items-center justify-center border-4 border-base-light shadow-lg", genderColor)}>
+                        <span className="text-xl font-bold">{initials}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="text-center">
-              <h4 className="text-lg font-bold text-neutral-dark">{match.fullName}</h4>
-              <p className="text-sm text-neutral-light">{match.city}, {match.country}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-neutral/5 p-2 rounded-xl">
-                <span className="text-neutral-light block mb-0.5">Occupation</span>
-                <span className="text-neutral-dark font-medium truncate block">{match.occupation || "Not specified"}</span>
+              <div className="p-4 space-y-3">
+                <div className="text-center">
+                  <h4 className="text-lg font-bold text-neutral-dark">{match.fullName}</h4>
+                  <p className="text-sm text-neutral-light">{match.city}, {match.country}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-neutral/5 p-2 rounded-xl">
+                    <span className="text-neutral-light block mb-0.5">Occupation</span>
+                    <span className="text-neutral-dark font-medium truncate block">{match.occupation || "Not specified"}</span>
+                  </div>
+                  <div className="bg-neutral/5 p-2 rounded-xl">
+                    <span className="text-neutral-light block mb-0.5">Education</span>
+                    <span className="text-neutral-dark font-medium truncate block">{match.education || "Not specified"}</span>
+                  </div>
+                </div>
+                {match.aboutMe && (
+                  <p className="text-xs text-neutral-light line-clamp-2 italic">
+                    "{match.aboutMe}"
+                  </p>
+                )}
+                <Link href={`/matches/${match.userId}`} className="block">
+                  <Button className="w-full rounded-xl bg-primary hover:bg-primary-dark text-white text-xs h-9">
+                    View Full Profile
+                  </Button>
+                </Link>
               </div>
-              <div className="bg-neutral/5 p-2 rounded-xl">
-                <span className="text-neutral-light block mb-0.5">Education</span>
-                <span className="text-neutral-dark font-medium truncate block">{match.education || "Not specified"}</span>
-              </div>
-            </div>
-            {match.aboutMe && (
-              <p className="text-xs text-neutral-light line-clamp-2 italic">
-                "{match.aboutMe}"
-              </p>
-            )}
-            <Link href={`/matches/${match.userId}`} className="block">
-              <Button className="w-full rounded-xl bg-primary hover:bg-primary-dark text-white text-xs h-9">
-                View Full Profile
-              </Button>
+            </HoverCardContent>
+          </HoverCard>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-56 rounded-2xl shadow-2xl border-neutral/10 p-1.5 bg-white/95 backdrop-blur-xl">
+          <ContextMenuItem asChild className="rounded-xl px-3 py-2.5 focus:bg-primary/5 focus:text-primary cursor-pointer gap-2.5 font-medium">
+            <Link href={`/matches/${match.userId}`}>
+              <MessageCircle className="w-4 h-4" />
+              Open Chat
             </Link>
-          </div>
-        </HoverCardContent>
-      </HoverCard>
+          </ContextMenuItem>
+          <ContextMenuItem asChild className="rounded-xl px-3 py-2.5 focus:bg-primary/5 focus:text-primary cursor-pointer gap-2.5 font-medium">
+            <Link href={`/profile/${match.userId}`}>
+              <UserCircle className="w-4 h-4" />
+              View Profile
+            </Link>
+          </ContextMenuItem>
+          <ContextMenuSeparator className="bg-neutral/10 my-1" />
+          <ContextMenuItem 
+            className="rounded-xl px-3 py-2.5 focus:bg-danger/5 focus:text-danger text-danger cursor-pointer gap-2.5 font-medium"
+            onClick={() => {
+              if (confirm(`Are you sure you want to unmatch with ${match.fullName}?`)) {
+                unmatchMutation.mutate(match.userId);
+              }
+            }}
+          >
+            <Ban className="w-4 h-4" />
+            Unmatch
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </motion.div>
   );
 }
@@ -280,6 +497,7 @@ export default function MatchesPage() {
     user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
   const networkStatus = useOffline();
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -482,6 +700,20 @@ export default function MatchesPage() {
               </div>
               
               <div className="flex items-center gap-2 w-full sm:w-auto">
+                <ToggleGroup 
+                  type="single" 
+                  value={viewMode} 
+                  onValueChange={(value) => value && setViewMode(value as "grid" | "list")}
+                  className="bg-base-light p-1 rounded-2xl shadow-lg"
+                >
+                  <ToggleGroupItem value="grid" aria-label="Grid view" className="rounded-xl data-[state=on]:bg-primary data-[state=on]:text-white">
+                    <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="list" aria-label="List view" className="rounded-xl data-[state=on]:bg-primary data-[state=on]:text-white">
+                    <List className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+
                 <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
                   <SelectTrigger className="w-full sm:w-[180px] h-[52px] rounded-2xl border-0 bg-base-light shadow-lg focus:ring-2 focus:ring-primary">
                     <div className="flex items-center gap-2">
@@ -553,13 +785,24 @@ export default function MatchesPage() {
                 </Empty>
               </motion.div>
             ) : (
-              <div className="space-y-6">
+              <div className={cn(
+                viewMode === "grid" 
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" 
+                  : "space-y-6"
+              )}>
                 {paginatedMatches.map((match, index) => (
-                  <MatchCard key={match.userId} match={match} index={index} />
+                  <MatchCard 
+                    key={match.userId} 
+                    match={match} 
+                    index={index} 
+                    viewMode={viewMode}
+                  />
                 ))}
+              </div>
+            )}
 
-                {/* Pagination */}
-                {totalPages > 1 && (
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
                   <div className="mt-12">
                     <Pagination>
                       <PaginationContent>
@@ -606,12 +849,10 @@ export default function MatchesPage() {
                     </p>
                   </motion.div>
                 )}
-              </div>
-            )}
           </motion.div>
         </div>
       </div>
-    </SubscriptionGuard>
+      </SubscriptionGuard>
     </>
   );
 }

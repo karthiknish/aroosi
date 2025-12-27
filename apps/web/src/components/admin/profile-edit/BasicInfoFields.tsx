@@ -2,15 +2,11 @@
 
 import React from "react";
 import { UseFormRegister, FieldErrors, Control, Controller } from "react-hook-form";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PhoneInput } from "@/components/ui/phone-input";
 import type { ProfileFormSchema } from "@/hooks/useProfileEditFormLogic";
@@ -57,47 +53,30 @@ export function BasicInfoFields({
           <Controller
             name="dateOfBirth"
             control={control}
-            render={({ field }) => (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal bg-base-light h-[42px] rounded-xl border-neutral/20 text-neutral-dark",
-                      !field.value && "text-neutral-light"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {field.value ? (
-                      format(new Date(field.value as string), "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-base-light border-neutral/10" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value ? new Date(field.value as string) : undefined}
-                    onSelect={(date) => {
-                      if (!date || isNaN(date.getTime())) return;
-                      field.onChange(format(date, "yyyy-MM-dd"));
-                    }}
-                    disabled={(date) => {
-                      const today = new Date();
-                      const minDate = new Date(
-                        today.getFullYear() - 18,
-                        today.getMonth(),
-                        today.getDate()
-                      );
-                      return date > minDate || date < new Date("1900-01-01");
-                    }}
-                    captionLayout="dropdown"
-                    defaultMonth={new Date(2000, 0, 1)}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
+            render={({ field }) => {
+              const dateValue = field.value ? new Date(field.value as string) : undefined;
+              const today = new Date();
+              const maxDate = new Date(
+                today.getFullYear() - 18,
+                today.getMonth(),
+                today.getDate()
+              );
+              const minDate = new Date("1900-01-01");
+
+              return (
+                <DatePicker
+                  date={dateValue}
+                  setDate={(date) => {
+                    if (!date || isNaN(date.getTime())) return;
+                    field.onChange(format(date, "yyyy-MM-dd"));
+                  }}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  error={!!errors.dateOfBirth}
+                  className="bg-base-light h-[42px] rounded-xl border-neutral/20"
+                />
+              );
+            }}
           />
           {errors.dateOfBirth && (
             <p className="text-danger text-xs font-medium">{errors.dateOfBirth.message}</p>

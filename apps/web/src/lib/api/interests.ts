@@ -17,8 +17,7 @@ class InterestsAPI {
       method: options?.method || "GET",
       headers,
       body: options?.body,
-      // credentials removed; use token-based auth
-      redirect: "manual",
+      credentials: "include",
     });
 
     const ct = res.headers.get("content-type") || "";

@@ -1,17 +1,7 @@
-/**
- * Admin Profiles API - Handles admin profile management operations
- */
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 
-export interface AdminProfile {
-  id: string;
-  email: string;
-  displayName?: string;
-  photoURL?: string;
-  isBanned?: boolean;
-  isVerified?: boolean;
-  subscriptionPlan?: string;
-  createdAt?: string;
-  lastActiveAt?: string;
+export interface AdminProfile extends Profile {
+  _id: string;
 }
 
 class AdminProfilesAPI {
@@ -19,6 +9,8 @@ class AdminProfilesAPI {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      Pragma: "no-cache",
     };
     const headers: Record<string, string> =
       options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
@@ -30,6 +22,7 @@ class AdminProfilesAPI {
       headers,
       body: options?.body,
       credentials: "include",
+      cache: "no-store",
     });
 
     const ct = res.headers.get("content-type") || "";
@@ -50,91 +43,199 @@ class AdminProfilesAPI {
   /**
    * Get all profiles (paginated)
    */
-  async list(limit = 20, offset = 0, search?: string): Promise<{ profiles: AdminProfile[]; total: number }> {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    if (search) params.set("search", search);
-    const res = await this.makeRequest(`/api/admin/profiles?${params.toString()}`);
-    return {
-      profiles: res.data?.profiles || res.profiles || [],
-      total: res.data?.total || res.total || 0,
-    };
+  async list(params: {
+    search?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
+    banned?: string;
+    plan?: string;
+  }): Promise<{
+    profiles: AdminProfile[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const qs = new URLSearchParams();
+    if (params.search) qs.set("search", params.search);
+    if (params.page) qs.set("page", String(params.page));
+    if (params.pageSize) qs.set("pageSize", String(params.pageSize));
+    if (params.sortBy) qs.set("sortBy", params.sortBy);
+    if (params.sortDir) qs.set("sortDir", params.sortDir);
+    if (params.banned) qs.set("banned", params.banned);
+    if (params.plan) qs.set("plan", params.plan);
+    qs.set("v", String(Date.now()));
+
+    const res = await this.makeRequest(`/api/admin/profiles?${qs.toString()}`);
+    
+    if (res.success && res.data) {
+      return res.data;
+    }
+    return res;
   }
 
   /**
    * Get a single profile by ID
    */
-  async get(userId: string): Promise<AdminProfile | null> {
+  async get(id: string): Promise<AdminProfile | null> {
     try {
-      const res = await this.makeRequest(`/api/admin/profiles/${userId}`);
-      return res.data?.profile || res.profile || null;
+      const res = await this.makeRequest(`/api/admin/profiles/${id}?nocache=true&v=${Date.now()}`);
+      if (res.success && res.profile) return res.profile;
+      if (res._id || res.userId) return res;
+      return null;
     } catch {
       return null;
     }
   }
 
   /**
+   * Create a new profile
+   */
+  async create(profile: Partial<Profile>): Promise<AdminProfile> {
+    return this.makeRequest("/api/admin/profiles", {
+      method: "POST",
+      body: JSON.stringify(profile),
+    });
+  }
+
+  /**
    * Update a profile
    */
-  async update(userId: string, data: Partial<AdminProfile>): Promise<AdminProfile> {
-    return this.makeRequest(`/api/admin/profiles/${userId}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
+  async update(id: string, updates: Partial<Profile>): Promise<AdminProfile> {
+    return this.makeRequest(`/api/admin/profiles/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
     });
   }
 
   /**
-   * Ban a user
+   * Delete a profile
    */
-  async ban(userId: string, reason?: string): Promise<void> {
-    return this.makeRequest(`/api/admin/profiles/${userId}/ban`, {
-      method: "POST",
-      body: JSON.stringify({ reason }),
+  async delete(id: string): Promise<{ success: boolean }> {
+    try {
+      return await this.makeRequest(`/api/admin/profiles/${id}`, {
+        method: "DELETE",
+      });
+    } catch (e) {
+      // Fallback to index route if needed
+      return this.makeRequest("/api/admin/profiles", {
+        method: "DELETE",
+        body: JSON.stringify({ id }),
+      });
+    }
+  }
+
+  /**
+   * Ban/Unban a user
+   */
+  async setBannedStatus(id: string, banned: boolean): Promise<{ success: boolean }> {
+    return this.makeRequest(`/api/admin/profiles/${id}/ban`, {
+      method: "PUT",
+      body: JSON.stringify({ banned }),
     });
   }
 
   /**
-   * Unban a user
+   * Batch fetch profile images
    */
-  async unban(userId: string): Promise<void> {
-    return this.makeRequest(`/api/admin/profiles/${userId}/ban`, {
-      method: "DELETE",
-    });
-  }
+  async batchFetchImages(profiles: { _id: string; userId: string }[]): Promise<Record<string, ProfileImageInfo[]>> {
+    if (!profiles || profiles.length === 0) return {};
+    
+    const userIds = profiles.map(p => p.userId || p._id).filter(Boolean);
+    if (userIds.length === 0) return {};
 
-  /**
-   * Toggle spotlight for a user
-   */
-  async toggleSpotlight(userId: string, enabled: boolean): Promise<void> {
-    return this.makeRequest(`/api/admin/profiles/${userId}/spotlight`, {
-      method: "POST",
-      body: JSON.stringify({ enabled }),
-    });
+    try {
+      const res = await this.makeRequest(`/api/profile-images/batch?userIds=${userIds.join(",")}&v=${Date.now()}`);
+      const batchData = res.data || {};
+      
+      const result: Record<string, ProfileImageInfo[]> = {};
+      for (const profile of profiles) {
+        const targetId = profile.userId || profile._id;
+        result[profile._id] = batchData[targetId] || [];
+      }
+      return result;
+    } catch (error) {
+      console.error("Error in batch profile images fetch:", error);
+      return profiles.reduce((acc, p) => {
+        acc[p._id] = [];
+        return acc;
+      }, {} as Record<string, ProfileImageInfo[]>);
+    }
   }
 
   /**
    * Get user's matches
    */
-  async getMatches(userId: string): Promise<any[]> {
-    const res = await this.makeRequest(`/api/admin/profiles/${userId}/matches`);
-    return res.data?.matches || res.matches || [];
+  async getMatches(id: string): Promise<Profile[]> {
+    const res = await this.makeRequest(`/api/admin/profiles/${id}?matches=true&v=${Date.now()}`);
+    if (Array.isArray(res.matches)) return res.matches;
+    if (Array.isArray(res)) return res;
+    return [];
   }
 
   /**
-   * Manage profile images
+   * Get profile images for a single user
    */
-  async deleteImage(userId: string, imageId: string): Promise<void> {
-    return this.makeRequest(`/api/admin/profiles/${userId}/images/${imageId}`, {
+  async getImages(id: string): Promise<ProfileImageInfo[]> {
+    const res = await this.batchFetchImages([{ _id: id, userId: id }]);
+    return res[id] || [];
+  }
+
+  /**
+   * Upload a profile image for a user
+   */
+  async uploadImage(profileId: string, file: File): Promise<ProfileImageInfo> {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch(`/api/profile-images/upload?profileId=${encodeURIComponent(profileId)}`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to upload image: ${errorText}`);
+    }
+
+    const data = await res.json();
+    return data.data || data;
+  }
+
+  /**
+   * Delete a profile image
+   */
+  async deleteImage(profileId: string, imageId: string): Promise<void> {
+    const res = await fetch(`/api/admin/profiles/${profileId}/images/${imageId}`, {
       method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to delete image: ${errorText}`);
+    }
+  }
+
+  /**
+   * Update profile image order
+   */
+  async updateImageOrder(profileId: string, imageIds: string[]): Promise<void> {
+    await this.makeRequest(`/api/admin/profiles/${profileId}/images/order`, {
+      method: "POST",
+      body: JSON.stringify({ imageIds }),
     });
   }
 
   /**
-   * Reorder profile images
+   * Update spotlight badge for a profile
    */
-  async reorderImages(userId: string, imageIds: string[]): Promise<void> {
-    return this.makeRequest(`/api/admin/profiles/${userId}/images/order`, {
-      method: "POST",
-      body: JSON.stringify({ imageIds }),
+  async updateSpotlight(profileId: string, request: { hasSpotlightBadge: boolean; durationDays?: number }): Promise<any> {
+    return this.makeRequest(`/api/admin/profiles/${profileId}/spotlight`, {
+      method: "PUT",
+      body: JSON.stringify(request),
     });
   }
 }

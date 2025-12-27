@@ -19,6 +19,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 
 type TemplateInfo = { key: string; label: string; category?: string; argsDoc?: string };
 
@@ -34,9 +35,8 @@ export default function TemplatesCatalogPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/admin/email/templates/registry");
-        const data = await res.json();
-        if (res.ok && data?.data?.templates) setItems(data.data.templates);
+        const templates = await adminEmailAPI.getTemplateRegistry();
+        setItems(templates);
       } catch (e) {
         console.error("Failed to load templates", e);
       } finally {
@@ -58,13 +58,8 @@ export default function TemplatesCatalogPage() {
       if (t.key === 'profileCompletionReminder') payload.params = { args: [70] };
       if (t.key === 'reEngagement') payload.params = { args: [14] };
       
-      const res = await fetch('/api/admin/marketing-email/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (res.ok && data?.data?.html) setPreviewHtml(data.data.html);
+      const html = await adminEmailAPI.previewEmail(payload);
+      setPreviewHtml(html);
     } catch (e) {
       console.error("Preview failed", e);
     } finally {

@@ -1,6 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
 import { postJson, getJson } from "@/lib/http/client";
 
+export interface PlanFeatureObj {
+  text: string;
+  included: boolean;
+}
+
+export interface NormalizedPlan {
+  id: "free" | "premium" | "premiumPlus" | string;
+  name: string;
+  price: number; // minor units
+  currency: string; // e.g. "GBP"
+  features: string[] | PlanFeatureObj[];
+  popular: boolean;
+  // Optional UI fields that might be merged in
+  description?: string;
+  color?: string;
+  gradient?: string;
+  billing?: string;
+  iconName?: string;
+  highlight?: boolean;
+}
+
 /**
  * Canonical status response used by the UI.
  */
@@ -59,6 +80,8 @@ export type TrackUsageResult = {
 };
 
 class SubscriptionAPI {
+  private portalOpenInFlight = false;
+
   /**
    * Low-level request with token-based auth and no redirect following.
    * This version assumes API endpoints return either:
@@ -100,10 +123,12 @@ class SubscriptionAPI {
     const ct = response.headers.get("content-type") || "";
     const isJson = ct.toLowerCase().includes("application/json");
     if (!response.ok) {
-      const preview = isJson
-        ? JSON.stringify(await response.json())
-        : await response.text();
-      throw new Error(preview || `HTTP ${response.status}`);
+      const payload = isJson ? await response.json().catch(() => ({})) : await response.text().catch(() => "");
+      const msg = (isJson && payload && (payload as any).error) || (typeof payload === "string" && payload) || `HTTP ${response.status}`;
+      const error = new Error(String(msg));
+      (error as any).status = response.status;
+      (error as any).payload = payload;
+      throw error;
     }
     if (!isJson) {
       // Non-JSON not expected from these endpoints
@@ -184,18 +209,38 @@ class SubscriptionAPI {
   /**
    * Creates a Stripe Billing Portal session.
    */
-  async openBillingPortal(): Promise<{ url: string }> {
-    const data = (await this.makeRequest("/api/stripe/portal", {
-      method: "POST",
-    })) as {
-      success?: boolean;
-      url?: string;
-      error?: string;
-    };
-    if (!data?.url) {
-      throw new Error(data?.error || "No URL returned for billing portal");
+  async openBillingPortal(): Promise<void> {
+    if (this.portalOpenInFlight) return;
+    this.portalOpenInFlight = true;
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await this.makeRequest("/api/stripe/portal", {
+          method: "POST",
+        });
+        const url = res?.url ?? res?.data?.url;
+        if (url) {
+          window.location.assign(url);
+          return;
+        }
+        throw new Error("No billing portal URL returned");
+      } catch (error: any) {
+        if (error.status === 400) {
+          if (!window.location.pathname.startsWith("/plans")) {
+            window.location.assign("/plans");
+          }
+          throw error;
+        }
+        if (error.status === 503 && attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+          continue;
+        }
+        if (attempt === maxAttempts) throw error;
+      } finally {
+        if (attempt === maxAttempts) this.portalOpenInFlight = false;
+      }
     }
-    return { url: data.url };
   }
 
   /**
@@ -257,19 +302,40 @@ class SubscriptionAPI {
    * POST /api/stripe/checkout with { planId }
    */
   async upgrade(
-    tier: "premium" | "premiumPlus",
-    token?: string
+    tier: string,
+    options?: { successUrl?: string; cancelUrl?: string }
   ): Promise<{ message: string; url?: string }> {
-    const body = JSON.stringify({ planId: tier });
-    const data = (await this.makeRequest(
-      "/api/stripe/checkout",
-      { method: "POST", body },
-      token
-    )) as { url?: string; message?: string; error?: string };
-    if (data?.url) {
-      return { message: "Redirecting to checkout", url: data.url };
+    try {
+      const body = JSON.stringify({
+        planId: tier,
+        planType: tier,
+        successUrl: options?.successUrl,
+        cancelUrl: options?.cancelUrl,
+      });
+      const data = (await this.makeRequest("/api/stripe/checkout", {
+        method: "POST",
+        body,
+      })) as { url?: string; message?: string; error?: string };
+      if (data?.url) {
+        return { message: "Redirecting to checkout", url: data.url };
+      }
+      return { message: data?.message ?? "Checkout session created" };
+    } catch (error: any) {
+      if (error.status === 409) {
+        await this.openBillingPortal();
+        throw new Error("already-subscribed");
+      }
+      throw error;
     }
-    return { message: data?.message ?? "Checkout session created" };
+  }
+
+  /**
+   * Fetch normalized plans from the server
+   * GET /api/stripe/plans
+   */
+  async getPlans(): Promise<NormalizedPlan[]> {
+    const res = await this.makeRequest("/api/stripe/plans");
+    return Array.isArray(res) ? res : [];
   }
 
   /**
@@ -383,17 +449,7 @@ class SubscriptionAPI {
    */
   async refreshSubscription(): Promise<{ success: boolean; error?: string }> {
     try {
-      const result = await postJson<{ success?: boolean; error?: string }>(
-        "/api/subscription/refresh"
-      );
-
-      if (!result?.success) {
-        return {
-          success: false,
-          error: result?.error || "Failed to refresh subscription",
-        };
-      }
-
+      await this.makeRequest("/api/subscription/refresh", { method: "POST" });
       return { success: true };
     } catch (error) {
       const errorMessage =
@@ -414,20 +470,7 @@ class SubscriptionAPI {
     error?: string;
   }> {
     try {
-      const result = await getJson<{
-        success?: boolean;
-        unlimited?: boolean;
-        remaining?: number;
-        error?: string;
-      }>("/api/subscription/quota/boosts");
-
-      if (!result?.success) {
-        return {
-          success: false,
-          error: result?.error || "Failed to get boost quota",
-        };
-      }
-
+      const result = await this.makeRequest("/api/subscription/quota/boosts");
       return {
         success: true,
         unlimited: result.unlimited,

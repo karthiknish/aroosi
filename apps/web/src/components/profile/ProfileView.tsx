@@ -8,7 +8,7 @@ import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 import { normalisePlan } from "@/lib/subscription/planLimits";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
-import { deleteProfile } from "@/lib/utils/profileApi";
+import { profileAPI } from "@/lib/api/profile";
 
 // Extracted components
 import { ProfileHeader } from "./view/ProfileHeader";
@@ -68,7 +68,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setDeleteError(null);
     setDeleteLoading(true);
     try {
-      await deleteProfile();
+      await profileAPI.deleteProfile();
       router.push("/");
     } catch (err: unknown) {
       if (err instanceof Error) setDeleteError(err.message);

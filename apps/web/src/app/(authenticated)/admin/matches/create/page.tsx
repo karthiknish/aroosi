@@ -2,11 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import {
-  fetchAdminProfiles,
-  createManualMatch,
-  fetchAdminProfileImagesById,
-} from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
 import type { Profile } from "@aroosi/shared/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -60,11 +57,11 @@ export default function AdminCreateMatchPage() {
       const setResults = side === "left" ? setLeftResults : setRightResults;
       setLoading(true);
       try {
-        const { profiles } = await fetchAdminProfiles({
+        const { profiles } = await adminProfilesAPI.list({
           search: q,
           page: 1,
           pageSize: 12,
-        } as any);
+        });
         // Client-side filter fallback (name/email/city contains q)
         const filtered = (profiles || []).filter((p: any) => {
           const hay = `${p.fullName || ""} ${p.email || ""} ${p.city || ""}`.toLowerCase();
@@ -74,7 +71,7 @@ export default function AdminCreateMatchPage() {
           filtered.slice(0, 12).map(async (p: any) => {
             let imageUrl: string | null = null;
             try {
-              const imgs = await fetchAdminProfileImagesById({ profileId: p._id });
+              const imgs = await adminProfilesAPI.getImages(p._id);
               if (Array.isArray(imgs) && imgs.length) imageUrl = (imgs[0] as any).url as any;
             } catch {
               // ignore individual failures
@@ -120,11 +117,8 @@ export default function AdminCreateMatchPage() {
     if (!canCreate) return;
     setCreating(true);
     try {
-      const res = await createManualMatch({
-        fromProfileId: leftSelected!._id,
-        toProfileId: rightSelected!._id,
-      });
-      if (!res.success) throw new Error(res.error || "Failed to create match");
+      const res = await adminMatchesAPI.create(leftSelected!._id, rightSelected!._id);
+      if (res?.success === false) throw new Error(res.error || "Failed to create match");
       showSuccessToast("Match created successfully");
       setCreated(true);
     } catch (e) {

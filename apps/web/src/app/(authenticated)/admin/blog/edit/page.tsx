@@ -6,7 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { PostForm } from "@/components/admin/PostForm";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { fetchBlogPostBySlug, editBlogPost } from "@/lib/blogUtil";
+import { adminBlogAPI } from "@/lib/api/admin/blog";
 import type { BlogPost } from "@/types/blog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
@@ -31,7 +31,7 @@ function AdminEditBlogPageInner() {
     queryKey: ["blogPost", slugParam],
     queryFn: async () => {
       if (!slugParam) return null;
-      return fetchBlogPostBySlug(slugParam, undefined);
+      return adminBlogAPI.get(slugParam);
     },
     enabled: !!slugParam,
   });
@@ -85,21 +85,14 @@ function AdminEditBlogPageInner() {
         imageUrl,
         content,
       };
-      const result = await editBlogPost("", blogPost._id, updates as any);
-      if (!result.success)
-        throw new Error(result.error || "Failed to update post");
-      return result.data;
+      return adminBlogAPI.update(blogPost._id, updates);
     },
     onSuccess: () => {
       showSuccessToast("Blog post updated successfully!");
       router.push("/admin/blog");
     },
-    onError: (err: unknown) => {
-      if (err instanceof Error) {
-        showErrorToast(err, "Failed to update post");
-      } else {
-        showErrorToast(null, "Failed to update post");
-      }
+    onError: (err: Error) => {
+      showErrorToast(err, "Failed to update post");
     },
   });
 

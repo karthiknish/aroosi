@@ -5,9 +5,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getSentInterests } from "@/lib/interestUtils";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
+import { searchAPI } from "@/lib/api/search";
+import { interestsAPI } from "@/lib/api/interests";
 import { ErrorState } from "@/components/ui/error-state";
 import { useOffline } from "@/hooks/useOffline";
 import { useBlockedUsers } from "@/hooks/useSafety";
@@ -140,13 +140,13 @@ export default function SearchProfilesPage() {
       viewerPreferredGender,
     ],
     queryFn: () =>
-      fetchProfileSearchResults({
+      searchAPI.search({
         page,
         pageSize,
         city: debouncedCity,
         country: debouncedCountry,
-        ageMin: debouncedAgeMin,
-        ageMax: debouncedAgeMax,
+        ageMin: debouncedAgeMin ? Number(debouncedAgeMin) : undefined,
+        ageMax: debouncedAgeMax ? Number(debouncedAgeMax) : undefined,
         preferredGender:
           viewerPreferredGender !== "any"
             ? (viewerPreferredGender as any)
@@ -166,7 +166,7 @@ export default function SearchProfilesPage() {
   const { data: sentInterestsData } = useQuery({
     queryKey: ["sentInterests", isLoaded, isAuthenticated],
     queryFn: async () => {
-      const res = await getSentInterests();
+      const res = await interestsAPI.getSent();
       // Normalize envelopes: expect { success, data } or raw array
       const raw = (
         res && typeof res === "object" && "data" in res

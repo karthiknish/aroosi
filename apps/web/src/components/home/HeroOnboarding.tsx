@@ -17,12 +17,7 @@ import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowRight, Users, Shield, Star, CalendarIcon } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ValidatedInput } from "@/components/ui/ValidatedInput";
@@ -428,55 +423,30 @@ function HeroOnboardingInner() {
                     <Label className="text-neutral font-medium block font-sans">
                       {required("Date of Birth")}
                     </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full h-12 justify-start text-left font-normal bg-neutral/5 border-neutral/10 hover:bg-neutral/10 transition-all rounded-xl",
-                            !heroData.dateOfBirth && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                          {heroData.dateOfBirth ? (
-                            format(new Date(heroData.dateOfBirth), "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-base-light border-neutral/5 shadow-xl rounded-xl" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={
-                            heroData.dateOfBirth
-                              ? new Date(heroData.dateOfBirth)
-                              : undefined
-                          }
-                          onSelect={(date) => {
-                            if (!date || isNaN(date.getTime())) return;
-                            handleInputChange(
-                              "dateOfBirth",
-                              format(date, "yyyy-MM-dd")
-                            );
-                          }}
-                          disabled={(date) => {
-                            const today = new Date();
-                            const minDate = new Date(
-                              today.getFullYear() - 18,
-                              today.getMonth(),
-                              today.getDate()
-                            );
-                            return (
-                              date > minDate || date < new Date("1900-01-01")
-                            );
-                          }}
-                          captionLayout="dropdown"
-                          defaultMonth={new Date(2000, 0, 1)}
-                          className="rounded-xl"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DatePicker
+                      date={
+                        heroData.dateOfBirth
+                          ? new Date(heroData.dateOfBirth)
+                          : undefined
+                      }
+                      setDate={(date) => {
+                        if (!date || isNaN(date.getTime())) return;
+                        handleInputChange(
+                          "dateOfBirth",
+                          format(date, "yyyy-MM-dd")
+                        );
+                      }}
+                      minDate={new Date("1900-01-01")}
+                      maxDate={
+                        new Date(
+                          new Date().getFullYear() - 18,
+                          new Date().getMonth(),
+                          new Date().getDate()
+                        )
+                      }
+                      error={!!heroErrors.dateOfBirth}
+                      className="h-12 bg-neutral/5 border-neutral/10 hover:bg-neutral/10 transition-all rounded-xl"
+                    />
                     {heroErrors.dateOfBirth && (
                       <p className="text-xs text-danger font-medium animate-shake">
                         {heroErrors.dateOfBirth}

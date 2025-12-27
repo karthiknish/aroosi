@@ -8,7 +8,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
 import type { BlogPost } from "@/types/blog";
-import { fetchBlogPostBySlug, fetchBlogPosts } from "@/lib/blogUtil";
+import { blogAPI } from "@/lib/api/blog";
 import { FileQuestion } from "lucide-react";
 
 export default function BlogDetailClient({ slug }: { slug: string }) {
@@ -19,7 +19,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
     refetch,
   } = useQuery<BlogPost | null>({
     queryKey: ["blogPost", slug],
-    queryFn: () => fetchBlogPostBySlug(slug),
+    queryFn: () => blogAPI.getPost(slug) as any,
   });
 
   const firstCategory = post?.categories?.[0];
@@ -28,12 +28,11 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
     queryFn: async () => {
       if (!firstCategory) return [];
       try {
-        const response = await fetchBlogPosts({
-          page: 0,
-          pageSize: 6,
+        const response = await blogAPI.getPosts({
+          limit: 6,
           category: firstCategory,
         });
-        return response.posts.filter((p: BlogPost) => p.slug !== slug).slice(0, 3);
+        return (response.posts as any[]).filter((p: BlogPost) => p.slug !== slug).slice(0, 3);
       } catch {
         return [];
       }

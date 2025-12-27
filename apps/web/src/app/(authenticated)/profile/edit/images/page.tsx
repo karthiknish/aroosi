@@ -4,7 +4,7 @@ import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { profileAPI } from "@/lib/api/profile";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import ProfileFormStepImages from "@/components/profile/ProfileFormStepImages";
@@ -78,12 +78,13 @@ export default function EditProfileImagesPage() {
       queryKey: ["profile", userId],
       queryFn: async () => {
         if (!userId) return null;
-        const res = await getCurrentUserWithProfile(userId);
-        if (!res?.success || !res.data) return null;
-        const envelope = (res.data as { profile?: unknown })?.profile
-          ? (res.data as { profile?: unknown }).profile
-          : res.data;
-        return envelope as Profile;
+        try {
+          const data = await profileAPI.getProfileForUser(userId);
+          return data as Profile;
+        } catch (error) {
+          console.error("Failed to fetch profile:", error);
+          return null;
+        }
       },
       enabled: !!userId,
     }

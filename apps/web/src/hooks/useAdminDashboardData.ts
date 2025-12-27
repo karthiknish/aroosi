@@ -1,4 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { adminDashboardAPI } from "@/lib/api/admin/dashboard";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
+import { adminContactAPI } from "@/lib/api/admin/contact";
+import { adminBlogAPI } from "@/lib/api/admin/blog";
 
 export interface DashboardStatsPayload {
   totalUsers: number;
@@ -62,134 +67,99 @@ function parseTimestamp(value: unknown): Date {
 export function useAdminDashboardData() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-dashboard-stats"],
-    queryFn: async (): Promise<DashboardStatsPayload> => {
-      const res = await fetch("/api/admin/dashboard", {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed stats");
-      const json = await res.json();
-      return (
-        (json?.stats as DashboardStatsPayload) ||
-        (json as DashboardStatsPayload)
-      );
-    },
+    queryFn: () => adminDashboardAPI.getStats() as Promise<DashboardStatsPayload>,
     staleTime: 60_000,
   });
 
   const { data: recentActivity, isLoading: activityLoading } = useQuery({
     queryKey: ["admin-recent-activity"],
     queryFn: async (): Promise<ActivityItem[]> => {
-      const [profilesRes, matchesRes, contactRes, blogRes] = await Promise.all([
-        fetch(
-          "/api/admin/profiles?page=1&pageSize=10&sortBy=createdAt&sortDir=desc",
-          { credentials: "include" }
-        ),
-        fetch("/api/admin/matches", { credentials: "include" }),
-        fetch("/api/contact?page=1&pageSize=10", { credentials: "include" }),
-        fetch("/api/blog?limit=10", { credentials: "include" }),
+      const [profilesData, matchesData, contacts, blogData] = await Promise.all([
+        adminProfilesAPI.list({ page: 1, pageSize: 10, sortBy: "createdAt", sortDir: "desc" }),
+        adminMatchesAPI.list({ page: 1, pageSize: 10 }),
+        adminContactAPI.list({ page: 1, pageSize: 10 }),
+        adminBlogAPI.list({ page: 1, pageSize: 10 }),
       ]);
 
       const activities: ActivityItem[] = [];
 
       // Process Profiles (Registrations)
-      // API returns: { success: true, data: { profiles: [...], total, ... } }
       try {
-        if (profilesRes.ok) {
-          const pJson = await profilesRes.json();
-          // Handle both wrapped { data: { profiles } } and direct { profiles } format
-          const profiles = pJson?.data?.profiles || pJson?.profiles || [];
-          profiles.slice(0, 5).forEach((p: any, idx: number) => {
-            const profileId = p.id || p._id || p.uid || `idx_${idx}_${Date.now()}`;
-            activities.push({
-              id: `reg_${profileId}`,
-              type: "registration",
-              title: "New Registration",
-              description: p.fullName || p.email || profileId,
-              timestamp: parseTimestamp(p.createdAt),
-              user: { name: p.fullName || p.email || profileId },
-              status: "pending",
-            });
+        const profiles = profilesData?.profiles || [];
+        profiles.slice(0, 5).forEach((p: any, idx: number) => {
+          const profileId = p.id || p._id || p.uid || `idx_${idx}_${Date.now()}`;
+          activities.push({
+            id: `reg_${profileId}`,
+            type: "registration",
+            title: "New Registration",
+            description: p.fullName || p.email || profileId,
+            timestamp: parseTimestamp(p.createdAt),
+            user: { name: p.fullName || p.email || profileId },
+            status: "pending",
           });
-        }
+        });
       } catch { }
 
       // Process Matches
-      // API returns: { success: true, matches: [{ profileId, matches: [...] }] }
       try {
-        if (matchesRes.ok) {
-          const mJson = await matchesRes.json();
-          const raw = (mJson?.matches || mJson?.data?.matches || []) as any[];
-
-          // Take first 5 matches
-          raw.slice(0, 5).forEach((item: any) => {
-            if (item && Array.isArray(item.matches) && item.profileId) {
-              // This is grouped format: { profileId, matches: [...] }
-              const partner = item.matches[0] || {};
-              const left = item.profileId;
-              const right = partner._id || partner.id || "unknown";
-              const nameA = partner._rootName || item.rootName || left?.slice?.(-6) || "User A";
-              const nameB = partner.fullName || partner.name || right?.slice?.(-6) || "User B";
-              const id = `match_${left}_${right}`;
-              activities.push({
-                id,
-                type: "match",
-                title: "New Match",
-                description: `${nameA} & ${nameB}`,
-                timestamp: parseTimestamp(item.createdAt || partner.createdAt),
-              });
-            } else if (item?.user1Id && item?.user2Id) {
-              // Direct match format: { user1Id, user2Id, ... }
-              const id = item?.id || `${item.user1Id}_${item.user2Id}`;
-              const nameA = item?.user1Name || String(item.user1Id).slice(-6) || "User A";
-              const nameB = item?.user2Name || String(item.user2Id).slice(-6) || "User B";
-              activities.push({
-                id: `match_${id}`,
-                type: "match",
-                title: "New Match",
-                description: `${nameA} & ${nameB}`,
-                timestamp: parseTimestamp(item?.createdAt),
-              });
-            }
-          });
-        }
+        const raw = matchesData?.matches || [];
+        raw.slice(0, 5).forEach((item: any) => {
+          if (item && Array.isArray(item.matches) && item.profileId) {
+            const partner = item.matches[0] || {};
+            const left = item.profileId;
+            const right = partner._id || partner.id || "unknown";
+            const nameA = partner._rootName || item.rootName || left?.slice?.(-6) || "User A";
+            const nameB = partner.fullName || partner.name || right?.slice?.(-6) || "User B";
+            const id = `match_${left}_${right}`;
+            activities.push({
+              id,
+              type: "match",
+              title: "New Match",
+              description: `${nameA} & ${nameB}`,
+              timestamp: parseTimestamp(item.createdAt || partner.createdAt),
+            });
+          } else if (item?.user1Id && item?.user2Id) {
+            const id = item?.id || `${item.user1Id}_${item.user2Id}`;
+            const nameA = item?.user1Name || String(item.user1Id).slice(-6) || "User A";
+            const nameB = item?.user2Name || String(item.user2Id).slice(-6) || "User B";
+            activities.push({
+              id: `match_${id}`,
+              type: "match",
+              title: "New Match",
+              description: `${nameA} & ${nameB}`,
+              timestamp: parseTimestamp(item?.createdAt),
+            });
+          }
+        });
       } catch { }
 
       // Process Contact Messages
-      // API may return: [{ ... }] or { data: [...] }
       try {
-        if (contactRes.ok) {
-          const cJson = await contactRes.json();
-          const contacts = cJson?.data || (Array.isArray(cJson) ? cJson : cJson?.messages || []);
-          contacts.slice(0, 5).forEach((c: any) =>
-            activities.push({
-              id: `contact_${c._id || c.id}`,
-              type: "message",
-              title: "Contact Message",
-              description: c.subject || c.email,
-              timestamp: parseTimestamp(c.createdAt),
-              user: { name: c.name || c.email },
-              status: "pending",
-            })
-          );
-        }
+        contacts.slice(0, 5).forEach((c: any) =>
+          activities.push({
+            id: `contact_${c._id || c.id}`,
+            type: "message",
+            title: "Contact Message",
+            description: c.subject || c.email,
+            timestamp: parseTimestamp(c.createdAt),
+            user: { name: c.name || c.email },
+            status: "pending",
+          })
+        );
       } catch { }
 
       // Process Blog Posts
-      // API may return: { posts: [...] } or { data: { posts: [...] } }
       try {
-        if (blogRes.ok) {
-          const bJson = await blogRes.json();
-          const posts = bJson?.data?.posts || bJson?.posts || (Array.isArray(bJson) ? bJson : []);
-          posts.slice(0, 5).forEach((b: any) =>
-            activities.push({
-              id: `blog_${b._id || b.id || b.slug}`,
-              type: "blog",
-              title: "Blog Post",
-              description: b.title,
-              timestamp: parseTimestamp(b.createdAt || b.publishedAt),
-            })
-          );
-        }
+        const posts = blogData?.posts || [];
+        posts.slice(0, 5).forEach((b: any) =>
+          activities.push({
+            id: `blog_${b._id || b.id || b.slug}`,
+            type: "blog",
+            title: "Blog Post",
+            description: b.title,
+            timestamp: parseTimestamp(b.createdAt || b.publishedAt),
+          })
+        );
       } catch { }
 
       // Sort descending by timestamp

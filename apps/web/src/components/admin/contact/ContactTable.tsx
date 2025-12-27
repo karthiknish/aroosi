@@ -1,6 +1,6 @@
 "use client";
 
-import { Contact } from "@/lib/contactUtil";
+import { Contact } from "@/lib/api/admin/contact";
 import {
   Table,
   TableHeader,

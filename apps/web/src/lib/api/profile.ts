@@ -141,8 +141,21 @@ class ProfileAPI {
   /**
    * Get profile viewers
    */
-  async getViewers(limit = 20, offset = 0): Promise<ProfileViewResponse> {
-    return this.makeRequest(`/api/profile/view?limit=${limit}&offset=${offset}`);
+  async getViewers(options: {
+    profileId?: string;
+    limit?: number;
+    offset?: number;
+    filter?: string;
+    mode?: "count" | "list";
+  } = {}): Promise<any> {
+    const params = new URLSearchParams();
+    if (options.profileId) params.set("profileId", options.profileId);
+    if (options.limit !== undefined) params.set("limit", String(options.limit));
+    if (options.offset !== undefined) params.set("offset", String(options.offset));
+    if (options.filter) params.set("filter", options.filter);
+    if (options.mode) params.set("mode", options.mode);
+
+    return this.makeRequest(`/api/profile/view?${params.toString()}`);
   }
 
   /**
@@ -152,6 +165,18 @@ class ProfileAPI {
     return this.makeRequest("/api/profile/view/seen", {
       method: "POST",
     });
+  }
+
+  /**
+   * Delete current user's profile
+   */
+  async deleteProfile(): Promise<void> {
+    try {
+      await this.makeRequest("/api/user/profile", { method: "DELETE" });
+    } catch (error) {
+      // Fallback for legacy route
+      await this.makeRequest("/api/profile/delete", { method: "DELETE" });
+    }
   }
 
   /**

@@ -185,7 +185,7 @@ export default function PushNotificationAdminPage() {
                 setTemplateUrl={setUrl}
                 templateCategory={selectedCategory}
                 setTemplateCategory={setSelectedCategory}
-                handleSaveTemplate={() => saveCurrentAsTemplate(newTemplateName, newTemplateDesc, loadTemplates)}
+                handleSaveTemplate={() => saveCurrentAsTemplate(newTemplateName, newTemplateDesc)}
                 handleDeleteTemplate={(tpl: any) => deleteTemplate(tpl.id)}
                 handleApplyTemplate={applyTemplate}
               />

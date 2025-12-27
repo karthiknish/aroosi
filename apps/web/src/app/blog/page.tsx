@@ -7,33 +7,12 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { blogAPI, BlogListResponse } from "@/lib/api/blog";
 import { BlogPost } from "@/types/blog";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorState } from "@/components/ui/error-state";
 import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { FileText } from "lucide-react";
-
-// Explicit return type for the fetch function
-const fetchBlogPostsAPI = async (
-  page: number,
-  pageSize: number,
-  category: string
-): Promise<{ posts: BlogPost[]; total: number }> => {
-  const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
-  });
-  if (category !== "all") params.append("category", category);
-  const res = await fetch(`/api/blog?${params.toString()}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch blog posts");
-  }
-  const json = await res.json();
-  // The API wraps data in { success, data }
-  const payload =
-    json && typeof json === "object" && "data" in json ? json.data : json;
-  return payload as { posts: BlogPost[]; total: number };
-};
 
 export default function BlogPage() {
   const [page, setPage] = React.useState(0);
@@ -50,13 +29,13 @@ export default function BlogPage() {
     isError,
     refetch,
   } = useQuery<
-    { posts: BlogPost[]; total: number },
+    BlogListResponse,
     Error,
-    { posts: BlogPost[]; total: number },
+    BlogListResponse,
     BlogQueryKey
   >({
     queryKey: queryKey,
-    queryFn: () => fetchBlogPostsAPI(page, pageSize, category),
+    queryFn: () => blogAPI.getPosts({ page, pageSize, category }),
   });
 
   const posts: BlogPost[] = React.useMemo(
@@ -69,7 +48,7 @@ export default function BlogPage() {
     const set = new Set<string>();
     posts?.forEach((post) => {
       if (Array.isArray(post.categories)) {
-        post.categories.forEach((cat) => set.add(cat));
+        post.categories.forEach((cat: string) => set.add(cat));
       }
     });
     return ["all", ...Array.from(set).sort()];

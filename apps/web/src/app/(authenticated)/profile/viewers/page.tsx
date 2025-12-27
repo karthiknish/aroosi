@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import {
-  fetchProfileViewers,
-  type ProfileViewer,
-  type ViewerFilter,
-} from "@/lib/utils/profileApi";
+import { profileAPI } from "@/lib/api/profile";
+import type { ProfileViewer, ViewerFilter } from "@aroosi/shared/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -76,26 +73,39 @@ export default function ProfileViewersPage() {
     queryKey: ["profileViewers", profile?._id, activeFilter],
     queryFn: async () => {
       if (!profile?._id) return { viewers: [], total: 0 };
-      const result = await fetchProfileViewers({
+      const json = await profileAPI.getViewers({
         profileId: profile._id as unknown as string,
         limit: 50,
         offset: 0,
         filter: activeFilter,
       });
-      return result;
+
+      const raw = (json?.viewers ?? json?.data?.viewers ?? []) as any[];
+      const mapped: ProfileViewer[] = raw.map((v) => ({
+        userId: (v?.viewerId ?? v?.userId ?? v?._id ?? "") as string,
+        fullName: (v?.fullName ?? null) as string | null,
+        profileImageUrls: (v?.profileImageUrls ?? null) as string[] | null,
+        age: (v?.age ?? null) as number | null,
+        city: (v?.city ?? null) as string | null,
+        viewedAt: Number(v?.viewedAt ?? v?.createdAt ?? Date.now()),
+        viewCount: v?.viewCount ?? 1,
+        isNew: v?.isNew ?? false,
+      }));
+
+      return {
+        viewers: mapped,
+        total: typeof json?.total === "number" ? (json.total as number) : undefined,
+        newCount: typeof json?.newCount === "number" ? (json.newCount as number) : undefined,
+        hasMore: json?.hasMore ?? false,
+      };
     },
     enabled,
   });
 
   // Mark viewers as seen on mount
-  useMutation({
-    mutationFn: async () => {
-      await fetch("/api/profile/view/seen", {
-        method: "POST",
-        credentials: "include",
-      });
-    },
-  });
+  useEffect(() => {
+    profileAPI.markViewsAsSeen().catch(() => {});
+  }, []);
 
   // Redirect non-premiumPlus users back to profile
   if (profile && !isPremiumPlus(profile.subscriptionPlan)) {

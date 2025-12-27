@@ -4,11 +4,11 @@
 
 export interface AdminIcebreaker {
   id: string;
-  question: string;
-  category?: string;
-  isActive: boolean;
-  order?: number;
-  createdAt: string;
+  text: string;
+  category?: string | null;
+  active: boolean;
+  weight?: number | null;
+  createdAt: number;
 }
 
 class AdminIcebreakersAPI {
@@ -49,13 +49,18 @@ class AdminIcebreakersAPI {
    */
   async list(): Promise<AdminIcebreaker[]> {
     const res = await this.makeRequest("/api/admin/icebreakers");
-    return res.data?.icebreakers || res.icebreakers || [];
+    return res.data?.items || [];
   }
 
   /**
    * Create a new icebreaker question
    */
-  async create(data: { question: string; category?: string }): Promise<AdminIcebreaker> {
+  async create(data: {
+    text: string;
+    category?: string;
+    active?: boolean;
+    weight?: number;
+  }): Promise<{ id: string }> {
     return this.makeRequest("/api/admin/icebreakers", {
       method: "POST",
       body: JSON.stringify(data),
@@ -65,9 +70,12 @@ class AdminIcebreakersAPI {
   /**
    * Update an icebreaker question
    */
-  async update(id: string, data: Partial<AdminIcebreaker>): Promise<AdminIcebreaker> {
+  async update(
+    id: string,
+    data: Partial<Omit<AdminIcebreaker, "id" | "createdAt">>
+  ): Promise<{ success: boolean }> {
     return this.makeRequest("/api/admin/icebreakers", {
-      method: "PATCH",
+      method: "PUT",
       body: JSON.stringify({ id, ...data }),
     });
   }

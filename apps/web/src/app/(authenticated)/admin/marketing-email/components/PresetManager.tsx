@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, Eye, Pencil, Trash2, X, CheckCircle } from "lucide-react";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 
 type BuilderSchema = { subject: string; preheader?: string; sections: Section[] };
 type Section = Hero | Paragraph | RichParagraph | ButtonSection | ImageOnly | ImageText | ColumnsSec | Divider | Spacer;
@@ -38,18 +39,14 @@ export function PresetManager({
   const [renameValue, setRenameValue] = useState<string>("");
 
   const handleRename = async (presetId: string, newName: string) => {
-    await fetch(`/api/admin/email/builder-presets/${presetId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
-    });
+    await adminEmailAPI.updateBuilderPreset(presetId, { name: newName });
     // Refresh presets would be handled by parent component
     setRenamingId('');
     setRenameValue('');
   };
 
   const handleDelete = async (presetId: string) => {
-    await fetch(`/api/admin/email/builder-presets/${presetId}`, { method: 'DELETE' });
+    await adminEmailAPI.deleteBuilderPreset(presetId);
     // Refresh presets would be handled by parent component
   };
 

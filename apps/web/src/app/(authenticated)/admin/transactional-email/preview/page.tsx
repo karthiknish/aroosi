@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 
 type Kind = "passwordChanged" | "emailChanged" | "newDevice" | "subscriptionReceipt";
 
@@ -26,13 +27,12 @@ export default function TxPreviewPage() {
   });
 
   const doPreview = async () => {
-    const res = await fetch(`/api/admin/transactional-email/preview`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, vars }),
-    });
-    const data = await res.json();
-    if (res.ok && data?.data?.html) setHtml(data.data.html);
+    try {
+      const html = await adminEmailAPI.previewTransactionalEmail(kind, vars);
+      setHtml(html);
+    } catch (e) {
+      console.error("Preview failed", e);
+    }
   };
 
   return (

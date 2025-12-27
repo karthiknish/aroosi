@@ -10,7 +10,7 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
-import { submitContactPublic } from "@/lib/contactUtil";
+import { contactAPI } from "@/lib/api/contact";
 import {
   Mail,
   Send,
@@ -49,13 +49,13 @@ export default function ContactPage() {
   const onSubmit: SubmitHandler<ContactFormValues> = async (data) => {
     setSubmitError(null);
     try {
-      const result = await submitContactPublic(data);
+      const result = await contactAPI.submitContact(data);
       if (result.success) {
         setIsSubmitted(true);
         reset();
       } else {
         setSubmitError(
-          result.error || "Failed to send message. Please try again."
+          (result as any).error || result.message || "Failed to send message. Please try again."
         );
       }
     } catch (error: unknown) {

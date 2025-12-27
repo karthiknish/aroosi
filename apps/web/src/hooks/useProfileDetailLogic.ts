@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useQuery } from "@tanstack/react-query";
-import { fetchUserProfile } from "@/lib/profile/userProfileApi";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { useInterestStatus } from "@/hooks/useInterestStatus";
 import { useBlockStatus } from "@/hooks/useSafety";
@@ -12,7 +11,7 @@ import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { useSubscriptionGuard } from "@/hooks/useSubscription";
 import { useOffline } from "@/hooks/useOffline";
 import { buildProfileImageUrl } from "@/lib/images/profileImageUtils";
-import { recordProfileView } from "@/lib/utils/profileApi";
+import { profileAPI } from "@/lib/api/profile";
 import { getJson } from "@/lib/http/client";
 import { unblockUserUtil, blockUserUtil, handleErrorUtil } from "@/lib/chat/utils";
 import { showSuccessToast, showErrorToast, showUndoToast } from "@/lib/ui/toast";
@@ -51,13 +50,17 @@ export function useProfileDetailLogic() {
     queryKey: ["profileData", userId],
     queryFn: async () => {
       if (!userId) return null;
-      const result = await fetchUserProfile(userId);
-      if (!result.success && result.error?.code === "AUTH_REQUIRED") {
-        const error = new Error(result.error.message || "Authentication not ready");
-        (error as any).code = "AUTH_REQUIRED";
-        throw error;
+      try {
+        const data = await profileAPI.getProfileForUser(userId);
+        return { success: true, data };
+      } catch (error: any) {
+        if (error?.message?.includes("401") || error?.message?.includes("AUTH_REQUIRED")) {
+          const err = new Error(error.message || "Authentication not ready");
+          (err as any).code = "AUTH_REQUIRED";
+          throw err;
+        }
+        return { success: false, error: { message: error.message } };
       }
-      return result;
     },
     enabled: !!userId && isLoaded && isAuthenticated && !skipRemoteProfile,
     retry: (failureCount, error) => {
@@ -169,7 +172,7 @@ export function useProfileDetailLogic() {
   // Profile view recording
   useEffect(() => {
     if (!isOwnProfile && profile?._id) {
-      void recordProfileView({ profileId: String(profile._id ?? "") });
+      void profileAPI.trackView(String(profile._id ?? ""));
       trackUsage({ feature: "profile_view", metadata: { targetUserId: userId } });
     }
   }, [isOwnProfile, profile?._id, trackUsage, userId]);

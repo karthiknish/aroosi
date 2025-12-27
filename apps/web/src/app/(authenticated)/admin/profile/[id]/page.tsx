@@ -32,18 +32,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import {
-  deleteAdminProfileImageById,
-  fetchAdminProfileById,
-  fetchAdminProfileMatches,
-  fetchAdminProfileImagesById,
-} from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
 import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
-import { updateSpotlightBadge } from "@/lib/utils/spotlightBadgeApi";
 import { Ban, Users as UsersIcon } from "lucide-react";
 
 import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
@@ -96,7 +91,7 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const data = await fetchAdminProfileById({ id: String(id) });
+      const data = await adminProfilesAPI.get(String(id));
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -126,9 +121,7 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const data = await fetchAdminProfileImagesById({
-        profileId: String(userId),
-      });
+      const data = await adminProfilesAPI.getImages(String(userId));
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -154,7 +147,7 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const data = await fetchAdminProfileMatches({ profileId: String(id) });
+      const data = await adminMatchesAPI.getProfileMatches(String(id));
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -239,18 +232,11 @@ export default function AdminProfileDetailPage() {
     try {
       setIsDeleting(true);
       if (!profile?.userId) throw new Error("Missing userId for deletion");
-      const resp = await deleteAdminProfileImageById({
-        profileId: profile.userId,
-        imageId: storageId,
-      });
-      if (resp && (resp as any).success !== false) {
-        showSuccessToast("Image deleted successfully");
-        setImageToDelete(null);
-        setIsDeleteModalOpen(false);
-        void refetchProfile();
-      } else {
-        showErrorToast(null, "Failed to delete image");
-      }
+      await adminProfilesAPI.deleteImage(profile.userId, storageId);
+      showSuccessToast("Image deleted successfully");
+      setImageToDelete(null);
+      setIsDeleteModalOpen(false);
+      void refetchProfile();
     } catch (error) {
       showErrorToast(
         error instanceof Error ? error : null,
@@ -316,14 +302,10 @@ export default function AdminProfileDetailPage() {
   const handleToggleSpotlightBadge = async (id: string) => {
     if (!profile?._id) return;
     try {
-      await updateSpotlightBadge(
-        id,
-        {
-          hasSpotlightBadge: !profile.hasSpotlightBadge,
-          durationDays: 30,
-        },
-        undefined
-      );
+      await adminProfilesAPI.updateSpotlight(id, {
+        hasSpotlightBadge: !profile.hasSpotlightBadge,
+        durationDays: 30,
+      });
 
       showSuccessToast(
         profile.hasSpotlightBadge

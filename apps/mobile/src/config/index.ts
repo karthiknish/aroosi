@@ -7,6 +7,7 @@ export const API_BASE_URL = process.env.API_BASE_URL || 'https://www.aroosi.app/
 
 // Environment
 export const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
+export const DEBUG = ENVIRONMENT === 'development';
 
 // Feature flags
 export const FEATURES = {

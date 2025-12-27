@@ -3,12 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import {
-  fetchAdminProfiles,
-  deleteAdminProfile,
-  setProfileBannedStatus,
-  fetchAllAdminProfileImages,
-} from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI, AdminProfile } from "@/lib/api/admin/profiles";
 import {
   Plus,
   Search,
@@ -18,6 +13,8 @@ import {
   Trash2,
   UserX,
   Pencil,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DataTable } from "@/components/admin/DataTable";
 import Link from "next/link";
 import Image from "next/image";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
@@ -52,11 +51,6 @@ import {
 } from "@/components/ui/pagination";
 
 import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
-
-// Minimal local types for TS safety
-type AdminProfile = Profile & {
-  _id: string;
-};
 
 const statusOptions = [
   { label: "All", value: "all" },
@@ -81,6 +75,7 @@ export default function AdminProfilePage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "banned">("all");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
   // view modal removed; using dedicated route /admin/profile/[id]
@@ -134,7 +129,7 @@ export default function AdminProfilePage() {
         total,
         page: srvPage,
         pageSize: srvPageSize,
-      } = await fetchAdminProfiles({
+      } = await adminProfilesAPI.list({
         search: debouncedSearch,
         page,
         pageSize,
@@ -150,9 +145,7 @@ export default function AdminProfilePage() {
         userId: p.userId || p._id,
       }));
 
-      const profileImages = await fetchAllAdminProfileImages({
-        profiles: profilesForImages,
-      });
+      const profileImages = await adminProfilesAPI.batchFetchImages(profilesForImages);
 
       return {
         profiles,
@@ -182,23 +175,141 @@ export default function AdminProfilePage() {
     Math.ceil((total || 0) / (serverPageSize || 1))
   );
 
+  const columns = [
+    {
+      header: "User",
+      cell: (profile: AdminProfile) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
+            {profileImages[profile._id]?.[0]?.url ? (
+              <Image
+                src={profileImages[profile._id][0].url}
+                alt={profile.fullName || ""}
+                width={40}
+                height={40}
+                className="w-full h-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                <UserX className="w-5 h-5" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold text-neutral-900 truncate">{profile.fullName || "Unknown"}</div>
+            <div className="text-xs text-neutral-500 truncate">{profile.city || "No location"}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Age",
+      cell: (profile: AdminProfile) => (
+        <span className="text-sm text-neutral-600">{getAge(profile.dateOfBirth)}</span>
+      ),
+    },
+    {
+      header: "Status",
+      cell: (profile: AdminProfile) => (
+        profile.banned ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">
+            Banned
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-wider">
+            Active
+          </span>
+        )
+      ),
+    },
+    {
+      header: "Plan",
+      cell: (profile: AdminProfile) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-neutral-700">{profile.subscriptionPlan || "Free"}</span>
+          {profile.subscriptionExpiresAt && (
+            <span className="text-[10px] text-neutral-400">
+              Expires: {new Date(profile.subscriptionExpiresAt * 1000).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Actions",
+      className: "text-right",
+      cell: (profile: AdminProfile) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-neutral-500 hover:text-primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/admin/profile/${profile._id}`);
+            }}
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-neutral-500 hover:text-primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/admin/profile/${profile._id}/edit`);
+            }}
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "h-8 w-8",
+              profile.banned ? "text-emerald-600" : "text-amber-600"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmBanId(profile._id);
+            }}
+          >
+            <Ban className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-red-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDeleteId(profile._id);
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   // Handlers
   const onDelete = async (id: string) => {
-    await deleteAdminProfile({ id });
+    await adminProfilesAPI.delete(id);
     setConfirmDeleteId(null);
     void loadProfiles();
     showSuccessToast("Profile deleted");
   };
 
   const onToggleBan = async (id: string, isBanned: boolean) => {
-    const result = await setProfileBannedStatus(id, !isBanned);
-    setConfirmBanId(null);
-    if (!result.success) {
-      showErrorToast(result.error, "Failed to update ban status");
-      return;
+    try {
+      await adminProfilesAPI.setBannedStatus(id, !isBanned);
+      setConfirmBanId(null);
+      void loadProfiles();
+      showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
+    } catch (e: any) {
+      showErrorToast(e.message || "Failed to update ban status");
     }
-    void loadProfiles();
-    showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
   };
 
   if (error)
@@ -262,9 +373,23 @@ export default function AdminProfilePage() {
 
             {/* Status Filter */}
             <div className="flex items-center gap-3">
+              <ToggleGroup 
+                type="single" 
+                value={viewMode} 
+                onValueChange={(value) => value && setViewMode(value as "grid" | "table")}
+                className="bg-neutral-100 p-1 rounded-lg border"
+              >
+                <ToggleGroupItem value="grid" aria-label="Grid view" className="h-8 w-8 p-0 rounded-md data-[state=on]:bg-white data-[state=on]:shadow-sm">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="table" aria-label="Table view" className="h-8 w-8 p-0 rounded-md data-[state=on]:bg-white data-[state=on]:shadow-sm">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+
               <label
                 htmlFor="profile-status-select"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-medium text-gray-700 ml-2"
               >
                 Status:
               </label>
@@ -444,6 +569,12 @@ export default function AdminProfilePage() {
               </div>
             </div>
           </div>
+        ) : viewMode === "table" ? (
+          <DataTable 
+            columns={columns} 
+            data={profiles} 
+            onRowClick={(profile) => router.push(`/admin/profile/${profile._id}`)}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {profiles.map((profile: AdminProfile) => (

@@ -16,7 +16,20 @@ import {
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const authUser = ctx.user as any;
+    let userId = authUser.userId || authUser.id;
+    
+    // Support admin uploading for another user
+    const { searchParams } = new URL(ctx.request.url);
+    const targetUserId = searchParams.get("profileId") || searchParams.get("userId");
+    
+    if (targetUserId && targetUserId !== userId) {
+      // Check if current user is admin
+      if (authUser.role !== "admin") {
+        return errorResponse("Admin privileges required to upload for other users", 403, { correlationId: ctx.correlationId });
+      }
+      userId = targetUserId;
+    }
     
     let formData: FormData;
     try {

@@ -38,12 +38,26 @@ class AdminMatchesAPI {
   /**
    * Get all matches
    */
-  async list(limit = 20, offset = 0): Promise<{ matches: any[]; total: number }> {
-    const res = await this.makeRequest(`/api/admin/matches?limit=${limit}&offset=${offset}`);
+  async list(params: { page?: number; pageSize?: number } = {}): Promise<{ matches: any[]; total: number; page: number; pageSize: number }> {
+    const query = new URLSearchParams();
+    if (params.page) query.append("page", String(params.page));
+    if (params.pageSize) query.append("pageSize", String(params.pageSize));
+
+    const res = await this.makeRequest(`/api/admin/matches?${query.toString()}`);
     return {
       matches: res.data?.matches || res.matches || [],
       total: res.data?.total || res.total || 0,
+      page: res.data?.page || res.page || params.page || 1,
+      pageSize: res.data?.pageSize || res.pageSize || params.pageSize || 20,
     };
+  }
+
+  /**
+   * Get matches for a specific profile
+   */
+  async getProfileMatches(userId: string): Promise<any[]> {
+    const res = await this.makeRequest(`/api/admin/matches/profile/${userId}`);
+    return res.data?.matches || res.matches || [];
   }
 
   /**

@@ -146,7 +146,14 @@ export default function DiscoverScreen() {
 
             let response;
             if (query || Object.keys(filters).length > 0) {
-                response = await searchProfiles(query || '', filters);
+                // Map query to city for now as backend doesn't have a general query field
+                const searchFilters = {
+                    ...filters,
+                    city: query || filters.city,
+                    ageMin: filters.ageRange?.min,
+                    ageMax: filters.ageRange?.max,
+                };
+                response = await searchProfiles(searchFilters);
             } else {
                 response = await getRecommendations(50);
             }
@@ -157,7 +164,9 @@ export default function DiscoverScreen() {
             }
 
             if (response.data) {
-                setProfiles(response.data);
+                // Handle both array response and object with profiles array
+                const data = response.data as any;
+                setProfiles(Array.isArray(data) ? data : (data.profiles || []));
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load profiles');

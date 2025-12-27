@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Contact } from "@/lib/contactUtil";
+import { Contact } from "@/lib/api/admin/contact";
 import { useAdminContacts } from "@/hooks/useAdminContacts";
 import { ContactTable } from "@/components/admin/contact/ContactTable";
 import { ContactDetails } from "@/components/admin/contact/ContactDetails";

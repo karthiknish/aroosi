@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { convertAiTextToHtml } from "@/lib/blogUtil";
+import { adminBlogAPI } from "@/lib/api/admin/blog";
 import { showErrorToast } from "@/lib/ui/toast";
 
 export type AiField = "excerpt" | "category" | "title" | "content";
@@ -73,12 +73,8 @@ Requirements:
           if (categories && categories.length)
             contextLines.push(`Categories: ${categories.join(", ")}`);
           const prompt = `${instructions}\n\n${contextLines.join("\n")}`;
-          const res = await convertAiTextToHtml({
-            text: prompt,
-            type: "blog",
-          } as any);
-          const raw = typeof res === "string" ? res : (res as any)?.html || "";
-          return cleanGeneratedHtml(raw);
+          const res = await adminBlogAPI.convertAiTextToHtml(prompt, "blog");
+          return cleanGeneratedHtml(res);
         }
 
         // For title/excerpt/category, build a clean context and ensure plain text
@@ -94,13 +90,8 @@ Requirements:
           context = ctxLines.join("\n\n");
         }
 
-        const res = await convertAiTextToHtml({
-          text: context,
-          type: field,
-        } as any);
-        // title/excerpt/category return plain text via html field
-        if (typeof res === "string") return res;
-        return (res as any)?.html || "";
+        const res = await adminBlogAPI.convertAiTextToHtml(context, field as any);
+        return res;
       } catch (error) {
         console.error(`Error in AI ${field} generation:`, error);
         const message =

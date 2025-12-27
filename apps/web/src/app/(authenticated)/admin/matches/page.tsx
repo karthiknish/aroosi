@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import {
-  fetchAdminAllMatches,
-  AdminProfileMatchesResult,
-  fetchAllAdminProfileImages,
-  fetchAdminProfileById,
-} from "@/lib/profile/adminProfileApi";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +24,11 @@ import Link from "next/link";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
 import type { Profile } from "@aroosi/shared/types";
 
+interface MatchGroup {
+  profileId: string;
+  matches: Profile[];
+}
+
 function getAge(dob?: string) {
   if (!dob) return null;
   const date = new Date(dob);
@@ -41,88 +43,80 @@ function getAge(dob?: string) {
 export default function AdminMatchesPage() {
   // Cookie-auth; server will read HttpOnly cookies for admin APIs
   useAuthContext();
-  const [matchesData, setMatchesData] = useState<AdminProfileMatchesResult>({
-    matches: [],
-    total: 0,
-    page: 1,
-    pageSize: 20,
+  const [page, setPage] = useState(1);
+
+  const {
+    data: matchesData,
+    isLoading: matchesLoading,
+    isError: matchesError,
+    error: matchesErrorObj,
+    refetch: refetchMatches,
+  } = useQuery({
+    queryKey: ["admin", "matches", { page }],
+    queryFn: () => adminMatchesAPI.list({ page, pageSize: 20 }),
   });
-  const [profileImages, setProfileImages] = useState<
-    Record<string, ProfileImageInfo[]>
-  >({});
-  const [rootProfiles, setRootProfiles] = useState<Record<string, Profile>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadData = async (page = 1) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchAdminAllMatches({ page, pageSize: 20 });
-      setMatchesData(data);
-      // Root profile details
-      const rootIds = Array.from(
-        new Set(data.matches.map((m) => m.profileId).filter(Boolean))
-      ) as string[];
-      if (rootIds.length) {
-        const fetched = await Promise.all(
-          rootIds.map(async (id) => {
-            try {
-              const p = await fetchAdminProfileById({ id });
-              return p ? [id, p] : null;
-            } catch {
-              return null;
-            }
-          })
-        );
-        const rp: Record<string, Profile> = {};
-        fetched.forEach((entry) => {
-          if (entry) {
-            const [id, prof] = entry as [string, Profile];
-            rp[id] = prof;
+  // Fetch root profiles
+  const rootIds = useMemo(() => {
+    if (!matchesData?.matches) return [];
+    return Array.from(new Set(matchesData.matches.map((m: MatchGroup) => m.profileId).filter(Boolean))) as string[];
+  }, [matchesData]);
+
+  const { data: rootProfilesData } = useQuery({
+    queryKey: ["admin", "profiles", "batch", rootIds],
+    queryFn: async () => {
+      if (!rootIds.length) return {};
+      const fetched = await Promise.all(
+        rootIds.map(async (id) => {
+          try {
+            const p = await adminProfilesAPI.get(id);
+            return p ? [id, p] : null;
+          } catch {
+            return null;
           }
-        });
-        setRootProfiles(rp);
-      }
-      // Collect all unique profile IDs for images
-      const allIds = new Set<string>();
-      data.matches.forEach((g) => {
-        if (g.profileId) allIds.add(g.profileId as string);
-        if (Array.isArray(g.matches))
-          g.matches.forEach((m) => allIds.add(m._id));
+        })
+      );
+      const rp: Record<string, Profile> = {};
+      fetched.forEach((entry) => {
+        if (entry) {
+          const [id, prof] = entry as [string, Profile];
+          rp[id] = prof;
+        }
       });
-      if (allIds.size) {
-        const minimalProfiles = Array.from(allIds).map((id) => ({
-          _id: id,
-          userId: id,
-        }));
-        const imagesData = await fetchAllAdminProfileImages({
-          profiles: minimalProfiles,
-        });
-        setProfileImages(imagesData);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load matches");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return rp;
+    },
+    enabled: rootIds.length > 0,
+  });
 
-  // Load once on mount
-  useEffect(() => {
-    void loadData(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const rootProfiles = rootProfilesData || {};
+
+  // Collect all unique profile IDs for images
+  const allIds = useMemo(() => {
+    if (!matchesData?.matches) return [];
+    const ids = new Set<string>();
+    (matchesData.matches as MatchGroup[]).forEach((g) => {
+      if (g.profileId) ids.add(g.profileId);
+      if (Array.isArray(g.matches)) g.matches.forEach((m) => ids.add(m._id as string));
+    });
+    return Array.from(ids);
+  }, [matchesData]);
+
+  const { data: profileImages } = useQuery({
+    queryKey: ["admin", "profiles", "images", allIds],
+    queryFn: () => adminProfilesAPI.batchFetchImages(allIds.map((id) => ({ _id: id, userId: id }))),
+    enabled: allIds.length > 0,
+  });
 
   // Build flattened unique match pairs (memoized)
   const matchPairs = useMemo(() => {
+    if (!matchesData?.matches) return [];
     const seen = new Set<string>();
     const out: {
       key: string;
       left: Profile | undefined;
       right: Profile | undefined;
     }[] = [];
-    for (const group of matchesData.matches) {
+    for (const group of (matchesData.matches as MatchGroup[])) {
       const rootId = group.profileId;
       if (!rootId || !Array.isArray(group.matches)) continue;
       const rootProfile = rootProfiles[rootId];
@@ -143,12 +137,13 @@ export default function AdminMatchesPage() {
       }
     }
     return out;
-  }, [matchesData.matches, rootProfiles]);
+  }, [matchesData?.matches, rootProfiles]);
 
-  // total matches count
-  const totalMatches = matchPairs.length;
-  const totalPages = Math.ceil(matchesData.total / matchesData.pageSize);
-  const serverPage = matchesData.page;
+  const totalPages = matchesData ? Math.ceil(matchesData.total / matchesData.pageSize) : 0;
+  const serverPage = matchesData?.page || 1;
+
+  const loading = matchesLoading;
+  const error = matchesError ? (matchesErrorObj as Error).message : null;
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
@@ -157,11 +152,11 @@ export default function AdminMatchesPage() {
         <div>
           <h1 className="text-3xl font-bold mb-1">Matches Overview</h1>
           <p className="text-muted-foreground">
-            View all matches across user profiles. Total: {matchesData.total} source profiles.
+            View all matches across user profiles. Total: {matchesData?.total || 0} source profiles.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => loadData(serverPage)} disabled={loading}>
+          <Button variant="outline" onClick={() => refetchMatches()} disabled={loading}>
             Refresh Data
           </Button>
           <Link href="/admin/matches/create">
@@ -180,7 +175,7 @@ export default function AdminMatchesPage() {
           ))}
         </div>
       ) : error ? (
-        <ErrorState message={error} onRetry={loadData} className="py-16" />
+        <ErrorState message={error} onRetry={() => refetchMatches()} className="py-16" />
       ) : (
         <>
           {matchPairs.length === 0 ? (
@@ -196,17 +191,17 @@ export default function AdminMatchesPage() {
               {matchPairs.map((pair) => {
                 const left = pair.left;
                 const right = pair.right;
-                const leftImages = left
-                  ? profileImages[left._id as any] || []
+                const leftImages = left && profileImages
+                  ? (profileImages as Record<string, ProfileImageInfo[]>)[left._id as string] || []
                   : [];
-                const rightImages = right
-                  ? profileImages[right._id as any] || []
+                const rightImages = right && profileImages
+                  ? (profileImages as Record<string, ProfileImageInfo[]>)[right._id as string] || []
                   : [];
                 const leftImageUrl = leftImages[0]?.url;
                 const rightImageUrl = rightImages[0]?.url;
-                const leftAge = left ? getAge(left.dateOfBirth as any) : null;
+                const leftAge = left ? getAge(left.dateOfBirth as string) : null;
                 const rightAge = right
-                  ? getAge(right.dateOfBirth as any)
+                  ? getAge(right.dateOfBirth as string)
                   : null;
                 return (
                   <Card
@@ -334,7 +329,7 @@ export default function AdminMatchesPage() {
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        if (serverPage > 1) loadData(serverPage - 1);
+                        if (serverPage > 1) setPage(serverPage - 1);
                       }}
                       className={
                         serverPage <= 1 ? "pointer-events-none opacity-50" : ""
@@ -362,7 +357,7 @@ export default function AdminMatchesPage() {
                           isActive={serverPage === pageNum}
                           onClick={(e) => {
                             e.preventDefault();
-                            loadData(pageNum);
+                            setPage(pageNum);
                           }}
                         >
                           {pageNum}
@@ -381,7 +376,7 @@ export default function AdminMatchesPage() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            loadData(totalPages);
+                            setPage(totalPages);
                           }}
                         >
                           {totalPages}
@@ -395,7 +390,7 @@ export default function AdminMatchesPage() {
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        if (serverPage < totalPages) loadData(serverPage + 1);
+                        if (serverPage < totalPages) setPage(serverPage + 1);
                       }}
                       className={
                         serverPage >= totalPages

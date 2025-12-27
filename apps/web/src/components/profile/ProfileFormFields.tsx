@@ -9,19 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format, parseISO, subYears } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { ProfileFormValues } from "@aroosi/shared/types";
 import type { UseFormReturn } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { PhoneInput } from "@/components/ui/phone-input";
 // Shared alias: form handles a *partial* profile during multi-step wizards
@@ -218,12 +211,6 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
     trigger,
   } = form;
 
-  // State for popover and calendar month
-  const [open, setOpen] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(
-    undefined,
-  );
-
   return (
     <div>
       <Label htmlFor={String(name)}>
@@ -234,11 +221,11 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
           control={control}
           name={name as keyof ProfileFormValues}
           render={({ field }) => {
-            let selectedDate: Date | null = null;
+            let selectedDate: Date | undefined = undefined;
             if (field.value) {
               if (typeof field.value === "string") {
                 const parsed = parseISO(field.value);
-                selectedDate = isNaN(parsed.getTime()) ? null : parsed;
+                selectedDate = isNaN(parsed.getTime()) ? undefined : parsed;
               } else if (field.value instanceof Date) {
                 selectedDate = field.value;
               }
@@ -247,61 +234,19 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
             const minDate = new Date("1940-01-01");
             const maxDate = subYears(new Date(), 18);
 
-            // Set initial calendar month to a reasonable default (25 years ago for adults)
-            const defaultMonth =
-              calendarMonth ?? selectedDate ?? subYears(new Date(), 25);
-
             return (
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    data-empty={!selectedDate}
-                    aria-invalid={!!errors[name] || undefined}
-                    className={cn(
-                      "w-full justify-start text-left font-normal mt-1 data-[empty=true]:text-neutral-light",
-                      !selectedDate && "text-neutral-light",
-                      errors[name] &&
-                        "ring-1 ring-danger border-danger focus-visible:ring-danger"
-                    )}
-                    disabled={form.formState.isSubmitting}
-                  >
-                    <CalendarDays className="mr-2 h-5 w-5" />
-                    {selectedDate ? (
-                      format(selectedDate, "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-auto p-0 z-[60]"
-                  align="start"
-                  side="bottom"
-                  sideOffset={8}
-                  avoidCollisions={true}
-                  collisionPadding={16}
-                  onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                >
-                  <Calendar
-                    className="bg-base-light border-0"
-                    mode="single"
-                    selected={selectedDate ?? undefined}
-                    month={defaultMonth}
-                    onMonthChange={setCalendarMonth}
-                    onSelect={(date) => {
-                      field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                      if (name === "dateOfBirth") void trigger("dateOfBirth");
-                      setCalendarMonth(date ?? undefined);
-                      setOpen(false);
-                    }}
-                    captionLayout="dropdown"
-                    disabled={(date) => date > maxDate || date < minDate}
-                    defaultMonth={defaultMonth}
-                    fixedWeeks
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                date={selectedDate}
+                setDate={(date) => {
+                  field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                  if (name === "dateOfBirth") void trigger("dateOfBirth");
+                }}
+                placeholder="Pick a date"
+                minDate={minDate}
+                maxDate={maxDate}
+                error={!!errors[name]}
+                disabled={form.formState.isSubmitting}
+              />
             );
           }}
         />

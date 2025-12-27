@@ -15,60 +15,59 @@ alwaysApply: true
   - React components (`components/**/*.tsx`)
   - Context providers (`contexts/**/*.tsx`)
 
-- **✅ ALWAYS use utility functions from:**
-  - `/lib/profile/userProfileApi.ts` - User profile operations
-  - `/lib/profile/adminProfileApi.ts` - Admin profile operations  
+- **✅ ALWAYS use API clients from:**
+  - `/lib/api/admin/profiles.ts` - Admin profile operations
+  - `/lib/api/admin/matches.ts` - Admin match operations
+  - `/lib/api/admin/blog.ts` - Admin blog operations
+  - `/lib/api/admin/contact.ts` - Admin contact operations
+  - `/lib/api/admin/email.ts` - Admin email operations
+  - `/lib/api/admin/push.ts` - Admin push notification operations
+  - `/lib/api/blog.ts` - Public blog operations
+  - `/lib/api/contact.ts` - Public contact operations
+  - `/lib/api/profile.ts` - User profile operations
+  - `/lib/api/interests.ts` - User interest operations
+  - `/lib/api/subscription.ts` - Payment and subscription operations
+  - `/lib/api/search.ts` - Search operations
   - `/lib/utils/imageUtil.ts` - Image upload/delete/reorder
-  - `/lib/utils/stripeUtil.ts` - Payment and subscription operations
-  - `/lib/utils/imageSearchUtil.ts` - Image search operations
-  - `/lib/blogUtil.ts` - Blog content management
-  - `/lib/contactUtil.ts` - Contact form operations
-  - `/lib/interestUtils.ts` - User interest operations
 
-## **Available Utility Functions**
+## **Available API Clients**
 
-### **Profile Operations**
+### **Admin Operations**
 ```typescript
-// User Profile API
-import { 
-  getCurrentUserWithProfile,
-  submitProfile,
-  fetchUserProfileImages 
-} from "@/lib/profile/userProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
+import { adminBlogAPI } from "@/lib/api/admin/blog";
+import { adminContactAPI } from "@/lib/api/admin/contact";
+import { adminEmailAPI } from "@/lib/api/admin/email";
+import { adminPushAPI } from "@/lib/api/admin/push";
 
-// Admin Profile API  
-import {
-  fetchAdminProfileImagesById,
-  deleteAdminProfileImageById,
-  adminUploadProfileImage
-} from "@/lib/profile/adminProfileApi";
+// Example usage:
+const profiles = await adminProfilesAPI.list({ page: 1, pageSize: 20 });
+const match = await adminMatchesAPI.create(profileAId, profileBId);
 ```
 
-### **Image Operations**
+### **Public Operations**
 ```typescript
-import {
-  updateImageOrder,
-  getImageUploadUrl,
-  saveImageMeta,
-  deleteImageById
-} from "@/lib/utils/imageUtil";
+import { blogAPI } from "@/lib/api/blog";
+import { contactAPI } from "@/lib/api/contact";
 
-import { searchImages } from "@/lib/utils/imageSearchUtil";
+// Example usage:
+const posts = await blogAPI.getPosts({ limit: 10 });
+const result = await contactAPI.submitContact(formData);
 ```
 
-### **Payment Operations**
+### **User Operations**
 ```typescript
-import { createCheckoutSession } from "@/lib/utils/stripeUtil";
-```
+import { profileAPI } from "@/lib/api/profile";
+import { interestsAPI } from "@/lib/api/interests";
+import { subscriptionAPI } from "@/lib/api/subscription";
+import { searchAPI } from "@/lib/api/search";
 
-### **Content Operations**
-```typescript
-import { 
-  fetchBlogPosts,
-  uploadBlogImageMeta 
-} from "@/lib/blogUtil";
-
-import { fetchAllContactsAdmin } from "@/lib/contactUtil";
+// Example usage:
+const profile = await profileAPI.get();
+await interestsAPI.send(targetUserId);
+const plans = await subscriptionAPI.getPlans();
+const results = await searchAPI.search(filters);
 ```
 
 ## **Common Violations & Fixes**

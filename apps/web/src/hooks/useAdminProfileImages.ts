@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAdminProfileImagesById } from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { useEffect, useState } from "react";
 
@@ -17,7 +17,7 @@ export function useAdminProfileImages({
     queryFn: async () => {
       if (!profileId) return [];
       try {
-        return await fetchAdminProfileImagesById({ profileId });
+        return await adminProfilesAPI.getImages(profileId);
       } catch (e) {
         // swallow, returning empty; caller can display a toast if desired
         return [];

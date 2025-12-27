@@ -5,13 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { ProfileFormValues, ProfileImageInfo, Profile } from "@aroosi/shared/types";
-import {
-  adminUploadProfileImage,
-  deleteAdminProfileImageById,
-  updateAdminProfileImageOrder,
-  createManualMatch,
-  fetchAdminProfiles,
-} from "@/lib/profile/adminProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { adminMatchesAPI } from "@/lib/api/admin/matches";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { COUNTRIES } from "@/lib/constants/countries";
 
@@ -180,10 +175,7 @@ export function useProfileEditFormLogic({
     setUploading(true);
     setImageError(null);
     try {
-      const img = await adminUploadProfileImage({
-        profileId,
-        file: e.target.files[0],
-      } as any);
+      const img = await adminProfilesAPI.uploadImage(profileId, e.target.files[0]);
       setImages((prev) => [...prev, img]);
     } catch (err: any) {
       setImageError(err.message || "Failed to upload image");
@@ -196,7 +188,7 @@ export function useProfileEditFormLogic({
     if (!profileId) return;
     setImageError(null);
     try {
-      await deleteAdminProfileImageById({ profileId, imageId } as any);
+      await adminProfilesAPI.deleteImage(profileId, imageId);
       setImages((prev) => prev.filter((img) => img.storageId !== imageId));
     } catch (err: any) {
       setImageError(err.message || "Failed to delete image");
@@ -207,12 +199,12 @@ export function useProfileEditFormLogic({
     setImages(newOrder);
     if (profileId) {
       try {
-        await updateAdminProfileImageOrder({
+        await adminProfilesAPI.updateImageOrder(
           profileId,
-          imageIds: newOrder
+          newOrder
             .map((img) => img.storageId)
-            .filter((v): v is string => typeof v === "string" && v.length > 0),
-        } as any);
+            .filter((v): v is string => typeof v === "string" && v.length > 0)
+        );
       } catch (err: any) {
         setImageError("Failed to update image order");
       }
@@ -234,10 +226,10 @@ export function useProfileEditFormLogic({
     }
     const timeout = setTimeout(async () => {
       try {
-        const { profiles } = await fetchAdminProfiles({
+        const { profiles } = await adminProfilesAPI.list({
           search: term,
           page: 1,
-        } as any);
+        });
         setSuggestions(profiles.slice(0, 5));
       } catch {
         setSuggestions([]);
@@ -253,10 +245,10 @@ export function useProfileEditFormLogic({
     try {
       let target: Profile | undefined = selectedProfile ?? undefined;
       if (!target) {
-        const { profiles } = await fetchAdminProfiles({
+        const { profiles } = await adminProfilesAPI.list({
           search: manualMatchName.trim(),
           page: 1,
-        } as any);
+        });
         target = profiles.find((p) =>
           p.fullName.toLowerCase().includes(manualMatchName.trim().toLowerCase())
         );
@@ -264,11 +256,8 @@ export function useProfileEditFormLogic({
       if (!target) throw new Error("No matching profile found");
       if (target._id === profileId) throw new Error("Cannot match a profile with itself");
 
-      const res = await createManualMatch({
-        fromProfileId: profileId,
-        toProfileId: target._id,
-      } as any);
-      if (!res.success) throw new Error(res.error || "Failed to match");
+      const res = await adminMatchesAPI.create(profileId, target._id);
+      if (res?.success === false) throw new Error(res.error || "Failed to match");
       showSuccessToast(`Matched with ${target.fullName}`);
       setManualMatchName("");
       setSelectedProfile(null);

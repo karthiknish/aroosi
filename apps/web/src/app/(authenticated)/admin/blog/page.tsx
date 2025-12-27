@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchAdminBlogPosts, deleteBlogPost } from "@/lib/blogUtil";
+import { adminBlogAPI } from "@/lib/api/admin/blog";
 import type { BlogPost } from "@/types/blog";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -33,11 +33,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Search, Plus, Edit, Trash2, Eye, Grid, List, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminBlogPage() {
   // Cookie-auth only; remove token from context
   const { isAdmin, isLoaded } = useAuthContext();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
@@ -50,13 +52,37 @@ export default function AdminBlogPage() {
     isLoading,
     isError,
     error,
-    refetch,
   } = useQuery({
     // query is keyed without token now
     queryKey: ["adminBlogs", page, searchTerm],
     // Server will read HttpOnly cookies and authorize
-    queryFn: () => fetchAdminBlogPosts({ token: "", page, pageSize }),
+    queryFn: () => adminBlogAPI.list({ page, pageSize }),
     enabled: isLoaded && isAdmin,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminBlogAPI.delete(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["adminBlogs"] });
+      toast.success("Blog post deleted successfully");
+    },
+    onError: (err: Error) => {
+      toast.error(`Failed to delete blog post: ${err.message}`);
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => adminBlogAPI.delete(id)));
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["adminBlogs"] });
+      setSelectedPosts([]);
+      toast.success("Selected blog posts deleted successfully");
+    },
+    onError: (err: Error) => {
+      toast.error(`Failed to delete blog posts: ${err.message}`);
+    },
   });
 
   const blogs = blogData.posts;
@@ -98,22 +124,16 @@ export default function AdminBlogPage() {
   };
 
   const handleDelete = async (id: string) => {
-    // Cookie-auth: server reads HttpOnly cookies; token no longer required
-    if (typeof deleteBlogPost === "function") {
-      await deleteBlogPost("", id);
-      void refetch();
-      setSelectedPosts((prev) => prev.filter((postId) => postId !== id));
+    if (confirm("Are you sure you want to delete this blog post?")) {
+      deleteMutation.mutate(id);
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedPosts.length === 0) return;
- 
-    for (const id of selectedPosts) {
-      await deleteBlogPost("", id);
+    if (confirm(`Are you sure you want to delete ${selectedPosts.length} blog posts?`)) {
+      bulkDeleteMutation.mutate(selectedPosts);
     }
-    void refetch();
-    setSelectedPosts([]);
   };
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {

@@ -3,7 +3,7 @@
  * Handles shortlists, notes, and other engagement features
  */
 
-import { api } from './client';
+import { api, ApiResponse } from './client';
 import type { QuickPickProfile, ShortlistEntry, NoteData } from '@aroosi/shared';
 
 // Re-export types for convenience
@@ -26,7 +26,7 @@ function todayKey(): string {
 /**
  * Get daily quick pick profiles
  */
-export async function getDailyQuickPicks(dayKey?: string) {
+export async function getDailyQuickPicks(dayKey?: string): Promise<ApiResponse<{ userIds: string[]; profiles: QuickPickProfile[] }>> {
     const key = dayKey || todayKey();
     return api.get<{ userIds: string[]; profiles: QuickPickProfile[] }>(
         `/engagement/quick-picks?day=${encodeURIComponent(key)}`
@@ -36,7 +36,7 @@ export async function getDailyQuickPicks(dayKey?: string) {
 /**
  * Act on a quick pick (like or skip)
  */
-export async function actOnQuickPick(toUserId: string, action: 'like' | 'skip') {
+export async function actOnQuickPick(toUserId: string, action: 'like' | 'skip'): Promise<ApiResponse<{ success: boolean }>> {
     return api.post<{ success: boolean }>('/engagement/quick-picks', {
         toUserId,
         action,
@@ -48,14 +48,14 @@ export async function actOnQuickPick(toUserId: string, action: 'like' | 'skip') 
 /**
  * Fetch user's shortlisted profiles
  */
-export async function fetchShortlists() {
+export async function fetchShortlists(): Promise<ApiResponse<ShortlistEntry[]>> {
     return api.get<ShortlistEntry[]>('/engagement/shortlist');
 }
 
 /**
  * Toggle shortlist - adds if not present, removes if present
  */
-export async function toggleShortlist(toUserId: string) {
+export async function toggleShortlist(toUserId: string): Promise<ApiResponse<{ success: boolean; added?: boolean; removed?: boolean }>> {
     return api.post<{ success: boolean; added?: boolean; removed?: boolean }>(
         '/engagement/shortlist',
         { toUserId }
@@ -65,7 +65,7 @@ export async function toggleShortlist(toUserId: string) {
 /**
  * Check if a user is shortlisted
  */
-export async function isUserShortlisted(userId: string) {
+export async function isUserShortlisted(userId: string): Promise<boolean> {
     try {
         const response = await fetchShortlists();
         if (response.data) {
@@ -82,17 +82,17 @@ export async function isUserShortlisted(userId: string) {
 /**
  * Fetch note for a user
  */
-export async function fetchNote(toUserId: string) {
+export async function fetchNote(toUserId: string): Promise<ApiResponse<NoteData>> {
     return api.get<NoteData>(
-        `/engagement/note?toUserId=${encodeURIComponent(toUserId)}`
+        `/engagement/notes?toUserId=${encodeURIComponent(toUserId)}`
     );
 }
 
 /**
  * Set/update note for a user
  */
-export async function setNote(toUserId: string, note: string) {
-    return api.post<{ success: boolean }>('/engagement/note', {
+export async function setNote(toUserId: string, note: string): Promise<ApiResponse<{ success: boolean }>> {
+    return api.post<{ success: boolean }>('/engagement/notes', {
         toUserId,
         note,
     });

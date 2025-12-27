@@ -3,7 +3,9 @@
  */
 
 import auth from '@react-native-firebase/auth';
-import { API_BASE_URL } from '../../config';
+import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL, DEBUG } from '../../config';
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -12,17 +14,29 @@ interface RequestOptions {
     authenticated?: boolean;
     retries?: number;
     timeout?: number;
+    cache?: boolean;
+    cacheTTL?: number;
 }
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
     data?: T;
     error?: string;
     status: number;
     correlationId?: string;
+    fromCache?: boolean;
 }
 
 const MAX_RETRIES = 2;
 const DEFAULT_TIMEOUT = 15000; // 15 seconds
+const CACHE_PREFIX = '@api_cache:';
+const DEFAULT_CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
+/**
+ * Get a cache key for an endpoint
+ */
+function getCacheKey(endpoint: string): string {
+    return `${CACHE_PREFIX}${endpoint}`;
+}
 
 /**
  * Get Firebase auth token for authenticated requests
@@ -56,6 +70,50 @@ export async function apiRequest<T>(
 
     const url = `${API_BASE_URL}${endpoint}`;
 
+    // Handle caching for GET requests
+    const cacheKey = getCacheKey(endpoint);
+    if (method === 'GET' && options.cache) {
+        try {
+            const cachedData = await AsyncStorage.getItem(cacheKey);
+            if (cachedData) {
+                const { data, timestamp, ttl } = JSON.parse(cachedData);
+                const isExpired = Date.now() - timestamp > (ttl || DEFAULT_CACHE_TTL);
+                
+                // Check network status
+                const netInfo = await NetInfo.fetch();
+                
+                if (!isExpired && netInfo.isConnected) {
+                    if (DEBUG) console.log(`[API] Cache hit: ${endpoint}`);
+                    return {
+                        data,
+                        status: 200,
+                        fromCache: true,
+                    };
+                }
+                
+                if (!netInfo.isConnected) {
+                    if (DEBUG) console.log(`[API] Offline, using cached data: ${endpoint}`);
+                    return {
+                        data,
+                        status: 200,
+                        fromCache: true,
+                    };
+                }
+            }
+        } catch (error) {
+            console.error('[API] Cache read error:', error);
+        }
+    }
+
+    // Check network status
+    const netInfo = await NetInfo.fetch();
+    if (!netInfo.isConnected) {
+        return {
+            error: 'No internet connection',
+            status: 0,
+        };
+    }
+
     const requestHeaders: Record<string, string> = {
         ...headers,
     };
@@ -75,6 +133,13 @@ export async function apiRequest<T>(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+    if (DEBUG) {
+        console.log(`[API] ${method} ${url}`, {
+            headers: requestHeaders,
+            body: body instanceof FormData ? '[FormData]' : body,
+        });
+    }
+
     try {
         const response = await fetch(url, {
             method,
@@ -87,6 +152,13 @@ export async function apiRequest<T>(
 
         const correlationId = response.headers.get('x-correlation-id') || undefined;
         const data = await response.json().catch(() => null);
+
+        if (DEBUG) {
+            console.log(`[API] ${response.status} ${endpoint}`, {
+                correlationId,
+                data,
+            });
+        }
 
         // Handle 401 Unauthorized - retry once with forced token refresh
         if (response.status === 401 && authenticated && attempt === 0) {
@@ -108,6 +180,22 @@ export async function apiRequest<T>(
                 status: response.status,
                 correlationId,
             };
+        }
+
+        // Store in cache if requested
+        if (method === 'GET' && options.cache && data) {
+            try {
+                await AsyncStorage.setItem(
+                    cacheKey,
+                    JSON.stringify({
+                        data,
+                        timestamp: Date.now(),
+                        ttl: options.cacheTTL || DEFAULT_CACHE_TTL,
+                    })
+                );
+            } catch (error) {
+                console.error('[API] Cache write error:', error);
+            }
         }
 
         return {

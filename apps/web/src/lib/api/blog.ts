@@ -1,29 +1,10 @@
-/**
- * Blog API - Handles blog post operations
- */
+import type { BlogPost } from "@/types/blog";
 
-export interface BlogPost {
-  id: string;
-  slug: string;
-  title: string;
-  content: string;
-  excerpt?: string;
-  author?: string;
-  coverImageUrl?: string;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt?: string;
-  tags?: string[];
-  isPublished?: boolean;
-}
-
-export interface BlogPostInput {
-  title: string;
-  content: string;
-  excerpt?: string;
-  coverImageUrl?: string;
-  tags?: string[];
-  isPublished?: boolean;
+export interface BlogListResponse {
+  posts: BlogPost[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 class BlogAPI {
@@ -60,13 +41,36 @@ class BlogAPI {
   }
 
   /**
-   * Get all blog posts
+   * Get all blog posts with pagination
    */
-  async getPosts(limit = 20, offset = 0): Promise<{ posts: BlogPost[]; total: number }> {
-    const res = await this.makeRequest(`/api/blog?limit=${limit}&offset=${offset}`);
+  async getPosts(params: { 
+    page?: number; 
+    pageSize?: number; 
+    category?: string;
+    q?: string;
+  } = {}): Promise<BlogListResponse> {
+    const query = new URLSearchParams();
+    if (params.page !== undefined) query.append("page", String(params.page));
+    if (params.pageSize !== undefined) query.append("pageSize", String(params.pageSize));
+    if (params.category) query.append("category", params.category);
+    if (params.q) query.append("q", params.q);
+
+    const data = await this.makeRequest(`/api/blog?${query.toString()}`);
+    
+    if (data && data.success && data.data) {
+      return {
+        posts: data.data.posts || [],
+        total: data.data.total || 0,
+        page: data.data.page || 0,
+        pageSize: data.data.pageSize || 6,
+      };
+    }
+
     return {
-      posts: res.data?.posts || res.posts || [],
-      total: res.data?.total || res.total || 0,
+      posts: data?.posts || [],
+      total: data?.total || 0,
+      page: data?.page || 0,
+      pageSize: data?.pageSize || 6,
     };
   }
 
@@ -75,50 +79,14 @@ class BlogAPI {
    */
   async getPost(slug: string): Promise<BlogPost | null> {
     try {
-      const res = await this.makeRequest(`/api/blog/${encodeURIComponent(slug)}`);
-      return res.data?.post || res.post || null;
+      const data = await this.makeRequest(`/api/blog/${encodeURIComponent(slug)}`);
+      if (data && data.success && data.data) {
+        return data.data.post || data.data;
+      }
+      return data?.post || data || null;
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Create a new blog post (admin only)
-   */
-  async createPost(data: BlogPostInput): Promise<BlogPost> {
-    return this.makeRequest("/api/blog", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
-
-  /**
-   * Update a blog post (admin only)
-   */
-  async updatePost(slug: string, data: Partial<BlogPostInput>): Promise<BlogPost> {
-    return this.makeRequest(`/api/blog/${encodeURIComponent(slug)}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
-
-  /**
-   * Delete a blog post (admin only)
-   */
-  async deletePost(slug: string): Promise<void> {
-    return this.makeRequest(`/api/blog/${encodeURIComponent(slug)}`, {
-      method: "DELETE",
-    });
-  }
-
-  /**
-   * Submit user blog content
-   */
-  async submitUserContent(data: { title: string; content: string; email: string }): Promise<void> {
-    return this.makeRequest("/api/blog/user-submissions", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
   }
 }
 

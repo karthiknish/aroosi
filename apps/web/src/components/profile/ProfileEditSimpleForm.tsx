@@ -28,6 +28,7 @@ type Props = {
   initialValues: Partial<ProfileFormValues>;
   onSubmit: (values: ProfileFormValues) => void;
   onAutoSave?: (values: ProfileFormValues) => Promise<void>;
+  onValuesChange?: (values: Partial<ProfileFormValues>) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   loading?: boolean;
   serverError?: string | null;
@@ -39,6 +40,7 @@ export default function ProfileEditSimpleForm({
   initialValues,
   onSubmit,
   onAutoSave,
+  onValuesChange,
   onDirtyChange,
   loading = false,
   serverError,
@@ -60,6 +62,12 @@ export default function ProfileEditSimpleForm({
 
   // LocalStorage backup & Server Auto-save
   const watchedValues = watch();
+
+  // Notify parent of value changes for preview
+  useEffect(() => {
+    onValuesChange?.(watchedValues as Partial<ProfileFormValues>);
+  }, [watchedValues, onValuesChange]);
+
   useEffect(() => {
     if (formState.isDirty) {
       const timer = setTimeout(async () => {

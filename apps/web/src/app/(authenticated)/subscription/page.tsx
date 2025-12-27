@@ -14,10 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import CancelSubscriptionButton from "@/components/subscription/CancelSubscriptionButton";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import {
-  createCheckoutSession,
-  openBillingPortal,
-} from "@/lib/utils/stripeUtil";
+import { subscriptionAPI } from "@/lib/api/subscription";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -96,15 +93,14 @@ export default function SubscriptionPage() {
     if (status?.plan === "free") {
       // Use Stripe checkout for paid plans; cookie-auth on server side
       try {
-        const result = await createCheckoutSession("", {
-          planType: tier,
+        const result = await subscriptionAPI.upgrade(tier, {
           successUrl: window.location.origin + "/subscription?checkout=success",
           cancelUrl: window.location.origin + "/subscription?checkout=cancel",
-        } as any);
-        if (result.success && result.checkoutUrl) {
-          window.location.href = result.checkoutUrl;
+        });
+        if (result.url) {
+          window.location.href = result.url;
         } else {
-          showErrorToast(result.error, "Checkout failed. Please try again.");
+          showErrorToast(null, "Checkout failed. Please try again.");
         }
       } catch (err) {
         showErrorToast(err, "Checkout failed. Please try again.");
@@ -123,10 +119,7 @@ export default function SubscriptionPage() {
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get("checkout") === "success") {
-      fetch("/api/subscription/refresh", {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => {});
+      subscriptionAPI.refreshSubscription().catch(() => {});
     }
   }, []);
 
@@ -151,7 +144,8 @@ export default function SubscriptionPage() {
 
   const handleManageBilling = async () => {
     try {
-      await openBillingPortal();
+      const { url } = await subscriptionAPI.openBillingPortal();
+      if (url) window.location.assign(url);
     } catch (err) {
       showErrorToast(err, "Failed to open billing portal");
     }

@@ -7,10 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
-import {
-  listEmailTemplates,
-  sendMarketingEmail,
-} from "@/lib/marketingEmailApi";
+import { adminEmailAPI } from "@/lib/api/admin/email";
+import { adminPushAPI } from "@/lib/api/admin/push";
 
 interface DeviceRow {
   userId: string;
@@ -41,20 +39,18 @@ export default function AdminDevicesPage() {
   }) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
       const s = override?.search ?? search;
       const p = override?.page ?? page;
       const ps = override?.pageSize ?? pageSize;
-      if (s.trim()) params.set("search", s.trim());
-      params.set("page", String(p));
-      params.set("pageSize", String(ps));
-      const res = await fetch(
-        `/api/admin/push-notification/devices?${params.toString()}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      setRows(data?.data?.items ?? []);
-      setTotal(data?.data?.total ?? 0);
+      
+      const data = await adminPushAPI.getDevices({
+        search: s.trim() || undefined,
+        page: p,
+        pageSize: ps,
+      });
+      
+      setRows(data?.items ?? []);
+      setTotal(data?.total ?? 0);
     } catch (e) {
       console.error(e);
     } finally {
@@ -69,7 +65,7 @@ export default function AdminDevicesPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await listEmailTemplates();
+      const res = await adminEmailAPI.listMarketingTemplates();
       if (res.success && (res as any).data?.templates) {
         const t = (res as any).data.templates as Array<{
           key: string;
@@ -90,7 +86,7 @@ export default function AdminDevicesPage() {
   const testEmail = async (email: string) => {
     try {
       if (!selectedTemplate) throw new Error("Select a template first");
-      const res = await sendMarketingEmail("", {
+      const res = await adminEmailAPI.sendMarketingEmail({
         templateKey: selectedTemplate,
         dryRun: true,
         confirm: false,

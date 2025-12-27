@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 
 type Summary = {
   campaign: any;
@@ -54,20 +55,18 @@ export default function CampaignDetailsPage() {
         setCursor(undefined);
         setEmails([]);
       }
-      const s = await fetch(
-        `/api/admin/marketing-email/campaigns/${id}/summary`
-      ).then((r) => r.json());
-      if (s?.data) setSummary(s.data as Summary);
-      const q = new URLSearchParams();
-      q.set("limit", "50");
-      if (cursor && !reset) q.set("after", cursor);
-      if (filter) q.set("status", filter);
-      const e = await fetch(
-        `/api/admin/marketing-email/campaigns/${id}/emails?${q.toString()}`
-      ).then((r) => r.json());
-      if (e?.data?.items)
-        setEmails((prev) => (reset ? e.data.items : prev.concat(e.data.items)));
-      if (e?.data?.nextCursor) setCursor(e.data.nextCursor);
+      const s = await adminEmailAPI.getCampaignSummary(id);
+      if (s) setSummary(s as Summary);
+      
+      const e = await adminEmailAPI.getCampaignEmails(id, {
+        limit: 50,
+        after: cursor && !reset ? cursor : undefined,
+        status: filter || undefined,
+      });
+      
+      if (e?.items)
+        setEmails((prev) => (reset ? e.items : prev.concat(e.items)));
+      if (e?.nextCursor) setCursor(e.nextCursor);
       else setCursor(undefined);
     } finally {
       setLoading(false);
@@ -285,26 +284,19 @@ export default function CampaignDetailsPage() {
               <Button
                 size="sm"
                 onClick={async () => {
-                  await fetch(
-                    `/api/admin/marketing-email/campaigns/${id}/settings`,
-                    {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        priority,
-                        listId,
-                        status,
-                        maxAttempts,
-                        batchSize,
-                        headers: headers
-                          .filter((row) => row.key.trim())
-                          .reduce((acc: Record<string, string>, row) => {
-                            acc[row.key.trim()] = row.value;
-                            return acc;
-                          }, {}),
-                      }),
-                    }
-                  );
+                  await adminEmailAPI.updateCampaignSettings(id, {
+                    priority,
+                    listId,
+                    status,
+                    maxAttempts,
+                    batchSize,
+                    headers: headers
+                      .filter((row) => row.key.trim())
+                      .reduce((acc: Record<string, string>, row) => {
+                        acc[row.key.trim()] = row.value;
+                        return acc;
+                      }, {}),
+                  });
                   await load(true);
                 }}
               >

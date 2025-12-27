@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { searchProfiles } from "@/lib/searchUtil";
+import { searchAPI } from "@/lib/api/search";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
@@ -27,7 +27,7 @@ export function SimilarProfiles({ baseCity, baseCountry, baseMotherTongue, exclu
   const { data, isLoading, isError } = useQuery({
     queryKey: ["similar-profiles", params, excludeUserId],
     queryFn: async () => {
-      return await searchProfiles({
+      return await searchAPI.search({
         city: baseCity,
         country: baseCountry,
         motherTongue: baseMotherTongue,

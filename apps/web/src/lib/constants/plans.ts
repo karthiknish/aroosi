@@ -1,4 +1,4 @@
-import type { NormalizedPlan } from "@/lib/utils/stripeUtil";
+import type { NormalizedPlan } from "@/lib/api/subscription";
 
 export interface PlanFeature {
   text: string;

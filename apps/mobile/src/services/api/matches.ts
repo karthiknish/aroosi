@@ -26,9 +26,9 @@ export async function getUnreadMatchesCount() {
  * Like a user
  */
 export async function likeUser(userId: string, isSuperLike = false) {
-    return api.post<{ matched: boolean; matchId?: string }>('/recommendations', {
-        action: 'like',
-        userId,
+    return api.post<{ matched: boolean; matchId?: string }>('/interests', {
+        action: 'send',
+        toUserId: userId,
         isSuperLike,
     });
 }
@@ -37,9 +37,9 @@ export async function likeUser(userId: string, isSuperLike = false) {
  * Pass on a user
  */
 export async function passUser(userId: string) {
-    return api.post<{ success: boolean }>('/recommendations', {
-        action: 'pass',
-        userId,
+    return api.post<{ success: boolean }>('/engagement/quick-picks', {
+        action: 'skip',
+        toUserId: userId,
     });
 }
 

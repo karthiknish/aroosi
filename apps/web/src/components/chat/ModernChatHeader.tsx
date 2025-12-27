@@ -9,10 +9,19 @@ import Link from "next/link";
 import { planDisplayName } from "@/lib/utils/plan";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { cn } from "@/lib/utils";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import ProfileView from "@/components/profile/ProfileView";
 
 type ModernChatHeaderProps = {
   matchUserName?: string;
   matchUserAvatarUrl?: string;
+  matchProfile?: any;
   subscriptionPlan?: "free" | "premium" | "premiumPlus" | string;
   connectionStatus: "connected" | "connecting" | "disconnected";
   lastSeenAt?: number;
@@ -24,6 +33,7 @@ type ModernChatHeaderProps = {
 export default function ModernChatHeader({
   matchUserName = "",
   matchUserAvatarUrl = "",
+  matchProfile,
   subscriptionPlan,
   connectionStatus,
   lastSeenAt,
@@ -78,68 +88,93 @@ export default function ModernChatHeader({
             </motion.div>
           </Link>
 
-          {/* Avatar with refined status indicator */}
-          <div className="relative flex-shrink-0">
-            <Avatar className="h-11 w-11 ring-2 ring-white shadow-lg">
-              {matchUserAvatarUrl ? (
-                <AvatarImage
-                  src={matchUserAvatarUrl}
-                  alt={matchUserName || "User"}
-                  className="object-cover"
-                />
-              ) : null}
-              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary/10 to-warning/5 text-primary">
-                {matchUserName ? matchUserName[0]?.toUpperCase() : "U"}
-              </AvatarFallback>
-            </Avatar>
-            
-            {/* Animated status dot */}
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -bottom-0.5 -right-0.5 ring-[2.5px] ring-white rounded-full"
-            >
-              <div className={statusDotClass}>
-                {isOnline && (
-                  <motion.div
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute inset-0 rounded-full bg-success"
+          <Drawer>
+            <DrawerTrigger asChild>
+              <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity">
+                {/* Avatar with refined status indicator */}
+                <div className="relative flex-shrink-0">
+                  <Avatar className="h-11 w-11 ring-2 ring-white shadow-lg">
+                    {matchUserAvatarUrl ? (
+                      <AvatarImage
+                        src={matchUserAvatarUrl}
+                        alt={matchUserName || "User"}
+                        className="object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary/10 to-warning/5 text-primary">
+                      {matchUserName ? matchUserName[0]?.toUpperCase() : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Animated status dot */}
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -bottom-0.5 -right-0.5 ring-[2.5px] ring-white rounded-full"
+                  >
+                    <div className={statusDotClass}>
+                      {isOnline && (
+                        <motion.div
+                          animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="absolute inset-0 rounded-full bg-success"
+                        />
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Name and status text */}
+                <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[15px] leading-tight truncate text-neutral tracking-tight">
+                      {matchUserName || "User"}
+                    </span>
+                    
+                    {/* Premium badge - elegant inline design */}
+                    {isPremium(subscriptionPlan) && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-warning/5 to-warning/10 border border-warning/20"
+                      >
+                        <Sparkles className="w-3 h-3 text-warning" />
+                        <span className="text-[10px] font-semibold text-warning uppercase tracking-wider">
+                          {planDisplayName(subscriptionPlan)}
+                        </span>
+                      </motion.div>
+                    )}
+                  </div>
+                  
+                  <span className={cn(
+                    "text-xs font-medium tracking-wide transition-colors",
+                    isOnline ? "text-success" : "text-neutral-light"
+                  )}>
+                    {lastSeenLabel}
+                  </span>
+                </div>
+              </div>
+            </DrawerTrigger>
+            <DrawerContent className="h-[85vh]">
+              <DrawerHeader className="border-b border-neutral/10 pb-4">
+                <DrawerTitle className="text-center font-serif text-2xl">
+                  {matchUserName}&apos;s Profile
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="overflow-y-auto flex-1">
+                {matchProfile ? (
+                  <ProfileView 
+                    profileData={matchProfile} 
+                    className="py-4"
                   />
+                ) : (
+                  <div className="p-8 text-center text-neutral-light">
+                    Loading profile details...
+                  </div>
                 )}
               </div>
-            </motion.div>
-          </div>
-
-          {/* Name and status text */}
-          <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[15px] leading-tight truncate text-neutral tracking-tight">
-                {matchUserName || "User"}
-              </span>
-              
-              {/* Premium badge - elegant inline design */}
-              {isPremium(subscriptionPlan) && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-warning/5 to-warning/10 border border-warning/20"
-                >
-                  <Sparkles className="w-3 h-3 text-warning" />
-                  <span className="text-[10px] font-semibold text-warning uppercase tracking-wider">
-                    {planDisplayName(subscriptionPlan)}
-                  </span>
-                </motion.div>
-              )}
-            </div>
-            
-            <span className={cn(
-              "text-xs font-medium tracking-wide transition-colors",
-              isOnline ? "text-success" : "text-neutral-light"
-            )}>
-              {lastSeenLabel}
-            </span>
-          </div>
+            </DrawerContent>
+          </Drawer>
         </div>
 
         {/* Right section - Action buttons */}

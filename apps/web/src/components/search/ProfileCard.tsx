@@ -6,7 +6,7 @@ import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
-import { sendInterest } from "@/lib/interestUtils";
+import { interestsAPI } from "@/lib/api/interests";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -69,7 +69,7 @@ export function ProfileCard({
     
     setSending(true);
     try {
-      await sendInterest(result.userId);
+      await interestsAPI.send(result.userId);
       setSent(true);
       showSuccessToast("Interest sent successfully!");
       
@@ -78,7 +78,7 @@ export function ProfileCard({
       queryClient.invalidateQueries({ queryKey: ["interestStatus", undefined, result.userId] });
     } catch (error: any) {
       // If already sent (409), treat as success
-      if (error?.status === 409) {
+      if (error?.status === 409 || error?.message?.includes("409")) {
         setSent(true);
         showSuccessToast("Interest sent successfully!");
       } else {

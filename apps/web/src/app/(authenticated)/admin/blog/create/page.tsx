@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBlogPost, fetchBlogPostBySlug } from "@/lib/blogUtil";
+import { adminBlogAPI } from "@/lib/api/admin/blog";
 import { PostForm } from "@/components/admin/PostForm";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
 import { useBlogAI } from "@/hooks/useBlogAI";
+import { useMutation } from "@tanstack/react-query";
 
 export default function CreateBlogPage() {
   useAuthContext(); // maintain hook order; no token usage in cookie-auth
@@ -19,7 +20,6 @@ export default function CreateBlogPage() {
   const [content, setContent] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string>("");
   const [categories, setCategories] = useState<string[]>([]);
-  const [creating, setCreating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
   const [pexelsOpen, setPexelsOpen] = useState<boolean>(false);
@@ -53,12 +53,8 @@ export default function CreateBlogPage() {
 
   const editorResetKey = 0;
 
-  const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
-    // Ensure form submission doesn't trigger a full page reload
-    e.preventDefault();
-    setCreating(true);
-    setError(null);
-    try {
+  const createMutation = useMutation({
+    mutationFn: async () => {
       // Basic client validation
       if (
         !title.trim() ||
@@ -69,26 +65,23 @@ export default function CreateBlogPage() {
       ) {
         throw new Error("Please fill in all required fields.");
       }
-      // Slug uniqueness check via Firestore-backed API
-      const existing = await fetchBlogPostBySlug(slug);
+
+      // Slug uniqueness check
+      const existing = await adminBlogAPI.get(slug);
       if (existing) {
         throw new Error("Slug already exists. Please choose a different slug.");
       }
-      const categoriesArray: string[] = categories;
-      const result = await createBlogPost("", {
+
+      return adminBlogAPI.create({
         title,
         slug,
         excerpt,
         content,
         imageUrl,
-        categories: categoriesArray,
-      } as any);
-      if (!result?.success) {
-        const msg = result?.error || "Failed to create post";
-        setError(msg);
-        showErrorToast(null, msg);
-        return;
-      }
+        categories,
+      });
+    },
+    onSuccess: () => {
       showSuccessToast("Post created successfully");
       // reset
       setTitle("");
@@ -99,13 +92,17 @@ export default function CreateBlogPage() {
       setCategories([]);
       // navigate optimistically to the new post page
       router.push(`/blog/${encodeURIComponent(slug)}`);
-    } catch (err: unknown) {
-      const error = err as Error;
-      setError(error.message || "Failed to create post");
-      showErrorToast(error, "Failed to create post");
-    } finally {
-      setCreating(false);
-    }
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      showErrorToast(err, "Failed to create post");
+    },
+  });
+
+  const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    createMutation.mutate();
   };
 
   return (
@@ -127,7 +124,7 @@ export default function CreateBlogPage() {
         setContent={setContent}
         imageUrl={imageUrl}
         setImageUrl={setImageUrl}
-        isSubmitting={creating}
+        isSubmitting={createMutation.isPending}
         error={error}
         onSubmit={handleCreatePost}
         onCancel={() => router.back()}

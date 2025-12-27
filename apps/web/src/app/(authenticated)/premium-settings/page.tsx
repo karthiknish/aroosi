@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useRouter } from "next/navigation";
+import { subscriptionAPI } from "@/lib/api/subscription";
 import {
   updateUserProfile,
   boostProfile,
@@ -386,8 +387,7 @@ export default function PremiumSettingsPage() {
                         size="sm"
                         onClick={async () => {
                           try {
-                            const { openBillingPortal } = await import("@/lib/utils/stripeUtil");
-                            await openBillingPortal();
+                            await subscriptionAPI.openBillingPortal();
                           } catch (e) {
                             console.error("Manage billing failed", e);
                           }

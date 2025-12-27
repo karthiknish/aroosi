@@ -53,48 +53,63 @@ class AdminPushAPI {
   }
 
   /**
-   * Send push notification
+   * Send push notification (or preview)
    */
-  async send(data: { userIds?: string[]; title: string; body: string; data?: any }): Promise<any> {
+  async send(payload: any): Promise<any> {
     return this.makeRequest("/api/admin/push-notification", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
   /**
    * Send test notification
    */
-  async sendTest(data: { token: string; title: string; body: string }): Promise<any> {
+  async sendTest(payload: any): Promise<any> {
     return this.makeRequest("/api/admin/push-notification/test-send", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
   /**
    * Get registered devices
    */
-  async getDevices(limit = 50, offset = 0): Promise<{ devices: PushDevice[]; total: number }> {
-    const res = await this.makeRequest(`/api/admin/push-notification/devices?limit=${limit}&offset=${offset}`);
+  async getDevices(params: { search?: string; page?: number; pageSize?: number } = {}): Promise<{ devices: any[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params.search) query.append("search", params.search);
+    if (params.page) query.append("page", String(params.page));
+    if (params.pageSize) query.append("pageSize", String(params.pageSize));
+    
+    const res = await this.makeRequest(`/api/admin/push-notification/devices?${query.toString()}`);
     return {
-      devices: res.data?.devices || res.devices || [],
+      devices: res.data?.items || res.data?.devices || res.items || res.devices || [],
       total: res.data?.total || res.total || 0,
     };
   }
 
   /**
+   * Get push analytics
+   */
+  async getAnalytics(): Promise<any> {
+    const res = await this.makeRequest("/api/admin/push-notification/analytics");
+    return res.data || res;
+  }
+
+  /**
    * Get push templates
    */
-  async getTemplates(): Promise<PushTemplate[]> {
-    const res = await this.makeRequest("/api/admin/push-notification/templates");
-    return res.data?.templates || res.templates || [];
+  async getTemplates(search?: string): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (search) query.append("search", search);
+    const res = await this.makeRequest(`/api/admin/push-notification/templates?${query.toString()}`);
+    return res.data?.items || res.data?.templates || res.items || res.templates || [];
   }
 
   /**
    * Create push template
    */
-  async createTemplate(template: Omit<PushTemplate, "id">): Promise<PushTemplate> {
+  async createTemplate(template: any): Promise<any> {
     return this.makeRequest("/api/admin/push-notification/templates", {
       method: "POST",
       body: JSON.stringify(template),
@@ -104,7 +119,7 @@ class AdminPushAPI {
   /**
    * Update push template
    */
-  async updateTemplate(templateId: string, template: Partial<PushTemplate>): Promise<PushTemplate> {
+  async updateTemplate(templateId: string, template: any): Promise<any> {
     return this.makeRequest(`/api/admin/push-notification/templates/${templateId}`, {
       method: "PATCH",
       body: JSON.stringify(template),
@@ -115,7 +130,7 @@ class AdminPushAPI {
    * Delete push template
    */
   async deleteTemplate(templateId: string): Promise<void> {
-    return this.makeRequest(`/api/admin/push-notification/templates/${templateId}`, {
+    await this.makeRequest(`/api/admin/push-notification/templates/${templateId}`, {
       method: "DELETE",
     });
   }

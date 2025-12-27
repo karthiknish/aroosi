@@ -1,6 +1,6 @@
 "use client";
 import { useState, Suspense } from "react";
-import { sendInterest, removeInterest } from "@/lib/interestUtils";
+import { interestsAPI } from "@/lib/api/interests";
 import { Heart, HeartOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -16,10 +16,10 @@ function InterestE2ETestPageInner() {
     setStatus("loading");
     try {
       if (sent) {
-        await removeInterest(toUserId);
+        await interestsAPI.remove(toUserId);
         setSent(false);
       } else {
-        await sendInterest(toUserId);
+        await interestsAPI.send(toUserId);
         setSent(true);
       }
       setStatus("success");

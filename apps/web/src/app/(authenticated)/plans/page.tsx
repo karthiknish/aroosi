@@ -15,12 +15,7 @@ import {
 } from "lucide-react";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
 // Source of truth: fetch normalized plans from server only (no client constants)
-import {
-  createCheckoutSession,
-  getPlans,
-  refreshSubscription,
-  type NormalizedPlan,
-} from "@/lib/utils/stripeUtil";
+import { subscriptionAPI, type NormalizedPlan } from "@/lib/api/subscription";
 import { DEFAULT_PLANS } from "@/lib/constants/plans";
 import React, { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,7 +43,7 @@ export default function ManagePlansPage() {
         setCheckoutSuccess(true);
         // Kick off a background refresh of the user profile to pull new plan
         refreshUser?.();
-        void refreshSubscription();
+        void subscriptionAPI.refreshSubscription();
         // Force immediate revalidation of subscription queries (status & usage)
         queryClient
           .invalidateQueries({ queryKey: ["subscription", "status"] })
@@ -80,7 +75,7 @@ export default function ManagePlansPage() {
         setIsFetching(true);
         setFetchError(null);
         // Fetch from server endpoint via util; normalize on server ensures minor units + currency
-        const data = await getPlans();
+        const data = await subscriptionAPI.getPlans();
         if (mounted) {
           // Ensure at least Free/Premium/Premium Plus exist as a fallback
           const safe: NormalizedPlan[] =
@@ -125,20 +120,19 @@ export default function ManagePlansPage() {
       // Cookie-auth: backend will read HttpOnly cookies; no token required
       showInfoToast("Redirecting to secure checkout...");
 
-      const result = await createCheckoutSession("", {
-        planType: planId as "premium" | "premiumPlus",
+      const result = await subscriptionAPI.upgrade(planId, {
         // Redirect back to plans page using the param the page already watches (checkout=success)
         // so the post‑checkout refresh effect triggers reliably.
         successUrl: `${window.location.origin}/plans?checkout=success`,
         cancelUrl: `${window.location.origin}/plans`,
       });
 
-      if (!result.success || !result.checkoutUrl) {
-        throw new Error(result.error || "Unknown error");
+      if (!result.url) {
+        throw new Error("No checkout URL returned");
       }
       showSuccessToast("Opening secure Stripe checkout");
 
-      window.location.href = result.checkoutUrl;
+      window.location.href = result.url;
     } catch (err) {
       showErrorToast(err as Error, "Failed to start checkout");
     } finally {
@@ -431,15 +425,7 @@ export default function ManagePlansPage() {
                 variant="outline"
                 onClick={async () => {
                   try {
-                    // Use Subscription API helper which returns a typed { url }
-                    const mod = await import("@/lib/api/subscription");
-                    const { subscriptionAPI } = mod;
-                    const { url } = await subscriptionAPI.openBillingPortal();
-                    if (url) {
-                      window.location.assign(url);
-                    } else {
-                      showErrorToast("Unable to open billing portal");
-                    }
+                    await subscriptionAPI.openBillingPortal();
                   } catch (e: any) {
                     showErrorToast(
                       e?.message || "Unable to open billing portal"

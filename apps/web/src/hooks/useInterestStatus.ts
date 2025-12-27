@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { sendInterest, removeInterest } from "@/lib/interestUtils";
+import { interestsAPI } from "@/lib/api/interests";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 export type InterestLightStatus =
@@ -40,60 +40,22 @@ export function useInterestStatus({
     queryKey: ["interestStatus", fromUserId, toUserId],
     queryFn: async () => {
       if (!fromUserId || !toUserId) return null;
-      // Prefer dedicated status endpoint which infers direction using targetUserId; fall back to legacy mode param route
-      const primaryUrl = `/api/interests/status?targetUserId=${encodeURIComponent(
-        String(toUserId)
-      )}`;
-      const fallbackUrl = `/api/interests?mode=status&userId=${encodeURIComponent(
-        String(toUserId)
-      )}`;
       try {
-        const mod = await import("@/lib/http/client");
-        let raw: any = await mod.getJson<any>(primaryUrl, {
-          cache: "no-store",
-          headers: { "x-client-check": "interest-status" },
-        });
-        // Unwrap { success, data: { status } } pattern
-        if (
-          raw &&
-          typeof raw === "object" &&
-          raw.success &&
-          raw.data &&
-          typeof raw.data === "object" &&
-          "status" in raw.data
-        ) {
-          raw = { status: raw.data.status };
-        }
-        if (!raw || typeof raw !== "object" || !("status" in raw)) {
-          const fb: any = await mod.getJson<any>(fallbackUrl, {
-            cache: "no-store",
-            headers: { "x-client-check": "interest-status-fallback" },
-          });
-          if (
-            fb &&
-            typeof fb === "object" &&
-            fb.success &&
-            fb.data &&
-            typeof fb.data === "object" &&
-            "status" in fb.data
-          ) {
-            raw = { status: fb.data.status };
-          } else {
-            raw = fb;
-          }
-        }
-        const normalized: { status: InterestLightStatus | null } | null =
-          raw && typeof raw === "object" && "status" in raw
-            ? { status: (raw as any).status as InterestLightStatus | null }
-            : null;
+        const response = await interestsAPI.getStatus(String(toUserId));
+        
+        // Handle both { success, data: { status } } and { status } patterns
+        const status = response?.data?.status ?? response?.status;
+        
+        const normalized: { status: InterestLightStatus | null } | null = {
+          status: (status as InterestLightStatus) || null
+        };
+
         if (typeof window !== "undefined") {
           (window as any).__interestDebugLastFetch = {
             ts: Date.now(),
             fromUserId,
             toUserId,
-            primaryUrl,
-            usedFallback: normalized && raw && raw._legacy === true,
-            raw,
+            response,
             normalized,
           };
         }
@@ -195,7 +157,7 @@ export function useInterestStatus({
         queryClient.setQueryData(["interestStatus", fromUserId, toUserId], {
           status: "none",
         });
-        await removeInterest(String(toUserId));
+        await interestsAPI.remove(String(toUserId));
         showSuccessToast("Interest withdrawn successfully!");
       } else {
         setLocalInterest(true);
@@ -203,7 +165,7 @@ export function useInterestStatus({
         queryClient.setQueryData(["interestStatus", fromUserId, toUserId], {
           status: "pending",
         });
-        await sendInterest(String(toUserId));
+        await interestsAPI.send(String(toUserId));
         showSuccessToast("Interest sent successfully!");
         track?.({
           feature: "interest_sent",

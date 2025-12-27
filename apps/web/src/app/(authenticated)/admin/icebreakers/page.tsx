@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { adminIcebreakersAPI, AdminIcebreaker as IceQ } from "@/lib/api/admin/icebreakers";
 import { 
   Trash2, 
   Plus, 
@@ -48,63 +49,6 @@ import {
   XCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-type IceQ = {
-  id: string;
-  text: string;
-  active: boolean;
-  category?: string | null;
-  weight?: number | null;
-  createdAt: number;
-};
-
-async function listIcebreakers(): Promise<IceQ[]> {
-  const res = await fetch("/api/admin/icebreakers", { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch questions");
-  const json = await res.json();
-  return (json?.data?.items as IceQ[]) ?? [];
-}
-
-async function createIcebreaker(payload: {
-  text: string;
-  category?: string;
-  active?: boolean;
-  weight?: number;
-}) {
-  const res = await fetch("/api/admin/icebreakers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Failed to create");
-  return res.json();
-}
-
-async function updateIcebreaker(payload: {
-  id: string;
-  text?: string;
-  category?: string | null;
-  active?: boolean;
-  weight?: number | null;
-}) {
-  const res = await fetch("/api/admin/icebreakers", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Failed to update");
-  return res.json();
-}
-
-async function deleteIcebreaker(id: string) {
-  const res = await fetch("/api/admin/icebreakers", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id }),
-  });
-  if (!res.ok) throw new Error("Failed to delete");
-  return res.json();
-}
 
 function IcebreakerRow({
   q,
@@ -229,7 +173,7 @@ export default function AdminIcebreakersPage() {
   const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin", "icebreakers"],
-    queryFn: listIcebreakers,
+    queryFn: () => adminIcebreakersAPI.list(),
   });
 
   // Form state
@@ -247,7 +191,12 @@ export default function AdminIcebreakersPage() {
   const pageSize = 10;
 
   const mCreate = useMutation({
-    mutationFn: createIcebreaker,
+    mutationFn: (payload: {
+      text: string;
+      category?: string;
+      active?: boolean;
+      weight?: number;
+    }) => adminIcebreakersAPI.create(payload),
     onSuccess: () => {
       showSuccessToast("Icebreaker question created");
       void qc.invalidateQueries({ queryKey: ["admin", "icebreakers"] });
@@ -260,7 +209,8 @@ export default function AdminIcebreakersPage() {
   });
 
   const mUpdate = useMutation({
-    mutationFn: updateIcebreaker,
+    mutationFn: ({ id, ...data }: { id: string } & Partial<IceQ>) =>
+      adminIcebreakersAPI.update(id, data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin", "icebreakers"] });
     },
@@ -268,7 +218,7 @@ export default function AdminIcebreakersPage() {
   });
 
   const mDelete = useMutation({
-    mutationFn: deleteIcebreaker,
+    mutationFn: (id: string) => adminIcebreakersAPI.delete(id),
     onSuccess: () => {
       showSuccessToast("Deleted");
       void qc.invalidateQueries({ queryKey: ["admin", "icebreakers"] });

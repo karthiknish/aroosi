@@ -2,6 +2,16 @@
  * Admin Contact API - Handles admin contact/email management
  */
 
+export interface Contact {
+  _id?: string;
+  id?: string;
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+  createdAt: string;
+}
+
 class AdminContactAPI {
   private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
     const baseHeaders: Record<string, string> = {
@@ -38,12 +48,19 @@ class AdminContactAPI {
   /**
    * Get contact submissions
    */
-  async list(limit = 50, offset = 0): Promise<{ contacts: any[]; total: number }> {
-    const res = await this.makeRequest(`/api/admin/contact?limit=${limit}&offset=${offset}`);
-    return {
-      contacts: res.data?.contacts || res.contacts || [],
-      total: res.data?.total || res.total || 0,
-    };
+  async list(params: { page?: number; pageSize?: number; source?: "aroosi" | "vip" } = {}): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (params.page) query.append("page", String(params.page));
+    if (params.pageSize) query.append("pageSize", String(params.pageSize));
+    if (params.source === "vip") query.append("source", "vip");
+
+    const res = await this.makeRequest(`/api/contact?${query.toString()}`);
+    const arr = Array.isArray(res?.data)
+      ? res.data
+      : Array.isArray(res)
+      ? res
+      : [];
+    return arr.map((c: any) => ({ ...c, id: c.id || c._id || "" }));
   }
 
   /**

@@ -26,6 +26,7 @@ export type ModernChatProps = {
   matchUserId: string;
   matchUserName?: string;
   matchUserAvatarUrl?: string;
+  matchProfile?: any;
   className?: string;
 };
 
@@ -35,6 +36,7 @@ function ModernChat({
   matchUserId,
   matchUserName = "",
   matchUserAvatarUrl = "",
+  matchProfile,
   className = "",
 }: ModernChatProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -120,6 +122,7 @@ function ModernChat({
         <ModernChatHeader
           matchUserName={matchUserName}
           matchUserAvatarUrl={matchUserAvatarUrl}
+          matchProfile={matchProfile}
           subscriptionPlan={subscriptionStatus.data?.plan}
           connectionStatus={presence?.isOnline ? "connected" : connectionStatus}
           lastSeenAt={presence?.lastSeen}

@@ -4,11 +4,7 @@ import {
   BuilderSchema, 
   Section 
 } from "../app/(authenticated)/admin/marketing-email/builder/types";
-import { 
-  listBuilderPresets, 
-  createBuilderPreset, 
-  previewMarketingEmail 
-} from "@/lib/marketingEmailApi";
+import { adminEmailAPI } from "@/lib/api/admin/email";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 function uuid() {
@@ -59,7 +55,7 @@ export function useEmailBuilderLogic() {
 
   useEffect(() => {
     (async () => {
-      const res = await listBuilderPresets();
+      const res = await adminEmailAPI.listBuilderPresets();
       if (res.success && (res.data as any)?.presets) {
         setPresets((res.data as any).presets);
       }
@@ -73,7 +69,7 @@ export function useEmailBuilderLogic() {
   const handlePreview = async () => {
     setIsPreviewLoading(true);
     try {
-      const res = await previewMarketingEmail({
+      const res = await adminEmailAPI.previewMarketingEmail({
         templateKey: "builder",
         params: { schema } as any,
       });
@@ -116,9 +112,9 @@ export function useEmailBuilderLogic() {
   const handleSavePreset = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await createBuilderPreset(presetName || "Untitled", schema);
+      const res = await adminEmailAPI.createBuilderPreset(presetName || "Untitled", schema);
       if (res.success) {
-        const list = await listBuilderPresets();
+        const list = await adminEmailAPI.listBuilderPresets();
         if (list.success && (list.data as any)?.presets)
           setPresets((list.data as any).presets);
         setPresetName("");

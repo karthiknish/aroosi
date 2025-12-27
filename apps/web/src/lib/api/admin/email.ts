@@ -55,6 +55,86 @@ class AdminEmailAPI {
   }
 
   // Email Templates
+  async listTemplates(): Promise<any[]> {
+    try {
+      const res = await this.makeRequest("/api/admin/email/templates");
+      const templates = res.data?.templates ?? res.templates ?? [];
+      if (Array.isArray(templates) && templates.length > 0) return templates;
+    } catch {
+      // ignore and try registry
+    }
+
+    try {
+      const res = await this.makeRequest("/api/admin/email/templates/registry");
+      return res.data?.templates ?? res.templates ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async listSavedTemplates(): Promise<any[]> {
+    const res = await this.makeRequest("/api/admin/email-templates");
+    return res.data?.items || res.data || res.items || [];
+  }
+
+  async createSavedTemplate(template: any): Promise<any> {
+    return this.makeRequest("/api/admin/email-templates", {
+      method: "POST",
+      body: JSON.stringify(template),
+    });
+  }
+
+  async deleteSavedTemplate(id: string): Promise<void> {
+    await this.makeRequest(`/api/admin/email-templates/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Send/Preview Email (Admin Email Page)
+  async sendAdminEmail(data: {
+    dryRun?: boolean;
+    confirm?: boolean;
+    templateId?: string;
+    to: string[];
+    subject: string;
+    text?: string;
+    html: string;
+  }): Promise<any> {
+    return this.makeRequest("/api/admin/email", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Marketing Email
+  async listCampaigns(options?: { limit?: number; offset?: number }): Promise<any> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+    return this.makeRequest(`/api/admin/marketing-email/campaigns?${params.toString()}`);
+  }
+
+  async sendMarketingEmail(data: any): Promise<any> {
+    return this.makeRequest("/api/admin/marketing-email", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async previewMarketingEmail(data: any): Promise<any> {
+    return this.makeRequest("/api/admin/marketing-email/preview", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async sendMarketingTestEmail(data: any): Promise<any> {
+    return this.makeRequest("/api/admin/marketing-email/test", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   async getTemplates(): Promise<EmailTemplate[]> {
     const res = await this.makeRequest("/api/admin/email/templates");
     return res.data?.templates || res.templates || [];
@@ -71,32 +151,25 @@ class AdminEmailAPI {
     return res.data?.campaigns || res.campaigns || [];
   }
 
-  async getCampaign(campaignId: string): Promise<EmailCampaign | null> {
-    try {
-      const res = await this.makeRequest(`/api/admin/marketing-email/campaigns/${campaignId}/summary`);
-      return res.data?.campaign || res.campaign || null;
-    } catch {
-      return null;
-    }
+  async getCampaignSummary(campaignId: string): Promise<any> {
+    const res = await this.makeRequest(`/api/admin/marketing-email/campaigns/${campaignId}/summary`);
+    return res.data || res;
+  }
+
+  async getCampaignEmails(campaignId: string, params: { limit?: number; after?: string; status?: string } = {}): Promise<any> {
+    const qs = new URLSearchParams();
+    if (params.limit) qs.set("limit", String(params.limit));
+    if (params.after) qs.set("after", params.after);
+    if (params.status) qs.set("status", params.status);
+    
+    const res = await this.makeRequest(`/api/admin/marketing-email/campaigns/${campaignId}/emails?${qs.toString()}`);
+    return res.data || res;
   }
 
   async updateCampaignSettings(campaignId: string, settings: any): Promise<void> {
     return this.makeRequest(`/api/admin/marketing-email/campaigns/${campaignId}/settings`, {
       method: "PATCH",
       body: JSON.stringify(settings),
-    });
-  }
-
-  async getCampaignEmails(campaignId: string): Promise<any[]> {
-    const res = await this.makeRequest(`/api/admin/marketing-email/campaigns/${campaignId}/emails`);
-    return res.data?.emails || res.emails || [];
-  }
-
-  // Marketing Email
-  async sendMarketingEmail(data: any): Promise<any> {
-    return this.makeRequest("/api/admin/marketing-email", {
-      method: "POST",
-      body: JSON.stringify(data),
     });
   }
 
@@ -108,11 +181,33 @@ class AdminEmailAPI {
     return res.data?.html || res.html || "";
   }
 
+  async previewTransactionalEmail(kind: string, vars: any): Promise<string> {
+    const res = await this.makeRequest("/api/admin/transactional-email/preview", {
+      method: "POST",
+      body: JSON.stringify({ kind, vars }),
+    });
+    return res.data?.html || res.html || "";
+  }
+
   async sendTestEmail(data: any): Promise<void> {
     return this.makeRequest("/api/admin/marketing-email/test", {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  async exportAudienceCsv(data: any): Promise<string> {
+    const res = await fetch("/api/admin/marketing-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, exportCsv: true }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.text();
   }
 
   // Outbox
