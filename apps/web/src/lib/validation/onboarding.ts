@@ -239,26 +239,26 @@ export class OnboardingValidator {
 
   /**
    * Validate phone number format
+   * Uses same validation as profileSchema: 10-15 digits, international format
    */
   static validatePhoneNumber(phone: string): {
     isValid: boolean;
     error?: string;
   } {
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    const cleaned = phone.replace(/\D/g, "");
-
-    if (!phoneRegex.test(phone)) {
-      return { isValid: false, error: "Invalid phone number format" };
+    if (!phone) {
+      return { isValid: false, error: "Phone number is required" };
     }
 
-    if (cleaned.length < 10) {
+    const digits = phone.replace(/\D/g, "");
+
+    if (digits.length < 10) {
       return {
         isValid: false,
         error: "Phone number must be at least 10 digits",
       };
     }
 
-    if (cleaned.length > 15) {
+    if (digits.length > 15) {
       return { isValid: false, error: "Phone number is too long" };
     }
 

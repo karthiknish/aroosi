@@ -30,31 +30,48 @@ export function validatePassword(password: string): {
   return { isValid: errors.length === 0, errors };
 }
 
+/**
+ * Validate name - consistent with profileSchema
+ * Supports Unicode, rejects consecutive special chars
+ */
 export function validateName(name: string): boolean {
-  const trimmed = name;
-  // Allow letters (including unicode), spaces, apostrophes and hyphens
-  // Disallow numbers and other symbols; ensure at least 2 letters overall
-  // Use a conservative ASCII fallback if the runtime doesn't support Unicode property escapes
-  let allowed: RegExp;
-  try {
-    allowed = new RegExp("^(?=.*\\p{L}.*\\p{L})[\\p{L}\\s'\\-]+$", "u");
-  } catch {
-    // Fallback: letters a-z (case-insensitive), spaces, apostrophes and hyphens
-    allowed = /^(?=.*[a-zA-Z].*[a-zA-Z])[a-zA-Z\s'\-]+$/;
-  }
-  if (!allowed.test(trimmed)) return false;
-  // Disallow all-whitespace
-  return trimmed.trim().length >= 2;
+  if (!name) return false;
+  
+  const trimmed = name.trim();
+  
+  // Minimum 2 characters
+  if (trimmed.length < 2) return false;
+  
+  // Maximum 100 characters
+  if (trimmed.length > 100) return false;
+  
+  // Allow Unicode letters, spaces, hyphens, apostrophes, periods
+  const namePattern = /^[\p{L}\s\-'.]+$/u;
+  if (!namePattern.test(trimmed)) return false;
+  
+  // Reject consecutive special characters
+  if (/[\-'.]{2,}/.test(trimmed)) return false;
+  
+  // Must contain at least one letter
+  if (!/\p{L}/u.test(trimmed)) return false;
+  
+  return true;
 }
 
+/**
+ * Validate phone number - consistent with profileSchema
+ * Accepts international format: 10-15 digits
+ */
 export function validatePhone(phone: string): boolean {
   if (!phone) return false;
-  // Reject letters or multiple plus signs
-  if (/[^\d+\s]/.test(phone)) return false;
+  // Only allow digits, plus sign, spaces, and hyphens
+  if (/[^\d+\s\-()]/.test(phone)) return false;
+  // Only one plus sign at the start
   if ((phone.match(/\+/g) || []).length > 1) return false;
-  // Must have at least 10 digits overall
+  if (phone.includes('+') && !phone.startsWith('+')) return false;
+  // Must have 10-15 digits
   const digits = phone.replace(/\D/g, "");
-  return digits.length >= 10;
+  return digits.length >= 10 && digits.length <= 15;
 }
 
 export function sanitizeInput(input: string): string {

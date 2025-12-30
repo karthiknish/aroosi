@@ -26,6 +26,14 @@ import {
     responsiveFontSizes,
 } from '../../theme';
 import { updateProfile, uploadProfilePhoto } from '../../services/api/profile';
+import {
+    validateName,
+    validateCity,
+    validateDateOfBirth,
+    validateHeight,
+    validateEducation,
+    validateOccupation,
+} from '../../utils/validation';
 
 // Onboarding steps
 type OnboardingStep = 
@@ -97,13 +105,16 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
                 setStep('basicInfo');
                 break;
             case 'basicInfo':
-                if (!fullName.trim()) {
-                    Alert.alert('Required', 'Please enter your full name');
+                // Validate name with proper format checking
+                const nameResult = validateName(fullName);
+                if (!nameResult.valid) {
+                    Alert.alert('Invalid Name', nameResult.error || 'Please enter a valid name');
                     return;
                 }
-                const age = calculateAge();
-                if (!age || age < 18) {
-                    Alert.alert('Error', 'You must be at least 18 years old');
+                // Validate date of birth with proper calendar/age checking
+                const dobResult = validateDateOfBirth(birthYear, birthMonth, birthDay);
+                if (!dobResult.valid) {
+                    Alert.alert('Invalid Date', dobResult.error || 'Please enter a valid date of birth');
                     return;
                 }
                 if (!gender) {
@@ -113,22 +124,42 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
                 setStep('location');
                 break;
             case 'location':
-                if (!city.trim() || !country.trim()) {
-                    Alert.alert('Required', 'Please enter your city and country');
+                // Validate city with proper format checking
+                const cityResult = validateCity(city);
+                if (!cityResult.valid) {
+                    Alert.alert('Invalid City', cityResult.error || 'Please enter a valid city');
+                    return;
+                }
+                if (!country.trim()) {
+                    Alert.alert('Required', 'Please enter your country');
                     return;
                 }
                 setStep('professional');
                 break;
             case 'professional':
-                if (!education.trim() || !occupation.trim()) {
-                    Alert.alert('Required', 'Please enter your education and occupation');
+                // Validate education with length checking
+                const eduResult = validateEducation(education);
+                if (!eduResult.valid) {
+                    Alert.alert('Invalid Education', eduResult.error || 'Please enter valid education');
+                    return;
+                }
+                // Validate occupation with length checking
+                const occResult = validateOccupation(occupation);
+                if (!occResult.valid) {
+                    Alert.alert('Invalid Occupation', occResult.error || 'Please enter valid occupation');
                     return;
                 }
                 setStep('physical');
                 break;
             case 'physical':
-                if (!height.trim() || !maritalStatus) {
-                    Alert.alert('Required', 'Please enter your height and marital status');
+                // Validate height with proper format checking
+                const heightResult = validateHeight(height);
+                if (!heightResult.valid) {
+                    Alert.alert('Invalid Height', heightResult.error || 'Please enter valid height');
+                    return;
+                }
+                if (!maritalStatus) {
+                    Alert.alert('Required', 'Please select your marital status');
                     return;
                 }
                 setStep('religious');

@@ -1,20 +1,34 @@
 import { z } from "zod";
+import {
+  PROFILE_FOR_OPTIONS,
+  GENDER_OPTIONS,
+  MARITAL_STATUS_OPTIONS,
+  SMOKING_OPTIONS,
+  DRINKING_OPTIONS,
+  DIET_OPTIONS,
+  PHYSICAL_STATUS_OPTIONS,
+  SUBSCRIPTION_PLAN_OPTIONS,
+} from "@/lib/validation/profileSchema";
+
+// ============================================================================
+// Profile Base Schema (with backwards-compatible empty string support)
+// ============================================================================
 
 export const profileBaseSchema = z.object({
-  fullName: z.string().min(2).max(100).regex(/^[a-zA-Z\s'-]+$/, "Full name contains invalid characters").optional(),
+  fullName: z.string().trim().min(2).max(100).regex(/^[\p{L}\s\-'.]+$/u, "Full name contains invalid characters").optional(),
   dateOfBirth: z.string().refine((val) => {
     const date = new Date(val);
     if (isNaN(date.getTime())) return false;
     const age = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
     return age >= 18 && age <= 120;
   }, "Age must be between 18 and 120").optional(),
-  gender: z.enum(["male", "female", "non-binary", "other"]).optional(),
+  gender: z.enum([...GENDER_OPTIONS]).optional(),
   preferredGender: z.enum(["male", "female", "non-binary", "other", "any", ""]).optional(),
-  maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"]).optional(),
+  maritalStatus: z.enum([...MARITAL_STATUS_OPTIONS]).optional(),
   smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
   drinking: z.enum(["no", "occasionally", "yes", ""]).optional(),
-  city: z.string().min(2).max(50).optional(),
-  country: z.string().optional(),
+  city: z.string().trim().min(2).max(50).optional(),
+  country: z.string().trim().optional(),
   aboutMe: z.string().min(20).max(2000).optional(),
   phoneNumber: z.string().regex(/^[+]?[\d\s-]{7,20}$/, "Invalid phone number format").optional().or(z.literal("")),
   partnerPreferenceAgeMin: z.coerce.number().int().min(18).max(120).optional(),
@@ -25,9 +39,10 @@ export const profileBaseSchema = z.object({
   diet: z.enum(["vegetarian", "non-vegetarian", "halal", "vegan", "eggetarian", "other", ""]).optional(),
   physicalStatus: z.enum(["normal", "differently-abled", "other", ""]).optional(),
   height: z.string().refine((val) => {
+    if (!val) return true;
     const heightCm = parseInt(val);
-    return !isNaN(heightCm) && heightCm >= 137 && heightCm <= 198;
-  }, "Height must be between 137cm and 198cm").optional(),
+    return !isNaN(heightCm) && heightCm >= 100 && heightCm <= 250;
+  }, "Height must be between 100cm and 250cm").optional(),
   education: z.string().max(100).optional(),
   occupation: z.string().max(100).optional(),
   annualIncome: z.union([z.number(), z.string()]).transform((val) => {
@@ -37,10 +52,10 @@ export const profileBaseSchema = z.object({
     }
     return val;
   }).optional(),
-  subscriptionPlan: z.enum(["free", "premium", "premiumPlus"]).optional(),
+  subscriptionPlan: z.enum([...SUBSCRIPTION_PLAN_OPTIONS]).optional(),
   profileImageIds: z.array(z.string()).optional(),
   isProfileComplete: z.boolean().optional(),
-  profileFor: z.enum(["self", "son", "daughter", "brother", "sister", "friend", "relative", ""]).optional(),
+  profileFor: z.enum([...PROFILE_FOR_OPTIONS, ""] as const).optional(),
   hideFromFreeUsers: z.boolean().optional(),
 });
 
@@ -57,13 +72,13 @@ export const profileSchema = profileBaseSchema.refine((data) => {
 export const createProfileSchema = profileBaseSchema.extend({
   fullName: z.string().min(2).max(100),
   dateOfBirth: z.string(),
-  gender: z.enum(["male", "female", "non-binary", "other"]),
+  gender: z.enum([...GENDER_OPTIONS]),
   city: z.string().min(2).max(50),
   aboutMe: z.string().min(20).max(2000),
   occupation: z.string().max(100),
   education: z.string().max(100),
   height: z.string(),
-  maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"]),
+  maritalStatus: z.enum([...MARITAL_STATUS_OPTIONS]),
   phoneNumber: z.string().regex(/^[+]?[\d\s-]{7,20}$/, "Invalid phone number format"),
 }).refine((data) => {
   if (data.partnerPreferenceAgeMin !== undefined && data.partnerPreferenceAgeMax !== undefined) {
@@ -74,6 +89,10 @@ export const createProfileSchema = profileBaseSchema.extend({
   message: "Minimum age cannot be greater than maximum age",
   path: ["partnerPreferenceAgeMin"],
 });
+
+// ============================================================================
+// Search Schema
+// ============================================================================
 
 // Sanitized bounded string: trims, strips risky chars, 2..50
 const SanStr = z
@@ -142,4 +161,3 @@ export const toUserIdBodySchema = z.object({
 
 // Export ALLOWED_IMAGE_TYPES for use in routes
 export { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES };
-

@@ -2,23 +2,36 @@
  * Unified onboarding data models and types for both web and mobile platforms
  * This file provides consistent data structures and validation schemas
  * for profile creation across all platforms.
+ * 
+ * NOTE: Imports standardized enums from centralized profileSchema
  */
 
 import { z } from "zod";
+import {
+  PROFILE_CONSTANTS,
+  PROFILE_FOR_OPTIONS as PROFILE_FOR_ENUM,
+  GENDER_OPTIONS as GENDER_ENUM,
+  PREFERRED_GENDER_OPTIONS as PREFERRED_GENDER_ENUM,
+  MARITAL_STATUS_OPTIONS as MARITAL_STATUS_ENUM,
+  SMOKING_OPTIONS as SMOKING_ENUM,
+  DRINKING_OPTIONS as DRINKING_ENUM,
+  DIET_OPTIONS as DIET_ENUM,
+  PHYSICAL_STATUS_OPTIONS as PHYSICAL_STATUS_ENUM,
+} from "@/lib/validation/profileSchema";
 
-// Base profile data structure
+// Base profile data structure - uses standardized enums
 export const BaseProfileData = z.object({
   // Basic Information
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  fullName: z.string().min(PROFILE_CONSTANTS.MIN_NAME_LENGTH, `Full name must be at least ${PROFILE_CONSTANTS.MIN_NAME_LENGTH} characters`),
   dateOfBirth: z.string().refine(
     (date) => {
       const age = new Date().getFullYear() - new Date(date).getFullYear();
-      return age >= 18 && age <= 120;
+      return age >= PROFILE_CONSTANTS.MIN_AGE && age <= PROFILE_CONSTANTS.MAX_AGE;
     },
-    { message: "You must be between 18 and 120 years old" }
+    { message: `You must be between ${PROFILE_CONSTANTS.MIN_AGE} and ${PROFILE_CONSTANTS.MAX_AGE} years old` }
   ),
-  gender: z.enum(["male", "female", "other"]),
-  preferredGender: z.enum(["male", "female", "both", "other"]),
+  gender: z.enum(GENDER_ENUM),
+  preferredGender: z.enum(PREFERRED_GENDER_ENUM),
 
   // Location
   country: z.string().min(2, "Country is required"),
@@ -26,7 +39,7 @@ export const BaseProfileData = z.object({
 
   // Physical Details
   height: z.number().min(100).max(250).optional(),
-  maritalStatus: z.enum(["single", "divorced", "widowed", "separated"]),
+  maritalStatus: z.enum(MARITAL_STATUS_ENUM),
 
   // Professional
   education: z.string().min(2, "Education is required"),
@@ -37,35 +50,32 @@ export const BaseProfileData = z.object({
   religion: z.string().optional(),
   motherTongue: z.string().optional(),
   ethnicity: z.string().optional(),
-  profileFor: z.enum(["self", "friend", "family"]).default("self"),
+  profileFor: z.enum(PROFILE_FOR_ENUM).default("self"),
 
   // About Me
   aboutMe: z
     .string()
-    .min(50, "About me must be at least 50 characters")
-    .max(2000),
+    .min(PROFILE_CONSTANTS.MIN_ABOUT_ME_LENGTH, `About me must be at least ${PROFILE_CONSTANTS.MIN_ABOUT_ME_LENGTH} characters`)
+    .max(PROFILE_CONSTANTS.MAX_ABOUT_ME_LENGTH),
   phoneNumber: z
     .string()
-    .regex(/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number"),
+    .refine((phone) => {
+      const digits = phone.replace(/\D/g, "");
+      return digits.length >= 10 && digits.length <= 15;
+    }, "Phone number must be 10-15 digits"),
 
-  // Lifestyle
-  diet: z
-    .enum(["vegetarian", "non-vegetarian", "vegan", "halal", "kosher"])
-    .optional(),
-  smoking: z
-    .enum(["never", "occasionally", "regularly", "socially"])
-    .optional(),
-  drinking: z
-    .enum(["never", "occasionally", "socially", "regularly"])
-    .optional(),
-  physicalStatus: z.enum(["normal", "differently-abled"]).optional(),
+  // Lifestyle - using standardized enums
+  diet: z.enum(DIET_ENUM).optional(),
+  smoking: z.enum(SMOKING_ENUM).optional(),
+  drinking: z.enum(DRINKING_ENUM).optional(),
+  physicalStatus: z.enum(PHYSICAL_STATUS_ENUM).optional(),
 
   // Partner Preferences
-  partnerPreferenceAgeMin: z.number().min(18).max(120).optional(),
-  partnerPreferenceAgeMax: z.number().min(18).max(120).optional(),
+  partnerPreferenceAgeMin: z.number().min(18).max(99).optional(),
+  partnerPreferenceAgeMax: z.number().min(18).max(99).optional(),
 
   // Photos
-  photos: z.array(z.string()).max(5).optional(),
+  photos: z.array(z.string()).max(PROFILE_CONSTANTS.MAX_PHOTOS).optional(),
 });
 
 export type ProfileData = z.infer<typeof BaseProfileData>;
@@ -212,59 +222,74 @@ export type StepValidationResult = {
   errors: Record<string, string>;
 };
 
-// Constants
-export const MIN_AGE = 18;
-export const MAX_AGE = 120;
-export const MIN_ABOUT_ME_LENGTH = 50;
-export const MAX_ABOUT_ME_LENGTH = 2000;
-export const MAX_PHOTOS = 5;
+// Constants - re-export from profileSchema for convenience
+export { PROFILE_CONSTANTS } from "@/lib/validation/profileSchema";
+export const MIN_AGE = PROFILE_CONSTANTS.MIN_AGE;
+export const MAX_AGE = PROFILE_CONSTANTS.MAX_AGE;
+export const MIN_ABOUT_ME_LENGTH = PROFILE_CONSTANTS.MIN_ABOUT_ME_LENGTH;
+export const MAX_ABOUT_ME_LENGTH = PROFILE_CONSTANTS.MAX_ABOUT_ME_LENGTH;
+export const MAX_PHOTOS = PROFILE_CONSTANTS.MAX_PHOTOS;
 
-// Gender options
+// Gender options - matches GENDER_OPTIONS enum
 export const GENDER_OPTIONS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
+  { value: "non-binary", label: "Non-binary" },
   { value: "other", label: "Other" },
 ] as const;
 
+// Preferred gender - matches PREFERRED_GENDER_OPTIONS enum
 export const PREFERRED_GENDER_OPTIONS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
-  { value: "both", label: "Both" },
+  { value: "non-binary", label: "Non-binary" },
   { value: "other", label: "Other" },
+  { value: "any", label: "Any" },
 ] as const;
 
-// Marital status options
+// Marital status - matches MARITAL_STATUS_OPTIONS enum
 export const MARITAL_STATUS_OPTIONS = [
   { value: "single", label: "Single" },
   { value: "divorced", label: "Divorced" },
   { value: "widowed", label: "Widowed" },
-  { value: "separated", label: "Separated" },
+  { value: "annulled", label: "Annulled" },
 ] as const;
 
-// Diet options
+// Diet options - matches DIET_OPTIONS enum
 export const DIET_OPTIONS = [
   { value: "vegetarian", label: "Vegetarian" },
   { value: "non-vegetarian", label: "Non-vegetarian" },
   { value: "vegan", label: "Vegan" },
   { value: "halal", label: "Halal" },
-  { value: "kosher", label: "Kosher" },
+  { value: "eggetarian", label: "Eggetarian" },
+  { value: "other", label: "Other" },
 ] as const;
 
-// Smoking/drinking options
-export const SMOKING_DRINKING_OPTIONS = [
-  { value: "never", label: "Never" },
+// Smoking options - matches SMOKING_OPTIONS enum
+export const SMOKING_OPTIONS = [
+  { value: "no", label: "No" },
   { value: "occasionally", label: "Occasionally" },
-  { value: "socially", label: "Socially" },
-  { value: "regularly", label: "Regularly" },
+  { value: "yes", label: "Yes" },
 ] as const;
 
-// Physical status options
+// Drinking options - matches DRINKING_OPTIONS enum
+export const DRINKING_OPTIONS = [
+  { value: "no", label: "No" },
+  { value: "occasionally", label: "Occasionally" },
+  { value: "yes", label: "Yes" },
+] as const;
+
+// Keep legacy for backward compatibility
+export const SMOKING_DRINKING_OPTIONS = SMOKING_OPTIONS;
+
+// Physical status options - matches PHYSICAL_STATUS_OPTIONS enum
 export const PHYSICAL_STATUS_OPTIONS = [
   { value: "normal", label: "Normal" },
   { value: "differently-abled", label: "Differently Abled" },
+  { value: "other", label: "Other" },
 ] as const;
 
-// Profile for options
+// Profile for options - matches PROFILE_FOR_OPTIONS enum
 export const PROFILE_FOR_OPTIONS = [
   { value: "self", label: "Self" },
   { value: "friend", label: "Friend" },
