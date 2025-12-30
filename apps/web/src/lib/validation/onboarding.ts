@@ -10,6 +10,7 @@ import {
   StepValidationSchemas,
   ProfileData,
 } from "../../types/onboarding";
+import { validateDateOfBirth } from "./dateValidation";
 
 // Enhanced validation schemas with custom error messages
 export const EnhancedValidationSchemas = {
@@ -18,39 +19,31 @@ export const EnhancedValidationSchemas = {
     fullName: z
       .string()
       .min(2, "Full name must be at least 2 characters")
-      .max(50, "Full name must be less than 50 characters")
+      .max(100, "Full name must be less than 100 characters")
       .regex(
-        /^[a-zA-Z\s'-]+$/,
-        "Full name can only contain letters, spaces, hyphens, and apostrophes"
+        /^[\p{L}\s\-'.]+$/u,
+        "Full name can only contain letters, spaces, hyphens, apostrophes, and periods"
+      )
+      .refine(
+        (name) => /\p{L}/u.test(name),
+        "Full name must contain at least one letter"
+      )
+      .refine(
+        (name) => !/[\-'.]{2,}/.test(name),
+        "Full name cannot have consecutive special characters"
       ),
 
     dateOfBirth: z
       .string()
       .refine(
         (date) => {
-          const birthDate = new Date(date);
-          const today = new Date();
-          const age = today.getFullYear() - birthDate.getFullYear();
-          const monthDiff = today.getMonth() - birthDate.getMonth();
-
-          if (
-            monthDiff < 0 ||
-            (monthDiff === 0 && today.getDate() < birthDate.getDate())
-          ) {
-            return age - 1 >= 18;
-          }
-          return age >= 18;
+          const result = validateDateOfBirth(date);
+          return result.isValid;
         },
-        { message: "You must be at least 18 years old" }
-      )
-      .refine(
         (date) => {
-          const birthDate = new Date(date);
-          const today = new Date();
-          const age = today.getFullYear() - birthDate.getFullYear();
-          return age <= 120;
-        },
-        { message: "Please enter a valid date of birth" }
+          const result = validateDateOfBirth(date);
+          return { message: result.error || "Invalid date of birth" };
+        }
       ),
 
     gender: z.enum(["male", "female", "other"], {
@@ -74,8 +67,8 @@ export const EnhancedValidationSchemas = {
       .min(2, "City is required")
       .max(50, "City name is too long")
       .regex(
-        /^[a-zA-Z\s'-]+$/,
-        "City name can only contain letters, spaces, hyphens, and apostrophes"
+        /^[\p{L}\s\-'.]+$/u,
+        "City name can only contain letters, spaces, hyphens, apostrophes, and periods"
       ),
   }),
 
@@ -279,36 +272,7 @@ export class OnboardingValidator {
     isValid: boolean;
     error?: string;
   } {
-    try {
-      const birthDate = new Date(date);
-      const today = new Date();
-
-      if (isNaN(birthDate.getTime())) {
-        return { isValid: false, error: "Invalid date format" };
-      }
-
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-
-      if (
-        monthDiff < 0 ||
-        (monthDiff === 0 && today.getDate() < birthDate.getDate())
-      ) {
-        age--;
-      }
-
-      if (age < 18) {
-        return { isValid: false, error: "You must be at least 18 years old" };
-      }
-
-      if (age > 120) {
-        return { isValid: false, error: "Please enter a valid date of birth" };
-      }
-
-      return { isValid: true };
-    } catch {
-      return { isValid: false, error: "Invalid date format" };
-    }
+    return validateDateOfBirth(date);
   }
 
   /**

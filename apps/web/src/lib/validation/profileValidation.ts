@@ -1,22 +1,10 @@
 import { z } from "zod";
+import { validateDateOfBirth } from "./dateValidation";
 
-// Age validation helper
+// Age validation helper - uses robust date validation with timezone handling and max age check
 export const validateAge = (dateString: string): boolean => {
-  if (!dateString) return false;
-
-  const birthDate = new Date(dateString);
-  const today = new Date();
-  const age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    return age - 1 >= 18;
-  }
-
-  return age >= 18;
+  const result = validateDateOfBirth(dateString);
+  return result.isValid;
 };
 
 // Height validation helper
@@ -58,13 +46,30 @@ export const validatePhoneNumber = (phone: string): boolean => {
   return normalized !== null;
 };
 
-// Name validation helper
+// Name validation helper - supports international Unicode names
 export const validateName = (name: string): boolean => {
   if (!name) return false;
 
-  // Allow letters, spaces, hyphens, and apostrophes
-  const namePattern = /^[a-zA-Z\s\-']+$/;
-  return namePattern.test(name.trim()) && name.trim().length >= 2;
+  const trimmed = name.trim();
+  
+  // Minimum 2 characters
+  if (trimmed.length < 2) return false;
+  
+  // Maximum 100 characters
+  if (trimmed.length > 100) return false;
+
+  // Allow Unicode letters (\p{L}), spaces, hyphens, apostrophes, and periods (for initials)
+  // Uses Unicode property escapes for international character support
+  const namePattern = /^[\p{L}\s\-'.]+$/u;
+  if (!namePattern.test(trimmed)) return false;
+  
+  // Reject consecutive special characters (no ---, ''', etc.)
+  if (/[\-'.]{2,}/.test(trimmed)) return false;
+  
+  // Must contain at least one letter (not just spaces/hyphens)
+  if (!/\p{L}/u.test(trimmed)) return false;
+
+  return true;
 };
 
 // Error message templates
@@ -79,7 +84,7 @@ export const errorMessages = {
   age: () => "You must be at least 18 years old",
   height: () => 'Please enter height in format like "170 cm" or "5\'8"',
   phone: () => "Please enter a valid phone number with at least 10 digits",
-  name: () => "Name can only contain letters, spaces, hyphens, and apostrophes",
+  name: () => "Name must contain letters and can include spaces, hyphens, apostrophes, or periods",
   email: () => "Please enter a valid email address",
   network: () => "Connection error. Please check your internet and try again.",
   server: () => "Server error. Please try again in a few moments.",
@@ -190,16 +195,20 @@ export const enhancedValidationSchemas = {
       .max(100, errorMessages.maxLength(fieldDisplayNames.occupation, 100)),
     // Expect a currency symbol and numeric amount with optional grouping and decimals.
     // Examples: "$30,000", "£45,500.00", "€120000", "₹2,50,000.50", "₹ 2,50,000"
+    // SECURITY: Explicitly reject negative values by not allowing minus signs
     annualIncome: z
       .string()
-      .regex(
-        // Pattern notes:
-        // - Optional single non-digit currency symbol at start (₹ $ € £ etc.), optionally with a space
-        // - Amount can be grouped either as 1,234,567 or Indian style 12,34,567
-        // - Allows plain digits without separators too
-        // - Optional decimal part with 1-2 digits
-        /^(?:[^\d\s])?\s*(?:\d{1,3}(?:,\d{2,3})+|\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?$/i,
-        "Enter an amount with a currency symbol, e.g. $45,500.00 or ₹2,50,000"
+      .refine(
+        (val) => {
+          if (!val) return true; // Optional
+          // Reject negative values explicitly
+          if (val.includes('-')) return false;
+          // Must contain at least one digit
+          if (!/\d/.test(val)) return false;
+          // Allow currency symbol, spaces, commas, digits, and decimal point
+          return /^(?:[^\d\s-])?\s*(?:\d{1,3}(?:,\d{2,3})+|\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?$/.test(val);
+        },
+        "Enter a positive amount with optional currency symbol, e.g. $45,500.00 or ₹2,50,000"
       )
       .optional(),
     aboutMe: z
@@ -226,7 +235,11 @@ export const enhancedValidationSchemas = {
       .min(18, "Maximum age must be at least 18")
       .max(99, "Maximum age cannot exceed 99")
       .optional(),
-    partnerPreferenceCity: z.array(z.string()).optional(),
+    partnerPreferenceCity: z
+      .array(z.string())
+      .transform((arr) => arr.filter((s) => s.trim().length >= 2)) // Filter empty/short strings
+      .refine((arr) => arr.length <= 10, "Maximum 10 preferred cities allowed")
+      .optional(),
   }),
 
   // Step 5: Partner Preferences (with validation)
@@ -247,7 +260,11 @@ export const enhancedValidationSchemas = {
         .min(18, "Maximum age must be at least 18")
         .max(99, "Maximum age cannot exceed 99")
         .optional(),
-      partnerPreferenceCity: z.array(z.string()).optional(),
+      partnerPreferenceCity: z
+        .array(z.string())
+        .transform((arr) => arr.filter((s) => s.trim().length >= 2)) // Filter empty/short strings
+        .refine((arr) => arr.length <= 10, "Maximum 10 preferred cities allowed")
+        .optional(),
     })
     .refine(
       (data) => {
@@ -274,7 +291,22 @@ export const enhancedValidationSchemas = {
     email: z
       .string()
       .min(1, errorMessages.required("Email"))
-      .email(errorMessages.email())
+      .refine(
+        (val) => {
+          if (!val) return true;
+          // Stricter email validation:
+          // - No double dots (..)
+          // - No leading dot in domain
+          // - No trailing dot before @
+          // - Must have valid TLD (2+ chars)
+          if (/\.\./.test(val)) return false; // No double dots
+          if (/@\./.test(val)) return false; // No dot right after @
+          if (/\.@/.test(val)) return false; // No dot right before @
+          // Standard email pattern with proper TLD
+          return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val);
+        },
+        errorMessages.email()
+      )
       .optional(),
   }),
 };

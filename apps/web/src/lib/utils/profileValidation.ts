@@ -1,3 +1,4 @@
+import { validateDateOfBirth, isValidDateFormat } from "../validation/dateValidation";
 
 interface ValidationResult {
   isValid: boolean;
@@ -8,31 +9,37 @@ interface ValidationResult {
  * Validates profile data for security and correctness
  */
 export function validateProfileData(data: Record<string, unknown>): ValidationResult {
-  // Validate fullName
+  // Validate fullName - supports international Unicode names
   if (data.fullName !== undefined) {
     if (typeof data.fullName !== 'string') {
       return { isValid: false, error: 'Full name must be a string' };
     }
-    if (data.fullName.length < 2 || data.fullName.length > 100) {
+    const trimmed = data.fullName.trim();
+    if (trimmed.length < 2 || trimmed.length > 100) {
       return { isValid: false, error: 'Full name must be between 2 and 100 characters' };
     }
-    if (!/^[a-zA-Z\s'-]+$/.test(data.fullName)) {
+    // Unicode letter pattern - supports José, 北京, Москва, etc.
+    if (!/^[\p{L}\s\-'.]+$/u.test(trimmed)) {
       return { isValid: false, error: 'Full name contains invalid characters' };
+    }
+    // Reject consecutive special characters
+    if (/[\-'.]{2,}/.test(trimmed)) {
+      return { isValid: false, error: 'Full name contains invalid character sequences' };
+    }
+    // Must contain at least one letter
+    if (!/\p{L}/u.test(trimmed)) {
+      return { isValid: false, error: 'Full name must contain at least one letter' };
     }
   }
 
-  // Validate dateOfBirth
+  // Validate dateOfBirth using robust validation
   if (data.dateOfBirth !== undefined) {
     if (typeof data.dateOfBirth !== 'string') {
       return { isValid: false, error: 'Date of birth must be a string' };
     }
-    const date = new Date(data.dateOfBirth);
-    if (isNaN(date.getTime())) {
-      return { isValid: false, error: 'Invalid date of birth' };
-    }
-    const age = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    if (age < 18 || age > 120) {
-      return { isValid: false, error: 'Age must be between 18 and 120' };
+    const dateResult = validateDateOfBirth(data.dateOfBirth);
+    if (!dateResult.isValid) {
+      return { isValid: false, error: dateResult.error || 'Invalid date of birth' };
     }
   }
 
@@ -69,13 +76,18 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     }
   }
 
-  // Validate UK city
+  // Validate city - supports international Unicode names
   if (data.city !== undefined) {
     if (typeof data.city !== 'string') {
-      return { isValid: false, error: 'UK city must be a string' };
+      return { isValid: false, error: 'City must be a string' };
     }
-    if (data.city.length < 2 || data.city.length > 50) {
-      return { isValid: false, error: 'UK city must be between 2 and 50 characters' };
+    const trimmed = data.city.trim();
+    if (trimmed.length < 2 || trimmed.length > 50) {
+      return { isValid: false, error: 'City must be between 2 and 50 characters' };
+    }
+    // Unicode letter pattern - supports São Paulo, 北京, Москва, etc.
+    if (!/^[\p{L}\s\-'.]+$/u.test(trimmed)) {
+      return { isValid: false, error: 'City name contains invalid characters' };
     }
   }
 
@@ -89,15 +101,17 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     }
   }
 
-  // Validate phone number
+  // Validate phone number - international support
   if (data.phoneNumber !== undefined && data.phoneNumber !== '') {
     if (typeof data.phoneNumber !== 'string') {
       return { isValid: false, error: 'Phone number must be a string' };
     }
-    // More flexible UK phone number validation to match mobile app
-    const cleanPhone = data.phoneNumber.replace(/[\s-]/g, '');
-    if (!/^(\+44|0)[0-9]{10,11}$/.test(cleanPhone) && !/^[+]?[\d\s-]{7,20}$/.test(data.phoneNumber)) {
-      return { isValid: false, error: 'Invalid UK phone number format' };
+    // Normalize: remove all non-digit characters except leading +
+    const normalized = data.phoneNumber.replace(/[^\d+]/g, '');
+    const digits = normalized.replace(/\D/g, '');
+    // International phone numbers: 10-15 digits
+    if (digits.length < 10 || digits.length > 15) {
+      return { isValid: false, error: 'Phone number must be between 10 and 15 digits' };
     }
   }
 
@@ -166,14 +180,43 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     }
   }
 
-  // Validate height
+  // Validate height - supports cm and feet/inches formats
   if (data.height !== undefined) {
     if (typeof data.height !== 'string') {
       return { isValid: false, error: 'Height must be a string' };
     }
-    const heightCm = parseInt(data.height);
-    if (isNaN(heightCm) || heightCm < 137 || heightCm > 198) {
-      return { isValid: false, error: 'Height must be between 137cm and 198cm' };
+    
+    const heightStr = data.height.trim();
+    let heightCm: number | null = null;
+    
+    // Try to parse as plain number or with "cm" suffix
+    const cmMatch = heightStr.match(/^(\d{2,3})\s*(?:cm)?$/i);
+    if (cmMatch) {
+      heightCm = parseInt(cmMatch[1], 10);
+    }
+    
+    // Try to parse feet/inches format: 5'8", 5'8, 5 ft 8 in
+    if (heightCm === null) {
+      const feetMatch = heightStr.match(/^([4-7])['′]\s*([0-9]|1[01])(?:["\u2033])?$/i);
+      if (feetMatch) {
+        const feet = parseInt(feetMatch[1], 10);
+        const inches = parseInt(feetMatch[2], 10);
+        heightCm = Math.round((feet * 12 + inches) * 2.54);
+      }
+    }
+    
+    // Try "5 ft 8 in" format
+    if (heightCm === null) {
+      const ftInMatch = heightStr.match(/^([4-7])\s*ft\s*([0-9]|1[01])\s*in$/i);
+      if (ftInMatch) {
+        const feet = parseInt(ftInMatch[1], 10);
+        const inches = parseInt(ftInMatch[2], 10);
+        heightCm = Math.round((feet * 12 + inches) * 2.54);
+      }
+    }
+    
+    if (heightCm === null || isNaN(heightCm) || heightCm < 100 || heightCm > 250) {
+      return { isValid: false, error: 'Height must be between 100cm and 250cm (or 4\'0" to 8\'0")' };
     }
   }
 
@@ -229,9 +272,38 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
 
 /**
  * Sanitizes profile input to prevent XSS and other security issues
+ * Enhanced to block:
+ * - HTML tags
+ * - javascript: URLs
+ * - Event handlers (onclick, onerror, etc.)
+ * - HTML entity bypass attempts
  */
 export function sanitizeProfileInput(data: Record<string, unknown>): Record<string, unknown> {
   const sanitized: Record<string, unknown> = {};
+  
+  // Dangerous patterns to remove
+  const dangerousPatterns = [
+    /<[^>]*>/g, // HTML tags
+    /javascript\s*:/gi, // javascript: URLs
+    /vbscript\s*:/gi, // vbscript: URLs
+    /data\s*:\s*text\/html/gi, // data: URLs with HTML
+    /on\w+\s*=/gi, // Event handlers (onclick=, onerror=, onload=, etc.)
+    /&lt;/g, // HTML entity <
+    /&gt;/g, // HTML entity >
+    /&quot;/g, // HTML entity "
+    /&#/g, // Numeric HTML entities
+    /expression\s*\(/gi, // CSS expression()
+  ];
+  
+  const sanitizeString = (str: string): string => {
+    let result = str;
+    for (const pattern of dangerousPatterns) {
+      result = result.replace(pattern, '');
+    }
+    // Remove remaining dangerous characters
+    result = result.replace(/[<>'"]/g, '');
+    return result.trim();
+  };
   
   for (const [key, value] of Object.entries(data)) {
     if (value === null || value === undefined) {
@@ -240,17 +312,13 @@ export function sanitizeProfileInput(data: Record<string, unknown>): Record<stri
     
     // Sanitize string values
     if (typeof value === 'string') {
-      // Remove any HTML tags and dangerous characters
-      sanitized[key] = value
-        .replace(/<[^>]*>/g, '') // Remove HTML tags
-        .replace(/[<>'"]/g, '') // Remove dangerous characters
-        .trim();
+      sanitized[key] = sanitizeString(value);
     } 
     // Handle arrays
     else if (Array.isArray(value)) {
       sanitized[key] = value.map(item => {
         if (typeof item === 'string') {
-          return item.replace(/<[^>]*>/g, '').replace(/[<>'"]/g, '').trim();
+          return sanitizeString(item);
         }
         return item;
       });

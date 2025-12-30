@@ -169,6 +169,83 @@ export function ensureMaxSize(blob: Blob, maxBytes: number): { ok: true } | { ok
 }
 
 /**
+ * Validate image dimensions to prevent:
+ * - Very small images (1x1 pixel attacks)
+ * - Extremely large dimensions that could cause memory issues
+ * Returns a promise that resolves to validation result
+ */
+export async function validateImageDimensions(
+  file: File,
+  options: {
+    minWidth?: number;
+    minHeight?: number;
+    maxWidth?: number;
+    maxHeight?: number;
+    minAspectRatio?: number;
+    maxAspectRatio?: number;
+  } = {}
+): Promise<{ ok: true; width: number; height: number } | { ok: false; reason: string }> {
+  const {
+    minWidth = 50,
+    minHeight = 50,
+    maxWidth = 8000,
+    maxHeight = 8000,
+    minAspectRatio = 0.2, // 1:5 aspect ratio
+    maxAspectRatio = 5.0, // 5:1 aspect ratio
+  } = options;
+
+  return new Promise((resolve) => {
+    // Only validate image files
+    if (!file.type.startsWith('image/')) {
+      resolve({ ok: false, reason: 'File is not an image' });
+      return;
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { width, height } = img;
+
+      if (width < minWidth || height < minHeight) {
+        resolve({ 
+          ok: false, 
+          reason: `Image too small: minimum ${minWidth}x${minHeight} pixels required` 
+        });
+        return;
+      }
+
+      if (width > maxWidth || height > maxHeight) {
+        resolve({ 
+          ok: false, 
+          reason: `Image too large: maximum ${maxWidth}x${maxHeight} pixels allowed` 
+        });
+        return;
+      }
+
+      const aspectRatio = width / height;
+      if (aspectRatio < minAspectRatio || aspectRatio > maxAspectRatio) {
+        resolve({ 
+          ok: false, 
+          reason: 'Image aspect ratio is too extreme' 
+        });
+        return;
+      }
+
+      resolve({ ok: true, width, height });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ ok: false, reason: 'Unable to load image for validation' });
+    };
+
+    img.src = url;
+  });
+}
+
+/**
  * Additional helpers: file hashing for duplicate detection and UI filename sanitize.
  * Appended non-breaking exports for use by ProfileCreationModal and unified ImageUploader.
  */
