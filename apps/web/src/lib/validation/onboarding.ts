@@ -11,167 +11,23 @@ import {
   ProfileData,
 } from "../../types/onboarding";
 import { validateDateOfBirth } from "./dateValidation";
+import { validateHeight, HEIGHT_CONSTANTS } from "./heightValidation";
 
-// Enhanced validation schemas with custom error messages
+import { 
+  stepSchemas 
+} from "@/lib/validation/profileSchema";
+
+// Re-map stepSchemas to onboarding steps for backward compatibility if needed, 
+// or simply use them in OnboardingValidator.
 export const EnhancedValidationSchemas = {
-  // Basic info validation
-  basicInfo: z.object({
-    fullName: z
-      .string()
-      .min(2, "Full name must be at least 2 characters")
-      .max(100, "Full name must be less than 100 characters")
-      .regex(
-        /^[\p{L}\s\-'.]+$/u,
-        "Full name can only contain letters, spaces, hyphens, apostrophes, and periods"
-      )
-      .refine(
-        (name) => /\p{L}/u.test(name),
-        "Full name must contain at least one letter"
-      )
-      .refine(
-        (name) => !/[\-'.]{2,}/.test(name),
-        "Full name cannot have consecutive special characters"
-      ),
-
-    dateOfBirth: z
-      .string()
-      .refine(
-        (date) => {
-          const result = validateDateOfBirth(date);
-          return result.isValid;
-        },
-        (date) => {
-          const result = validateDateOfBirth(date);
-          return { message: result.error || "Invalid date of birth" };
-        }
-      ),
-
-    gender: z.enum(["male", "female", "other"], {
-      errorMap: () => ({ message: "Please select a gender" }),
-    }),
-
-    preferredGender: z.enum(["male", "female", "both", "other"], {
-      errorMap: () => ({ message: "Please select your preference" }),
-    }),
-  }),
-
-  // Location validation
-  location: z.object({
-    country: z
-      .string()
-      .min(2, "Country is required")
-      .max(50, "Country name is too long"),
-
-    city: z
-      .string()
-      .min(2, "City is required")
-      .max(50, "City name is too long")
-      .regex(
-        /^[\p{L}\s\-'.]+$/u,
-        "City name can only contain letters, spaces, hyphens, apostrophes, and periods"
-      ),
-  }),
-
-  // Physical details validation
-  physicalDetails: z.object({
-    height: z
-      .number()
-      .min(100, "Height must be at least 100 cm")
-      .max(250, "Height must be less than 250 cm")
-      .optional(),
-
-    maritalStatus: z.enum(["single", "divorced", "widowed", "separated"], {
-      errorMap: () => ({ message: "Please select your marital status" }),
-    }),
-  }),
-
-  // Professional validation
-  professional: z.object({
-    education: z
-      .string()
-      .min(2, "Education is required")
-      .max(100, "Education description is too long"),
-
-    occupation: z
-      .string()
-      .min(2, "Occupation is required")
-      .max(100, "Occupation description is too long"),
-
-    annualIncome: z
-      .number()
-      .min(0, "Annual income must be positive")
-      .max(999999999, "Please enter a valid annual income")
-      .optional(),
-  }),
-
-  // About me validation
-  aboutMe: z.object({
-    aboutMe: z
-      .string()
-      .min(50, "About me must be at least 50 characters")
-      .max(2000, "About me must be less than 2000 characters")
-      .refine(
-        (text) => {
-          if (!text) return false;
-          // Normalize whitespace (including NBSP) & trim
-          const normalized = String(text)
-            .replace(/\u00A0/g, " ")
-            .trim();
-          // Split on whitespace then strip leading/trailing punctuation from each token
-          const tokens = normalized
-            .split(/\s+/)
-            .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
-            .filter((w) => w.length > 0);
-          return tokens.length >= 10;
-        },
-        {
-          message: "About me must contain at least 10 words",
-        }
-      ),
-
-    phoneNumber: z
-      .string()
-      .regex(
-        /^[\+]?[1-9][\d]{0,15}$/,
-        "Please enter a valid phone number (e.g., +1234567890)"
-      )
-      .refine((phone) => phone.replace(/\D/g, "").length >= 10, {
-        message: "Phone number must be at least 10 digits",
-      }),
-  }),
-
-  // Photos validation
-  photos: z.object({
-    photos: z
-      .array(z.string().url("Invalid photo URL"))
-      .max(5, "You can upload a maximum of 5 photos")
-      .optional(),
-  }),
-
-  // Lifestyle validation (all optional)
-  lifestyle: z.object({
-    diet: z
-      .enum(["vegetarian", "non-vegetarian", "vegan", "halal", "kosher"])
-      .optional(),
-    smoking: z
-      .enum(["never", "occasionally", "regularly", "socially"])
-      .optional(),
-    drinking: z
-      .enum(["never", "occasionally", "socially", "regularly"])
-      .optional(),
-    physicalStatus: z.enum(["normal", "differently-abled"]).optional(),
-  }),
-
-  // Cultural validation (all optional)
-  cultural: z.object({
-    religion: z.string().max(50, "Religion name is too long").optional(),
-    motherTongue: z
-      .string()
-      .max(50, "Mother tongue name is too long")
-      .optional(),
-    ethnicity: z.string().max(50, "Ethnicity name is too long").optional(),
-    profileFor: z.enum(["self", "friend", "family"]).default("self"),
-  }),
+  basicInfo: stepSchemas.basicInfo,
+  location: stepSchemas.location,
+  physicalDetails: stepSchemas.location, // location schema contains height/maritalStatus in profileSchema.ts re-export
+  professional: stepSchemas.professional,
+  aboutMe: stepSchemas.aboutMe,
+  photos: stepSchemas.photos,
+  lifestyle: stepSchemas.lifestyle,
+  cultural: stepSchemas.cultural,
 };
 
 // Validation utilities
@@ -278,20 +134,15 @@ export class OnboardingValidator {
   /**
    * Validate height in cm
    */
-  static validateHeight(height: number): { isValid: boolean; error?: string } {
-    if (isNaN(height)) {
-      return { isValid: false, error: "Height must be a number" };
+  static validateHeight(height: any): { isValid: boolean; error?: string } {
+    if (validateHeight(height)) {
+      return { isValid: true };
     }
 
-    if (height < 100) {
-      return { isValid: false, error: "Height must be at least 100 cm" };
-    }
-
-    if (height > 250) {
-      return { isValid: false, error: "Height must be less than 250 cm" };
-    }
-
-    return { isValid: true };
+    return { 
+      isValid: false, 
+      error: `Height must be between ${HEIGHT_CONSTANTS.MIN_CM} and ${HEIGHT_CONSTANTS.MAX_CM} cm` 
+    };
   }
 
   /**

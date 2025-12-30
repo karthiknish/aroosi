@@ -108,19 +108,67 @@ function parseAndValidateDate(dateString: string): {
 }
 
 /**
+ * Formats/parses a date from various types (string, number, Date, or Firestore Timestamp object)
+ * Returns a valid Date object or null if parsing fails.
+ */
+export function deriveDateFromAny(dob: any): Date | null {
+  if (!dob) return null;
+
+  try {
+    // 1. If it's already a Date object
+    if (dob instanceof Date) {
+      return isNaN(dob.getTime()) ? null : dob;
+    }
+
+    // 2. If it's a number (timestamp)
+    if (typeof dob === "number") {
+      const dt = new Date(dob);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    // 3. If it's a string
+    if (typeof dob === "string") {
+      const trimmed = dob.trim();
+      // Try robust parsing first if it matches YYYY-MM-DD
+      if (DATE_FORMAT_REGEX.test(trimmed)) {
+        const parsed = parseAndValidateDate(trimmed);
+        return parsed.valid ? parsed.date || null : null;
+      }
+      // Fallback for other string formats
+      const dt = new Date(trimmed);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    // 4. If it's a Firestore Timestamp-like object
+    if (typeof dob === "object") {
+      if (typeof dob.toDate === "function") {
+        return dob.toDate();
+      }
+      if (typeof dob.seconds === "number") {
+        return new Date(dob.seconds * 1000);
+      }
+    }
+  } catch (error) {
+    console.warn("Date derivation failed", error);
+  }
+
+  return null;
+}
+
+/**
  * Calculate age from a birth date, handling timezone correctly
  * Uses UTC dates to avoid off-by-one errors
  */
-function calculateAge(birthDate: Date): number {
-  const now = new Date();
+export function calculateAge(birthDate: Date, referenceDate?: Date): number {
+  const reference = referenceDate || new Date();
   // Use UTC for both to ensure consistency
   const birthYear = birthDate.getUTCFullYear();
   const birthMonth = birthDate.getUTCMonth();
   const birthDay = birthDate.getUTCDate();
 
-  const currentYear = now.getUTCFullYear();
-  const currentMonth = now.getUTCMonth();
-  const currentDay = now.getUTCDate();
+  const currentYear = reference.getUTCFullYear();
+  const currentMonth = reference.getUTCMonth();
+  const currentDay = reference.getUTCDate();
 
   let age = currentYear - birthYear;
 

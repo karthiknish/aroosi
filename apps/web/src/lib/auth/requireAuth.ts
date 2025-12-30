@@ -6,6 +6,7 @@ export type AuthPayload = {
   userId: string;
   email?: string;
   role?: string;
+  banned?: boolean;
 };
 
 export class AuthError extends Error {
@@ -46,54 +47,78 @@ export function authErrorResponse(
 }
 
 /**
- * Extract and verify access token from Authorization header.
- * - Accepts only "Authorization: Bearer <token>"
- * - Distinguishes missing/malformed header vs invalid/expired token
+ * Unified authentication verification for both Web and Mobile platforms.
+ * Handles:
+ * 1. Authorization: Bearer <token> (Preferred for Mobile and standard API calls)
+ * 2. firebaseAuthToken cookie (Standard for Web requests)
+ * 
+ * Performance: Re-uses decoded tokens when possible and handles Firestore lookups efficiently.
  */
-export async function requireAuth(req: NextRequest): Promise<AuthPayload> {
-  // Accept either Authorization: Bearer <idToken> or firebaseAuthToken cookie
-  const authHeader =
-    req.headers.get("authorization") || req.headers.get("Authorization");
-  let idToken: string | null = null;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
+export async function requireAuth(req: NextRequest): Promise<AuthPayload & { isProfileComplete?: boolean }> {
+  let idToken: string | undefined;
+
+  // 1. Check Authorization Header (Highest priority)
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
     idToken = authHeader.slice(7).trim();
-  } else {
-    // Fallback to cookie name used elsewhere
-    const cookieHeader = req.headers.get("cookie") || "";
-    const match = cookieHeader.match(/(?:^|; )firebaseAuthToken=([^;]+)/);
-    if (match) idToken = decodeURIComponent(match[1]);
+  }
+
+  // 2. Check Request Cookies
+  if (!idToken) {
+    idToken = req.cookies.get("firebaseAuthToken")?.value;
+  }
+
+  // 3. Fallback to global cookies (for server components or nested calls)
+  if (!idToken) {
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      idToken = cookieStore.get("firebaseAuthToken")?.value;
+    } catch {
+      // Ignore errors if called in a context where cookies() isn't available
+    }
   }
 
   if (!idToken) {
     throw new AuthError("Missing authentication token", 401, "UNAUTHENTICATED");
   }
 
+  // Verify Firebase ID Token
   let decoded;
   try {
     decoded = await adminAuth.verifyIdToken(idToken, true);
   } catch (e: any) {
-    const code =
-      e?.code === "auth/id-token-expired" ? "TOKEN_EXPIRED" : "TOKEN_INVALID";
+    const code = e?.code === "auth/id-token-expired" ? "TOKEN_EXPIRED" : "TOKEN_INVALID";
     throw new AuthError("Invalid authentication token", 401, code);
   }
 
   const uid = decoded.uid;
   if (!uid) throw new AuthError("Invalid token payload", 401, "TOKEN_INVALID");
 
-  // Fetch user doc (assuming users collection, doc id = uid)
-  let snap: DocumentSnapshot | undefined;
+  // Fetch user data from Firestore for role and completion status
   try {
-    snap = await adminDb.collection("users").doc(uid).get();
-  } catch {
-    throw new AuthError("Failed to load user", 500, "USER_LOOKUP_FAILED");
+    const userDoc = await adminDb.collection("users").doc(uid).get();
+    
+    if (!userDoc.exists) {
+      // If user doc doesn't exist yet (e.g. during signup), proceed with minimal info
+      return {
+        userId: uid,
+        email: decoded.email || undefined,
+        role: "user",
+        isProfileComplete: false,
+      };
+    }
+
+    const userData = userDoc.data() || {};
+    return {
+      userId: uid,
+      email: userData.email || decoded.email || undefined,
+      role: userData.role || "user",
+      isProfileComplete: !!userData.isProfileComplete,
+      banned: !!userData.banned,
+    };
+  } catch (err) {
+    console.error(`Auth lookup failed for ${uid}:`, err);
+    throw new AuthError("Failed to verify user status", 500, "AUTH_INTERNAL_ERROR");
   }
-  if (!snap?.exists) {
-    throw new AuthError("User not found", 404, "USER_NOT_FOUND");
-  }
-  const data: any = snap.data() || {};
-  return {
-    userId: uid,
-    email: data.email || decoded.email || undefined,
-    role: data.role || "user",
-  };
 }

@@ -1,12 +1,16 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { requireAdminSession } from "@/app/api/_utils/auth";
 import {
   applySecurityHeaders,
   checkApiRateLimit,
 } from "@/lib/utils/securityHeaders";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import {
+  adminIcebreakersCreateSchema,
+  adminIcebreakersUpdateSchema,
+  adminIcebreakersDeleteSchema,
+} from "@/lib/validation/apiSchemas/adminIcebreakers";
 
 export async function GET(req: NextRequest) {
   const adminCheck = await requireAdminSession(req);
@@ -30,16 +34,16 @@ export async function GET(req: NextRequest) {
     });
     return applySecurityHeaders(successResponse({ items }));
   } catch (e) {
-    return applySecurityHeaders(errorResponse(e, 500));
+    const msg = e instanceof Error ? e.message : String(e);
+    return applySecurityHeaders(
+      errorResponse("Failed to load icebreakers", 500, {
+        details: { message: msg },
+      })
+    );
   }
 }
 
-const CreateSchema = z.object({
-  text: z.string().min(3).max(300),
-  category: z.string().trim().max(100).optional(),
-  active: z.boolean().optional(),
-  weight: z.number().min(0).max(100).optional(),
-});
+const CreateSchema = adminIcebreakersCreateSchema;
 
 export async function POST(req: NextRequest) {
   const adminCheck = await requireAdminSession(req);
@@ -53,7 +57,12 @@ export async function POST(req: NextRequest) {
     return applySecurityHeaders(errorResponse("Invalid JSON body", 400));
   }
   const parsed = CreateSchema.safeParse(body);
-  if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
+  if (!parsed.success)
+    return applySecurityHeaders(
+      errorResponse("Validation failed", 422, {
+        details: { issues: parsed.error.flatten() },
+      })
+    );
   try {
     const now = Date.now();
     const docRef = await db
@@ -65,20 +74,16 @@ export async function POST(req: NextRequest) {
       });
     return applySecurityHeaders(successResponse({ id: docRef.id }));
   } catch (e) {
-    return applySecurityHeaders(errorResponse(e, 500));
+    const msg = e instanceof Error ? e.message : String(e);
+    return applySecurityHeaders(
+      errorResponse("Failed to create icebreaker", 500, {
+        details: { message: msg },
+      })
+    );
   }
 }
 
-const UpdateSchema = z.object({
-  id: z.string().min(1),
-  text: z.string().min(3).max(300).optional(),
-  category: z.string().trim().max(100).nullable().optional(),
-  active: z.boolean().optional(),
-  weight: z.number().min(0).max(100).nullable().optional(),
-}).refine((v) => {
-  const { id, ...rest } = v as any;
-  return Object.keys(rest).length > 0;
-}, { message: "At least one field to update is required" });
+const UpdateSchema = adminIcebreakersUpdateSchema;
 
 export async function PUT(req: NextRequest) {
   const adminCheck = await requireAdminSession(req);
@@ -92,7 +97,12 @@ export async function PUT(req: NextRequest) {
     return applySecurityHeaders(errorResponse("Invalid JSON body", 400));
   }
   const parsed = UpdateSchema.safeParse(body);
-  if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
+  if (!parsed.success)
+    return applySecurityHeaders(
+      errorResponse("Validation failed", 422, {
+        details: { issues: parsed.error.flatten() },
+      })
+    );
   const { id, ...patch } = parsed.data;
   try {
     await db
@@ -101,11 +111,16 @@ export async function PUT(req: NextRequest) {
       .set(patch, { merge: true });
     return applySecurityHeaders(successResponse({ success: true }));
   } catch (e) {
-    return applySecurityHeaders(errorResponse(e, 500));
+    const msg = e instanceof Error ? e.message : String(e);
+    return applySecurityHeaders(
+      errorResponse("Failed to update icebreaker", 500, {
+        details: { message: msg },
+      })
+    );
   }
 }
 
-const DeleteSchema = z.object({ id: z.string().min(1) });
+const DeleteSchema = adminIcebreakersDeleteSchema;
 
 export async function DELETE(req: NextRequest) {
   const adminCheck = await requireAdminSession(req);
@@ -119,11 +134,21 @@ export async function DELETE(req: NextRequest) {
     return applySecurityHeaders(errorResponse("Invalid JSON body", 400));
   }
   const parsed = DeleteSchema.safeParse(body);
-  if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
+  if (!parsed.success)
+    return applySecurityHeaders(
+      errorResponse("Validation failed", 422, {
+        details: { issues: parsed.error.flatten() },
+      })
+    );
   try {
     await db.collection("icebreakerQuestions").doc(parsed.data.id).delete();
     return applySecurityHeaders(successResponse({ success: true }));
   } catch (e) {
-    return applySecurityHeaders(errorResponse(e, 500));
+    const msg = e instanceof Error ? e.message : String(e);
+    return applySecurityHeaders(
+      errorResponse("Failed to delete icebreaker", 500, {
+        details: { message: msg },
+      })
+    );
   }
 }

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@lib/*": ["./src/lib/*"]
+    },
+    "types": ["jest", "node", "testing-library__jest-dom"],
+    "typeRoots": ["../../node_modules/@types", "../../../../node_modules/@types"]
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}

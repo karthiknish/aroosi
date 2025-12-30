@@ -34,7 +34,8 @@ export async function searchProfiles(filters: SearchFilters & { page?: number; p
     if (filters.country && filters.country !== 'any') params.set('country', filters.country.trim());
     if (filters.ageMin !== undefined) params.set('ageMin', String(filters.ageMin));
     if (filters.ageMax !== undefined) params.set('ageMax', String(filters.ageMax));
-    if (filters.gender && filters.gender !== 'any') params.set('preferredGender', filters.gender);
+    const gender = (filters as unknown as { gender?: unknown }).gender;
+    if (typeof gender === 'string' && gender !== 'any') params.set('preferredGender', gender);
     if (filters.ethnicity && filters.ethnicity !== 'any') params.set('ethnicity', filters.ethnicity);
     if (filters.motherTongue && filters.motherTongue !== 'any') params.set('motherTongue', filters.motherTongue);
 

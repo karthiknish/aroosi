@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -7,6 +6,7 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
+import { subscriptionValidatePurchaseSchema } from "@/lib/validation/apiSchemas/subscription";
 
 // Apple App Store receipt validation helper
 async function validateAppleReceipt(receiptData: string): Promise<{
@@ -106,15 +106,11 @@ async function validateGooglePurchase(
   return { valid: false, error: "Invalid or cancelled subscription" };
 }
 
-const validatePurchaseSchema = z.object({
-  platform: z.enum(["android", "ios"]),
-  productId: z.string().optional(),
-  purchaseToken: z.string().optional(),
-  receiptData: z.string().optional(),
-});
-
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof validatePurchaseSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof subscriptionValidatePurchaseSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { platform, productId, purchaseToken, receiptData } = body;
 
@@ -190,7 +186,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: validatePurchaseSchema,
+    bodySchema: subscriptionValidatePurchaseSchema,
     rateLimit: { identifier: "subscription_validate_purchase", maxRequests: 10 }
   }
 );

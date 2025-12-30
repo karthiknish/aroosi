@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { errorResponse, successResponse } from "@/lib/apiResponse";
+import { errorResponse, successResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
 type TemplateDoc = {

@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/firebaseAdmin";
 import { normalisePlan, getPlanLimits } from "@/lib/subscription/planLimits";
 import {
@@ -9,65 +8,59 @@ import {
   buildUsageMonthly,
   usageMonthlyId,
 } from "@/lib/firestoreSchema";
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  AuthenticatedApiContext,
+} from "@/lib/api/handler";
 
 // Activate (or renew) a spotlight badge for Premium Plus users.
 // If plan limit spotlight_badge is -1 => unlimited activations (no usage decrement).
 // Otherwise treat each activation as one usage in the month (future flexibility).
-function json(data: any, init?: { status?: number }) {
-  return new Response(JSON.stringify(data), {
-    status: init?.status ?? 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
-export const POST = withFirebaseAuth(async (user, _req: NextRequest) => {
-  const correlationId = Math.random().toString(36).slice(2, 10);
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
+  const { user, correlationId } = ctx;
+  
   try {
     const userRef = db.collection("users").doc(user.id);
     const snap = await userRef.get();
+    
     if (!snap.exists) {
-  return json(
-        { success: false, error: "User not found", correlationId },
-        { status: 404 }
-      );
+      return errorResponse("User not found", 404, { correlationId });
     }
+    
     const profile = snap.data() as any;
     const now = Date.now();
     const plan = normalisePlan(profile.subscriptionPlan);
     const expiresAt: number | undefined = profile.subscriptionExpiresAt;
+    
     if (plan !== "premiumPlus" || (typeof expiresAt === "number" && expiresAt <= now)) {
-  return json(
-        {
-          success: false,
-          status: 402,
-          code: "REQUIRES_PREMIUM_PLUS",
-          message: "Upgrade to Premium Plus to enable spotlight",
-          correlationId,
-        },
-        { status: 402 }
-      );
+      return errorResponse("Upgrade to Premium Plus to enable spotlight", 402, {
+        correlationId,
+        code: "REQUIRES_PREMIUM_PLUS",
+      });
     }
+    
     const limits = getPlanLimits(plan);
     const planLimit = limits.spotlight_badge ?? 0;
     const unlimited = planLimit === -1;
+    
     // Activation grants (or refreshes) a spotlight badge for 30 days
     const spotlightDurationMs = 30 * 24 * 60 * 60 * 1000; // 30 days
     const currentExpiry: number | undefined = profile.spotlightBadgeExpiresAt;
     const active = typeof currentExpiry === "number" && currentExpiry > now;
+    
     if (active) {
-  return json(
-        {
-          success: true,
-          code: "ALREADY_ACTIVE",
-          spotlightBadgeExpiresAt: currentExpiry,
-          hasSpotlightBadge: true,
-          unlimited,
-          message: "Spotlight already active",
-          correlationId,
-        },
-        { status: 200 }
-      );
+      return successResponse({
+        code: "ALREADY_ACTIVE",
+        spotlightBadgeExpiresAt: currentExpiry,
+        hasSpotlightBadge: true,
+        unlimited,
+        message: "Spotlight already active",
+      }, 200, correlationId);
     }
+    
     const newExpiry = now + spotlightDurationMs;
     await userRef.set(
       {
@@ -77,6 +70,7 @@ export const POST = withFirebaseAuth(async (user, _req: NextRequest) => {
       },
       { merge: true }
     );
+    
     if (!unlimited) {
       // Track usage event (only if limit finite)
       try {
@@ -93,10 +87,10 @@ export const POST = withFirebaseAuth(async (user, _req: NextRequest) => {
         const monthlySnap = await monthlyRef.get();
         if (monthlySnap.exists) {
           const data = monthlySnap.data() as any;
-            batch.update(monthlyRef, {
-              count: (data.count || 0) + 1,
-              updatedAt: Date.now(),
-            });
+          batch.update(monthlyRef, {
+            count: (data.count || 0) + 1,
+            updatedAt: Date.now(),
+          });
         } else {
           batch.set(
             monthlyRef,
@@ -111,22 +105,22 @@ export const POST = withFirebaseAuth(async (user, _req: NextRequest) => {
         });
       }
     }
-  return json(
-      {
-        success: true,
-        code: "SPOTLIGHT_ACTIVATED",
-        hasSpotlightBadge: true,
-        spotlightBadgeExpiresAt: newExpiry,
-        unlimited,
-        message: "Spotlight badge activated",
-        correlationId,
-      },
-      { status: 200 }
-    );
+    
+    return successResponse({
+      code: "SPOTLIGHT_ACTIVATED",
+      hasSpotlightBadge: true,
+      spotlightBadgeExpiresAt: newExpiry,
+      unlimited,
+      message: "Spotlight badge activated",
+    }, 200, correlationId);
   } catch (err: any) {
-  return json(
-      { success: false, error: err?.message || "Spotlight failed", correlationId },
-      { status: 400 }
-    );
+    console.error("[profile.spotlight] fatal error", {
+      correlationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return errorResponse(err?.message || "Spotlight failed", 400, { correlationId });
   }
+}, {
+  rateLimit: { identifier: "profile_spotlight", maxRequests: 10 }
 });
+

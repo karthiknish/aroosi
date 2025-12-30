@@ -1,13 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { 
+  createApiHandler, 
+  successResponse, 
+  errorResponse,
+  ApiContext
+} from "@/lib/api/handler";
 import { db, COLLECTIONS } from '@/lib/userProfile';
 
-export async function GET(req: NextRequest) {
-  const email = new URL(req.url).searchParams.get("email");
+export const GET = createApiHandler(async (ctx: ApiContext) => {
+  const { request, correlationId } = ctx;
+  const email = new URL(request.url).searchParams.get("email");
+  
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json(
-      { success: false, error: "Invalid email" },
-      { status: 400 }
-    );
+    return errorResponse("Invalid email", 400, { correlationId });
   }
 
   try {
@@ -17,28 +21,28 @@ export async function GET(req: NextRequest) {
       .where("email", "==", email.toLowerCase())
       .limit(1)
       .get();
+      
     if (userSnap.empty) {
-      return NextResponse.json({
-        success: true,
+      return successResponse({
         exists: false,
         hasProfile: false,
-      });
+      }, 200, correlationId);
     }
+    
     const doc = userSnap.docs[0];
     const userData: any = doc.data();
+    
     // Heuristic: consider a profile exists if mandatory fields like fullName and dateOfBirth are present
     const hasProfile = Boolean(
       userData.fullName || userData.dateOfBirth || userData.gender
     );
-    return NextResponse.json({
-      success: true,
+    
+    return successResponse({
       exists: true,
       hasProfile,
-    });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Failed" },
-      { status: 500 }
-    );
+    }, 200, correlationId);
+  } catch (error) {
+    console.error("[profile-exists] error", { correlationId, error });
+    return errorResponse("Failed to check profile existence", 500, { correlationId });
   }
-}
+});

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import { db } from "@/lib/firebaseAdmin";
 
@@ -9,7 +9,11 @@ function devLog(level: "info" | "warn" | "error", scope: string, event: string, 
 
 export async function PUT(request: NextRequest) {
   try {
-  try { await ensureAdmin(); } catch { return errorResponse("Unauthorized", 401); }
+    try {
+      await ensureAdmin();
+    } catch {
+      return errorResponse("Unauthorized", 401);
+    }
 
     const url = new URL(request.url);
     const profileId = url.pathname.split("/").slice(-2, -1)[0];
@@ -35,7 +39,9 @@ export async function PUT(request: NextRequest) {
       error: error instanceof Error ? error.message : String(error),
     });
     return errorResponse("Failed to update spotlight", 500, {
-      details: error instanceof Error ? error.message : String(error),
+      details: {
+        message: error instanceof Error ? error.message : String(error),
+      },
     });
   }
 }

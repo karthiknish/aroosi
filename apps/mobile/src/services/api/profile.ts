@@ -70,15 +70,17 @@ export async function uploadProfilePhoto(imageUri: string, index: number): Promi
 /**
  * Delete profile photo
  */
-export async function deleteProfilePhoto(photoUrl: string): Promise<ApiResponse<{ success: boolean }>> {
-    return api.delete(`/profile-images/delete?url=${encodeURIComponent(photoUrl)}`);
+export async function deletePhoto(photoUrl: string): Promise<ApiResponse<{ success: boolean }>> {
+    return api.delete(`/profile-images?url=${encodeURIComponent(photoUrl)}`);
 }
 
-/**
- * Reorder profile photos
- */
+// Backwards-compatible alias (used by EditProfileScreen)
+export async function deleteProfilePhoto(photoUrl: string): Promise<ApiResponse<{ success: boolean }>> {
+    return deletePhoto(photoUrl);
+}
+
 export async function reorderPhotos(photoUrls: string[]): Promise<ApiResponse<{ success: boolean }>> {
-    return api.post('/profile-images/reorder', { photos: photoUrls });
+    return api.post('/profile-images/order', { photos: photoUrls });
 }
 
 /**

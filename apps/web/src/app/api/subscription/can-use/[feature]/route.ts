@@ -38,9 +38,11 @@ export const GET = createAuthenticatedHandler(
 
     if (!rawFeature || !validFeatures.includes(feature)) {
       return errorResponse("Invalid feature", 400, {
-        reason: `Must be one of: ${validFeatures.join(", ")}`,
-        feature: rawFeature ?? null,
         correlationId: ctx.correlationId,
+        details: {
+          reason: `Must be one of: ${validFeatures.join(", ")}`,
+          feature: rawFeature ?? null,
+        },
       });
     }
 

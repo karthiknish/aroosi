@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -10,15 +9,10 @@ import type {
   FamilyApprovalRequest,
   FamilyRelationship,
 } from "@aroosi/shared/types";
-
-const requestSchema = z.object({
-  familyMemberId: z.string().min(1),
-  relationship: z.enum(["father", "mother", "brother", "sister", "uncle", "aunt", "grandfather", "grandmother", "cousin", "guardian", "other"]),
-  message: z.string().min(1),
-});
+import { familyApprovalRequestCreateSchema } from "@/lib/validation/apiSchemas/culturalFamilyApproval";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof requestSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof familyApprovalRequestCreateSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { familyMemberId, relationship, message } = body;
 
@@ -60,7 +54,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: requestSchema,
+    bodySchema: familyApprovalRequestCreateSchema,
     rateLimit: { identifier: "family_approval_request", maxRequests: 50 }
   }
 );

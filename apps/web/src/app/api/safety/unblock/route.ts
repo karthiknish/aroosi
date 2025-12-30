@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -7,13 +6,10 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_RECOMMENDATIONS } from "@/lib/firestoreSchema";
-
-const unblockSchema = z.object({
-  blockedUserId: z.string().min(1, "blockedUserId is required"),
-});
+import { unblockSchema } from "@/lib/validation/apiSchemas/safety";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof unblockSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof unblockSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { blockedUserId } = body;
 

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
 import {
   createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
@@ -30,20 +31,18 @@ export const GET = createAuthenticatedHandler(
         }
       });
 
-      return NextResponse.json(
-        { success: true, data: { counts }, correlationId: ctx.correlationId },
-        { status: 200, headers: { "Cache-Control": "no-store" } }
-      );
+      return successResponse({ counts }, 200, ctx.correlationId, {
+        "Cache-Control": "no-store",
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error("matches/unread GET error", {
         error: msg,
         correlationId: ctx.correlationId,
       });
-      return NextResponse.json(
-        { success: false, error: "Failed to compute unread counts", correlationId: ctx.correlationId },
-        { status: 500 }
-      );
+      return errorResponse("Failed to compute unread counts", 500, {
+        correlationId: ctx.correlationId,
+      });
     }
   },
   {

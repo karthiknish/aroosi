@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,6 +7,7 @@ import {
 import { db } from "@/lib/firebaseAdmin";
 import type { CulturalProfile } from "@aroosi/shared/types";
 import { NextRequest } from "next/server";
+import { culturalProfileUpsertSchema } from "@/lib/validation/apiSchemas/culturalProfile";
 
 async function getCulturalProfile(userId: string): Promise<{ success: boolean; profile?: CulturalProfile; error?: string }> {
   try {
@@ -58,19 +58,6 @@ async function createOrUpdateCulturalProfile(userId: string, profileData: Partia
   }
 }
 
-const profileSchema = z.object({
-  religion: z.string(),
-  religiousPractice: z.string(),
-  motherTongue: z.string().min(1),
-  languages: z.array(z.string()),
-  familyValues: z.string(),
-  marriageViews: z.string(),
-  traditionalValues: z.string(),
-  importanceOfReligion: z.number().min(1).max(10).optional(),
-  importanceOfCulture: z.number().min(1).max(10).optional(),
-  familyBackground: z.string().optional(),
-});
-
 // Helper to extract userId from params
 async function extractUserId(ctx: ApiContext): Promise<string | null> {
   const urlParts = ctx.request.url.split("/");
@@ -105,7 +92,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
 
 export async function POST(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   const handler = createAuthenticatedHandler(
-    async (ctx: ApiContext, body: z.infer<typeof profileSchema>) => {
+    async (
+      ctx: ApiContext,
+      body: import("zod").infer<typeof culturalProfileUpsertSchema>
+    ) => {
       const { userId } = await context.params;
       const authUserId = (ctx.user as any).userId || (ctx.user as any).id;
       const isAdmin = (ctx.user as any).role === "admin";
@@ -122,7 +112,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ us
       return successResponse({ profile: result.profile }, 201, ctx.correlationId);
     },
     {
-      bodySchema: profileSchema,
+      bodySchema: culturalProfileUpsertSchema,
       rateLimit: { identifier: "cultural_profile_post", maxRequests: 50 }
     }
   );

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { errorResponse, successResponse } from "@/lib/apiResponse";
+import { errorResponse, successResponse } from "@/lib/api/handler";
 import { sendEmail } from "@/lib/email/resend";
 import { db } from "@/lib/firebaseAdmin";
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
   if (!confirm) {
     return errorResponse("Confirmation required for live send", 400, {
-      hint: "Pass confirm: true or use dryRun: true",
+      details: { hint: "Pass confirm: true or use dryRun: true" },
     });
   }
 

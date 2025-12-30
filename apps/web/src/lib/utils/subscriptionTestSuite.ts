@@ -210,7 +210,10 @@ export class SubscriptionTestSuite {
       // This is a mock test - in real implementation, use test environment
       const result = await subscriptionAPI.upgrade(
         "premium",
-        this.TEST_USER_TOKEN
+        {
+          successUrl: "http://localhost:3000/subscription?checkout=success",
+          cancelUrl: "http://localhost:3000/plans",
+        }
       );
 
       if (!result || typeof result !== "object") {

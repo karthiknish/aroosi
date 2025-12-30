@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -7,11 +6,7 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_NOTES, buildNote, FSNote } from "@/lib/firestoreSchema";
-
-const noteSchema = z.object({
-  toUserId: z.string().min(1),
-  note: z.string().max(1000),
-});
+import { engagementNoteSchema } from "@/lib/validation/apiSchemas/engagement";
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -49,7 +44,10 @@ export const GET = createAuthenticatedHandler(
 );
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof noteSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof engagementNoteSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { toUserId, note } = body;
     
@@ -80,7 +78,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: noteSchema,
+    bodySchema: engagementNoteSchema,
     rateLimit: { identifier: "engagement_notes_post", maxRequests: 30 }
   }
 );

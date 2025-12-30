@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,10 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-
-const patchSchema = z.object({
-  text: z.string().min(1, "text is required"),
-});
+import { messagePatchSchema } from "@/lib/validation/apiSchemas/messages";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -17,7 +13,7 @@ interface RouteContext {
 
 // PATCH /api/messages/:id (edit text)
 export const PATCH = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof patchSchema>, routeCtx?: RouteContext) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof messagePatchSchema>, routeCtx?: RouteContext) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const params = routeCtx ? await routeCtx.params : null;
     const messageId = params?.id || new URL(ctx.request.url).pathname.split("/").pop();
@@ -74,7 +70,7 @@ export const PATCH = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: patchSchema,
+    bodySchema: messagePatchSchema,
     rateLimit: { identifier: "messages_edit", maxRequests: 30 }
   }
 );

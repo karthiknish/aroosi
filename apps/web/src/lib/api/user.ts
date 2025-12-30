@@ -50,8 +50,8 @@ class UserAPI {
    */
   async me(): Promise<User | null> {
     try {
-      const res = await this.makeRequest("/api/user/me");
-      return res.data?.user || res.user || null;
+      const res = await this.makeRequest("/api/profile");
+      return res.data || res.profile || res.user || null;
     } catch {
       return null;
     }
@@ -61,14 +61,14 @@ class UserAPI {
    * Get user profile
    */
   async getProfile(): Promise<any> {
-    return this.makeRequest("/api/user/profile");
+    return this.makeRequest("/api/profile");
   }
 
   /**
    * Update user profile
    */
   async updateProfile(data: Record<string, any>): Promise<any> {
-    return this.makeRequest("/api/user/profile", {
+    return this.makeRequest("/api/profile", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
@@ -78,7 +78,7 @@ class UserAPI {
    * Delete user profile
    */
   async deleteProfile(): Promise<void> {
-    return this.makeRequest("/api/user/profile", {
+    return this.makeRequest("/api/profile", {
       method: "DELETE",
     });
   }
@@ -87,7 +87,7 @@ class UserAPI {
    * Search users (admin)
    */
   async search(query: string, limit = 20): Promise<User[]> {
-    const res = await this.makeRequest(`/api/user/profile/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+    const res = await this.makeRequest(`/api/profile/search?q=${encodeURIComponent(query)}&limit=${limit}`);
     return res.data?.users || res.users || [];
   }
 }

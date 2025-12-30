@@ -58,8 +58,8 @@ class IcebreakersAPI {
    */
   async getUserAnswers(userId?: string): Promise<UserIcebreaker[]> {
     const url = userId 
-      ? `/api/engagement/icebreakers?userId=${encodeURIComponent(userId)}`
-      : "/api/engagement/icebreakers";
+      ? `/api/icebreakers?userId=${encodeURIComponent(userId)}`
+      : "/api/icebreakers";
     const res = await this.makeRequest(url);
     return res.data?.icebreakers || res.icebreakers || [];
   }

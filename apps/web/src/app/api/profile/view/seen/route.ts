@@ -1,30 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/firebaseAdmin";
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  AuthenticatedApiContext,
+} from "@/lib/api/handler";
 
 /**
  * POST  /api/profile/view/seen
  * Marks all profile viewers as seen by updating the user's lastSeenViewersAt timestamp.
  */
-export async function POST(req: NextRequest) {
-  return withFirebaseAuth(async (user, _request: NextRequest, _ctx) => {
-    const correlationId = Math.random().toString(36).slice(2, 10);
-    try {
-      await db.collection("users").doc(user.id).set(
-        { lastSeenViewersAt: Date.now() },
-        { merge: true }
-      );
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
+  const { user, correlationId } = ctx;
+  try {
+    await db.collection("users").doc(user.id).set(
+      { lastSeenViewersAt: Date.now() },
+      { merge: true }
+    );
 
-      return NextResponse.json({ success: true, correlationId });
-    } catch (err: any) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: err?.message || "Failed to mark viewers as seen",
-          correlationId,
-        },
-        { status: 400 }
-      );
-    }
-  })(req, {});
-}
+    return successResponse(undefined, 200, correlationId);
+  } catch (err: any) {
+    console.error("[profile.view.seen] fatal error", {
+      correlationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return errorResponse(err?.message || "Failed to mark viewers as seen", 400, { correlationId });
+  }
+}, {
+  rateLimit: { identifier: "profile_view_seen", maxRequests: 20 }
+});
+

@@ -36,6 +36,10 @@ export interface NormalizedUser {
   role: string;
   /** Whether user is admin */
   isAdmin: boolean;
+  /** Whether user profile is complete */
+  isProfileComplete: boolean;
+  /** Whether user is banned */
+  banned: boolean;
 }
 
 /**
@@ -58,6 +62,7 @@ export function normalizeUser(user: unknown): NormalizedUser {
   const email = (u.email as string) || null;
   const role = (u.role as string) || "user";
   const isAdmin = role === "admin" || u.isAdmin === true;
+  const isProfileComplete = u.isProfileComplete === true;
   
   return {
     id,
@@ -66,6 +71,8 @@ export function normalizeUser(user: unknown): NormalizedUser {
     email,
     role,
     isAdmin,
+    isProfileComplete,
+    banned: u.banned === true,
   };
 }
 
@@ -168,24 +175,40 @@ export interface ApiContext {
   startTime: number;
   user?: NormalizedUser;
   request: NextRequest;
+  /** Next.js dynamic route context (contains params) */
+  nextCtx?: any;
+}
+
+
+export interface AuthenticatedApiContext extends ApiContext {
+  user: NormalizedUser;
+}
+
+
+export interface RateLimitConfig {
+  /** Unique identifier prefix (will be combined with user ID if authenticated) */
+  identifier: string;
+  /** Maximum requests allowed in the time window */
+  maxRequests: number;
+  /** Time window in milliseconds (default: 60000 = 1 minute) */
+  windowMs?: number;
+  /** Custom function to resolve the rate limit identifier */
+  getIdentifier?: (ctx: ApiContext, body?: any) => string;
+  /** Custom error message when rate limit is exceeded */
+  message?: string;
 }
 
 export interface ApiHandlerOptions<TBody = unknown> {
   /** Zod schema for request body validation (POST/PUT/PATCH) */
   bodySchema?: ZodSchema<TBody>;
   /** Rate limiting configuration */
-  rateLimit?: {
-    /** Unique identifier prefix (will be combined with user ID if authenticated) */
-    identifier: string;
-    /** Maximum requests allowed in the time window */
-    maxRequests: number;
-    /** Time window in milliseconds (default: 60000 = 1 minute) */
-    windowMs?: number;
-  };
+  rateLimit?: RateLimitConfig | RateLimitConfig[];
   /** Whether to require authentication */
   requireAuth?: boolean;
   /** Whether to validate security requirements (headers, origin, etc.) */
   validateSecurity?: boolean;
+  /** Whether to allow banned users (default: false) */
+  allowBanned?: boolean;
   /** Custom error handler */
   onError?: (error: unknown, ctx: ApiContext) => Response | Promise<Response>;
 }
@@ -194,6 +217,12 @@ export type ApiHandler<TBody = unknown> = (
   ctx: ApiContext,
   body: TBody
 ) => Response | Promise<Response>;
+
+export type AuthenticatedApiHandler<TBody = unknown> = (
+  ctx: AuthenticatedApiContext,
+  body: TBody
+) => Response | Promise<Response>;
+
 
 // ============================================================================
 // Response Helpers
@@ -209,11 +238,10 @@ export function jsonResponse<T>(
   data: T,
   status = 200,
   extraHeaders?: Record<string, string>
-): Response {
-  return new Response(JSON.stringify(data), {
+): NextResponse {
+  return NextResponse.json(data, {
     status,
     headers: {
-      "Content-Type": "application/json",
       ...SECURITY_HEADERS,
       ...extraHeaders,
     },
@@ -223,27 +251,48 @@ export function jsonResponse<T>(
 export function successResponse<T = unknown>(
   data?: T,
   status = 200,
-  correlationId?: string
-): Response {
-  const payload: Record<string, unknown> = { success: true };
-  if (data !== undefined) payload.data = data;
+  correlationId?: string,
+  metadata?: Record<string, unknown>
+): NextResponse {
+  const payload: Record<string, unknown> = { 
+    success: true,
+    data: data !== undefined ? data : null,
+  };
+  
   if (correlationId) payload.correlationId = correlationId;
+  if (metadata) payload.metadata = metadata;
+  
   return jsonResponse(payload, status);
 }
+
 
 export function errorResponse(
   message: string,
   status = 400,
-  extra?: Record<string, unknown>
-): Response {
+  options: { 
+    correlationId?: string; 
+    code?: string; 
+    details?: Record<string, unknown> 
+  } = {}
+): NextResponse {
+  const correlationId = options.correlationId ?? generateCorrelationId();
+  const { code, details } = options;
   const isDev = process.env.NODE_ENV === "development";
-  const payload = {
+  
+  const payload: Record<string, unknown> = {
     success: false,
     error: isDev ? message : sanitizeErrorMessage(message, status),
-    ...extra,
+    correlationId,
   };
-  return jsonResponse(payload, status);
+  
+  if (code) payload.code = code;
+  if (details) payload.details = details;
+
+  const res = jsonResponse(payload, status);
+  res.headers.set("x-correlation-id", correlationId);
+  return res;
 }
+
 
 /**
  * Public variant: always expose the provided message (for user-friendly errors).
@@ -253,15 +302,45 @@ export function errorResponse(
 export function errorResponsePublic(
   message: string,
   status = 400,
-  extra?: Record<string, unknown>
-): Response {
-  const payload = {
+  options: { 
+    correlationId?: string; 
+    code?: string; 
+    details?: Record<string, unknown> 
+  } = {}
+): NextResponse {
+  const correlationId = options.correlationId ?? generateCorrelationId();
+  const { code, details } = options;
+  
+  const payload: Record<string, unknown> = {
     success: false,
     error: message,
-    ...extra,
+    correlationId,
   };
-  return jsonResponse(payload, status);
+  
+  if (code) payload.code = code;
+  if (details) payload.details = details;
+
+  const res = jsonResponse(payload, status);
+  res.headers.set("x-correlation-id", correlationId);
+  return res;
 }
+
+function withCorrelationHeader(response: Response, correlationId: string): Response {
+  try {
+    response.headers.set("x-correlation-id", correlationId);
+    return response;
+  } catch {
+    // Best-effort fallback. Avoid cloning body streams unless necessary.
+    const headers = new Headers(response.headers);
+    headers.set("x-correlation-id", correlationId);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+}
+
 
 function sanitizeErrorMessage(message: string, status: number): string {
   // For server errors, don't expose internal details
@@ -338,14 +417,16 @@ export function createApiHandler<TBody = unknown>(
   handler: ApiHandler<TBody>,
   options: ApiHandlerOptions<TBody> = {}
 ) {
-  return async (request: NextRequest): Promise<Response> => {
+  return async (request: NextRequest, nextCtx?: any): Promise<Response> => {
     const correlationId = generateCorrelationId();
     const startTime = Date.now();
     const ctx: ApiContext = {
       correlationId,
       startTime,
       request,
+      nextCtx,
     };
+
 
     try {
       // 1. Security validation
@@ -367,6 +448,16 @@ export function createApiHandler<TBody = unknown>(
         // Always attempt to authenticate if a token/cookie is present
         const auth = await requireAuth(request);
         ctx.user = normalizeUser(auth);
+
+        // 2.1 Banned user check: Block access if user is banned and allowBanned is not true
+        if (ctx.user.banned && options.allowBanned !== true) {
+          return applySecurityHeaders(
+            errorResponse("Account is banned", 403, {
+              correlationId,
+              code: ErrorCode.FORBIDDEN,
+            })
+          );
+        }
       } catch (e) {
         // If authentication is required, we must fail
         if (options.requireAuth) {
@@ -384,63 +475,110 @@ export function createApiHandler<TBody = unknown>(
         // and proceed with an unauthenticated context.
       }
 
-      // 3. Rate limiting
-      if (options.rateLimit) {
-        const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                         request.headers.get("x-real-ip") || 
-                         "anonymous";
-        const identifier = ctx.user
-          ? `${options.rateLimit.identifier}_${ctx.user.id}`
-          : `${options.rateLimit.identifier}_${clientIp}`;
-        const rl = checkRateLimit(
-          identifier,
-          options.rateLimit.maxRequests,
-          options.rateLimit.windowMs
-        );
-        if (!rl.allowed) {
-          return applySecurityHeaders(
-            errorResponse("Rate limit exceeded", 429, {
-              correlationId,
-              retryAfter: Math.ceil((rl.resetTime - Date.now()) / 1000),
-            })
+      // 3. Rate limiting (Pre-body checks)
+      const rateLimits = Array.isArray(options.rateLimit)
+        ? options.rateLimit
+        : options.rateLimit
+        ? [options.rateLimit]
+        : [];
+
+      const clientIp =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip") ||
+        "anonymous";
+
+      for (const rlConfig of rateLimits) {
+        if (!rlConfig.getIdentifier) {
+          const identifier = ctx.user
+            ? `${rlConfig.identifier}_${ctx.user.id}`
+            : `${rlConfig.identifier}_${clientIp}`;
+          const rl = checkRateLimit(
+            identifier,
+            rlConfig.maxRequests,
+            rlConfig.windowMs
           );
+          if (!rl.allowed) {
+            return applySecurityHeaders(
+              errorResponse(rlConfig.message || "Rate limit exceeded", 429, {
+                correlationId,
+                details: {
+                  retryAfter: Math.ceil((rl.resetTime - Date.now()) / 1000),
+                },
+              })
+            );
+          }
         }
       }
 
       // 4. Body parsing and validation (for POST/PUT/PATCH)
       let body: TBody = undefined as TBody;
-      if (
-        options.bodySchema &&
-        ["POST", "PUT", "PATCH"].includes(request.method)
-      ) {
+      const needsBody = !!(
+        options.bodySchema || rateLimits.some((rl) => rl.getIdentifier)
+      );
+
+      if (needsBody && ["POST", "PUT", "PATCH"].includes(request.method)) {
         const parseResult = await parseRequestBody(request);
         if (!parseResult.success) {
           return applySecurityHeaders(
             errorResponse(parseResult.error, 400, { correlationId })
           );
         }
-        const validationResult = validateBody(parseResult.data, options.bodySchema);
-        if (!validationResult.success) {
-          return applySecurityHeaders(
-            errorResponse("Validation failed", 422, {
-              correlationId,
-              errors: validationResult.errors.map((e) => ({
-                path: e.path.join("."),
-                message: e.message,
-              })),
-            })
+
+        if (options.bodySchema) {
+          const validationResult = validateBody(
+            parseResult.data,
+            options.bodySchema
           );
+          if (!validationResult.success) {
+            return applySecurityHeaders(
+              errorResponse("Validation failed", 422, {
+                correlationId,
+                details: {
+                  errors: validationResult.errors.map((e) => ({
+                    path: e.path.join("."),
+                    message: e.message,
+                  })),
+                },
+              })
+            );
+          }
+          body = validationResult.data;
+        } else {
+          body = parseResult.data as TBody;
         }
-        body = validationResult.data;
+
+        // 5. Rate limiting (Post-body checks)
+        for (const rlConfig of rateLimits) {
+          if (rlConfig.getIdentifier) {
+            const identifier = rlConfig.getIdentifier(ctx, body);
+            const rl = checkRateLimit(
+              identifier,
+              rlConfig.maxRequests,
+              rlConfig.windowMs
+            );
+            if (!rl.allowed) {
+              return applySecurityHeaders(
+                errorResponse(rlConfig.message || "Rate limit exceeded", 429, {
+                  correlationId,
+                  details: {
+                    retryAfter: Math.ceil((rl.resetTime - Date.now()) / 1000),
+                  },
+                })
+              );
+            }
+          }
+        }
       }
 
       // 5. Execute handler
       const response = await handler(ctx, body);
-      return applySecurityHeaders(response);
+      return applySecurityHeaders(withCorrelationHeader(response, correlationId));
     } catch (error) {
       // Custom error handler
       if (options.onError) {
-        return applySecurityHeaders(await options.onError(error, ctx));
+        return applySecurityHeaders(
+          withCorrelationHeader(await options.onError(error, ctx), correlationId)
+        );
       }
 
       // Handle known error types
@@ -449,7 +587,7 @@ export function createApiHandler<TBody = unknown>(
           errorResponse(error.message, error.statusCode, {
             correlationId,
             code: error.code,
-            ...(error.details || {}),
+            details: error.details,
           })
         );
       }
@@ -459,10 +597,12 @@ export function createApiHandler<TBody = unknown>(
         return applySecurityHeaders(
           errorResponse("Validation failed", 422, {
             correlationId,
-            errors: error.issues.map((e) => ({
-              path: e.path.join("."),
-              message: e.message,
-            })),
+            details: {
+              errors: error.issues.map((e) => ({
+                path: e.path.join("."),
+                message: e.message,
+              })),
+            },
           })
         );
       }
@@ -493,10 +633,10 @@ export function createApiHandler<TBody = unknown>(
  * Creates an authenticated API handler (convenience wrapper)
  */
 export function createAuthenticatedHandler<TBody = unknown>(
-  handler: ApiHandler<TBody>,
+  handler: AuthenticatedApiHandler<TBody>,
   options: Omit<ApiHandlerOptions<TBody>, "requireAuth"> = {}
 ) {
-  return createApiHandler(handler, { ...options, requireAuth: true });
+  return createApiHandler(handler as ApiHandler<TBody>, { ...options, requireAuth: true });
 }
 
 // ============================================================================

@@ -17,7 +17,7 @@ type SigninResponse = {
 
 export async function signin(params: { email: string; password: string }) {
   // For Firebase integration, we'll use the existing API route
-  const res = await postJson<SigninResponse>("/api/auth/signin", params, {
+  const res = await postJson<SigninResponse>("/api/auth/login", params, {
     cache: "no-store",
   });
   return res;

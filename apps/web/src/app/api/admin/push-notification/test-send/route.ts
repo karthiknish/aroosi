@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 
 export async function POST(request: NextRequest) {
-  const { role } = await requireAuth(request as unknown as NextRequest);
+  const { role } = await requireAuth(request);
   if ((role || "user") !== "admin")
     return errorResponse("Admin privileges required", 403);
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       const errorData = await res.json().catch(() => ({}));
       console.error("OneSignal test-send error", errorData);
       return errorResponse("Failed to queue test notification", 500, {
-        providerError: errorData,
+        details: { providerError: errorData },
       });
     }
     return successResponse({ queued: true });

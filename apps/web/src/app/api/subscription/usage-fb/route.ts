@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
 import { db } from '@/lib/firebaseAdmin';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { successResponse, errorResponse } from '@/lib/api/handler';
 import { COL_USAGE_EVENTS, COL_USAGE_MONTHLY, buildUsageEvent, buildUsageMonthly, monthKey, usageMonthlyId } from '@/lib/firestoreSchema';
 import { SUBSCRIPTION_FEATURES, getPlanLimits } from '@/lib/subscription/planLimits';
 
@@ -30,7 +30,10 @@ export async function GET(req: NextRequest) { // usage stats
     const dailyMap = await getDailyUsage(auth.userId);
     const features = FEATURES.map(f => { const isDaily = f==='profile_view'||f==='search_performed'; const used = isDaily ? (dailyMap[f]||0) : (monthlyMap[f]||0); const limit = limits[f]; return { feature: f, used, limit, unlimited: limit===-1, remaining: limit===-1? -1 : Math.max(0, limit-used), percentageUsed: limit===-1?0: Math.min(100, Math.round((used/limit)*100)), isDailyLimit: isDaily }; });
     return successResponse({ plan, usage: features, monthlyUsage: monthlyMap, dailyUsage: dailyMap, limits });
-  } catch (e) { const msg = e instanceof Error? e.message: String(e); return errorResponse('Failed to fetch usage statistics',500,{ details: msg }); }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return errorResponse('Failed to fetch usage statistics', 500, { details: { message: msg } });
+  }
 }
 
 export async function POST(req: NextRequest) { // track usage
@@ -45,7 +48,10 @@ export async function POST(req: NextRequest) { // track usage
     let currentUsage = 0; const month = monthKey();
     if (feature === 'profile_view' || feature === 'search_performed') { const dailyMap = await getDailyUsage(auth.userId); currentUsage = dailyMap[feature] || 0; }
     else { const monthlyMap = await getMonthlyUsageMap(auth.userId, month); currentUsage = monthlyMap[feature] || 0; }
-    if (limit !== -1 && currentUsage >= limit) return errorResponse('Feature usage limit reached',403,{ limit, used: currentUsage, remaining: 0 });
+    if (limit !== -1 && currentUsage >= limit)
+      return errorResponse('Feature usage limit reached', 403, {
+        details: { limit, used: currentUsage, remaining: 0 },
+      });
     // Record event
     const event = buildUsageEvent(auth.userId, feature, metadata);
     const batch = db.batch();
@@ -59,5 +65,8 @@ export async function POST(req: NextRequest) { // track usage
     await batch.commit();
     const newUsage = currentUsage + 1;
     return successResponse({ feature, tracked: true, currentUsage: newUsage, limit, remainingQuota: limit===-1? -1 : Math.max(0, limit-newUsage), isUnlimited: limit===-1, plan });
-  } catch (e) { const msg = e instanceof Error? e.message: String(e); return errorResponse('Failed to track feature usage',500,{ details: msg }); }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return errorResponse('Failed to track feature usage', 500, { details: { message: msg } });
+  }
 }

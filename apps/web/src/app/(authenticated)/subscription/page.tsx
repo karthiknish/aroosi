@@ -144,8 +144,7 @@ export default function SubscriptionPage() {
 
   const handleManageBilling = async () => {
     try {
-      const { url } = await subscriptionAPI.openBillingPortal();
-      if (url) window.location.assign(url);
+      await subscriptionAPI.openBillingPortal();
     } catch (err) {
       showErrorToast(err, "Failed to open billing portal");
     }

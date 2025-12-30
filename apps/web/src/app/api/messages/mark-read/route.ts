@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,14 +5,10 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { markMessagesRead } from "@/lib/messages/firebaseMessages";
-
-// Zod schema for request body
-const markReadSchema = z.object({
-  conversationId: z.string().min(1, "conversationId is required"),
-});
+import { messageMarkReadSchema } from "@/lib/validation/apiSchemas/messages";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof markReadSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof messageMarkReadSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const startedAt = Date.now();
     
@@ -45,7 +40,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: markReadSchema,
+    bodySchema: messageMarkReadSchema,
     rateLimit: { identifier: "messages_mark_read", maxRequests: 60 }
   }
 );

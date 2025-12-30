@@ -1,59 +1,37 @@
-import { cookies } from "next/headers";
 import {
   createApiHandler,
   successResponse,
-  errorResponse,
   ApiContext
 } from "@/lib/api/handler";
-import { verifyFirebaseIdToken, getFirebaseUser } from "@/lib/firebaseAdmin";
 
 export const GET = createApiHandler(
   async (ctx: ApiContext) => {
+    const { user, correlationId } = ctx;
+    
+    if (!user) {
+      // 401 but success: true, user: null is the expected "not logged in" response for this endpoint
+      return successResponse({ user: null }, 200, correlationId);
+    }
+
     try {
-      const cookieStore = await cookies();
-      let token: string | null | undefined = cookieStore.get("firebaseAuthToken")?.value;
-
-      // Authorization: Bearer <token> fallback
-      if (!token) {
-        const authz = ctx.request.headers.get("authorization") || ctx.request.headers.get("Authorization");
-        if (authz && authz.toLowerCase().startsWith("bearer ")) {
-          token = authz.slice(7).trim() || null;
-        }
-      }
-
-      if (!token) {
-        return successResponse({ user: null }, 401, ctx.correlationId);
-      }
-
-      const decodedToken = await verifyFirebaseIdToken(token);
-      const userId = decodedToken.uid;
-      if (!userId) {
-        return successResponse({ user: null }, 401, ctx.correlationId);
-      }
-
-      const userData = await getFirebaseUser(userId);
-      const signInProvider = (decodedToken as any)?.firebase?.sign_in_provider;
-      const exp = (decodedToken as any)?.exp;
-      const nowSec = Math.floor(Date.now() / 1000);
-      const secondsUntilExpiry = typeof exp === "number" ? exp - nowSec : null;
-
+      // ctx.user already contains id, email, role, etc.
+      // We return the expected structure for the frontend
       return successResponse({
         user: {
-          id: userId,
-          email: userData.email || "",
-          role: userData.role || "user",
-          emailVerified: userData.emailVerified || false,
-          createdAt: userData.createdAt || Date.now(),
-          fullName: userData.fullName || userData.displayName || undefined,
-          signInProvider: signInProvider || null,
-          tokenExpiresInSeconds: secondsUntilExpiry,
-          profile: userData ? { id: userId, fullName: userData.fullName || undefined } : null,
-          needsProfile: !userData,
+          id: user.id,
+          uid: user.id,
+          email: user.email || "",
+          role: user.role,
+          isAdmin: user.isAdmin,
+          isProfileComplete: user.isProfileComplete,
+          // Note: we might miss some details like fullName here if not in requireAuth payload,
+          // but normalized user should be enough for "me". 
+          // If more is needed, requireAuth should fetch it.
         },
-      }, 200, ctx.correlationId);
+      }, 200, correlationId);
     } catch (error) {
-      console.error("auth/me error", { error, correlationId: ctx.correlationId });
-      return successResponse({ user: null }, 401, ctx.correlationId);
+      console.error("[auth.me] fatal error", { error, correlationId });
+      return successResponse({ user: null }, 200, correlationId);
     }
   },
   {

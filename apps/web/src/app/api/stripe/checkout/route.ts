@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,6 +7,7 @@ import {
 import { stripe } from "@/lib/stripe";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { SUBSCRIPTION_PLANS } from "../../../../constants";
+import { stripeCheckoutSchema } from "@/lib/validation/apiSchemas/stripeCheckout";
 import {
   getStripePlanMapping,
   normaliseInternalPlan,
@@ -20,13 +20,6 @@ const ALLOWED_PLAN_IDS = {
 } as const;
 
 type PublicPlanId = keyof typeof ALLOWED_PLAN_IDS;
-
-const checkoutSchema = z.object({
-  planId: z.enum(["premium", "premiumPlus"]).optional(),
-  planType: z.enum(["premium", "premiumPlus"]).optional(),
-  successUrl: z.string().optional(),
-  cancelUrl: z.string().optional(),
-});
 
 function isValidPlanId(planId: unknown): planId is PublicPlanId {
   return typeof planId === "string" && planId in ALLOWED_PLAN_IDS && ALLOWED_PLAN_IDS[planId as PublicPlanId] === true;
@@ -77,7 +70,10 @@ function sanitizeClientReturnUrl(candidate: string | undefined | null, baseOrigi
 }
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof checkoutSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof stripeCheckoutSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const userEmail = (ctx.user as any).email;
 
@@ -160,7 +156,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: checkoutSchema,
+    bodySchema: stripeCheckoutSchema,
     rateLimit: { identifier: "stripe_checkout", maxRequests: 10 }
   }
 );

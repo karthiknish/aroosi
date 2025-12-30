@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebaseAdmin";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   return successResponse({ success: true });
   } catch (error: unknown) {
   return errorResponse("Failed to save message", 500, {
-    details: error instanceof Error ? error.message : String(error),
+    details: { message: error instanceof Error ? error.message : String(error) },
   });
   }
 }

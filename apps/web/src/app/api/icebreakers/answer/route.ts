@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,14 +7,13 @@ import {
 import { db } from "@/lib/firebaseAdmin";
 import { COL_USAGE_EVENTS } from "@/lib/firestoreSchema";
 import { FieldValue } from "firebase-admin/firestore";
-
-const answerSchema = z.object({
-  questionId: z.string().min(1, "questionId is required"),
-  answer: z.string().min(1, "answer is required").max(500, "answer too long"),
-});
+import { icebreakerAnswerSchema } from "@/lib/validation/apiSchemas/icebreakers";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof answerSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof icebreakerAnswerSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { questionId, answer } = body;
 
@@ -83,7 +81,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: answerSchema,
+    bodySchema: icebreakerAnswerSchema,
     rateLimit: { identifier: "icebreakers_answer", maxRequests: 50 }
   }
 );

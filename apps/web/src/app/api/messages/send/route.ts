@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -15,23 +14,11 @@ import {
 import { moderateProfanity } from "@/lib/moderation/profanity";
 import { getPlanLimits } from "@/lib/subscription/planLimits";
 import { db } from "@/lib/firebaseAdmin";
-
-// Zod schema for request body
-const sendMessageSchema = z.object({
-  conversationId: z.string().min(1, "conversationId is required"),
-  fromUserId: z.string().min(1, "fromUserId is required"),
-  toUserId: z.string().min(1, "toUserId is required"),
-  text: z.string().optional(),
-  type: z.enum(["text", "voice", "image", "icebreaker"]).optional(),
-  audioStorageId: z.string().optional(),
-  duration: z.number().optional(),
-  fileSize: z.number().optional(),
-  mimeType: z.string().optional(),
-});
+import { messageSendSchema } from "@/lib/validation/apiSchemas/messages";
 
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof sendMessageSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof messageSendSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const startedAt = Date.now();
     
@@ -125,8 +112,7 @@ export const POST = createAuthenticatedHandler(
         if (limit !== -1 && currentCount >= limit) {
           return errorResponse(`Monthly quota exceeded for ${feature}`, 429, {
             correlationId: ctx.correlationId,
-            feature,
-            limit,
+            details: { feature, limit },
           });
         }
         await usageRef.set(
@@ -163,7 +149,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: sendMessageSchema,
+    bodySchema: messageSendSchema,
     // Rate limiting is handled by subscriptionRateLimiter internally
   }
 );

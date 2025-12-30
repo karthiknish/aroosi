@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { sanitizeBlogContent, sanitizeBlogExcerpt, sanitizeBlogTitle, sanitizeBlogSlug } from "@/lib/blogSanitize";
 import { requireSession } from "@/app/api/_utils/auth";

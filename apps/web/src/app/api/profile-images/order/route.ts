@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,18 +5,18 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-
-const orderSchema = z.object({
-  profileId: z.string().min(1),
-  imageIds: z.array(z.string()),
-  skipUrlReorder: z.boolean().optional(),
-  rebuildUrls: z.boolean().optional(),
-});
+import { profileImagesOrderSchema } from "@/lib/validation/apiSchemas/profileImages";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof orderSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof profileImagesOrderSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const { profileId, imageIds, skipUrlReorder, rebuildUrls } = body;
+    const profileId = body.profileId || userId;
+    const imageIds = body.imageIds || body.photos;
+    const { skipUrlReorder, rebuildUrls } = body;
+
+    if (!imageIds || imageIds.length === 0) {
+      return errorResponse("No images provided", 400, { correlationId: ctx.correlationId });
+    }
 
     // Authorization
     if (userId !== profileId && (ctx.user as any).role !== "admin") {
@@ -39,7 +38,7 @@ export const POST = createAuthenticatedHandler(
         return errorResponse("Some provided image IDs do not exist", 422, {
           correlationId: ctx.correlationId,
           code: "INVALID_IMAGE_IDS",
-          invalidIds: invalid,
+          details: { invalidIds: invalid },
         });
       }
 
@@ -94,7 +93,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: orderSchema,
+    bodySchema: profileImagesOrderSchema,
     rateLimit: { identifier: "profile_images_order", maxRequests: 30 }
   }
 );

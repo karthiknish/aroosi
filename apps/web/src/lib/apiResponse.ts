@@ -18,20 +18,34 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
 import { SECURITY_HEADERS } from "@/lib/utils/securityHeaders";
 
+function generateCorrelationId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(36).slice(2, 10);
+}
+
 /**
  * @deprecated Use successResponse from '@/lib/api/handler' instead
  */
 export const successResponse = <T = unknown>(data?: T, status = 200) =>
-  new Response(
-    JSON.stringify({
-      success: true,
-      ...(data !== undefined ? { data } : {}),
-    } satisfies ApiSuccess<T>),
-    {
-      status,
-      headers: { "Content-Type": "application/json", ...SECURITY_HEADERS },
-    }
-  );
+  (() => {
+    const correlationId = generateCorrelationId();
+    return new Response(
+      JSON.stringify({
+        success: true,
+        correlationId,
+        ...(data !== undefined ? { data } : {}),
+      } satisfies ApiSuccess<T> & { correlationId: string }),
+      {
+        status,
+        headers: {
+          "Content-Type": "application/json",
+          "x-correlation-id": correlationId,
+          ...SECURITY_HEADERS,
+        },
+      }
+    );
+  })();
 
 /**
  * @deprecated Use errorResponse from '@/lib/api/handler' instead
@@ -41,6 +55,8 @@ export const errorResponse = (
   status = 400,
   extra?: Record<string, unknown>
 ) => {
+  const correlationId = generateCorrelationId();
+
   const isDev = process.env.NODE_ENV === "development";
   // Only expose detailed error messages in development to avoid leaking internal details.
   const message = isDev
@@ -55,11 +71,12 @@ export const errorResponse = (
     JSON.stringify({
       success: false,
       error: message,
+      correlationId,
       ...(extra ?? {}),
     } satisfies ApiFailure),
     {
       status,
-      headers: { "Content-Type": "application/json", ...SECURITY_HEADERS },
+      headers: { "Content-Type": "application/json", "x-correlation-id": correlationId, ...SECURITY_HEADERS },
     }
   );
 };
@@ -72,10 +89,19 @@ export const errorResponsePublic = (
   status = 400,
   extra?: Record<string, unknown>
 ) =>
-  new Response(
-    JSON.stringify({ success: false, error: message, ...(extra ?? {}) }),
-    {
-      status,
-      headers: { "Content-Type": "application/json", ...SECURITY_HEADERS },
-    }
-  );
+  (() => {
+    const correlationId = generateCorrelationId();
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: message,
+        correlationId,
+        ...(extra ?? {}),
+      }),
+      {
+        status,
+        headers: { "Content-Type": "application/json", "x-correlation-id": correlationId, ...SECURITY_HEADERS },
+      }
+    );
+  })();

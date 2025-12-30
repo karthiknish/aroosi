@@ -52,6 +52,7 @@ export default function AdminBlogPage() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     // query is keyed without token now
     queryKey: ["adminBlogs", page, searchTerm],

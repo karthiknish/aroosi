@@ -29,7 +29,8 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
       if (!firstCategory) return [];
       try {
         const response = await blogAPI.getPosts({
-          limit: 6,
+          page: 1,
+          pageSize: 6,
           category: firstCategory,
         });
         return (response.posts as any[]).filter((p: BlogPost) => p.slug !== slug).slice(0, 3);

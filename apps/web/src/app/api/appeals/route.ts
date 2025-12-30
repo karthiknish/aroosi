@@ -1,50 +1,26 @@
-import { z } from "zod";
 import {
-  createApiHandler,
+  createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
+  AuthenticatedApiContext
 } from "@/lib/api/handler";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
-import { cookies } from "next/headers";
-import { verifyFirebaseIdToken } from "@/lib/firebaseAdmin";
+import { appealCreateSchema } from "@/lib/validation/apiSchemas/appeals";
 
-const appealSchema = z.object({
-  reason: z.string().min(1, "Reason is required").max(500),
-  details: z.string().min(1, "Details are required").max(2000),
-});
-
-// Special handler that allows banned users to submit appeals
-export const POST = createApiHandler(
-  async (ctx: ApiContext, body: z.infer<typeof appealSchema>) => {
-    // Manual auth that allows banned users
-    const cookieStore = await cookies();
-    let token: string | null | undefined = cookieStore.get("firebaseAuthToken")?.value;
-    
-    if (!token) {
-      const authz = ctx.request.headers.get("authorization") || ctx.request.headers.get("Authorization");
-      if (authz && authz.toLowerCase().startsWith("bearer ")) {
-        token = authz.slice(7).trim() || null;
-      }
-    }
-    
-    if (!token) {
-      return errorResponse("Authentication required", 401, { correlationId: ctx.correlationId });
-    }
-
-    let userId: string;
-    try {
-      const decodedToken = await verifyFirebaseIdToken(token);
-      userId = decodedToken.uid;
-    } catch {
-      return errorResponse("Invalid token", 401, { correlationId: ctx.correlationId });
-    }
-
+// Use createAuthenticatedHandler with allowBanned: true
+export const POST = createAuthenticatedHandler(
+  async (
+    ctx: AuthenticatedApiContext,
+    body: import("zod").infer<typeof appealCreateSchema>
+  ) => {
+    const userId = ctx.user.id;
     const { reason, details } = body;
 
     try {
       const now = Date.now();
-      const appealRef = db.collection(COLLECTIONS.APPEALS || "appeals").doc();
+      const appealsCol = COLLECTIONS.APPEALS || "appeals";
+      const appealRef = db.collection(appealsCol).doc();
+      
       await appealRef.set({
         id: appealRef.id,
         userId,
@@ -62,8 +38,8 @@ export const POST = createApiHandler(
     }
   },
   {
-    requireAuth: false, // We handle auth manually to allow banned users
-    bodySchema: appealSchema,
+    allowBanned: true,
+    bodySchema: appealCreateSchema,
     rateLimit: { identifier: "appeals_submit", maxRequests: 5 }
   }
 );

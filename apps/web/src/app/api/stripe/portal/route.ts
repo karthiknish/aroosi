@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,6 +7,7 @@ import {
 import { stripe } from "@/lib/stripe";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { validateSameOriginUrl } from "@/lib/validation/common";
+import { stripePortalSchema } from "@/lib/validation/apiSchemas/stripePortal";
 
 const PORTAL_ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
   [
@@ -40,12 +40,11 @@ function isAllowedOrigin(origin: string | null): boolean {
   try { return PORTAL_ALLOWED_ORIGINS.has(new URL(origin).origin); } catch { return false; }
 }
 
-const portalSchema = z.object({
-  returnUrl: z.string().optional(),
-}).optional();
-
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof portalSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof stripePortalSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const staticPortalUrl = process.env.STRIPE_BILLING_PORTAL;
 
@@ -155,7 +154,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: portalSchema,
+    bodySchema: stripePortalSchema,
     rateLimit: { identifier: "stripe_portal", maxRequests: 20 }
   }
 );

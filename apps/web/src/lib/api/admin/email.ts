@@ -73,19 +73,19 @@ class AdminEmailAPI {
   }
 
   async listSavedTemplates(): Promise<any[]> {
-    const res = await this.makeRequest("/api/admin/email-templates");
+    const res = await this.makeRequest("/api/admin/email/custom-templates");
     return res.data?.items || res.data || res.items || [];
   }
 
   async createSavedTemplate(template: any): Promise<any> {
-    return this.makeRequest("/api/admin/email-templates", {
+    return this.makeRequest("/api/admin/email/custom-templates", {
       method: "POST",
       body: JSON.stringify(template),
     });
   }
 
   async deleteSavedTemplate(id: string): Promise<void> {
-    await this.makeRequest(`/api/admin/email-templates/${id}`, {
+    await this.makeRequest(`/api/admin/email/custom-templates/${id}`, {
       method: "DELETE",
     });
   }

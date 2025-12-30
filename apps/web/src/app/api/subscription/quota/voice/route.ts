@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { successResponse, errorResponse } from '@/lib/api/handler';
 import { db } from '@/lib/firebaseAdmin';
 import { COL_USAGE_EVENTS, COL_USAGE_MONTHLY, monthKey, usageMonthlyId } from '@/lib/firestoreSchema';
 import { getPlanLimits } from '@/lib/subscription/planLimits';

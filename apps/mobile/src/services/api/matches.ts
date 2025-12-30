@@ -69,14 +69,14 @@ export async function reportUser(
  * Block a user
  */
 export async function blockUser(userId: string) {
-    return api.post('/safety/block', { userId });
+    return api.post('/safety/block', { blockedUserId: userId });
 }
 
 /**
  * Unblock a user
  */
 export async function unblockUser(userId: string) {
-    return api.post('/safety/unblock', { userId });
+    return api.post('/safety/unblock', { blockedUserId: userId });
 }
 
 /**

@@ -4,6 +4,7 @@ import { FormSection } from "./FormSection";
 import { ValidatedInput } from "@/components/ui/ValidatedInput";
 import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
 import type { ProfileFormValues } from "@aroosi/shared/types";
+import { HEIGHT_CONSTANTS } from "@/lib/validation/heightValidation";
 
 interface LocationPhysicalSectionProps {
   form: UseFormReturn<Partial<ProfileFormValues>>;
@@ -61,8 +62,8 @@ export const LocationPhysicalSection: React.FC<LocationPhysicalSectionProps> = (
           onValueChange={(v) =>
             setValue("height", v as any, { shouldDirty: true })
           }
-          options={Array.from({ length: 198 - 137 + 1 }, (_, i) => {
-            const cm = 137 + i;
+          options={Array.from({ length: HEIGHT_CONSTANTS.MAX_CM - HEIGHT_CONSTANTS.MIN_CM + 1 }, (_, i) => {
+            const cm = HEIGHT_CONSTANTS.MIN_CM + i;
             const normalized = `${cm} cm`;
             return {
               value: normalized,

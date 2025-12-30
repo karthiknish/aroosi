@@ -1,29 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { NextRequest } from "next/server";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { randomBytes } from "crypto";
 import { sendVerificationLinkEmail } from "@/lib/auth/email";
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  AuthenticatedApiContext,
+} from "@/lib/api/handler";
 
 // POST: issue a new email verification link (idempotent if already verified)
-export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
+  const { user, correlationId } = ctx;
+  
   try {
     const userDocRef = db.collection(COLLECTIONS.USERS).doc(user.id);
     const userSnap = await userDocRef.get();
+    
     if (!userSnap.exists) {
-      return NextResponse.json(
-        { error: "User not found", correlationId },
-        { status: 404 }
-      );
+      return errorResponse("User not found", 404, { correlationId });
     }
+    
     const data = userSnap.data() || {};
     if (data.emailVerified) {
-      return NextResponse.json({
-        success: true,
-        alreadyVerified: true,
-        correlationId,
-      });
+      return successResponse({ alreadyVerified: true }, 200, correlationId);
     }
 
     // Create token (32 bytes -> 64 hex chars) and store hashed for security
@@ -49,35 +49,30 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       { merge: true }
     );
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_BASE_URL || "https://aroosi.app";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || "https://aroosi.app";
     const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${tokenRaw}`;
 
+    // Note: AuthenticatedUser might not have email if it just came from ID token without Firestore
+    const email = user.email || data.email;
+    if (!email) {
+      return errorResponse("User email not found", 400, { correlationId });
+    }
+
     await sendVerificationLinkEmail(
-      user.email,
+      email,
       data.fullName || data.displayName || "there",
       verifyUrl
     );
 
-    return NextResponse.json(
-      { success: true, correlationId, expiresAt },
-      { status: 200 }
-    );
+    return successResponse({ expiresAt }, 200, correlationId);
   } catch (e) {
-    console.error("verify-email.request error", {
+    console.error("[auth.verify-email.request] fatal error", {
       correlationId,
       error: e instanceof Error ? e.message : String(e),
     });
-    return NextResponse.json(
-      { error: "Failed to send verification", correlationId },
-      { status: 500 }
-    );
-  } finally {
-    if (process.env.NODE_ENV !== "production") {
-      console.info("verify-email.request", {
-        correlationId,
-        durationMs: Date.now() - startedAt,
-      });
-    }
+    return errorResponse("Failed to send verification email", 500, { correlationId });
   }
+}, {
+  rateLimit: { identifier: "auth_verify_email_request", maxRequests: 5 }
 });
+

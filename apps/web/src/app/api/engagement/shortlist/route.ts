@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -10,11 +9,7 @@ import {
   createInAppNotification,
   sendFcmNotificationToTokens,
 } from "@/lib/notifications/firebaseNotifications";
-
-// Zod schema for POST body
-const toggleShortlistSchema = z.object({
-  toUserId: z.string().min(1, "toUserId is required"),
-});
+import { engagementShortlistToggleSchema } from "@/lib/validation/apiSchemas/engagement";
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -71,7 +66,10 @@ export const GET = createAuthenticatedHandler(
 );
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof toggleShortlistSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof engagementShortlistToggleSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { toUserId } = body;
     
@@ -110,7 +108,7 @@ export const POST = createAuthenticatedHandler(
           return errorResponse(
             "You've reached your shortlist limit. Upgrade your plan to add more.",
             400,
-            { correlationId: ctx.correlationId, limit }
+            { correlationId: ctx.correlationId, details: { limit } }
           );
         }
       }
@@ -183,7 +181,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: toggleShortlistSchema,
+    bodySchema: engagementShortlistToggleSchema,
     rateLimit: { identifier: "shortlist_post", maxRequests: 30 }
   }
 );

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -7,15 +6,10 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import type { SupervisedConversation } from "@aroosi/shared/types";
-
-const initiateSchema = z.object({
-  targetUserId: z.string().min(1),
-  supervisorId: z.string().min(1),
-  guidelines: z.array(z.string()).optional(),
-});
+import { supervisedConversationInitiateSchema } from "@/lib/validation/apiSchemas/supervisedConversation";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof initiateSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof supervisedConversationInitiateSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { targetUserId, supervisorId, guidelines } = body;
 
@@ -68,7 +62,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: initiateSchema,
+    bodySchema: supervisedConversationInitiateSchema,
     rateLimit: { identifier: "supervised_conv_init", maxRequests: 30 }
   }
 );

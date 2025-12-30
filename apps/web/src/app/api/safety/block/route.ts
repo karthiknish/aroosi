@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,30 +7,17 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_RECOMMENDATIONS } from "@/lib/firestoreSchema";
+import { blockSchema } from "@/lib/validation/apiSchemas/safety";
 
-const blockSchema = z.object({
-  blockedUserId: z.string().min(1, "blockedUserId is required"),
-});
-
-// In-memory short cooldown map per (blocker, target)
-const perTargetCooldown = new Map<string, number>();
-
+// Use createAuthenticatedHandler with per-target rate limiting
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof blockSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof blockSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { blockedUserId } = body;
 
     // Prevent self-blocking
     if (userId === blockedUserId) {
       return errorResponsePublic("Cannot block yourself", 400);
-    }
-
-    // Per-target cooldown: prevent repeated blocks within 60 seconds
-    const key = `${userId}_${blockedUserId}`;
-    const now = Date.now();
-    const last = perTargetCooldown.get(key) || 0;
-    if (now - last < 60_000) {
-      return errorResponsePublic("Please wait before blocking this user again", 429);
     }
 
     try {
@@ -46,10 +32,9 @@ export const POST = createAuthenticatedHandler(
         { merge: true }
       );
 
-      perTargetCooldown.set(key, now);
-
       // Invalidate recommendation cache
       try {
+        const now = Date.now();
         const snaps = await db
           .collection(COL_RECOMMENDATIONS)
           .where("userId", "in", [userId, blockedUserId])
@@ -72,6 +57,18 @@ export const POST = createAuthenticatedHandler(
   },
   {
     bodySchema: blockSchema,
-    rateLimit: { identifier: "safety_block", maxRequests: 20 }
+    rateLimit: [
+      { 
+        identifier: "safety_block", 
+        maxRequests: 20 
+      },
+      {
+        identifier: "safety_block_target",
+        maxRequests: 1,
+        windowMs: 60000,
+        getIdentifier: (ctx, body) => `block_target_${(ctx.user as any).id}_${body.blockedUserId}`,
+        message: "Please wait before blocking this user again"
+      }
+    ]
   }
 );

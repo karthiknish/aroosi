@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -22,11 +21,7 @@ import {
   featureRemaining,
   normalisePlan,
 } from "@/lib/subscription/planLimits";
-
-const trackUsageSchema = z.object({
-  feature: z.string().min(1),
-  metadata: z.record(z.any()).optional(),
-});
+import { subscriptionTrackUsageSchema } from "@/lib/validation/apiSchemas/subscription";
 
 async function getProfile(userId: string) {
   const p = await db.collection("users").doc(userId).get();
@@ -76,7 +71,10 @@ async function getDailyUsage(userId: string) {
 }
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof trackUsageSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof subscriptionTrackUsageSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { feature, metadata } = body;
 
@@ -111,12 +109,14 @@ export const POST = createAuthenticatedHandler(
       
       if (limit !== -1 && currentUsage >= limit) {
         return errorResponsePublic("Feature usage limit reached", 403, {
-          feature,
-          plan,
-          limit,
-          used: currentUsage,
-          remaining: 0,
           correlationId: ctx.correlationId,
+          details: {
+            feature,
+            plan,
+            limit,
+            used: currentUsage,
+            remaining: 0,
+          },
         });
       }
       
@@ -191,7 +191,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: trackUsageSchema,
+    bodySchema: subscriptionTrackUsageSchema,
     rateLimit: { identifier: "subscription_track_usage", maxRequests: 100 }
   }
 );

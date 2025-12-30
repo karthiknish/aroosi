@@ -4,7 +4,7 @@ import {
   successResponse,
   errorResponse,
   errorResponsePublic,
-} from "@/lib/apiResponse";
+} from "@/lib/api/handler";
 import {
   welcomeDay1Template,
   profileCompletionReminderTemplate,

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
 import { db } from '@/lib/firebaseAdmin';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { successResponse, errorResponse } from '@/lib/api/handler';
 import { getPlanLimits, featureRemaining, normalisePlan } from '@/lib/subscription/planLimits';
 import { COL_USAGE_MONTHLY, usageMonthlyId, monthKey } from '@/lib/firestoreSchema';
 
@@ -45,6 +45,6 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     if (e instanceof AuthError) return errorResponse(e.message, e.status);
     const msg = e instanceof Error ? e.message : String(e);
-    return errorResponse('Failed to fetch boosts quota', 500, { details: msg });
+    return errorResponse('Failed to fetch boosts quota', 500, { details: { message: msg } });
   }
 }

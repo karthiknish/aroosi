@@ -1,5 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
+import { 
+  createAuthenticatedHandler, 
+  successResponse, 
+  errorResponse,
+  AuthenticatedApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 
 async function countCollection(col: string): Promise<number> {
@@ -18,10 +22,18 @@ async function countCollection(col: string): Promise<number> {
   }
 }
 
-export async function GET(req: NextRequest) {
+export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
+  const { correlationId, user } = ctx;
   const startedAt = Date.now();
-  const session = await requireAdminSession(req);
-  if ("errorResponse" in session) return session.errorResponse;
+  
+  // Basic admin role check (handler.ts handles authentication)
+  if (user.role !== "admin") {
+    return errorResponse("Admin privileges required", 403, { 
+      correlationId, 
+      code: "FORBIDDEN" 
+    });
+  }
+
   try {
     const [
       totalUsers,
@@ -92,15 +104,12 @@ export async function GET(req: NextRequest) {
       generatedAt: Date.now(),
       durationMs: Date.now() - startedAt,
     };
-    devLog?.("info", "admin.dashboard", "success", payload as any);
-    return NextResponse.json({ success: true, stats: payload });
+    
+    return successResponse({ stats: payload }, 200, correlationId);
   } catch (e) {
-    devLog?.("error", "admin.dashboard", "unhandled_error", {
-      error: e instanceof Error ? e.message : String(e),
-    });
-    return NextResponse.json(
-      { success: false, error: "Failed to load dashboard" },
-      { status: 500 }
-    );
+    console.error("[admin.dashboard] error", { correlationId, error: e });
+    return errorResponse("Failed to load dashboard", 500, { correlationId });
   }
-}
+}, {
+  rateLimit: { identifier: "admin_dashboard", maxRequests: 50 }
+});

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -10,14 +9,10 @@ import {
   COL_TYPING_INDICATORS,
   buildTypingIndicator,
 } from "@/lib/firestoreSchema";
-
-const typingSchema = z.object({
-  conversationId: z.string().min(1, "conversationId is required"),
-  action: z.enum(["start", "stop"]),
-});
+import { typingIndicatorsSchema } from "@/lib/validation/apiSchemas/typingIndicators";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof typingSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof typingIndicatorsSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { conversationId, action } = body;
 
@@ -51,7 +46,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: typingSchema,
+    bodySchema: typingIndicatorsSchema,
     rateLimit: { identifier: "typing_indicators", maxRequests: 120 }
   }
 );

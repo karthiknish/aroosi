@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -9,6 +8,7 @@ import { Notifications } from "@/lib/notify";
 import type { Profile } from "@aroosi/shared/types";
 import { db } from "@/lib/firebaseAdmin";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
+import { subscriptionPurchaseSchema } from "@/lib/validation/apiSchemas/subscription";
 
 interface AppleReceiptItem {
   product_id: string;
@@ -97,15 +97,11 @@ async function validateGooglePurchase(
   return { valid: false, error: "Invalid or cancelled subscription" };
 }
 
-const purchaseSchema = z.object({
-  productId: z.string().min(1),
-  purchaseToken: z.string().min(1),
-  platform: z.enum(["android", "ios"]),
-  receiptData: z.string().optional(),
-});
-
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof purchaseSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof subscriptionPurchaseSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { productId, purchaseToken, platform, receiptData } = body;
 
@@ -176,7 +172,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: purchaseSchema,
+    bodySchema: subscriptionPurchaseSchema,
     rateLimit: { identifier: "subscription_purchase", maxRequests: 10 }
   }
 );

@@ -578,11 +578,11 @@ export default function EditProfilePage() {
                 </span>
               </div>
               <div className="rounded-3xl shadow-2xl border border-neutral/10 overflow-hidden">
-                <ProfileView 
-                  profile={{
+                <ProfileView
+                  profileData={{
                     ...profileData,
                     ...previewValues,
-                  } as any} 
+                  } as any}
                 />
               </div>
             </div>

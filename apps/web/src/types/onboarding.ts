@@ -9,6 +9,7 @@
 import { z } from "zod";
 import {
   PROFILE_CONSTANTS,
+  profileSchema,
   PROFILE_FOR_OPTIONS as PROFILE_FOR_ENUM,
   GENDER_OPTIONS as GENDER_ENUM,
   PREFERRED_GENDER_OPTIONS as PREFERRED_GENDER_ENUM,
@@ -19,64 +20,8 @@ import {
   PHYSICAL_STATUS_OPTIONS as PHYSICAL_STATUS_ENUM,
 } from "@/lib/validation/profileSchema";
 
-// Base profile data structure - uses standardized enums
-export const BaseProfileData = z.object({
-  // Basic Information
-  fullName: z.string().min(PROFILE_CONSTANTS.MIN_NAME_LENGTH, `Full name must be at least ${PROFILE_CONSTANTS.MIN_NAME_LENGTH} characters`),
-  dateOfBirth: z.string().refine(
-    (date) => {
-      const age = new Date().getFullYear() - new Date(date).getFullYear();
-      return age >= PROFILE_CONSTANTS.MIN_AGE && age <= PROFILE_CONSTANTS.MAX_AGE;
-    },
-    { message: `You must be between ${PROFILE_CONSTANTS.MIN_AGE} and ${PROFILE_CONSTANTS.MAX_AGE} years old` }
-  ),
-  gender: z.enum(GENDER_ENUM),
-  preferredGender: z.enum(PREFERRED_GENDER_ENUM),
-
-  // Location
-  country: z.string().min(2, "Country is required"),
-  city: z.string().min(2, "City is required"),
-
-  // Physical Details
-  height: z.number().min(100).max(250).optional(),
-  maritalStatus: z.enum(MARITAL_STATUS_ENUM),
-
-  // Professional
-  education: z.string().min(2, "Education is required"),
-  occupation: z.string().min(2, "Occupation is required"),
-  annualIncome: z.number().min(0).optional(),
-
-  // Cultural Background
-  religion: z.string().optional(),
-  motherTongue: z.string().optional(),
-  ethnicity: z.string().optional(),
-  profileFor: z.enum(PROFILE_FOR_ENUM).default("self"),
-
-  // About Me
-  aboutMe: z
-    .string()
-    .min(PROFILE_CONSTANTS.MIN_ABOUT_ME_LENGTH, `About me must be at least ${PROFILE_CONSTANTS.MIN_ABOUT_ME_LENGTH} characters`)
-    .max(PROFILE_CONSTANTS.MAX_ABOUT_ME_LENGTH),
-  phoneNumber: z
-    .string()
-    .refine((phone) => {
-      const digits = phone.replace(/\D/g, "");
-      return digits.length >= 10 && digits.length <= 15;
-    }, "Phone number must be 10-15 digits"),
-
-  // Lifestyle - using standardized enums
-  diet: z.enum(DIET_ENUM).optional(),
-  smoking: z.enum(SMOKING_ENUM).optional(),
-  drinking: z.enum(DRINKING_ENUM).optional(),
-  physicalStatus: z.enum(PHYSICAL_STATUS_ENUM).optional(),
-
-  // Partner Preferences
-  partnerPreferenceAgeMin: z.number().min(18).max(99).optional(),
-  partnerPreferenceAgeMax: z.number().min(18).max(99).optional(),
-
-  // Photos
-  photos: z.array(z.string()).max(PROFILE_CONSTANTS.MAX_PHOTOS).optional(),
-});
+// Base profile data structure - now strictly uses centralized profileSchema
+export const BaseProfileData = profileSchema;
 
 export type ProfileData = z.infer<typeof BaseProfileData>;
 
@@ -96,7 +41,7 @@ export type OnboardingStep =
   (typeof ONBOARDING_STEPS)[keyof typeof ONBOARDING_STEPS];
 
 // Step validation requirements
-export const STEP_VALIDATION_REQUIREMENTS = {
+export const STEP_VALIDATION_REQUIREMENTS: Record<OnboardingStep, (keyof ProfileData)[]> = {
   [ONBOARDING_STEPS.BASIC_INFO]: [
     "fullName",
     "dateOfBirth",
@@ -109,7 +54,7 @@ export const STEP_VALIDATION_REQUIREMENTS = {
   [ONBOARDING_STEPS.CULTURAL]: [], // Optional fields
   [ONBOARDING_STEPS.ABOUT_ME]: ["aboutMe", "phoneNumber"],
   [ONBOARDING_STEPS.LIFESTYLE]: [], // Optional fields
-  [ONBOARDING_STEPS.PHOTOS]: ["photos"], // Optional but recommended
+  [ONBOARDING_STEPS.PHOTOS]: ["profileImageIds"], // profileImageIds in profileSchema
 } as const;
 
 // Validation schema for each step
@@ -157,7 +102,7 @@ export const StepValidationSchemas = {
   }).partial(),
 
   [ONBOARDING_STEPS.PHOTOS]: BaseProfileData.pick({
-    photos: true,
+    profileImageIds: true,
   }).partial(),
 };
 
@@ -296,21 +241,16 @@ export const PROFILE_FOR_OPTIONS = [
   { value: "family", label: "Family Member" },
 ] as const;
 
+import {
+  calculateAge as robustCalculateAge,
+  deriveDateFromAny,
+} from "@/lib/validation/dateValidation";
+
 // Helper functions
 export const calculateAge = (dateOfBirth: string): number => {
-  const birthDate = new Date(dateOfBirth);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    age--;
-  }
-
-  return age;
+  const birthDate = deriveDateFromAny(dateOfBirth);
+  if (!birthDate) return 0;
+  return robustCalculateAge(birthDate);
 };
 
 export const formatHeight = (heightCm: number): string => {

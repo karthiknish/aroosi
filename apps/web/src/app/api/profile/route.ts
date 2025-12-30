@@ -1,20 +1,27 @@
 import { NextRequest } from "next/server";
 import { Notifications } from "@/lib/notify";
 import {
-  validateProfileData,
   sanitizeProfileInput,
 } from "@/lib/utils/profileValidation";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 import { db } from "@/lib/firebaseAdmin";
 import { 
-  createApiHandler, 
   createAuthenticatedHandler, 
   successResponse, 
   errorResponse,
-  ApiContext
+  AuthenticatedApiContext
 } from "@/lib/api/handler";
-import { profileSchema, createProfileSchema } from "@/lib/api/schemas";
+import { profileSchema, createProfileSchema, updateProfileSchema } from "@/lib/validation/profileSchema";
+
+const PROTECTED_FIELDS = [
+  'id', 'uid', 'email', 'emailVerified', 'createdAt', 'role', 
+  'banned', 'banReason', 'banExpiresAt', 'disabled',
+  'subscriptionPlan', 'subscriptionExpiresAt', 'subscriptionFeatures',
+  'boostsRemaining', 'boostedUntil', 'hasSpotlightBadge', 
+  'spotlightBadgeExpiresAt', 'totalProfileViews', 'totalMessagesSent',
+  'totalMessagesReceived', 'totalLikesGiven', 'totalLikesReceived',
+  'totalMatches', 'loginCount', 'lastLoginAt', 'referredBy', 
+  'referredUsers', 'referralCode'
+];
 
 function isProfileWithEmail(
   profile: unknown
@@ -26,11 +33,11 @@ function isProfileWithEmail(
   );
 }
 
-export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
+export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
   // Support fetching a specific user's profile via ?userId= query param
   // Falls back to authenticated user's own profile if not specified
   const requestedUserId = ctx.request.nextUrl.searchParams.get("userId");
-  const authUserId = (ctx.user as any).userId || (ctx.user as any).id;
+  const authUserId = ctx.user.id;
   
   // Use requested userId if provided, otherwise use authenticated user's ID
   const userId = requestedUserId || authUserId;
@@ -50,20 +57,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
     // If fetching another user's profile, remove sensitive fields
     if (requestedUserId && requestedUserId !== authUserId) {
       // Remove sensitive fields for other users' profiles
-      delete profile.email;
-      delete profile.phoneNumber;
-      delete profile.emailVerified;
-      delete profile.disabled;
-      delete profile.banned;
-      delete profile.banReason;
-      delete profile.banExpiresAt;
-      delete profile.subscriptionPlan;
-      delete profile.subscriptionExpiresAt;
-      delete profile.subscriptionFeatures;
-      delete profile.boostsRemaining;
-      delete profile.referralCode;
-      delete profile.referredBy;
-      delete profile.referredUsers;
+      PROTECTED_FIELDS.forEach(field => delete profile[field]);
     }
     
     console.info("Profile GET success", {
@@ -87,11 +81,17 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
   rateLimit: { identifier: "profile_get", maxRequests: 50 }
 });
 
-export const PUT = createAuthenticatedHandler(async (ctx: ApiContext, body: any) => {
-  const userId = (ctx.user as any).userId || (ctx.user as any).id;
+const handleUpdate = async (ctx: AuthenticatedApiContext, body: any) => {
+  const userId = ctx.user.id;
   
   try {
-    const sanitizedBody = sanitizeProfileInput(body);
+    // Strip protected fields from user updates
+    const updates = { ...body };
+    PROTECTED_FIELDS.forEach(field => {
+      if (field in updates) delete updates[field];
+    });
+
+    const sanitizedBody = sanitizeProfileInput(updates);
     
     const doc = await db.collection("users").doc(userId).get();
     if (!doc.exists) {
@@ -111,19 +111,20 @@ export const PUT = createAuthenticatedHandler(async (ctx: ApiContext, body: any)
         await Notifications.profileCreated(updatedProfile.email, updatedProfile);
         await Notifications.profileCreatedAdmin(updatedProfile);
       } catch (e) {
-        console.error("Profile PUT notification error", {
+        console.error("Profile update notification error", {
           message: e instanceof Error ? e.message : String(e),
           correlationId: ctx.correlationId,
         });
       }
     }
     
-    console.info("Profile PUT success", {
+    console.info("Profile update success", {
       scope: "profile.update",
       type: "success",
       correlationId: ctx.correlationId,
       statusCode: 200,
       durationMs: Date.now() - ctx.startTime,
+      method: ctx.request.method
     });
     
     return successResponse({ 
@@ -131,19 +132,26 @@ export const PUT = createAuthenticatedHandler(async (ctx: ApiContext, body: any)
       message: "Profile updated successfully" 
     }, 200, ctx.correlationId);
   } catch (e) {
-    console.error("Profile PUT firebase error", {
+    console.error("Profile update firebase error", {
       message: e instanceof Error ? e.message : String(e),
       correlationId: ctx.correlationId,
     });
     return errorResponse("Internal server error", 500, { correlationId: ctx.correlationId });
   }
-}, {
-  bodySchema: profileSchema,
+};
+
+export const PUT = createAuthenticatedHandler(handleUpdate, {
+  bodySchema: updateProfileSchema,
   rateLimit: { identifier: "profile_update", maxRequests: 20 }
 });
 
-export const POST = createAuthenticatedHandler(async (ctx: ApiContext, body: any) => {
-  const userId = (ctx.user as any).userId || (ctx.user as any).id;
+export const PATCH = createAuthenticatedHandler(handleUpdate, {
+  bodySchema: updateProfileSchema,
+  rateLimit: { identifier: "profile_update", maxRequests: 20 }
+});
+
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+  const userId = ctx.user.id;
   
   try {
     const sanitizedBody = sanitizeProfileInput(body);
@@ -166,7 +174,7 @@ export const POST = createAuthenticatedHandler(async (ctx: ApiContext, body: any
       createdAt: now,
       updatedAt: now,
       userId,
-      email: (ctx.user as any).email || sanitizedBody.email,
+      email: ctx.user.email || sanitizedBody.email,
       isProfileComplete: true,
     };
 
@@ -223,8 +231,8 @@ export const POST = createAuthenticatedHandler(async (ctx: ApiContext, body: any
   rateLimit: { identifier: "profile_create", maxRequests: 3 }
 });
 
-export const DELETE = createAuthenticatedHandler(async (ctx: ApiContext) => {
-  const userId = (ctx.user as any).userId || (ctx.user as any).id;
+export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
+  const userId = ctx.user.id;
   
   try {
     const doc = await db.collection("users").doc(userId).get();

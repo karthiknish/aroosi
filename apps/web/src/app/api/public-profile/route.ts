@@ -1,16 +1,12 @@
-import { z } from "zod";
 import {
   createApiHandler,
   successResponse,
   errorResponse,
-  ApiContext
+  ApiContext,
+  validateQueryParams
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-
-// Query param schema
-const querySchema = z.object({
-  userId: z.string().min(1, "userId is required"),
-});
+import { publicProfileQuerySchema } from "@/lib/validation/apiSchemas/publicProfile";
 
 /**
  * GET /api/public-profile?userId=xxx
@@ -18,12 +14,17 @@ const querySchema = z.object({
  */
 export const GET = createApiHandler(
   async (ctx: ApiContext) => {
-    const { searchParams } = new URL(ctx.request.url);
-    const userId = searchParams.get("userId");
-    
-    if (!userId) {
-      return errorResponse("Missing userId", 400, { correlationId: ctx.correlationId });
+    const validationResult = validateQueryParams(
+      ctx.request,
+      publicProfileQuerySchema
+    );
+    if (!validationResult.success) {
+      return errorResponse("Missing userId", 400, {
+        correlationId: ctx.correlationId,
+      });
     }
+
+    const { userId } = validationResult.data;
 
     try {
       const snap = await db.collection("users").doc(userId).get();

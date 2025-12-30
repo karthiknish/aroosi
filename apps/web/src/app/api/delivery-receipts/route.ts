@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,14 +5,9 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { deliveryReceiptCreateSchema } from "@/lib/validation/apiSchemas/deliveryReceipts";
 
 export const dynamic = "force-dynamic";
-
-// Zod schema for POST body
-const createReceiptSchema = z.object({
-  messageId: z.string().min(1, "messageId is required"),
-  status: z.enum(["delivered", "read", "failed"]),
-});
 
 // GET /api/delivery-receipts?conversationId=...
 export const GET = createAuthenticatedHandler(
@@ -59,7 +53,10 @@ export const GET = createAuthenticatedHandler(
 
 // POST /api/delivery-receipts { messageId, status }
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof createReceiptSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof deliveryReceiptCreateSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     
     try {
@@ -97,7 +94,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: createReceiptSchema,
+    bodySchema: deliveryReceiptCreateSchema,
     rateLimit: { identifier: "delivery_receipts_post", maxRequests: 100 }
   }
 );

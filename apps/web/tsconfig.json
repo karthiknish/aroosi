@@ -38,7 +38,8 @@
     },
     "typeRoots": [
       "./types",
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "../../node_modules/@types"
     ],
     "types": []
   },
@@ -54,11 +55,8 @@
     ".next",
     "dist",
     "build",
-    // exclude tests from app type-check (handled by tsconfig.test.json)
-    "src/setupTests.ts",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
-    "src/__tests__/**",
-    "tests/**"
+    "src/__tests__/**/*"
   ]
 }

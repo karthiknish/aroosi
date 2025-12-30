@@ -27,6 +27,10 @@ function json(status: number, body: unknown): Response {
   });
 }
 
+import { errorResponse } from "@/lib/api/handler";
+
+// ... (existing code)
+
 function readCookie(req: NextRequest, name: string): string | null {
   try {
     const v = req.cookies.get(name)?.value;
@@ -36,25 +40,31 @@ function readCookie(req: NextRequest, name: string): string | null {
   }
 }
 
+function asNextRequest(req: NextRequest | Request): NextRequest {
+  // In Next.js App Router route handlers, the runtime request is a NextRequest.
+  // Some call sites type it as Request, so we normalize here.
+  return req as NextRequest;
+}
+
 /**
  * Resolve current user strictly via cookies-backed session on the server.
  * Returns { userId, user, profile } or an errorResponse.
  */
 export async function requireSession(
-  req: NextRequest
+  req: NextRequest | Request
 ): Promise<
   | { userId: Id<"users">; user: any; profile: any | null }
   | { errorResponse: Response }
 > {
+  const nextReq = asNextRequest(req);
   // Prefer Firebase ID token cookie
-  let firebaseToken = readCookie(req, "firebaseAuthToken");
+  let firebaseToken = readCookie(nextReq, "firebaseAuthToken");
   // Fallback: Authorization: Bearer <token>
   if (!firebaseToken) {
     const authz =
-      req.headers.get("authorization") || req.headers.get("Authorization");
+      nextReq.headers.get("authorization") || nextReq.headers.get("Authorization");
     if (authz && authz.toLowerCase().startsWith("bearer ")) {
       firebaseToken = authz.slice(7).trim() || null;
-      // dev log omitted to satisfy linter
     }
   }
   if (!firebaseToken) {
@@ -62,7 +72,7 @@ export async function requireSession(
       console.warn("[requireSession] Missing auth (no cookie, no bearer)");
     }
     return {
-      errorResponse: json(401, { success: false, error: "No auth session" }),
+      errorResponse: errorResponse("No auth session", 401, { code: "UNAUTHORIZED" }),
     };
   }
   let decoded: any;
@@ -73,16 +83,13 @@ export async function requireSession(
       console.warn("[requireSession] Token verification failed");
     }
     return {
-      errorResponse: json(401, { success: false, error: "Invalid session" }),
+      errorResponse: errorResponse("Invalid session", 401, { code: "TOKEN_INVALID" }),
     };
   }
   const uid: string | undefined = decoded?.uid;
   if (!uid) {
     return {
-      errorResponse: json(401, {
-        success: false,
-        error: "Invalid token payload",
-      }),
+      errorResponse: errorResponse("Invalid token payload", 401, { code: "TOKEN_INVALID" }),
     };
   }
   let userDoc = await getFirebaseUser(uid);
@@ -104,20 +111,19 @@ export async function requireSession(
           { merge: true }
         );
         userDoc = await getFirebaseUser(uid);
-        // dev log omitted to satisfy linter
       }
     } catch {
-      // dev log omitted to satisfy linter
+      // ignore
     }
     if (!userDoc) {
       return {
-        errorResponse: json(404, { success: false, error: "User not found" }),
+        errorResponse: errorResponse("User not found", 404, { code: "NOT_FOUND" }),
       };
     }
   }
   if (userDoc.banned) {
     return {
-      errorResponse: json(403, { success: false, error: "Account is banned" }),
+      errorResponse: errorResponse("Account is banned", 403, { code: "FORBIDDEN" }),
     };
   }
   // Basic public profile (could be expanded if separate collection later)
@@ -130,12 +136,12 @@ export async function requireSession(
  * banned users, such as submitting an appeal.
  */
 export async function requireSessionAllowBanned(
-  req: NextRequest
+  req: NextRequest | Request
 ): Promise<
   | { userId: Id<"users">; user: any; profile: any | null }
   | { errorResponse: Response }
 > {
-  const res = await requireSessionCore(req, { allowBanned: true });
+  const res = await requireSessionCore(asNextRequest(req), { allowBanned: true });
   if ("errorResponse" in res) return res;
   return res;
 }
@@ -158,27 +164,22 @@ async function requireSessionCore(
     }
   }
   if (!firebaseToken) {
-    // dev log omitted to satisfy linter
     return {
-      errorResponse: json(401, { success: false, error: "No auth session" }),
+      errorResponse: errorResponse("No auth session", 401, { code: "UNAUTHORIZED" }),
     };
   }
   let decoded: any;
   try {
     decoded = await verifyFirebaseIdToken(firebaseToken);
   } catch {
-    // dev log omitted to satisfy linter
     return {
-      errorResponse: json(401, { success: false, error: "Invalid session" }),
+      errorResponse: errorResponse("Invalid session", 401, { code: "TOKEN_INVALID" }),
     };
   }
   const uid: string | undefined = decoded?.uid;
   if (!uid) {
     return {
-      errorResponse: json(401, {
-        success: false,
-        error: "Invalid token payload",
-      }),
+      errorResponse: errorResponse("Invalid token payload", 401, { code: "TOKEN_INVALID" }),
     };
   }
   let userDoc = await getFirebaseUser(uid);
@@ -199,32 +200,19 @@ async function requireSessionCore(
           { merge: true }
         );
         userDoc = await getFirebaseUser(uid);
-        if (process.env.NODE_ENV !== "production") {
-          // eslint-disable-next-line no-console
-          console.info("[requireSession] Bootstrapped missing user profile", {
-            uid,
-            email,
-          });
-        }
       }
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") {
-        // eslint-disable-next-line no-console
-        console.warn("[requireSession] Failed to bootstrap missing user doc", {
-          uid,
-          error: e instanceof Error ? e.message : String(e),
-        });
-      }
+      // ignore
     }
     if (!userDoc) {
       return {
-        errorResponse: json(404, { success: false, error: "User not found" }),
+        errorResponse: errorResponse("User not found", 404, { code: "NOT_FOUND" }),
       };
     }
   }
   if (userDoc.banned && !options?.allowBanned) {
     return {
-      errorResponse: json(403, { success: false, error: "Account is banned" }),
+      errorResponse: errorResponse("Account is banned", 403, { code: "FORBIDDEN" }),
     };
   }
   const profile = userDoc;
@@ -235,7 +223,7 @@ async function requireSessionCore(
  * For admin-only routes. Relies on server-verified role on user object.
  */
 export async function requireAdminSession(
-  req: NextRequest
+  req: NextRequest | Request
 ): Promise<
   | { userId: Id<"users">; user: any; profile: any | null }
   | { errorResponse: Response }
@@ -245,34 +233,23 @@ export async function requireAdminSession(
   const { userId, user, profile } = res;
   const role = (user.role as string) || "user";
   if (role !== "admin") {
-    return { errorResponse: json(403, { success: false, error: "Admin privileges required" }) };
+    return { errorResponse: errorResponse("Admin privileges required", 403, { code: "FORBIDDEN" }) };
   }
   return { userId, user, profile };
 }
 
-// Legacy JWT helpers removed in cookie-only model
-export function extractRoleFromToken(): undefined {
-  return undefined;
-}
-export function extractUserIdFromToken(): null {
-  return null;
-}
-export function isAdminToken(): boolean {
-  return false;
-}
-
 export async function requireAdminToken(
-  req: import("next/server").NextRequest
+  req: import("next/server").NextRequest | Request
 ): Promise<{ userId?: string } | { errorResponse: Response }> {
-  const res = await requireAdminSession(req as unknown as NextRequest);
+  const res = await requireAdminSession(req);
   if ("errorResponse" in res) return res;
   return { userId: String(res.userId) };
 }
 
 export async function requireUserToken(
-  req: import("next/server").NextRequest
+  req: import("next/server").NextRequest | Request
 ): Promise<{ userId?: string } | { errorResponse: Response }> {
-  const res = await requireSession(req as unknown as NextRequest);
+  const res = await requireSession(req);
   if ("errorResponse" in res) return res;
   return { userId: String(res.userId) };
 }

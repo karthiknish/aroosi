@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,41 +7,13 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { Notifications } from "@/lib/notify";
+import { reportSchema } from "@/lib/validation/apiSchemas/safety";
 
-const validReasons = [
-  "inappropriate_content",
-  "harassment",
-  "fake_profile",
-  "spam",
-  "safety_concern",
-  "inappropriate_behavior",
-  "other",
-] as const;
-
-const reportSchema = z.object({
-  reportedUserId: z.string().min(1, "reportedUserId is required"),
-  reason: z.enum(validReasons),
-  description: z.string().optional(),
-}).refine(
-  (data) => data.reason !== "other" || (data.description && data.description.trim().length > 0),
-  { message: "Description is required for 'other' report type", path: ["description"] }
-);
-
-// Per-target cooldown map
-const reportCooldownMap = new Map<string, number>();
-
+// Use createAuthenticatedHandler with per-target rate limiting
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof reportSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof reportSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { reportedUserId, reason, description } = body;
-
-    // Per-target cooldown: 60s per reporter-target pair
-    const key = `${userId}_${reportedUserId}`;
-    const now = Date.now();
-    const last = reportCooldownMap.get(key) || 0;
-    if (now - last < 60_000) {
-      return errorResponsePublic("Please wait before reporting this user again", 429);
-    }
 
     try {
       const ref = db.collection("reports").doc();
@@ -54,8 +25,6 @@ export const POST = createAuthenticatedHandler(
         status: "pending",
         createdAt: Date.now(),
       });
-
-      reportCooldownMap.set(key, now);
 
       // Notify admins for moderation
       try {
@@ -77,6 +46,18 @@ export const POST = createAuthenticatedHandler(
   },
   {
     bodySchema: reportSchema,
-    rateLimit: { identifier: "safety_report", maxRequests: 10 }
+    rateLimit: [
+      { 
+        identifier: "safety_report", 
+        maxRequests: 10 
+      },
+      {
+        identifier: "safety_report_target",
+        maxRequests: 1,
+        windowMs: 60000,
+        getIdentifier: (ctx, body) => `report_target_${(ctx.user as any).id}_${body.reportedUserId}`,
+        message: "Please wait before reporting this user again"
+      }
+    ]
   }
 );

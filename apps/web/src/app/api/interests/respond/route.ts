@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,14 +7,10 @@ import {
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { deterministicMatchId, buildMatch } from "@/lib/firestoreSchema";
-
-const respondSchema = z.object({
-  interestId: z.string().min(1, "interestId is required"),
-  status: z.enum(["accepted", "rejected"]),
-});
+import { interestsRespondOnlySchema } from "@/lib/validation/apiSchemas/interests";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof respondSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof interestsRespondOnlySchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { interestId, status } = body;
 
@@ -61,7 +56,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: respondSchema,
+    bodySchema: interestsRespondOnlySchema,
     rateLimit: { identifier: "interests_respond", maxRequests: 60, windowMs: 600000 }
   }
 );

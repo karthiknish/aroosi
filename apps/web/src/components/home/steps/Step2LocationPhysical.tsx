@@ -6,7 +6,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ValidatedInput } from "@/components/ui/ValidatedInput";
 import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
 import { Slider } from "@/components/ui/slider";
-import { cmToFeetInches } from "@/lib/utils/height";
+import { cmToFeetInches as robustCmToFeetInches, HEIGHT_CONSTANTS } from "@/lib/validation/heightValidation";
 import type { ProfileCreationData } from "../profileCreation/types";
 import { MapPin, Ruler, User } from "lucide-react";
 
@@ -94,7 +94,7 @@ export function Step2LocationPhysical(props: {
                     </Label>
                     <div className="text-right">
                         <span className="text-2xl font-serif font-bold text-primary block leading-none">
-                            {cmToFeetInches(heightVal)}
+                            {robustCmToFeetInches(heightVal)}
                         </span>
                         <span className="text-xs text-neutral-light font-medium font-sans">
                             {heightVal} cm
@@ -103,15 +103,15 @@ export function Step2LocationPhysical(props: {
                 </div>
                 <Slider
                     value={[heightVal]}
-                    min={137}
-                    max={220}
+                    min={HEIGHT_CONSTANTS.MIN_CM}
+                    max={HEIGHT_CONSTANTS.MAX_CM}
                     step={1}
                     onValueChange={handleHeightChange}
                     className="py-2"
                 />
                 <div className="flex justify-between text-xs text-neutral-light mt-3 px-1 font-sans">
-                    <span>4'6"</span>
-                    <span>7'3"</span>
+                    <span>{robustCmToFeetInches(HEIGHT_CONSTANTS.MIN_CM)}</span>
+                    <span>{robustCmToFeetInches(HEIGHT_CONSTANTS.MAX_CM)}</span>
                 </div>
             </div>
 

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createApiHandler,
   createAuthenticatedHandler,
@@ -12,13 +11,7 @@ import {
   contactFormUserAckTemplate,
 } from "@/lib/emailTemplates";
 import { db } from "@/lib/firebaseAdmin";
-
-const contactSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
-  email: z.string().trim().email("Please enter a valid email").max(254, "Email is too long"),
-  subject: z.string().trim().min(5, "Subject must be at least 5 characters").max(120, "Subject is too long"),
-  message: z.string().trim().min(10, "Message must be at least 10 characters").max(1000, "Message is too long"),
-});
+import { contactSubmissionSchema } from "@/lib/validation/apiSchemas/contact";
 
 function toPositiveInt(value: string | null, fallback: number): number {
   if (!value) return fallback;
@@ -76,7 +69,10 @@ export const GET = createAuthenticatedHandler(
 
 // Public POST for contact form submissions
 export const POST = createApiHandler(
-  async (ctx: ApiContext, body: z.infer<typeof contactSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof contactSubmissionSchema>
+  ) => {
     const { email, name, subject, message } = body;
     
     try {
@@ -111,7 +107,7 @@ export const POST = createApiHandler(
   },
   {
     requireAuth: false,
-    bodySchema: contactSchema,
+    bodySchema: contactSubmissionSchema,
     rateLimit: { identifier: "contact_submit", maxRequests: 5 }
   }
 );

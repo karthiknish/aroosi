@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
 
@@ -11,10 +11,8 @@ import { db } from "@/lib/firebaseAdmin";
  * - audience: optional explicit audience segment(s); defaults to "Subscribed Users"
  * - maxAudience: hard cap unless overridden with smaller allowed segments (server-side control is limited by provider)
  */
-export async function POST(request: Request) {
-  const { role, userId, email } = await requireAuth(
-    request as unknown as NextRequest
-  );
+export async function POST(request: NextRequest) {
+  const { role, userId, email } = await requireAuth(request);
   if ((role || "user") !== "admin")
     return errorResponse("Admin privileges required", 403);
 
@@ -92,7 +90,7 @@ export async function POST(request: Request) {
 
   if (!title || !message) {
     return errorResponse("Title and message are required", 400, {
-      fields: ["title", "message"],
+      details: { fields: ["title", "message"] },
     });
   }
 
@@ -104,7 +102,7 @@ export async function POST(request: Request) {
   // Safety: require confirm for live sends; dryRun preview otherwise
   if (!dryRun && confirm !== true) {
     return errorResponse("Confirmation required for live send", 400, {
-      hint: "Pass confirm: true or use dryRun: true",
+      details: { hint: "Pass confirm: true or use dryRun: true" },
     });
   }
 
@@ -128,7 +126,7 @@ export async function POST(request: Request) {
   ).filter((s) => ALLOWED_SEGMENTS.has(s));
   if (segments.length === 0) {
     return errorResponse("Invalid audience segment(s)", 400, {
-      allowed: Array.from(ALLOWED_SEGMENTS),
+      details: { allowed: Array.from(ALLOWED_SEGMENTS) },
     });
   }
 
@@ -156,35 +154,42 @@ export async function POST(request: Request) {
   if (buttons !== undefined) {
     if (!Array.isArray(buttons)) {
       return errorResponse("buttons must be an array", 400, {
-        hint: "Provide an array of { id, text, icon?, url? }",
+        details: { hint: "Provide an array of { id, text, icon?, url? }" },
       });
     }
     for (let i = 0; i < buttons.length; i++) {
       const b = buttons[i] as any;
       if (!b || typeof b !== "object")
         return errorResponse("Invalid button entry", 400, {
-          index: i,
-          hint: "Each button must be an object",
+          details: { index: i, hint: "Each button must be an object" },
         });
       if (!b.id || typeof b.id !== "string")
         return errorResponse("Button id required", 400, {
-          index: i,
-          hint: "buttons[i].id must be a non-empty string",
+          details: {
+            index: i,
+            hint: "buttons[i].id must be a non-empty string",
+          },
         });
       if (!b.text || typeof b.text !== "string")
         return errorResponse("Button text required", 400, {
-          index: i,
-          hint: "buttons[i].text must be a non-empty string",
+          details: {
+            index: i,
+            hint: "buttons[i].text must be a non-empty string",
+          },
         });
       if (b.icon && typeof b.icon !== "string")
         return errorResponse("Invalid button icon", 400, {
-          index: i,
-          hint: "buttons[i].icon must be a string if provided",
+          details: {
+            index: i,
+            hint: "buttons[i].icon must be a string if provided",
+          },
         });
       if (b.url && typeof b.url !== "string")
         return errorResponse("Invalid button url", 400, {
-          index: i,
-          hint: "buttons[i].url must be a string if provided",
+          details: {
+            index: i,
+            hint: "buttons[i].url must be a string if provided",
+          },
         });
     }
   }
@@ -192,7 +197,7 @@ export async function POST(request: Request) {
   // Custom data must be an object if provided
   if (data !== undefined && (typeof data !== "object" || data === null)) {
     return errorResponse("data must be a JSON object", 400, {
-      hint: "Provide a key/value object for custom data",
+      details: { hint: "Provide a key/value object for custom data" },
     });
   }
 
@@ -204,14 +209,18 @@ export async function POST(request: Request) {
     );
     if (!timeOk) {
       return errorResponse("Invalid deliveryTimeOfDay format", 400, {
-        hint: "Use HH:MM or HH:MM:SS (24h)",
+        details: { hint: "Use HH:MM or HH:MM:SS (24h)" },
       });
     }
     if (delayedOption !== "timezone") {
       return errorResponse(
         "deliveryTimeOfDay requires delayedOption=timezone",
         400,
-        { hint: "Set delayedOption to 'timezone' when using deliveryTimeOfDay" }
+        {
+          details: {
+            hint: "Set delayedOption to 'timezone' when using deliveryTimeOfDay",
+          },
+        }
       );
     }
   }
@@ -225,7 +234,7 @@ export async function POST(request: Request) {
   // iOS badge validation
   if (iosBadgeType && !["None", "SetTo", "Increase"].includes(iosBadgeType)) {
     return errorResponse("Invalid iosBadgeType", 400, {
-      allowed: ["None", "SetTo", "Increase"],
+      details: { allowed: ["None", "SetTo", "Increase"] },
     });
   }
   if (iosBadgeType && iosBadgeType !== "None") {
@@ -247,34 +256,32 @@ export async function POST(request: Request) {
       if (f && typeof f === "object" && typeof f.operator === "string") {
         if (f.operator !== "OR") {
           return errorResponse("Invalid filter operator", 400, {
-            index: i,
-            allowed: ["OR"],
+            details: { index: i, allowed: ["OR"] },
           });
         }
         continue;
       }
       if (!f || typeof f !== "object")
         return errorResponse("Invalid filter item", 400, {
-          index: i,
+          details: { index: i },
         });
       if (!f.field || typeof f.field !== "string")
         return errorResponse("Filter field required", 400, {
-          index: i,
+          details: { index: i },
         });
       const field = String(f.field);
       if (field === "tag") {
         if (!f.key || typeof f.key !== "string")
-          return errorResponse("Tag key required", 400, { index: i });
+          return errorResponse("Tag key required", 400, { details: { index: i } });
         const allowed = ["=", "!=", ">", "<", "exists", "not_exists"];
         if (!allowed.includes(f.relation))
           return errorResponse("Invalid tag relation", 400, {
-            index: i,
-            allowed,
+            details: { index: i, allowed },
           });
         if (f.relation !== "exists" && f.relation !== "not_exists") {
           if (typeof f.value !== "string" && typeof f.value !== "number") {
             return errorResponse("Tag value must be string or number", 400, {
-              index: i,
+              details: { index: i },
             });
           }
         }
@@ -282,34 +289,31 @@ export async function POST(request: Request) {
         const allowed = ["=", "!="];
         if (!allowed.includes(f.relation))
           return errorResponse("Invalid relation for language/country", 400, {
-            index: i,
-            allowed,
+            details: { index: i, allowed },
           });
         if (typeof f.value !== "string")
-          return errorResponse("value must be a string", 400, { index: i });
+          return errorResponse("value must be a string", 400, { details: { index: i } });
       } else if (field === "last_session") {
         const allowed = ["<", ">"];
         if (!allowed.includes(f.relation))
           return errorResponse("Invalid relation for last_session", 400, {
-            index: i,
-            allowed,
+            details: { index: i, allowed },
           });
         const n = Number(f.hours_ago);
         if (!Number.isFinite(n) || n < 0)
           return errorResponse("hours_ago must be a non-negative number", 400, {
-            index: i,
+            details: { index: i },
           });
       } else if (field === "session_count" || field === "amount_spent") {
         const allowed = ["=", "!=", ">", "<"];
         if (!allowed.includes(f.relation))
           return errorResponse(`Invalid relation for ${field}`, 400, {
-            index: i,
-            allowed,
+            details: { index: i, allowed },
           });
         const n = Number(f.value);
         if (!Number.isFinite(n) || n < 0)
           return errorResponse("value must be a non-negative number", 400, {
-            index: i,
+            details: { index: i },
           });
       }
     }
@@ -474,7 +478,7 @@ export async function POST(request: Request) {
         console.warn("Failed to write admin send log (push error)", e);
       }
       return errorResponse("Failed to queue notification", 500, {
-        providerError: errorData,
+        details: { providerError: errorData },
       });
     }
 

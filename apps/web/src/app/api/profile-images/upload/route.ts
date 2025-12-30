@@ -61,8 +61,8 @@ export const POST = createAuthenticatedHandler(
     if (!validation.ok) {
       return errorResponse(validation.message || "Invalid image", 400, {
         correlationId: ctx.correlationId,
-        plan: validation.plan,
-        errorCode: validation.errorCode,
+        code: validation.errorCode,
+        details: { plan: validation.plan },
       });
     }
 

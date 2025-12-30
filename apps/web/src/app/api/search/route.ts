@@ -9,6 +9,10 @@ import {
 import { searchSchema } from "@/lib/api/schemas";
 import { db, COLLECTIONS, adminStorage } from "@/lib/firebaseAdmin";
 import { FieldPath, Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import {
+  calculateAge as robustCalculateAge,
+  deriveDateFromAny,
+} from "@/lib/validation/dateValidation";
 
 export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
   try {
@@ -243,28 +247,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
       );
       let filtered = all.filter((d: { [key: string]: any }) => {
         const computeAge = (): number | null => {
-          const dob = d.dateOfBirth;
-          let dt: Date | null = null;
-          if (dob) {
-            if (typeof dob === "number") dt = new Date(dob);
-            else if (typeof dob === "string") {
-              const parsed = Date.parse(dob);
-              if (!Number.isNaN(parsed)) dt = new Date(parsed);
-            } else if (typeof dob === "object") {
-              try {
-                if (dob && typeof (dob as any).toDate === "function") {
-                  dt = (dob as any).toDate();
-                } else if (
-                  Object.prototype.hasOwnProperty.call(dob, "seconds") &&
-                  typeof (dob as any).seconds === "number"
-                ) {
-                  dt = new Date((dob as any).seconds * 1000);
-                }
-              } catch {
-                /* ignore */
-              }
-            }
-          }
+          const dt = deriveDateFromAny(d.dateOfBirth);
           if (!dt) {
             if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
             if (typeof d.age === "string") {
@@ -273,12 +256,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
             }
             return null;
           }
-          const now = Date.now();
-          if (dt.getTime() > now) return null;
-          const ageMs = now - dt.getTime();
-          const derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
-          if (derived < 0 || derived > 150) return null;
-          return derived;
+          return robustCalculateAge(dt);
         };
         if (
           cityFilter &&
@@ -352,28 +330,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
     // Extra age filtering pass
     if (typeof ageMin === "number" || typeof ageMax === "number") {
       const derive = (d: any): number | null => {
-        const dob = d.dateOfBirth;
-        let dt: Date | null = null;
-        if (dob) {
-          if (typeof dob === "number") dt = new Date(dob);
-          else if (typeof dob === "string") {
-            const parsed = Date.parse(dob);
-            if (!Number.isNaN(parsed)) dt = new Date(parsed);
-          } else if (typeof dob === "object") {
-            try {
-              if (dob && typeof (dob as any).toDate === "function") {
-                dt = (dob as any).toDate();
-              } else if (
-                Object.prototype.hasOwnProperty.call(dob, "seconds") &&
-                typeof (dob as any).seconds === "number"
-              ) {
-                dt = new Date((dob as any).seconds * 1000);
-              }
-            } catch {
-              /* ignore */
-            }
-          }
-        }
+        const dt = deriveDateFromAny(d.dateOfBirth);
         if (!dt) {
           if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
           if (typeof d.age === "string") {
@@ -382,12 +339,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
           }
           return null;
         }
-        const now = Date.now();
-        if (dt.getTime() > now) return null;
-        const ageMs = now - dt.getTime();
-        const derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
-        if (derived < 0 || derived > 150) return null;
-        return derived;
+        return robustCalculateAge(dt);
       };
       docs = docs.filter((d: any) => {
         const ageVal = derive(d);

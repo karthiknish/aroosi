@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,13 +5,10 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-
-const mainImageSchema = z.object({
-  imageId: z.string().min(1),
-});
+import { profileImagesMainSchema } from "@/lib/validation/apiSchemas/profileImages";
 
 export const PUT = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof mainImageSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof profileImagesMainSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { imageId } = body;
 
@@ -51,7 +47,7 @@ export const PUT = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: mainImageSchema,
+    bodySchema: profileImagesMainSchema,
     rateLimit: { identifier: "profile_images_main", maxRequests: 30 }
   }
 );

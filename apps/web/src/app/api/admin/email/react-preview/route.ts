@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/app/api/_utils/auth";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { renderMarketingReactTemplate } from "@/lib/reactEmailRenderers";
 
 export async function POST(request: NextRequest) {

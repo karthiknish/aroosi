@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { 
   createAuthenticatedHandler, 
   successResponse, 
@@ -6,11 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { listUserNotifications, markNotificationsRead } from "@/lib/notifications/firebaseNotifications";
-
-// Zod schema for POST body validation
-const markReadSchema = z.object({
-  ids: z.array(z.string().min(1)).min(1, "At least one notification ID is required"),
-});
+import { notificationsMarkReadSchema } from "@/lib/validation/apiSchemas/notifications";
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -38,7 +33,7 @@ export const GET = createAuthenticatedHandler(
 );
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof markReadSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof notificationsMarkReadSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     
     try {
@@ -53,7 +48,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: markReadSchema,
+    bodySchema: notificationsMarkReadSchema,
     rateLimit: { identifier: "notifications_mark_read", maxRequests: 30 }
   }
 );

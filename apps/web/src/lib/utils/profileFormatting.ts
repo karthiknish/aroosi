@@ -2,25 +2,15 @@
  * Utility functions for formatting profile data consistently across platforms
  */
 
+import {
+  calculateAge as robustCalculateAge,
+  deriveDateFromAny,
+} from "@/lib/validation/dateValidation";
+
 export const calculateAge = (dateOfBirth: string): number | null => {
-  if (!dateOfBirth) return null;
-
-  const today = new Date();
-  const birthDate = new Date(dateOfBirth);
-
-  if (isNaN(birthDate.getTime())) return null;
-
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    age--;
-  }
-
-  return age;
+  const birthDate = deriveDateFromAny(dateOfBirth);
+  if (!birthDate) return null;
+  return robustCalculateAge(birthDate);
 };
 
 export const formatHeight = (height: string | number): string => {

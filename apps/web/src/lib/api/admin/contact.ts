@@ -87,7 +87,7 @@ class AdminContactAPI {
    * Get email templates
    */
   async getEmailTemplates(): Promise<any[]> {
-    const res = await this.makeRequest("/api/admin/email-templates");
+    const res = await this.makeRequest("/api/admin/email/custom-templates");
     return res.data?.templates || res.templates || [];
   }
 
@@ -95,7 +95,7 @@ class AdminContactAPI {
    * Get email template by ID
    */
   async getEmailTemplate(templateId: string): Promise<any> {
-    return this.makeRequest(`/api/admin/email-templates/${templateId}`);
+    return this.makeRequest(`/api/admin/email/custom-templates/${templateId}`);
   }
 
   /**

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,16 +5,12 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { reactionToggleSchema } from "@/lib/validation/apiSchemas/reactions";
 
 function makeReactionId(messageId: string, userId: string, emoji: string) {
   const enc = encodeURIComponent(emoji);
   return `${messageId}__${userId}__${enc}`;
 }
-
-const reactionSchema = z.object({
-  messageId: z.string().min(1, "messageId is required"),
-  emoji: z.string().min(1, "emoji is required"),
-});
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -55,7 +50,10 @@ export const GET = createAuthenticatedHandler(
 );
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof reactionSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof reactionToggleSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { messageId, emoji } = body;
 
@@ -101,7 +99,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: reactionSchema,
+    bodySchema: reactionToggleSchema,
     rateLimit: { identifier: "reactions_post", maxRequests: 60 }
   }
 );

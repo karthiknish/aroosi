@@ -67,7 +67,7 @@ function parseTimestamp(value: unknown): Date {
 export function useAdminDashboardData() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-dashboard-stats"],
-    queryFn: () => adminDashboardAPI.getStats() as Promise<DashboardStatsPayload>,
+    queryFn: () => adminDashboardAPI.getStats() as unknown as Promise<DashboardStatsPayload>,
     staleTime: 60_000,
   });
 

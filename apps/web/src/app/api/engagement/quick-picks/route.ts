@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -8,6 +7,7 @@ import {
 import { db, adminStorage } from "@/lib/firebaseAdmin";
 import { FieldPath } from "firebase-admin/firestore";
 import { buildQuickPick, COL_QUICK_PICKS } from "@/lib/firestoreSchema";
+import { engagementQuickPickActionSchema } from "@/lib/validation/apiSchemas/engagement";
 
 const DAY_FMT = () => new Date().toISOString().slice(0, 10);
 
@@ -158,13 +158,11 @@ export const GET = createAuthenticatedHandler(
   }
 );
 
-const actSchema = z.object({
-  toUserId: z.string().min(1),
-  action: z.enum(["like", "skip"]),
-});
-
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof actSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof engagementQuickPickActionSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { toUserId, action } = body;
 
@@ -196,7 +194,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: actSchema,
+    bodySchema: engagementQuickPickActionSchema,
     rateLimit: { identifier: "quick_picks_action", maxRequests: 60 }
   }
 );

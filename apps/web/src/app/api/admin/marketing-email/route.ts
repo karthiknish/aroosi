@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import {
   MarketingEmailTemplateFn,
   profileCompletionReminderTemplate,
@@ -33,11 +33,9 @@ const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   welcomeDay1: welcomeDay1Template as unknown as MarketingEmailTemplateFn,
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const adminCheck = await requireAdminSession(
-      request as unknown as NextRequest
-    );
+    const adminCheck = await requireAdminSession(request);
     if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
     const { userId } = adminCheck;
 
@@ -119,7 +117,9 @@ export async function POST(request: Request) {
       return errorResponse("Provide a templateKey or custom subject/body", 400);
     }
     if (templateKey && !(templateKey in TEMPLATE_MAP)) {
-      return errorResponse("Invalid template", 400, { field: "templateKey" });
+      return errorResponse("Invalid template", 400, {
+        details: { field: "templateKey" },
+      });
     }
 
     // Safety switches: require confirm for live send; enforce audience cap
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       : 1000;
     if (!dryRun && confirm !== true) {
       return errorResponse("Confirmation required for live send", 400, {
-        hint: "Pass confirm: true or use dryRun: true",
+        details: { hint: "Pass confirm: true or use dryRun: true" },
       });
     }
 

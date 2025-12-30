@@ -33,8 +33,8 @@ const publicRoutes = [
   "/forgot-password",
   "/reset-password",
   "/banned",
-  "/api/auth/signin",
-  "/api/auth/signup",
+  "/api/auth/login",
+  "/api/auth/register",
   "/api/auth/reset-password",
   "/api/auth/logout",
 ];

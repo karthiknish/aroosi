@@ -1,0 +1,7 @@
+npm warn config ignoring workspace config at /Users/karthik/React-projects/aroosi/apps/web/.npmrc
+src/app/(authenticated)/profile/profileFormSchema.ts(2,52): error TS2307: Cannot find module '@/lib/validation/profileSchema' or its corresponding type declarations.
+src/lib/api/schemas.ts(7,8): error TS2307: Cannot find module '@/lib/validation/profileSchema' or its corresponding type declarations.
+src/lib/validation/onboarding.ts(17,8): error TS2307: Cannot find module '@/lib/validation/profileSchema' or its corresponding type declarations.
+src/types/onboarding.ts(21,8): error TS2307: Cannot find module '@/lib/validation/profileSchema' or its corresponding type declarations.
+src/types/onboarding.ts(171,35): error TS2307: Cannot find module '@/lib/validation/profileSchema' or its corresponding type declarations.
+../../node_modules/@types/request/index.d.ts(389,84): error TS2724: '"/Users/karthik/React-projects/aroosi/node_modules/tough-cookie/dist/cookie/index"' has no exported member named 'CookieJar'. Did you mean 'Cookie'?

@@ -1,15 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { 
+  createAuthenticatedHandler, 
+  successResponse, 
+  errorResponse,
+  AuthenticatedApiContext
+} from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
-export async function POST(req: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+  const { correlationId } = ctx;
+  const { userIds } = body || {};
+
   try {
-    await requireAuth(req);
-    const { userIds } = await req.json();
-
     if (!Array.isArray(userIds) || userIds.length === 0) {
-      return NextResponse.json([], { status: 200 });
+      return successResponse([], 200, correlationId);
     }
 
     const results = await Promise.all(
@@ -24,11 +27,9 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    return NextResponse.json(results.filter(Boolean), { status: 200 });
+    return successResponse(results.filter(Boolean), 200, correlationId);
   } catch (err: any) {
-    const status = err instanceof AuthError ? err.status : 400;
-    const error = err instanceof AuthError ? err.message : (err?.message || "Failed to fetch profiles");
-    const code = err instanceof AuthError ? err.code : err?.code;
-    return NextResponse.json({ success: false, error, code, correlationId }, { status });
+    console.error("[profile/batch] error", { correlationId, err });
+    return errorResponse("Failed to fetch profiles", 500, { correlationId });
   }
-}
+});

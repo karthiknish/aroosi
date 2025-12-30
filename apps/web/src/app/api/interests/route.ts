@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -16,26 +15,7 @@ import {
   FSInterest,
   deterministicMatchId,
 } from "@/lib/firestoreSchema";
-
-// Zod schemas for discriminated union
-const sendSchema = z.object({
-  action: z.literal("send"),
-  toUserId: z.string().min(1),
-});
-const respondSchema = z.object({
-  action: z.literal("respond"),
-  interestId: z.string().min(1),
-  status: z.enum(["accepted", "rejected"]),
-});
-const removeSchema = z.object({
-  action: z.literal("remove"),
-  toUserId: z.string().min(1),
-});
-const PostSchema = z.discriminatedUnion("action", [
-  sendSchema,
-  respondSchema,
-  removeSchema,
-]);
+import { interestsPostSchema } from "@/lib/validation/apiSchemas/interests";
 
 function snapshotUser(user: any) {
   if (!user) return undefined;
@@ -73,7 +53,7 @@ async function isBlocked(a: string, b: string) {
 }
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof PostSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof interestsPostSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const now = Date.now();
 
@@ -154,7 +134,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: PostSchema,
+    bodySchema: interestsPostSchema,
     rateLimit: { identifier: "interests_write", maxRequests: 30, windowMs: 600000 }
   }
 );

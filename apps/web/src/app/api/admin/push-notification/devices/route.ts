@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
 

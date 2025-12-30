@@ -55,10 +55,8 @@ export function useEmailBuilderLogic() {
 
   useEffect(() => {
     (async () => {
-      const res = await adminEmailAPI.listBuilderPresets();
-      if (res.success && (res.data as any)?.presets) {
-        setPresets((res.data as any).presets);
-      }
+      const presets = await adminEmailAPI.getBuilderPresets();
+      if (Array.isArray(presets)) setPresets(presets as any);
     })();
   }, []);
 
@@ -112,14 +110,14 @@ export function useEmailBuilderLogic() {
   const handleSavePreset = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await adminEmailAPI.createBuilderPreset(presetName || "Untitled", schema);
-      if (res.success) {
-        const list = await adminEmailAPI.listBuilderPresets();
-        if (list.success && (list.data as any)?.presets)
-          setPresets((list.data as any).presets);
-        setPresetName("");
-        showSuccessToast("Preset saved");
-      }
+      await adminEmailAPI.saveBuilderPreset({
+        name: presetName || "Untitled",
+        schema,
+      });
+      const list = await adminEmailAPI.getBuilderPresets();
+      if (Array.isArray(list)) setPresets(list as any);
+      setPresetName("");
+      showSuccessToast("Preset saved");
     } finally {
       setIsLoading(false);
     }

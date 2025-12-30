@@ -171,12 +171,7 @@ class ProfileAPI {
    * Delete current user's profile
    */
   async deleteProfile(): Promise<void> {
-    try {
-      await this.makeRequest("/api/user/profile", { method: "DELETE" });
-    } catch (error) {
-      // Fallback for legacy route
-      await this.makeRequest("/api/profile/delete", { method: "DELETE" });
-    }
+    await this.makeRequest("/api/profile", { method: "DELETE" });
   }
 
   /**

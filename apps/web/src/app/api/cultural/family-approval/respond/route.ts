@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -10,15 +9,10 @@ import type {
   FamilyApprovalRequest,
   FamilyApprovalStatus,
 } from "@aroosi/shared/types";
-
-const respondSchema = z.object({
-  requestId: z.string().min(1),
-  action: z.enum(["approved", "denied"]),
-  responseMessage: z.string().optional(),
-});
+import { familyApprovalRespondSchema } from "@/lib/validation/apiSchemas/culturalFamilyApproval";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof respondSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof familyApprovalRespondSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     const { requestId, action, responseMessage } = body;
 
@@ -65,7 +59,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: respondSchema,
+    bodySchema: familyApprovalRespondSchema,
     rateLimit: { identifier: "family_approval_respond", maxRequests: 50 }
   }
 );

@@ -39,7 +39,7 @@ export const POST = createAuthenticatedHandler(
     if (!conversationId || !fromUserId || !toUserId) {
       return errorResponse("Missing required fields", 400, {
         correlationId: ctx.correlationId,
-        fields: { conversationId: !!conversationId, fromUserId: !!fromUserId, toUserId: !!toUserId },
+        details: { fields: { conversationId: !!conversationId, fromUserId: !!fromUserId, toUserId: !!toUserId } },
       });
     }
 

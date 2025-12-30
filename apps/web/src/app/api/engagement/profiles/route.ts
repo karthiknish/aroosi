@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -6,13 +5,13 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-
-const profilesSchema = z.object({
-  userIds: z.array(z.string().min(1)).min(1).max(200),
-});
+import { engagementProfilesSchema } from "@/lib/validation/apiSchemas/engagement";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof profilesSchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof engagementProfilesSchema>
+  ) => {
     const { userIds } = body;
 
     try {
@@ -47,7 +46,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: profilesSchema,
+    bodySchema: engagementProfilesSchema,
     rateLimit: { identifier: "engagement_profiles", maxRequests: 30 }
   }
 );

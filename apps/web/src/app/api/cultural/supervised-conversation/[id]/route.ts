@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -11,15 +10,11 @@ import type {
   SupervisedConversationStatus,
 } from "@aroosi/shared/types";
 import { NextRequest } from "next/server";
-
-const updateSchema = z.object({
-  status: z.enum(["approved", "active", "paused", "ended", "rejected"]).optional(),
-  conversationId: z.string().optional(),
-});
+import { supervisedConversationUpdateSchema } from "@/lib/validation/apiSchemas/supervisedConversation";
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const handler = createAuthenticatedHandler(
-    async (ctx: ApiContext, body: z.infer<typeof updateSchema>) => {
+    async (ctx: ApiContext, body: import("zod").infer<typeof supervisedConversationUpdateSchema>) => {
       const { id: conversationId } = await context.params;
       const userId = (ctx.user as any).userId || (ctx.user as any).id;
       const { status, conversationId: chatConversationId } = body;
@@ -69,7 +64,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       }
     },
     {
-      bodySchema: updateSchema,
+      bodySchema: supervisedConversationUpdateSchema,
       rateLimit: { identifier: "supervised_conv_update", maxRequests: 50 }
     }
   );

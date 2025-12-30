@@ -7,43 +7,21 @@
 //  DELETE /api/profile-images (JSON body)   -> { storageId } deletes image
 // Legacy fields (fileSize) are mapped to `size`.
 
-import { z } from "zod";
-import { 
-  createAuthenticatedHandler, 
-  successResponse, 
+import {
+  createAuthenticatedHandler,
+  successResponse,
   errorResponse,
-  ApiContext
+  ApiContext,
 } from "@/lib/api/handler";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
+import {
+  profileImagesDeleteSchema,
+  profileImagesPostSchema,
+} from "@/lib/validation/apiSchemas/profileImages";
 
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/jpg",
-] as const;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"] as const;
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES_PER_USER = 5;
-
-// Zod schemas for request validation
-const postBodySchema = z.object({
-  storageId: z.string().min(1, "storageId is required"),
-  fileName: z.string().min(1, "fileName is required"),
-  contentType: z.string().min(1, "contentType is required"),
-  size: z.number().optional(),
-  fileSize: z.number().optional(), // legacy support
-}).refine(
-  (data) => typeof data.size === "number" || typeof data.fileSize === "number",
-  { message: "size or fileSize is required" }
-);
-
-const deleteBodySchema = z.object({
-  storageId: z.string().optional(),
-  imageId: z.string().optional(), // legacy support
-}).refine(
-  (data) => data.storageId || data.imageId,
-  { message: "storageId or imageId is required" }
-);
 
 async function listUserImages(userId: string) {
   let bucket: any;
@@ -59,10 +37,12 @@ async function listUserImages(userId: string) {
     if (!fallback) throw e;
     bucket = adminStorage.bucket(fallback);
   }
+
   const [filesRaw] = await bucket.getFiles({
     prefix: `users/${userId}/profile-images/`,
   });
   const files: any[] = Array.isArray(filesRaw) ? filesRaw : [];
+
   return Promise.all(
     files
       .filter((f: any) => !f.name.endsWith("/"))
@@ -85,7 +65,7 @@ async function listUserImages(userId: string) {
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    
+
     try {
       const images = await listUserImages(userId);
       return successResponse({ images }, 200, ctx.correlationId);
@@ -94,48 +74,55 @@ export const GET = createAuthenticatedHandler(
         error: e instanceof Error ? e.message : String(e),
         correlationId: ctx.correlationId,
       });
-      return errorResponse("Failed to fetch images", 500, { correlationId: ctx.correlationId });
+      return errorResponse("Failed to fetch images", 500, {
+        correlationId: ctx.correlationId,
+      });
     }
   },
   {
-    rateLimit: { identifier: "profile_images_get", maxRequests: 30 }
+    rateLimit: { identifier: "profile_images_get", maxRequests: 30 },
   }
 );
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof postBodySchema>) => {
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof profileImagesPostSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    
+
     try {
       const { storageId, fileName, contentType } = body;
       const size = body.size ?? body.fileSize!; // One of these is guaranteed by schema
-      
+
       if (!String(storageId).startsWith(`users/${userId}/`)) {
-        return errorResponse("Unauthorized storage path", 403, { correlationId: ctx.correlationId });
+        return errorResponse("Unauthorized storage path", 403, {
+          correlationId: ctx.correlationId,
+        });
       }
-      
+
       if (!ALLOWED_TYPES.includes(String(contentType).toLowerCase() as any)) {
-        return errorResponse("Unsupported image type", 400, { correlationId: ctx.correlationId });
+        return errorResponse("Unsupported image type", 400, {
+          correlationId: ctx.correlationId,
+        });
       }
-      
+
       if (size > MAX_SIZE_BYTES) {
         return errorResponse("File too large", 400, { correlationId: ctx.correlationId });
       }
-      
+
       // Enforce max images (Firestore count + storage listing best-effort)
       try {
         const existing = await listUserImages(userId);
         if (existing.length >= MAX_IMAGES_PER_USER) {
-          return errorResponse(
-            `You can only display up to ${MAX_IMAGES_PER_USER} images`, 
-            400, 
-            { correlationId: ctx.correlationId }
-          );
+          return errorResponse(`You can only display up to ${MAX_IMAGES_PER_USER} images`, 400, {
+            correlationId: ctx.correlationId,
+          });
         }
       } catch {}
 
       const imageId = String(storageId).split("/").pop() || String(storageId);
-      
+
       // Get bucket for URL generation
       let bucket: any;
       try {
@@ -150,7 +137,7 @@ export const POST = createAuthenticatedHandler(
         if (!fallbackName) throw e;
         bucket = adminStorage.bucket(fallbackName);
       }
-      
+
       // Use public URL since storage rules allow public read access
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storageId}`;
 
@@ -170,7 +157,7 @@ export const POST = createAuthenticatedHandler(
           },
           { merge: true }
         );
-        
+
       return successResponse({ imageId, url: publicUrl }, 200, ctx.correlationId);
     } catch (e) {
       console.error("profile-images POST firebase error", {
@@ -181,42 +168,54 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: postBodySchema,
-    rateLimit: { identifier: "profile_images_post", maxRequests: 20 }
+    bodySchema: profileImagesPostSchema,
+    rateLimit: { identifier: "profile_images_post", maxRequests: 20 },
   }
 );
 
 export const DELETE = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof deleteBodySchema>) => {
+  async (
+    ctx: ApiContext,
+    body?: import("zod").infer<typeof profileImagesDeleteSchema>
+  ) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    
+    const urlParam = ctx.request.nextUrl.searchParams.get("url");
+
     try {
-      const storageId = body.storageId || body.imageId;
-      
-      if (!storageId) {
-        return errorResponse("Missing storageId", 400, { correlationId: ctx.correlationId });
+      let storageId = body?.storageId || body?.imageId;
+      let urlToDelete = urlParam;
+
+      // If URL is provided, try to resolve storageId
+      if (!storageId && urlToDelete) {
+        try {
+          const urlObj = new URL(urlToDelete);
+          const pathMatch = urlObj.pathname.match(/\/users\/[^/]+\/.+/);
+          if (pathMatch) {
+            storageId = pathMatch[0].substring(1); // Remove leading /
+          }
+        } catch {
+          const match = urlToDelete.match(/users\/[^/]+\/[^/?]+/);
+          if (match) storageId = match[0];
+        }
       }
-      
+
+      if (!storageId) {
+        return errorResponse("Missing storageId or url", 400, { correlationId: ctx.correlationId });
+      }
+
       if (!storageId.startsWith(`users/${userId}/`)) {
         return errorResponse("Unauthorized", 403, { correlationId: ctx.correlationId });
       }
-      
-      let fileRef: any;
+
+      // Delete from Firebase Storage
       try {
-        fileRef = adminStorage.bucket().file(storageId);
-      } catch (e) {
-        const fallback =
-          process.env.FIREBASE_STORAGE_BUCKET ||
-          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-          (process.env.GCLOUD_PROJECT
-            ? `${process.env.GCLOUD_PROJECT}.appspot.com`
-            : undefined);
-        if (!fallback) throw e;
-        fileRef = adminStorage.bucket(fallback).file(storageId);
+        const fileRef = adminStorage.bucket().file(storageId);
+        await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
+      } catch {
+        // Continue even if storage delete fails
       }
-      
-      await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
-      
+
+      // Delete from Firestore images subcollection
       const imageId = storageId.split("/").pop() || storageId;
       await db
         .collection("users")
@@ -225,8 +224,49 @@ export const DELETE = createAuthenticatedHandler(
         .doc(imageId)
         .delete()
         .catch(() => {});
-        
-      return successResponse(undefined, 200, ctx.correlationId);
+
+      // Update user's profile arrays
+      const userRef = db.collection("users").doc(userId);
+      const userSnap = await userRef.get();
+      if (userSnap.exists) {
+        const userData = userSnap.data() as any;
+        const currentUrls: string[] = Array.isArray(userData.profileImageUrls)
+          ? [...userData.profileImageUrls]
+          : [];
+        const currentIds: string[] = Array.isArray(userData.profileImageIds)
+          ? [...userData.profileImageIds]
+          : [];
+
+        let removed = false;
+
+        // Remove by URL if we have it
+        if (urlToDelete) {
+          const urlIndex = currentUrls.indexOf(urlToDelete);
+          if (urlIndex !== -1) {
+            currentUrls.splice(urlIndex, 1);
+            if (urlIndex < currentIds.length) currentIds.splice(urlIndex, 1);
+            removed = true;
+          }
+        }
+
+        // Also check by storageId/imageId to be thorough
+        const idIndex = currentIds.indexOf(storageId);
+        if (idIndex !== -1) {
+          currentIds.splice(idIndex, 1);
+          if (idIndex < currentUrls.length) currentUrls.splice(idIndex, 1);
+          removed = true;
+        }
+
+        if (removed) {
+          await userRef.update({
+            profileImageUrls: currentUrls,
+            profileImageIds: currentIds,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+
+      return successResponse({ success: true }, 200, ctx.correlationId);
     } catch (e) {
       console.error("profile-images DELETE firebase error", {
         error: e instanceof Error ? e.message : String(e),
@@ -236,8 +276,8 @@ export const DELETE = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: deleteBodySchema,
-    rateLimit: { identifier: "profile_images_delete", maxRequests: 20 }
+    bodySchema: profileImagesDeleteSchema,
+    rateLimit: { identifier: "profile_images_delete", maxRequests: 20 },
   }
 );
 

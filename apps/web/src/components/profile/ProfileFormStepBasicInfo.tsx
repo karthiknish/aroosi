@@ -9,6 +9,7 @@ import {
 } from "./ProfileFormFields";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { ProfileFormValues } from "@aroosi/shared/types";
+import { HEIGHT_CONSTANTS } from "@/lib/validation/heightValidation";
 
 type Props = {
   form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;
@@ -49,9 +50,9 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
           control={form.control}
           render={({ field }) => {
             const heightOptions = Array.from(
-              { length: 198 - 137 + 1 },
+              { length: HEIGHT_CONSTANTS.MAX_CM - HEIGHT_CONSTANTS.MIN_CM + 1 },
               (_, i) => {
-                const cm = 137 + i;
+                const cm = HEIGHT_CONSTANTS.MIN_CM + i;
                 return {
                   value: String(cm),
                   label: `${cmToFeetInches(cm)} (${cm} cm)`,

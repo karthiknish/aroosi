@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { validateDateOfBirth } from "./dateValidation";
+import { validateHeight as centralizedValidateHeight, HEIGHT_CONSTANTS } from "./heightValidation";
 
 // Age validation helper - uses robust date validation with timezone handling and max age check
 export const validateAge = (dateString: string): boolean => {
@@ -8,25 +9,8 @@ export const validateAge = (dateString: string): boolean => {
 };
 
 // Height validation helper
-export const validateHeight = (heightString: string): boolean => {
-  if (!heightString) return false;
-
-  // Auto-append " cm" if user selects just a number
-  if (/^\d{2,3}$/.test(heightString)) {
-    heightString = `${heightString} cm`;
-  }
-
-  const cmPattern = /^\d{2,3}\s*cm$/i;
-  const feetPattern = /^[4-7]'([0-9]|1[01])"?$/;
-  const feetInchesPattern = /^[4-7]\s*ft\s*([0-9]|1[01])\s*in$/i;
-  const fullFormat = /^[4-7]'([0-9]|1[01])"?\s*\(\d{2,3}\s*cm\)$/i;
-
-  return (
-    cmPattern.test(heightString) ||
-    feetPattern.test(heightString) ||
-    feetInchesPattern.test(heightString) ||
-    fullFormat.test(heightString)
-  );
+export const validateHeight = (height: any): boolean => {
+  return centralizedValidateHeight(height);
 };
 
 // Phone number normalization to E.164-like format (+ and digits only).
@@ -82,7 +66,7 @@ export const errorMessages = {
   format: (fieldName: string, format: string) =>
     `${fieldName} must be in ${format} format`,
   age: () => "You must be at least 18 years old",
-  height: () => 'Please enter height in format like "170 cm" or "5\'8"',
+  height: () => `Please enter height (between ${HEIGHT_CONSTANTS.MIN_CM} and ${HEIGHT_CONSTANTS.MAX_CM} cm) in format like "170 cm" or "5'8"`,
   phone: () => "Please enter a valid phone number with at least 10 digits",
   name: () => "Name must contain letters and can include spaces, hyphens, apostrophes, or periods",
   email: () => "Please enter a valid email address",

@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
 import { applySecurityHeaders, validateSecurityRequirements } from "@/lib/utils/securityHeaders";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
+import { imagesProfileUploadSchema } from "@/lib/validation/apiSchemas/imagesProfile";
 
 // GET /api/images/profile?userId=abc - list profile images (ordered) for user
 export async function GET(req: NextRequest) {
@@ -24,13 +24,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-const uploadSchema = z.object({
-  storageId: z.string().min(1),
-  fileName: z.string().min(1),
-  contentType: z.string().optional(),
-  fileSize: z.number().optional(),
-});
-
 // POST /api/images/profile - add uploaded image metadata to user profile (expects already uploaded to storage via client SDK signed URL)
 export async function POST(req: NextRequest) {
   const sec = validateSecurityRequirements(req as unknown as Request);
@@ -38,8 +31,13 @@ export async function POST(req: NextRequest) {
   let auth;
   try { auth = await requireAuth(req); } catch (e) { const err = e as AuthError; return applySecurityHeaders(errorResponse(err.message, err.status)); }
   let body: unknown; try { body = await req.json(); } catch { return applySecurityHeaders(errorResponse("Invalid JSON body", 400)); }
-  const parsed = uploadSchema.safeParse(body);
-  if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
+  const parsed = imagesProfileUploadSchema.safeParse(body);
+  if (!parsed.success)
+    return applySecurityHeaders(
+      errorResponse("Validation failed", 422, {
+        details: { issues: parsed.error.flatten() },
+      })
+    );
   const { storageId, fileName, contentType, fileSize } = parsed.data;
   // Basic constraints
   const ALLOWED = ["image/jpeg", "image/jpg", "image/png", "image/webp"];

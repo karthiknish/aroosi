@@ -1,28 +1,41 @@
 import { NextRequest } from 'next/server';
-import { withFirebaseAuth } from '@/lib/auth/firebaseAuth';
 import { processEmailBatch } from '@/lib/emailQueue';
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  AuthenticatedApiContext,
+} from "@/lib/api/handler";
 
 // Simple protected endpoint to manually trigger processing batch (could be cron / scheduled)
-export async function POST(request: NextRequest) {
-  return withFirebaseAuth(async (user, req, _ctx) => {
-    // Basic role gate
-  const role: any = (user as any)?.role;
-  if (role !== 'admin' && role !== 'moderator') {
-      return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), { status: 403 });
-    }
-    try {
-      // Optional secret header check for extra protection (besides auth)
-      const secret = process.env.EMAIL_QUEUE_PROCESS_SECRET;
-      if (secret) {
-        const provided = req.headers.get('x-email-queue-secret');
-        if (provided !== secret) {
-          return new Response(JSON.stringify({ success: false, error: 'Invalid secret' }), { status: 401 });
-        }
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
+  const { user, correlationId, request } = ctx;
+  
+  // Basic role gate
+  if (user.role !== 'admin' && user.role !== 'moderator') {
+    return errorResponse('Forbidden: Admin or Moderator access required', 403, { correlationId });
+  }
+
+  try {
+    // Optional secret header check for extra protection (besides auth)
+    const secret = process.env.EMAIL_QUEUE_PROCESS_SECRET;
+    if (secret) {
+      const provided = request.headers.get('x-email-queue-secret');
+      if (provided !== secret) {
+        return errorResponse('Invalid secret', 401, { correlationId });
       }
-      const results = await processEmailBatch(15);
-      return new Response(JSON.stringify({ success: true, results }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    } catch (e) {
-      return new Response(JSON.stringify({ success: false, error: 'Processing failed' }), { status: 500 });
     }
-  })(request, {});
-}
+    
+    const results = await processEmailBatch(15);
+    return successResponse({ results }, 200, correlationId);
+  } catch (e) {
+    console.error("[admin.email-queue] fatal error", {
+      correlationId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return errorResponse('Processing failed', 500, { correlationId });
+  }
+}, {
+  rateLimit: { identifier: "admin_email_process", maxRequests: 10 }
+});
+

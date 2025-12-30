@@ -151,12 +151,19 @@ export async function apiRequest<T>(
         clearTimeout(timeoutId);
 
         const correlationId = response.headers.get('x-correlation-id') || undefined;
-        const data = await response.json().catch(() => null);
+        let responseJson = await response.json().catch(() => null);
+
+        // Handle standardized backend response (Pattern 1): { success: true, data: T, ... }
+        // If we see success: true and a data field, we unwrap it into the return data
+        let finalData = responseJson;
+        if (responseJson && typeof responseJson === 'object' && responseJson.success === true && 'data' in responseJson) {
+            finalData = responseJson.data;
+        }
 
         if (DEBUG) {
             console.log(`[API] ${response.status} ${endpoint}`, {
                 correlationId,
-                data,
+                data: finalData,
             });
         }
 
@@ -176,19 +183,19 @@ export async function apiRequest<T>(
 
         if (!response.ok) {
             return {
-                error: data?.error || data?.message || `Request failed with status ${response.status}`,
+                error: responseJson?.error || responseJson?.message || `Request failed with status ${response.status}`,
                 status: response.status,
                 correlationId,
             };
         }
 
         // Store in cache if requested
-        if (method === 'GET' && options.cache && data) {
+        if (method === 'GET' && options.cache && finalData) {
             try {
                 await AsyncStorage.setItem(
                     cacheKey,
                     JSON.stringify({
-                        data,
+                        data: finalData,
                         timestamp: Date.now(),
                         ttl: options.cacheTTL || DEFAULT_CACHE_TTL,
                     })
@@ -199,7 +206,7 @@ export async function apiRequest<T>(
         }
 
         return {
-            data,
+            data: finalData,
             status: response.status,
             correlationId,
         };

@@ -1,10 +1,10 @@
-import { z } from "zod";
 import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { recordProfileViewSchema } from "@/lib/validation/apiSchemas/profileView";
 import { db } from "@/lib/firebaseAdmin";
 import { adminFieldValue } from "@/lib/firebaseAdminInit";
 import {
@@ -21,18 +21,13 @@ function dayKey(ts: number = Date.now()) {
   );
 }
 
-// Zod schema for POST body
-const recordViewSchema = z.object({
-  profileId: z.string().min(1, "profileId is required"),
-});
-
 /**
  * POST  /api/profile/view
  * Body: { profileId: string }
  * Records that the authenticated user viewed the given profile.
  */
 export const POST = createAuthenticatedHandler(
-  async (ctx: ApiContext, body: z.infer<typeof recordViewSchema>) => {
+  async (ctx: ApiContext, body: import("zod").infer<typeof recordProfileViewSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
     
     try {
@@ -112,7 +107,7 @@ export const POST = createAuthenticatedHandler(
     }
   },
   {
-    bodySchema: recordViewSchema,
+    bodySchema: recordProfileViewSchema,
     rateLimit: { identifier: "profile_view_post", maxRequests: 100 }
   }
 );

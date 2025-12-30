@@ -70,6 +70,16 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 
     const hasUnread = unreadCount > 0;
 
+        const timestampValue = lastMessage?.createdAt ?? updatedAt;
+        const displayTimestamp: string | Date =
+                timestampValue instanceof Date
+                        ? timestampValue
+                        : typeof timestampValue === 'number'
+                            ? new Date(timestampValue)
+                            : typeof timestampValue === 'string'
+                                ? timestampValue
+                                : new Date();
+
     return (
         <TouchableOpacity
             style={styles.container}
@@ -102,7 +112,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
                         {user?.displayName || 'Unknown'}
                     </Text>
                     <Text style={[styles.time, hasUnread && styles.timeUnread]}>
-                        {formatTime(lastMessage?.createdAt || updatedAt)}
+                        {formatTime(displayTimestamp)}
                     </Text>
                 </View>
 

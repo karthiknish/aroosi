@@ -27,33 +27,41 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
  * Submit a report against a user
  */
 export async function reportUser(data: ReportData) {
-    return api.post<{ success: boolean; reportId: string }>('/reports', data as unknown as Record<string, unknown>);
-}
-
-/**
- * Get reports submitted by current user
- */
-export async function getMyReports() {
-    return api.get<Report[]>('/reports/mine');
+    return api.post<{ message: string; reportId: string }>('/safety/report', {
+        reportedUserId: data.reportedUserId,
+        reason: data.reason,
+        description: data.description,
+    });
 }
 
 /**
  * Block a user (prevents matching and messaging)
  */
 export async function blockUser(userId: string) {
-    return api.post<{ success: boolean }>('/users/block', { userId });
+    return api.post<{ message: string }>('/safety/block', { blockedUserId: userId });
 }
 
 /**
  * Unblock a user
  */
 export async function unblockUser(userId: string) {
-    return api.post<{ success: boolean }>('/users/unblock', { userId });
+    return api.post<{ message: string }>('/safety/unblock', { blockedUserId: userId });
 }
 
 /**
  * Get list of blocked users
  */
 export async function getBlockedUsers() {
-    return api.get<{ id: string; displayName: string; photoURL?: string }[]>('/users/blocked');
+    return api.get<{
+        blockedUsers: Array<{
+            id: string;
+            blockedUserId: string;
+            createdAt: number;
+            blockedProfile?: {
+                fullName: string;
+                profileImageUrl?: string;
+            };
+        }>;
+        nextCursor: string | null;
+    }>('/safety/blocked');
 }

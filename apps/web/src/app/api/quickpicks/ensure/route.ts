@@ -1,6 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withFirebaseAuth } from '@/lib/auth/firebaseAuth';
+import { NextRequest } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import {
+  createAuthenticatedHandler,
+  successResponse,
+  errorResponse,
+  AuthenticatedApiContext,
+} from "@/lib/api/handler";
 
 function utcDayKey(ts: number = Date.now()): string {
   const d = new Date(ts);
@@ -11,10 +16,10 @@ function utcDayKey(ts: number = Date.now()): string {
   );
 }
 
-export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
-  const correlationId = Math.random().toString(36).slice(2,10);
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+  const { user, correlationId } = ctx;
+  
   try {
-    const body = await req.json().catch(() => ({}));
     const dayKey = (body?.dayKey && String(body.dayKey).length === 8) ? body.dayKey : utcDayKey();
 
     // Check existing
@@ -23,8 +28,13 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       .where('dayKey', '==', dayKey)
       .limit(1)
       .get();
+      
     if (!existingSnap.empty) {
-      return NextResponse.json({ success: true, picks: existingSnap.docs[0].data().picks, dayKey, correlationId, cached: true });
+      return successResponse({ 
+        picks: existingSnap.docs[0].data().picks, 
+        dayKey, 
+        cached: true 
+      }, 200, correlationId);
     }
 
     // Fetch candidate profiles (newest first) excluding self
@@ -32,17 +42,17 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       .orderBy('createdAt', 'desc')
       .limit(500)
       .get();
+      
     const candidates: string[] = [];
-  profileSnap.docs.forEach((d: any) => {
-    const data = d.data() as any;
-    if (d.id === user.id) return;
-    if (data.banned) return;
-    // isOnboardingComplete removed – rely on basic profile existence checks elsewhere
-    candidates.push(d.id);
-  });
+    profileSnap.docs.forEach((d: any) => {
+      const data = d.data() as any;
+      if (d.id === user.id) return;
+      if (data.banned) return;
+      candidates.push(d.id);
+    });
 
     // Determine subscription plan limit
-  const plan = (profileSnap.docs.find((d: any) => d.id === user.id)?.data() as any)?.subscriptionPlan || 'free';
+    const plan = (profileSnap.docs.find((d: any) => d.id === user.id)?.data() as any)?.subscriptionPlan || 'free';
     const limit = plan === 'premiumPlus' ? 40 : plan === 'premium' ? 20 : 5;
 
     const picks: string[] = [];
@@ -60,8 +70,15 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       createdAt: Date.now(),
     });
 
-    return NextResponse.json({ success: true, picks, dayKey, correlationId });
+    return successResponse({ picks, dayKey }, 200, correlationId);
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Failed', correlationId }, { status: 400 });
+    console.error("[quickpicks.ensure] fatal error", {
+      correlationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return errorResponse(err?.message || 'Failed to ensure quickpicks', 400, { correlationId });
   }
+}, {
+  rateLimit: { identifier: "quickpicks_ensure", maxRequests: 5 }
 });
+

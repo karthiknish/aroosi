@@ -49,7 +49,7 @@ export default function AdminDevicesPage() {
         pageSize: ps,
       });
       
-      setRows(data?.items ?? []);
+      setRows((data as any)?.devices ?? []);
       setTotal(data?.total ?? 0);
     } catch (e) {
       console.error(e);
@@ -65,16 +65,14 @@ export default function AdminDevicesPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await adminEmailAPI.listMarketingTemplates();
-      if (res.success && (res as any).data?.templates) {
-        const t = (res as any).data.templates as Array<{
-          key: string;
-          label: string;
-          category: string;
-        }>;
-        setTemplates(t);
-        if (t[0]) setSelectedTemplate(t[0].key);
-      }
+      const t = await adminEmailAPI.listTemplates();
+      const mapped = (Array.isArray(t) ? t : []).map((x: any) => ({
+        key: String(x?.key ?? x?.id ?? ""),
+        label: String(x?.name ?? x?.label ?? x?.key ?? x?.id ?? "Template"),
+        category: String(x?.category ?? "default"),
+      })).filter((x: any) => x.key);
+      setTemplates(mapped);
+      if (mapped[0]) setSelectedTemplate(mapped[0].key);
     })();
   }, []);
 

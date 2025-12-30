@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import React from "react";
 import { requireAdminSession } from "@/app/api/_utils/auth";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 import { render as renderEmail } from "@react-email/render";
 import { PasswordChangedEmail } from "@/emails/PasswordChangedEmail";
 import { EmailChangedEmail } from "@/emails/EmailChangedEmail";

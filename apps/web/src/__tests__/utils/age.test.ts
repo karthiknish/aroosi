@@ -80,7 +80,7 @@ describe('Age Utilities', () => {
 
     test('returns correct age range for middle age', () => {
       const range = getAgeRange(35);
-      expect(range).toEqual({ min: 30, max: 42 });
+      expect(range).toEqual({ min: 32, max: 40 });
     });
 
     test('adjusts range to not go below minimum age', () => {

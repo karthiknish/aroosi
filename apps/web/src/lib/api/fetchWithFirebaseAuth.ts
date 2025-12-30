@@ -102,5 +102,12 @@ export async function fetchJsonWithFirebaseAuth<T = any>(
     throw error;
   }
   
-  return (await res.json().catch(() => ({}))) as T;
+  const fullData = (await res.json().catch(() => ({}))) as any;
+  
+  // Backward compatibility: automatically unwrap 'data' if it's a standard pattern 1 response
+  if (fullData && typeof fullData === "object" && fullData.success === true && "data" in fullData) {
+    return fullData.data as T;
+  }
+  
+  return fullData as T;
 }

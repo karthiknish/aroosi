@@ -20,17 +20,23 @@ const createMockAuthState = (
   // token removed in cookie-auth model
   // profile completion flags removed
   isAdmin: false,
-  userId: "",
   profile: null,
   error: null,
   signIn: jest.fn(),
   signUp: jest.fn(),
+  sendPasswordReset: jest.fn(),
+  updateUserProfile: jest.fn(),
+  sendEmailVerification: jest.fn(),
+  completeGoogleSignup: jest.fn(),
+  signInWithGoogleExistingOnly: jest.fn(),
   // verifyOTP removed from AuthContextType; do not include in mocks
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
   refreshUser: jest.fn(),
   // getToken removed from AuthContextType; do not include in mocks
   refreshProfile: jest.fn(),
+  hasRole: jest.fn(),
+  hasPermission: jest.fn(),
   ...overrides,
 });
 

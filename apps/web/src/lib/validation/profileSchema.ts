@@ -9,6 +9,7 @@
 
 import { z } from "zod";
 import { validateDateOfBirth } from "./dateValidation";
+import { HEIGHT_CONSTANTS, validateHeight } from "./heightValidation";
 
 // ============================================================================
 // Constants
@@ -19,13 +20,15 @@ export const PROFILE_CONSTANTS = {
   MAX_AGE: 120,
   MIN_NAME_LENGTH: 2,
   MAX_NAME_LENGTH: 100,
-  MIN_ABOUT_ME_LENGTH: 10,
+  MIN_ABOUT_ME_LENGTH: 50,
   MAX_ABOUT_ME_LENGTH: 2000,
   MAX_CITY_LENGTH: 50,
   MAX_EDUCATION_LENGTH: 100,
   MAX_OCCUPATION_LENGTH: 100,
   MAX_PHOTOS: 6,
   MAX_PARTNER_CITIES: 10,
+  MIN_HEIGHT: HEIGHT_CONSTANTS.MIN_CM,
+  MAX_HEIGHT: HEIGHT_CONSTANTS.MAX_CM,
 } as const;
 
 // ============================================================================
@@ -34,11 +37,11 @@ export const PROFILE_CONSTANTS = {
 
 export const PROFILE_FOR_OPTIONS = ["self", "friend", "family"] as const;
 export const GENDER_OPTIONS = ["male", "female", "non-binary", "other"] as const;
-export const PREFERRED_GENDER_OPTIONS = ["male", "female", "non-binary", "other", "any"] as const;
-export const MARITAL_STATUS_OPTIONS = ["single", "divorced", "widowed", "annulled"] as const;
-export const SMOKING_OPTIONS = ["no", "occasionally", "yes"] as const;
-export const DRINKING_OPTIONS = ["no", "occasionally", "yes"] as const;
-export const DIET_OPTIONS = ["vegetarian", "non-vegetarian", "vegan", "halal", "eggetarian", "other"] as const;
+export const PREFERRED_GENDER_OPTIONS = ["male", "female", "non-binary", "other", "any", "both"] as const;
+export const MARITAL_STATUS_OPTIONS = ["single", "divorced", "widowed", "annulled", "separated"] as const;
+export const SMOKING_OPTIONS = ["no", "occasionally", "yes", "never", "regularly", "socially"] as const;
+export const DRINKING_OPTIONS = ["no", "occasionally", "yes", "never", "socially", "regularly"] as const;
+export const DIET_OPTIONS = ["vegetarian", "non-vegetarian", "vegan", "halal", "eggetarian", "other", "kosher"] as const;
 export const PHYSICAL_STATUS_OPTIONS = ["normal", "differently-abled", "other"] as const;
 export const SUBSCRIPTION_PLAN_OPTIONS = ["free", "premium", "premiumPlus"] as const;
 
@@ -87,20 +90,7 @@ export const phoneNumberSchema = z
 /** Height in various formats (cm, feet/inches) */
 export const heightSchema = z
   .string()
-  .refine((val) => {
-    if (!val) return true;
-    const trimmed = val.trim();
-    // Allow cm format
-    if (/^\d{2,3}\s*(?:cm)?$/i.test(trimmed)) {
-      const cm = parseInt(trimmed);
-      return cm >= 100 && cm <= 250;
-    }
-    // Allow feet/inches format
-    if (/^[4-7]['′]\s*([0-9]|1[01])(?:["″])?$/i.test(trimmed)) {
-      return true;
-    }
-    return false;
-  }, "Enter height as \"170 cm\" or \"5'8\"");
+  .refine((val) => validateHeight(val), `Enter height as "170 cm" or "5'8" (between ${HEIGHT_CONSTANTS.MIN_CM} and ${HEIGHT_CONSTANTS.MAX_CM} cm)`);
 
 /** Annual income - no negatives */
 export const annualIncomeSchema = z

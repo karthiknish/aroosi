@@ -13,7 +13,7 @@ import ProfileFormStepCultural from "./ProfileFormStepCultural";
 import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
-import { cmToFeetInches } from "@/lib/utils/height";
+import { cmToFeetInches } from "@/lib/validation/heightValidation";
 
 interface Props {
   initialValues?: Partial<ProfileFormValues>;

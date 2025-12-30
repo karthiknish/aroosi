@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { cmToFeetInches } from "@/lib/utils/height";
+import { cmToFeetInches } from "@/lib/validation/heightValidation";
 import type { ProfileFormValues } from "@aroosi/shared/types";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRouter } from "next/navigation";
