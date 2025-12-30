@@ -15,6 +15,7 @@ import {
     Platform,
     RefreshControl,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'react-native-image-picker';
@@ -54,6 +55,11 @@ export default function ChatScreen({
     const [inputText, setInputText] = useState('');
     const [sending, setSending] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    
+    // Refs for debouncing and preventing duplicate API calls
+    const markAsReadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingReadIdsRef = useRef<Set<string>>(new Set());
+    const lastSyncedIdsRef = useRef<Set<string>>(new Set());
 
     const {
         messages,
@@ -67,20 +73,52 @@ export default function ChatScreen({
         markAsRead,
     } = useRealTimeMessages({ conversationId: matchId });
 
-    // Mark incoming messages as read
+    // Mark incoming messages as read - with debouncing to prevent excessive API calls
     useEffect(() => {
-        if (messages.length > 0 && user?.id) {
-            const unreadIds = messages
-                .filter(m => m.toUserId === user.id && !m.isRead)
-                .map(m => m.id);
-            
-            if (unreadIds.length > 0) {
-                markAsRead(unreadIds);
-                // Also notify backend for unread count sync
-                markAsReadApi(matchId).catch(console.error);
-            }
+        if (messages.length === 0 || !user?.id) return;
+
+        const unreadIds = messages
+            .filter(m => m.toUserId === user.id && !m.isRead)
+            .map(m => m.id)
+            // Filter out already synced IDs
+            .filter(id => !lastSyncedIdsRef.current.has(id));
+        
+        if (unreadIds.length === 0) return;
+
+        // Add to pending set
+        unreadIds.forEach(id => pendingReadIdsRef.current.add(id));
+
+        // Mark read locally immediately
+        markAsRead(unreadIds);
+
+        // Debounce the API call to batch multiple updates
+        if (markAsReadTimeoutRef.current) {
+            clearTimeout(markAsReadTimeoutRef.current);
         }
+
+        markAsReadTimeoutRef.current = setTimeout(() => {
+            const idsToSync = Array.from(pendingReadIdsRef.current);
+            if (idsToSync.length === 0) return;
+
+            // Track synced IDs to prevent duplicates
+            idsToSync.forEach(id => lastSyncedIdsRef.current.add(id));
+            pendingReadIdsRef.current.clear();
+
+            // Notify backend for unread count sync
+            markAsReadApi(matchId).catch((err) => {
+                console.error('Failed to sync read status:', err);
+                // On failure, remove from synced so it can retry
+                idsToSync.forEach(id => lastSyncedIdsRef.current.delete(id));
+            });
+        }, 500); // 500ms debounce
+
+        return () => {
+            if (markAsReadTimeoutRef.current) {
+                clearTimeout(markAsReadTimeoutRef.current);
+            }
+        };
     }, [messages, user?.id, matchId, markAsRead]);
+
 
     // Send message
     const handleSend = useCallback(async () => {
@@ -98,6 +136,13 @@ export default function ChatScreen({
             await sendMessageFs(messageText, recipientId);
         } catch (err) {
             console.error('Send error:', err);
+            // Restore the message so user can retry
+            setInputText(messageText);
+            Alert.alert(
+                'Message Failed',
+                'Failed to send your message. Please try again.',
+                [{ text: 'OK' }]
+            );
         } finally {
             setSending(false);
         }
@@ -126,6 +171,11 @@ export default function ChatScreen({
             await sendImageFs(asset.uri, recipientId);
         } catch (err) {
             console.error('Image send error:', err);
+            Alert.alert(
+                'Image Failed',
+                'Failed to send the image. Please try again.',
+                [{ text: 'OK' }]
+            );
         } finally {
             setSending(false);
         }

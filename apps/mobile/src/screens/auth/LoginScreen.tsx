@@ -30,6 +30,7 @@ import {
 import { useAuthStore } from '../../store';
 import { loginWithEmail, loginWithGoogle } from '../../services/api/auth';
 import { loginWithApple, isAppleSignInAvailable } from '../../services/api/appleAuth';
+import { useOffline, isNetworkError } from '../../hooks/useOffline';
 
 export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'>) {
     const [email, setEmail] = useState('');
@@ -37,6 +38,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
     const [isLoading, setIsLoading] = useState(false);
     const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { setError } = useAuthStore();
+    const { isOffline, checkNetworkOrAlert, getErrorMessage } = useOffline();
 
     // Check Apple Sign-In availability on mount
     useEffect(() => {
@@ -49,6 +51,9 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
             return;
         }
 
+        // Check network before attempting login
+        if (!checkNetworkOrAlert(() => handleLogin())) return;
+
         setIsLoading(true);
         try {
             const result = await loginWithEmail({ email, password });
@@ -58,13 +63,19 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
             }
             // Auth state listener in App.tsx will handle navigation
         } catch (error) {
-            Alert.alert('Error', 'Login failed. Please try again.');
+            const message = getErrorMessage(error);
+            Alert.alert(
+                isNetworkError(error) ? 'Connection Error' : 'Login Failed',
+                message
+            );
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleGoogleLogin = async () => {
+        if (!checkNetworkOrAlert(() => handleGoogleLogin())) return;
+
         setIsLoading(true);
         try {
             const result = await loginWithGoogle();
@@ -74,13 +85,19 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
             }
             // Auth state listener in App.tsx will handle navigation
         } catch (error) {
-            Alert.alert('Error', 'Google sign-in failed. Please try again.');
+            const message = getErrorMessage(error);
+            Alert.alert(
+                isNetworkError(error) ? 'Connection Error' : 'Login Failed',
+                message
+            );
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleAppleLogin = async () => {
+        if (!checkNetworkOrAlert(() => handleAppleLogin())) return;
+
         setIsLoading(true);
         try {
             const result = await loginWithApple();
@@ -90,7 +107,11 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
             }
             // Auth state listener in App.tsx will handle navigation
         } catch (error) {
-            Alert.alert('Error', 'Apple sign-in failed. Please try again.');
+            const message = getErrorMessage(error);
+            Alert.alert(
+                isNetworkError(error) ? 'Connection Error' : 'Login Failed',
+                message
+            );
         } finally {
             setIsLoading(false);
         }
