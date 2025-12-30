@@ -4,7 +4,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import { ArrowRight, ArrowLeft, User, MapPin, Heart, GraduationCap, Users, Camera, ShieldCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -69,6 +69,19 @@ export function ProfileCreationModal({
   );
 
   const { isAuthenticated } = useAuth();
+
+  const stepInfo = [
+    { title: "Basic Info", desc: "Let's start with the basics", icon: User },
+    { title: "Location & Physical", desc: "Where are you based?", icon: MapPin },
+    { title: "Lifestyle & Culture", desc: "Your values and habits", icon: Heart },
+    { title: "Education & Career", desc: "Your professional background", icon: GraduationCap },
+    { title: "Partner Preferences", desc: "Who are you looking for?", icon: Users },
+    { title: "Photos", desc: "Add your best photos", icon: Camera },
+    { title: "Create Account", desc: "Secure your profile", icon: ShieldCheck },
+  ];
+
+  const currentStepInfo = stepInfo[step - 1] || stepInfo[0];
+
   React.useEffect(() => {
     // Removed full page reload on auth-success to preserve pendingImages (local-only before signup).
     // Auth provider context should react to sign-in and controller effect will finalize profile.
@@ -120,40 +133,52 @@ export function ProfileCreationModal({
           )}
           
           {/* Header with Progress */}
-          <div className="relative bg-base-light/40 backdrop-blur-md border-b border-neutral/10 p-6 pb-6 z-10">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-neutral/10">
+          <div className="relative bg-base-light/40 backdrop-blur-md border-b border-neutral/10 p-6 sm:p-8 z-10">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-neutral/5">
               <motion.div
-                className="h-full bg-gradient-to-r from-primary via-secondary to-primary bg-[length:200%_100%] animate-gradient-x"
+                className="h-full bg-gradient-to-r from-primary via-secondary to-primary bg-[length:200%_100%] shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${(step / totalSteps) * 100}%` }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               />
             </div>
 
-            <div className="mt-2">
-              <DialogTitle id="profile-modal-title" className="text-2xl font-serif font-bold text-neutral-dark tracking-tight">
-                {step === 7 ? "Create Account" : "Complete Your Profile"}
-              </DialogTitle>
-              <div className="flex items-center justify-between mt-1">
-                <p id="profile-modal-desc" className="text-neutral-light text-sm font-sans">
-                  {step < 5 ? "Tell us a bit more about yourself" : "Almost there!"}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                    <currentStepInfo.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary/60 font-sans">
+                    Step {step} of {totalSteps}
+                  </span>
+                </div>
+                <DialogTitle id="profile-modal-title" className="text-2xl sm:text-3xl font-serif font-bold text-neutral-dark tracking-tight">
+                  {currentStepInfo.title}
+                </DialogTitle>
+                <p id="profile-modal-desc" className="text-neutral-light text-sm sm:text-base font-sans mt-1">
+                  {currentStepInfo.desc}
                 </p>
-                <span className="text-xs font-medium px-3 py-1 bg-primary/10 text-primary rounded-full font-sans">
-                  Step {step} of {totalSteps}
-                </span>
+              </div>
+              
+              <div className="hidden sm:block">
+                <div className="w-16 h-16 rounded-2xl bg-neutral/5 border border-neutral/10 flex items-center justify-center relative overflow-hidden">
+                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5" />
+                   <span className="text-xl font-serif font-bold text-primary/40">{Math.round((step / totalSteps) * 100)}%</span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Scrollable Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar bg-gradient-to-b from-transparent to-neutral/5">
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
-                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="min-h-[300px]"
               >
                 {step === 1 && !hasBasicData && (
@@ -238,15 +263,15 @@ export function ProfileCreationModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="p-6 border-t border-neutral/10 bg-neutral/5 backdrop-blur-sm flex justify-between items-center z-10">
+          <div className="p-6 sm:p-8 border-t border-neutral/10 bg-base-light/80 backdrop-blur-md flex justify-between items-center z-10">
             {step > 2 ? (
               <Button
                 variant="ghost"
                 onClick={handleBack}
                 disabled={false}
-                className="flex items-center gap-2 text-neutral hover:text-neutral-dark hover:bg-neutral/10 rounded-xl font-sans"
+                className="flex items-center gap-2 text-neutral-light hover:text-neutral-dark hover:bg-neutral/5 rounded-2xl font-bold px-6 h-12 transition-all"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-5 w-5" />
                 Back
               </Button>
             ) : (
@@ -276,7 +301,7 @@ export function ProfileCreationModal({
                   await handleNext();
                 }}
                 disabled={stepValidation.isValidating}
-                className="bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300 px-8 rounded-xl font-sans"
+                className="bg-primary hover:bg-primary-dark text-white shadow-xl shadow-primary/20 transition-all duration-300 px-10 h-12 rounded-2xl font-bold"
               >
                 {stepValidation.isValidating ? (
                   <span className="flex items-center gap-2">
@@ -286,7 +311,7 @@ export function ProfileCreationModal({
                 ) : (
                   <>
                     Next
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </>
                 )}
               </Button>

@@ -15,7 +15,7 @@ import {
 import { Card } from "@/components/ui/card";
 
 import Link from "next/link";
-import { ArrowRight, Users, Shield, Star, CalendarIcon } from "lucide-react";
+import { ArrowRight, Users, Shield, Star, CalendarIcon, User, Info, CheckCircle2 } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
@@ -295,51 +295,67 @@ function HeroOnboardingInner() {
           </div>
 
           {/* Modern Progress Indicator */}
-          <div className="flex justify-center mb-8 relative">
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-neutral/10 -z-10 rounded-full" />
-            <div className="flex items-center justify-between w-full max-w-[200px]">
+          <div className="flex justify-center mb-10 relative">
+            <div className="flex items-center justify-between w-full max-w-[240px] relative">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="relative group">
-                  <div
+                <div key={i} className="relative z-10 flex flex-col items-center">
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      scale: i === step ? 1.1 : 1,
+                      backgroundColor: i <= step ? "var(--primary)" : "var(--base-light)",
+                      borderColor: i <= step ? "var(--primary)" : "rgba(0,0,0,0.1)",
+                    }}
                     className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2",
-                      i <= step
-                        ? "bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-110"
-                        : "bg-base-light border-neutral/10 text-neutral-light"
+                      "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 border-2 shadow-sm",
+                      i <= step ? "text-white shadow-primary/20" : "text-neutral-light"
                     )}
                   >
-                    {i}
-                  </div>
+                    {i < step ? (
+                      <CheckCircle2 className="w-6 h-6" />
+                    ) : (
+                      <span>{i}</span>
+                    )}
+                  </motion.div>
+                  <span className={cn(
+                    "absolute -bottom-6 text-[10px] font-bold uppercase tracking-wider transition-colors duration-300",
+                    i <= step ? "text-primary" : "text-neutral-light/50"
+                  )}>
+                    {i === 1 ? "Basic" : i === 2 ? "Details" : "Contact"}
+                  </span>
                 </div>
               ))}
-            </div>
-             {/* Active Progress Line */}
-             <div 
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[200px] h-0.5 -z-20 bg-neutral/10 overflow-hidden rounded-full"
-             >
+              
+              {/* Background Line */}
+              <div className="absolute top-5 left-0 w-full h-[2px] bg-neutral/5 -z-0 rounded-full" />
+              
+              {/* Active Progress Line */}
+              <div className="absolute top-5 left-0 w-full h-[2px] -z-0 overflow-hidden rounded-full">
                 <motion.div 
-                  className="h-full bg-primary"
+                  className="h-full bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"
                   initial={{ width: "0%" }}
                   animate={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%" }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 />
-             </div>
+              </div>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: -20, filter: "blur(10px)" }}
+              initial={{ opacity: 0, y: 10, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -10, filter: "blur(8px)" }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="min-h-[280px]"
+              className="min-h-[300px]"
             >
               {/* Step 1: Profile For & Gender */}
               {step === 1 && (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div className="space-y-3">
-                    <Label className="text-neutral font-medium block font-sans">
+                    <Label className="text-neutral-dark font-semibold text-sm block font-sans flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
                       {required("This profile is for")}
                     </Label>
                     <Select
@@ -350,14 +366,14 @@ function HeroOnboardingInner() {
                     >
                       <SelectTrigger
                         id="profileFor"
-                        className="w-full h-12 bg-neutral/5 border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all rounded-xl"
+                        className="w-full h-14 bg-neutral/5 border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all rounded-2xl text-base"
                       >
                         <SelectValue placeholder="Select who this is for" />
                       </SelectTrigger>
-                      <SelectContent className="bg-base-light/95 backdrop-blur-xl border-neutral/5 shadow-xl rounded-xl">
-                        <SelectItem value="self">Myself</SelectItem>
-                        <SelectItem value="friend">A Friend</SelectItem>
-                        <SelectItem value="family">A Family Member</SelectItem>
+                      <SelectContent className="bg-base-light/95 backdrop-blur-xl border-neutral/10 shadow-2xl rounded-2xl p-1">
+                        <SelectItem value="self" className="rounded-xl py-3">Myself</SelectItem>
+                        <SelectItem value="friend" className="rounded-xl py-3">A Friend</SelectItem>
+                        <SelectItem value="family" className="rounded-xl py-3">A Family Member</SelectItem>
                       </SelectContent>
                     </Select>
                     {heroErrors.profileFor && (
@@ -368,28 +384,34 @@ function HeroOnboardingInner() {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-neutral font-medium block font-sans">
+                    <Label className="text-neutral-dark font-semibold text-sm block font-sans">
                       {required("Gender")}
                     </Label>
                     <div className="grid grid-cols-2 gap-4">
-                      {["male", "female"].map((g) => (
+                      {[
+                        { id: "male", label: "Male", icon: "♂️" },
+                        { id: "female", label: "Female", icon: "♀️" }
+                      ].map((g) => (
                         <Button
-                          key={g}
+                          key={g.id}
                           type="button"
                           variant="outline"
-                          onClick={() => handleInputChange("gender", g)}
+                          onClick={() => handleInputChange("gender", g.id)}
                           className={cn(
-                            "relative h-12 rounded-xl border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize font-sans",
-                            (heroData.gender ?? "") === g
-                              ? "border-primary bg-primary/5 text-primary shadow-sm hover:bg-primary/10"
-                              : "border-neutral/5 bg-neutral/5 text-neutral hover:border-neutral/10 hover:bg-neutral/10"
+                            "relative h-20 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center gap-1 font-bold font-sans overflow-hidden group",
+                            (heroData.gender ?? "") === g.id
+                              ? "border-primary bg-primary/5 text-primary shadow-md"
+                              : "border-neutral/5 bg-neutral/5 text-neutral-light hover:border-neutral/20 hover:bg-neutral/10"
                           )}
                         >
-                          {g}
-                          {(heroData.gender ?? "") === g && (
+                          <span className="text-2xl group-hover:scale-110 transition-transform duration-300">{g.icon}</span>
+                          <span className="text-sm">{g.label}</span>
+                          {(heroData.gender ?? "") === g.id && (
                             <motion.div
-                              layoutId="gender-check"
-                              className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"
+                              layoutId="gender-active-bg"
+                              className="absolute inset-0 bg-primary/5 -z-10"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
                             />
                           )}
                         </Button>
@@ -406,21 +428,23 @@ function HeroOnboardingInner() {
 
               {/* Step 2: Name & Date of Birth */}
               {step === 2 && (
-                <div className="space-y-6">
-                  <ValidatedInput
-                    label="Full Name"
-                    field="fullName"
-                    step={1}
-                    value={heroData.fullName ?? ""}
-                    onValueChange={(val) => handleInputChange("fullName", val)}
-                    placeholder="e.g. Sarah Ahmad"
-                    required
-                    externalError={heroErrors.fullName}
-                    className="h-12 bg-neutral/5 border-neutral/10 focus:ring-2 focus:ring-primary/20 rounded-xl font-sans"
-                  />
+                <div className="space-y-8">
+                  <div className="space-y-3">
+                    <ValidatedInput
+                      label="Full Name"
+                      field="fullName"
+                      step={1}
+                      value={heroData.fullName ?? ""}
+                      onValueChange={(val) => handleInputChange("fullName", val)}
+                      placeholder="e.g. Sarah Ahmad"
+                      required
+                      externalError={heroErrors.fullName}
+                      className="h-14 bg-neutral/5 border-neutral/10 focus:ring-2 focus:ring-primary/20 rounded-2xl font-sans text-base"
+                    />
+                  </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-neutral font-medium block font-sans">
+                  <div className="space-y-3">
+                    <Label className="text-neutral-dark font-semibold text-sm block font-sans">
                       {required("Date of Birth")}
                     </Label>
                     <DatePicker
@@ -445,29 +469,33 @@ function HeroOnboardingInner() {
                         )
                       }
                       error={!!heroErrors.dateOfBirth}
-                      className="h-12 bg-neutral/5 border-neutral/10 hover:bg-neutral/10 transition-all rounded-xl"
+                      className="h-14 bg-neutral/5 border-neutral/10 hover:bg-neutral/10 transition-all rounded-2xl text-base"
                     />
                     {heroErrors.dateOfBirth && (
                       <p className="text-xs text-danger font-medium animate-shake">
                         {heroErrors.dateOfBirth}
                       </p>
                     )}
+                    <p className="text-[11px] text-neutral-light/70 flex items-center gap-1.5 px-1">
+                      <Info className="w-3 h-3" />
+                      You must be at least 18 years old to join.
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Step 3: Phone Number */}
               {step === 3 && (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-neutral font-medium block font-sans">
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <Label className="text-neutral-dark font-semibold text-sm block font-sans">
                       {required("Phone Number")}
                     </Label>
                     <div className={cn(
-                      "transition-all duration-200 rounded-xl border",
+                      "transition-all duration-300 rounded-2xl border-2 overflow-hidden",
                       heroErrors.phoneNumber 
-                        ? "border-danger ring-1 ring-danger/20" 
-                        : "border-neutral/10 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary"
+                        ? "border-danger ring-4 ring-danger/10" 
+                        : "border-neutral/5 bg-neutral/5 focus-within:ring-4 focus-within:ring-primary/10 focus-within:border-primary/50"
                     )}>
                       <PhoneInput
                         value={heroData.phoneNumber ?? ""}
@@ -481,7 +509,7 @@ function HeroOnboardingInner() {
                           handleInputChange("phoneNumber", normalized);
                         }}
                         placeholder="7XXX XXXXXX"
-                        className="w-full border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-xl"
+                        className="w-full border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-14 px-4"
                       />
                     </div>
                     {heroErrors.phoneNumber && (
@@ -489,22 +517,29 @@ function HeroOnboardingInner() {
                         {heroErrors.phoneNumber}
                       </p>
                     )}
-                    <p className="text-xs text-neutral-light mt-2 font-sans">
-                      We'll send you a verification code to confirm your number.
-                    </p>
+                    
+                    <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 space-y-2">
+                      <p className="text-xs text-primary font-bold flex items-center gap-2">
+                        <Shield className="w-3.5 h-3.5" />
+                        Privacy First
+                      </p>
+                      <p className="text-xs text-neutral-light leading-relaxed">
+                        We use your number for account security and verification. Your number is never shared with other members without your permission.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          <div className="mt-8 flex justify-between items-center pt-6 border-t border-neutral/5">
+          <div className="mt-8 flex justify-between items-center pt-8 border-t border-neutral/10">
             {step > 1 ? (
               <Button
                 variant="ghost"
                 onClick={() => setStep(step - 1)}
                 disabled={loading}
-                className="text-neutral-light hover:text-neutral-dark hover:bg-neutral/10 rounded-xl font-sans"
+                className="text-neutral-light hover:text-neutral-dark hover:bg-neutral/5 rounded-xl font-bold px-6"
               >
                 Back
               </Button>
@@ -515,8 +550,8 @@ function HeroOnboardingInner() {
               onClick={handleNext}
               disabled={loading}
               className={cn(
-                "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25 transition-all duration-300 rounded-xl font-sans",
-                step === 3 ? "px-8" : "px-6"
+                "bg-primary hover:bg-primary-dark text-white shadow-xl shadow-primary/20 transition-all duration-300 rounded-2xl font-bold h-12",
+                step === 3 ? "px-10" : "px-8"
               )}
             >
               {loading ? (
@@ -529,17 +564,17 @@ function HeroOnboardingInner() {
               ) : (
                 <>
                   Next
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}
             </Button>
           </div>
 
-          <div className="mt-6 text-center text-sm text-neutral-light font-sans">
+          <div className="mt-8 text-center text-sm text-neutral-light font-sans">
             Already have an account?{" "}
             <Link
               href="/sign-in"
-              className="text-primary hover:text-primary-dark font-semibold hover:underline transition-all"
+              className="text-primary hover:text-primary-dark font-bold hover:underline transition-all"
             >
               Sign In
             </Link>
@@ -548,21 +583,24 @@ function HeroOnboardingInner() {
       </Card>
 
       {/* Trust indicators */}
-      <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+      <div className="mt-10 grid grid-cols-3 gap-4">
         {[
-          { icon: Shield, text: "100% Verified" },
-          { icon: Users, text: "1000+ Members" },
-          { icon: Star, text: "Success Stories" },
-        ].map(({ icon: Icon, text }, idx) => (
+          { icon: Shield, text: "100% Verified", sub: "Safe & Secure" },
+          { icon: Users, text: "1000+ Members", sub: "Afghan Singles" },
+          { icon: Star, text: "Success Stories", sub: "Real Matches" },
+        ].map(({ icon: Icon, text, sub }, idx) => (
           <motion.div 
             key={text}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 + idx * 0.1 }}
-            className="text-white/90 backdrop-blur-md bg-base-light/10 rounded-2xl p-3 border border-base-light/20 shadow-lg"
+            className="text-center group"
           >
-            <Icon className="h-6 w-6 mx-auto mb-2 opacity-90" />
-            <p className="text-xs font-medium font-sans">{text}</p>
+            <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <Icon className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-xs font-bold text-white mb-0.5">{text}</p>
+            <p className="text-[10px] text-white/60 font-medium">{sub}</p>
           </motion.div>
         ))}
       </div>

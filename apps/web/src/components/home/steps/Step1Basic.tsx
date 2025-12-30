@@ -23,50 +23,49 @@ export function Step1Basic(props: {
   const { formData, requiredLabel, onChange } = props;
   return (
     <div className="space-y-8">
-      <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <User className="w-4 h-4" />
-            <h3 className="text-lg">Basic Information</h3>
-        </div>
-
-        <div className="space-y-4">
+      <div className="space-y-8">
+        <div className="space-y-6">
             <div>
-                <Label htmlFor="profileFor" className="text-neutral-dark mb-2 block font-medium font-sans">
+                <Label htmlFor="profileFor" className="text-neutral-dark mb-3 block font-bold font-sans text-sm uppercase tracking-wider opacity-70">
                 {requiredLabel("This profile is for")}
                 </Label>
                 <Select value={formData.profileFor} onValueChange={(value) => onChange("profileFor", value)}>
-                <SelectTrigger id="profileFor" className="w-full bg-base-light/50 h-12 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all">
+                <SelectTrigger id="profileFor" className="w-full bg-neutral/5 h-14 rounded-2xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all text-base">
                     <SelectValue placeholder="Select who this is for" />
                 </SelectTrigger>
-                <SelectContent className="bg-base-light/95 backdrop-blur-xl border border-neutral/10 shadow-xl rounded-xl">
-                    <SelectItem value="self">Myself</SelectItem>
-                    <SelectItem value="friend">A Friend</SelectItem>
-                    <SelectItem value="family">A Family Member</SelectItem>
+                <SelectContent className="bg-base-light/95 backdrop-blur-xl border border-neutral/10 shadow-2xl rounded-2xl p-1">
+                    <SelectItem value="self" className="rounded-xl py-3">Myself</SelectItem>
+                    <SelectItem value="friend" className="rounded-xl py-3">A Friend</SelectItem>
+                    <SelectItem value="family" className="rounded-xl py-3">A Family Member</SelectItem>
                 </SelectContent>
                 </Select>
             </div>
 
             <div>
-                <Label className="text-neutral-dark mb-2 block font-medium font-sans">{requiredLabel("Gender")}</Label>
+                <Label className="text-neutral-dark mb-3 block font-bold font-sans text-sm uppercase tracking-wider opacity-70">{requiredLabel("Gender")}</Label>
                 <div className="grid grid-cols-2 gap-4">
-                {["male", "female"].map((g) => (
+                {[
+                    { id: "male", label: "Male", icon: "♂️" },
+                    { id: "female", label: "Female", icon: "♀️" }
+                ].map((g) => (
                     <Button
-                        key={g}
+                        key={g.id}
                         type="button"
                         variant="outline"
-                        onClick={() => onChange("gender", g)}
+                        onClick={() => onChange("gender", g.id)}
                         className={cn(
-                        "relative h-12 rounded-xl border-2 transition-all duration-200 flex items-center justify-center font-medium capitalize font-sans",
-                        formData.gender === g
-                            ? "border-primary bg-primary/5 text-primary shadow-sm hover:bg-primary/10"
+                        "relative h-24 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center gap-2 font-bold font-sans group overflow-hidden",
+                        formData.gender === g.id
+                            ? "border-primary bg-primary/5 text-primary shadow-md"
                             : "border-neutral/10 bg-neutral/5 text-neutral-light hover:border-neutral/20 hover:bg-neutral/10"
                         )}
                     >
-                        {g}
-                        {formData.gender === g && (
+                        <span className="text-3xl group-hover:scale-110 transition-transform duration-300">{g.icon}</span>
+                        <span className="text-sm">{g.label}</span>
+                        {formData.gender === g.id && (
                         <motion.div
                             layoutId="gender-check-step1"
-                            className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"
+                            className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"
                         />
                         )}
                     </Button>

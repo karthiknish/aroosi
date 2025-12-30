@@ -19,15 +19,10 @@ export function Step3CulturalLifestyle(props: {
   const { formData, step, onChange } = props;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Cultural Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <Globe className="w-4 h-4" />
-            <h3 className="text-lg">Cultural Background</h3>
-        </div>
-        
-        <div className="grid gap-4">
+        <div className="grid gap-6">
             <ValidatedSelect
                 label="Mother Tongue"
                 field="motherTongue"
@@ -36,7 +31,7 @@ export function Step3CulturalLifestyle(props: {
                 onValueChange={(v) => onChange("motherTongue", v)}
                 options={MOTHER_TONGUE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                 placeholder="Select language"
-                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
 
             <ValidatedSelect
@@ -47,7 +42,7 @@ export function Step3CulturalLifestyle(props: {
                 onValueChange={(v) => onChange("religion", v)}
                 options={RELIGION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                 placeholder="Select religion"
-                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
 
             <ValidatedSelect
@@ -58,19 +53,14 @@ export function Step3CulturalLifestyle(props: {
                 onValueChange={(v) => onChange("ethnicity", v)}
                 options={ETHNICITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                 placeholder="Select ethnicity"
-                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
         </div>
       </div>
 
       {/* Lifestyle Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <Wine className="w-4 h-4" />
-            <h3 className="text-lg">Lifestyle Choices</h3>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-6">
             <ValidatedSelect
                 label="Diet"
                 field="diet"
@@ -84,7 +74,7 @@ export function Step3CulturalLifestyle(props: {
                 { value: "other", label: "Other" },
                 ]}
                 placeholder="Select diet"
-                className="col-span-2 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="col-span-2 h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
 
             <ValidatedSelect
@@ -99,7 +89,7 @@ export function Step3CulturalLifestyle(props: {
                 { value: "yes", label: "Yes" },
                 ]}
                 placeholder="Select preference"
-                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
 
             <ValidatedSelect
@@ -114,7 +104,7 @@ export function Step3CulturalLifestyle(props: {
                 { value: "yes", label: "Yes" },
                 ]}
                 placeholder="Select preference"
-                className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
         </div>
       </div>

@@ -13,15 +13,10 @@ export function Step4EducationCareer(props: {
 }) {
   const { formData, step, onChange } = props;
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Education & Career Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <GraduationCap className="w-4 h-4" />
-            <h3 className="text-lg">Education & Career</h3>
-        </div>
-
-        <div className="grid gap-4">
+        <div className="grid gap-6">
             <ValidatedInput
                 label="Education"
                 field="education"
@@ -31,10 +26,10 @@ export function Step4EducationCareer(props: {
                 placeholder="e.g. Bachelor's in Computer Science"
                 required
                 hint="Highest level of education completed"
-                className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                className="h-14 bg-neutral/5 rounded-2xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
             />
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 gap-6">
                 <ValidatedInput
                     label="Occupation"
                     field="occupation"
@@ -43,7 +38,7 @@ export function Step4EducationCareer(props: {
                     onValueChange={(v) => onChange("occupation", v)}
                     placeholder="e.g. Software Engineer"
                     required
-                    className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                    className="h-14 bg-neutral/5 rounded-2xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
                 />
 
                 <ValidatedInput
@@ -52,21 +47,16 @@ export function Step4EducationCareer(props: {
                     step={step}
                     value={formData.annualIncome}
                     onValueChange={(v) => onChange("annualIncome", v)}
-                    placeholder="e.g. $75,000 or ₹12,00,000"
+                    placeholder="e.g. $75,000"
                     hint="Optional"
-                    className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                    className="h-14 bg-neutral/5 rounded-2xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
                 />
             </div>
         </div>
       </div>
 
       {/* About Me Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <FileText className="w-4 h-4" />
-            <h3 className="text-lg">About You</h3>
-        </div>
-
+      <div className="space-y-6">
         <ValidatedTextarea
             label="About Me"
             field="aboutMe"
@@ -79,7 +69,7 @@ export function Step4EducationCareer(props: {
             showCharacterCount
             maxLength={500}
             hint="Write at least 10 characters"
-            className="bg-base-light/50 rounded-2xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans resize-none"
+            className="bg-neutral/5 rounded-3xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans resize-none p-6 text-base"
         />
       </div>
     </div>

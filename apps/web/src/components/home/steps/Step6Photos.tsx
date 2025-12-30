@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { validateImageMeta } from "@/lib/utils/imageMeta";
-import { Pause, Play, X } from "lucide-react";
+import { Pause, Play, X, Info, Camera } from "lucide-react";
 import * as imported from "@/components/ImageUploader";
 import type { ProfileCreationData } from "../profileCreation/types";
 
@@ -340,119 +340,116 @@ export function Step6Photos(props: {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h3 className="text-lg">Profile Photos</h3>
-            <span className="text-danger text-xs font-sans font-normal ml-1">(Required)</span>
+    <div className="space-y-8">
+      <div className="bg-primary/5 backdrop-blur-sm rounded-3xl p-8 border border-primary/10 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-6 opacity-5">
+            <Camera className="w-24 h-24 text-primary" />
         </div>
         
-        <p className="text-sm text-neutral-light font-sans">
-          Add at least 1 photo to your profile. The first photo will be your main profile picture.
-        </p>
-      </div>
+        <div className="relative z-10">
+            <h3 className="text-xl font-serif font-bold text-neutral-dark mb-2">Add Your Photos</h3>
+            <p className="text-sm text-neutral-light font-sans leading-relaxed max-w-md">
+                Profiles with photos get 10x more matches. Add at least one photo to get started.
+            </p>
+        </div>
 
-      <div className="bg-base-light/50 backdrop-blur-sm rounded-2xl p-6 border border-neutral/10 shadow-sm">
-        {pendingImages.length > 0 && (
-          <div className="mb-8">
-            <ProfileImageReorder
-              preUpload
-              images={pendingImages}
-              userId={userId || ""}
-              loading={false}
-              renderAction={(img) => {
-                const state = itemState[img.storageId];
-                if (!state) return null;
-                const base =
-                  "text-[10px] rounded-full px-2 py-1 font-medium shadow-sm font-sans";
-                if (state.status === "uploading")
-                  return (
-                    <span className={`${base} bg-primary text-white`}>
-                      {state.progress}%
-                    </span>
-                  );
-                if (state.status === "success")
-                  return (
-                    <span className={`${base} bg-success text-white`}>
-                      ✓ Uploaded
-                    </span>
-                  );
-                if (state.status === "error")
-                  return (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleRetry(img);
-                      }}
-                      className={`${base} bg-danger text-white hover:bg-danger hover:text-white h-auto p-1 px-2`}
-                    >
-                      Retry
-                    </Button>
-                  );
-                return null;
-              }}
-              onReorder={async (ordered: ProfileImageInfo[]) => {
-                setPendingImages(ordered);
+        <div className="mt-8">
+            {pendingImages.length > 0 && (
+            <div className="mb-8">
+                <ProfileImageReorder
+                preUpload
+                images={pendingImages}
+                userId={userId || ""}
+                loading={false}
+                renderAction={(img) => {
+                    const state = itemState[img.storageId];
+                    if (!state) return null;
+                    const base =
+                    "text-[10px] rounded-full px-2 py-1 font-bold shadow-sm font-sans uppercase tracking-wider";
+                    if (state.status === "uploading")
+                    return (
+                        <span className={`${base} bg-primary text-white`}>
+                        {state.progress}%
+                        </span>
+                    );
+                    if (state.status === "success")
+                    return (
+                        <span className={`${base} bg-success text-white`}>
+                        ✓ Done
+                        </span>
+                    );
+                    if (state.status === "error")
+                    return (
+                        <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            void handleRetry(img);
+                        }}
+                        className={`${base} bg-danger text-white hover:bg-danger hover:text-white h-auto p-1 px-2`}
+                        >
+                        Retry
+                        </Button>
+                    );
+                    return null;
+                }}
+                onReorder={async (ordered: ProfileImageInfo[]) => {
+                    setPendingImages(ordered);
+                    try {
+                    const ids = ordered.map((img) => img.storageId);
+                    const { persistPendingImageOrderToLocal } = await import(
+                        "../profileCreation/step6"
+                    );
+                    persistPendingImageOrderToLocal(ids);
+                    } catch {}
+                }}
+                onOptimisticDelete={(imageId: string) => {
+                    const next = pendingImages.filter((im) => im.storageId !== imageId);
+                    setPendingImages(next);
+                    onImagesChanged(next);
+                }}
+                onDeleteImage={async (imageId: string) => {
+                    const next = pendingImages.filter((im) => im.storageId !== imageId);
+                    setPendingImages(next);
+                    onImagesChanged(next);
+                    try {
+                    const ids = next.map((img) => img.storageId);
+                    const { persistPendingImageOrderToLocal } = await import(
+                        "../profileCreation/step6"
+                    );
+                    persistPendingImageOrderToLocal(ids);
+                    } catch {}
+                }}
+                />
+            </div>
+            )}
+
+            <div className="flex justify-center">
+            <imported.ImageUploader
+                mode="local"
+                userId={userId}
+                orderedImages={pendingImages}
+                setIsUploading={() => {}}
+                isUploading={false}
+                fetchImages={async () => {}}
+                maxFiles={5}
+                onOptimisticUpdate={(img: ProfileImageInfo) => {
                 try {
-                  const ids = ordered.map((img) => img.storageId);
-                  const { persistPendingImageOrderToLocal } = await import(
-                    "../profileCreation/step6"
-                  );
-                  persistPendingImageOrderToLocal(ids);
+                    const next = [...pendingImages, img];
+                    setPendingImages(next);
+                    onImagesChanged(next);
                 } catch {}
-              }}
-              onOptimisticDelete={(imageId: string) => {
-                const next = pendingImages.filter((im) => im.storageId !== imageId);
-                setPendingImages(next);
-                onImagesChanged(next);
-              }}
-              onDeleteImage={async (imageId: string) => {
-                const next = pendingImages.filter((im) => im.storageId !== imageId);
-                setPendingImages(next);
-                onImagesChanged(next);
-                try {
-                  const ids = next.map((img) => img.storageId);
-                  const { persistPendingImageOrderToLocal } = await import(
-                    "../profileCreation/step6"
-                  );
-                  persistPendingImageOrderToLocal(ids);
-                } catch {}
-              }}
+                }}
             />
-          </div>
-        )}
-
-        <div className="flex justify-center">
-          <imported.ImageUploader
-            mode="local"
-            userId={userId}
-            orderedImages={pendingImages}
-            setIsUploading={() => {}}
-            isUploading={false}
-            fetchImages={async () => {}}
-            maxFiles={5}
-            onOptimisticUpdate={(img: ProfileImageInfo) => {
-              try {
-                const next = [...pendingImages, img];
-                setPendingImages(next);
-                onImagesChanged(next);
-              } catch {}
-            }}
-          />
+            </div>
         </div>
         
-        <div className="mt-6 flex items-start gap-3 text-xs text-neutral-light bg-neutral/5 rounded-xl p-4 border border-neutral/10 font-sans">
-          <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+        <div className="mt-8 flex items-start gap-3 text-xs text-neutral-light/80 bg-white/50 rounded-2xl p-4 border border-neutral/10 font-sans">
+          <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
           <span className="leading-relaxed">
-            Upload high-quality photos (JPG, PNG, WebP). Maximum 5 images, 5MB each, minimum 512x512 pixels.
+            Upload high-quality photos (JPG, PNG, WebP). Maximum 5 images, 5MB each. Minimum 512x512 pixels.
           </span>
         </div>
       </div>

@@ -21,14 +21,9 @@ export function Step5PartnerPreferences(props: {
   const maxAge = formData.partnerPreferenceAgeMax ?? 35;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Preferences Section */}
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <Heart className="w-4 h-4" />
-            <h3 className="text-lg">Partner Preferences</h3>
-        </div>
-
         <ValidatedSelect
             label="Preferred Gender"
             field="preferredGender"
@@ -43,17 +38,25 @@ export function Step5PartnerPreferences(props: {
             ]}
             placeholder="Select preferred gender"
             required
-            className="rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+            className="h-14 rounded-2xl border-neutral/10 bg-neutral/5 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
         />
 
-        <div className="bg-neutral/5 backdrop-blur-sm p-6 rounded-2xl border border-neutral/10 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-                <Label className="text-neutral-dark font-medium font-sans">Age Range</Label>
+        <div className="bg-primary/5 backdrop-blur-sm p-8 rounded-3xl border border-primary/10 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Heart className="w-20 h-20 text-primary" />
+            </div>
+            <div className="flex justify-between items-end mb-8 relative z-10">
+                <div>
+                    <Label className="text-neutral-dark font-bold font-sans text-sm uppercase tracking-wider opacity-70 block mb-1">Age Range</Label>
+                    <p className="text-xs text-neutral-light font-medium font-sans">
+                        Preferred age of your partner
+                    </p>
+                </div>
                 <div className="text-right">
-                    <span className="text-2xl font-serif font-bold text-primary">
+                    <span className="text-4xl font-serif font-bold text-primary">
                         {minAge} - {maxAge}
                     </span>
-                    <span className="text-xs text-neutral-light ml-1 font-sans">years</span>
+                    <span className="text-sm text-neutral-light font-bold font-sans ml-1">yrs</span>
                 </div>
             </div>
             <Slider
@@ -65,9 +68,9 @@ export function Step5PartnerPreferences(props: {
                     onChange("partnerPreferenceAgeMin", vals[0]);
                     onChange("partnerPreferenceAgeMax", vals[1]);
                 }}
-                className="py-2"
+                className="py-4"
             />
-            <div className="flex justify-between text-xs text-neutral-light mt-3 px-1 font-sans">
+            <div className="flex justify-between text-[10px] font-bold text-neutral-light/50 mt-2 px-1 font-sans uppercase tracking-widest">
                 <span>18</span>
                 <span>70</span>
             </div>
@@ -75,12 +78,7 @@ export function Step5PartnerPreferences(props: {
       </div>
 
       {/* Location Preferences */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-primary font-serif font-medium border-b border-neutral/10 pb-2">
-            <MapPin className="w-4 h-4" />
-            <h3 className="text-lg">Location Preferences</h3>
-        </div>
-
+      <div className="space-y-6">
         <ValidatedInput
             label="Preferred Cities"
             field="partnerPreferenceCity"
@@ -103,7 +101,7 @@ export function Step5PartnerPreferences(props: {
             }}
             placeholder="e.g. London, Kabul, Dubai"
             hint="Enter cities separated by commas"
-            className="bg-base-light/50 rounded-xl border-neutral/20 focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+            className="h-14 bg-neutral/5 rounded-2xl border-neutral/10 focus:ring-2 focus:ring-primary/20 transition-all font-sans text-base"
         />
       </div>
     </div>
