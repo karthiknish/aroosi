@@ -65,7 +65,7 @@ export async function fetchNote(
 ): Promise<{ note?: string; updatedAt?: number } | null> {
   try {
     const res = await getJson(
-      `/api/engagement/note?toUserId=${encodeURIComponent(toUserId)}`
+      `/api/engagement/notes?toUserId=${encodeURIComponent(toUserId)}`
     );
     return (res as any)?.data || res || null;
   } catch {
@@ -78,7 +78,7 @@ export async function setNote(
   note: string
 ): Promise<boolean> {
   try {
-    const res = await postJson("/api/engagement/note", { toUserId, note });
+    const res = await postJson("/api/engagement/notes", { toUserId, note });
     return !!(res as any)?.success;
   } catch {
     return false;

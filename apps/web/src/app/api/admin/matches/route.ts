@@ -123,3 +123,44 @@ export const GET = createAuthenticatedHandler(
     rateLimit: { identifier: "admin_matches_list", maxRequests: 200, windowMs: 60 * 60 * 1000 },
   }
 );
+
+// DELETE /api/admin/matches - Delete a match
+export const DELETE = createAuthenticatedHandler(
+  async (ctx, body: { matchId: string }) => {
+    const admin = requireAdmin(ctx);
+    if (!admin.ok) return admin.response;
+
+    const { matchId } = body || {};
+    if (!matchId) {
+      return errorResponse("matchId is required", 400, { correlationId: ctx.correlationId });
+    }
+
+    try {
+      const matchRef = db.collection("matches").doc(matchId);
+      const matchDoc = await matchRef.get();
+      
+      if (!matchDoc.exists) {
+        return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
+      }
+
+      await matchRef.delete();
+
+      devLog("info", "admin.matches", "deleted", {
+        correlationId: ctx.correlationId,
+        matchId,
+      });
+
+      return successResponse({ deleted: true, matchId }, 200, ctx.correlationId);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      devLog("error", "admin.matches.delete", "error", {
+        correlationId: ctx.correlationId,
+        message,
+      });
+      return errorResponse("Failed to delete match", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    rateLimit: { identifier: "admin_matches_delete", maxRequests: 50, windowMs: 60 * 60 * 1000 },
+  }
+);

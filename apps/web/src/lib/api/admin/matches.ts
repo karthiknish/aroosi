@@ -56,7 +56,7 @@ class AdminMatchesAPI {
    * Get matches for a specific profile
    */
   async getProfileMatches(userId: string): Promise<any[]> {
-    const res = await this.makeRequest(`/api/admin/matches/profile/${userId}`);
+    const res = await this.makeRequest(`/api/admin/profiles/${userId}/matches`);
     return res.data?.matches || res.matches || [];
   }
 

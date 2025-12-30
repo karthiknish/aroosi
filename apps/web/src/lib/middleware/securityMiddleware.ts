@@ -30,7 +30,7 @@ const RATE_LIMITS = {
   "/api/interests": { requests: 50, window: 60 * 60 * 1000 }, // 50 interests per hour
   "/api/interests/respond": { requests: 100, window: 60 * 60 * 1000 }, // accept/reject actions
   "/api/interests/status": { requests: 600, window: 60 * 60 * 1000 }, // small GETs, allow more
-  "/api/interests/sent": { requests: 200, window: 60 * 60 * 1000 }, // listing user sent interests
+  "/api/interests/received": { requests: 200, window: 60 * 60 * 1000 }, // listing user received interests
 
   // Image operations (multipart only; legacy upload-url removed)
   "/api/profile-images": { requests: 20, window: 60 * 60 * 1000 }, // 20 image operations per hour

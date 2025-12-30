@@ -55,6 +55,7 @@ apps/web/src/app/api/admin/push-notification/route.ts
 apps/web/src/app/api/admin/push-notification/templates/route.ts
 apps/web/src/app/api/admin/push-notification/templates/[id]/route.ts
 apps/web/src/app/api/admin/push-notification/devices/route.ts
+apps/web/src/app/api/admin/push-notification/analytics/route.ts
 apps/web/src/app/api/admin/icebreakers/route.ts
 apps/web/src/app/api/admin/interests/route.ts
 apps/web/src/app/api/admin/email/outbox/process/route.ts
@@ -77,6 +78,7 @@ apps/web/src/app/api/matches/route.ts
 apps/web/src/app/api/matches/unread/route.ts
 apps/web/src/app/api/message-images/[messageId]/url/route.ts
 apps/web/src/app/api/convert-ai-text-to-html/route.ts
+apps/web/src/app/api/convert-markdown/route.ts
 apps/web/src/app/api/storage/[...path]/route.ts
 apps/web/src/app/api/blog/route.ts
 apps/web/src/app/api/blog/[slug]/route.ts

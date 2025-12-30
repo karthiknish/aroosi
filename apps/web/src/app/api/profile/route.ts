@@ -3,6 +3,7 @@ import { Notifications } from "@/lib/notify";
 import {
   sanitizeProfileInput,
 } from "@/lib/utils/profileValidation";
+import { normalizePartnerPreferences } from "@/lib/validation/arrayNormalization";
 import { db } from "@/lib/firebaseAdmin";
 import { 
   createAuthenticatedHandler, 
@@ -92,6 +93,8 @@ const handleUpdate = async (ctx: AuthenticatedApiContext, body: any) => {
     });
 
     const sanitizedBody = sanitizeProfileInput(updates);
+    // Normalize partner preferences to arrays
+    normalizePartnerPreferences(sanitizedBody);
     
     const doc = await db.collection("users").doc(userId).get();
     if (!doc.exists) {

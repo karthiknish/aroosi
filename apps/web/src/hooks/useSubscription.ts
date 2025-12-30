@@ -6,6 +6,7 @@ import { subscriptionAPI } from "@/lib/api/subscription";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { SubscriptionErrorHandler } from "@/lib/utils/subscriptionErrorHandler";
+import { handleError } from "@/lib/utils/errorHandling";
 
 export const useSubscriptionStatus = (_providedToken?: string) => {
   // Access auth context for profile + refresh capability (cookie-based auth; no token required)
@@ -47,10 +48,7 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
       try {
         refreshProfile();
       } catch (e) {
-        if (process.env.NODE_ENV !== "production") {
-          // eslint-disable-next-line no-console
-          console.debug("[useSubscriptionStatus] refreshProfile failed", e);
-        }
+        handleError(e, { scope: "useSubscriptionStatus", action: "refresh_profile_sync" }, { showToast: false });
       }
     }
   }, [query.data?.plan, profile?.subscriptionPlan, refreshProfile]);
@@ -115,14 +113,11 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
         pollingAttemptsRef.current += 1;
         try {
           await refreshProfile();
-        } catch {}
-        const latestProfilePlan = ((): string => {
-          try {
-            return ((profile as any)?.subscriptionPlan || "free") as string;
-          } catch {
-            return "free";
-          }
-        })();
+        } catch (err) {
+          handleError(err, { scope: "useSubscriptionStatus", action: "refresh_profile_poll" }, { showToast: false, logError: false });
+        }
+
+        const latestProfilePlan = ((profile as any)?.subscriptionPlan || "free") as string;
         if (latestProfilePlan === statusPlan) {
           // Success: stop polling & toast if not already
           if (

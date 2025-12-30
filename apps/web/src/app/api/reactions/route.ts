@@ -16,16 +16,25 @@ export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
     const { searchParams } = new URL(ctx.request.url);
     const conversationId = searchParams.get("conversationId") || "";
+    const messageId = searchParams.get("messageId") || "";
     
-    if (!conversationId) {
-      return errorResponse("conversationId is required", 400, { correlationId: ctx.correlationId });
+    // Support both conversationId and messageId query params
+    if (!conversationId && !messageId) {
+      return errorResponse("conversationId or messageId is required", 400, { correlationId: ctx.correlationId });
     }
 
     try {
-      const snap = await db
-        .collection("reactions")
-        .where("conversationId", "==", conversationId)
-        .get();
+      let query = db.collection("reactions");
+      
+      if (messageId) {
+        // Filter by specific message
+        query = query.where("messageId", "==", messageId) as typeof query;
+      } else {
+        // Filter by conversation
+        query = query.where("conversationId", "==", conversationId) as typeof query;
+      }
+      
+      const snap = await query.get();
       
       const reactions = snap.docs.map((d: any) => {
         const r = d.data() as any;
@@ -46,6 +55,37 @@ export const GET = createAuthenticatedHandler(
   },
   {
     rateLimit: { identifier: "reactions_get", maxRequests: 100 }
+  }
+);
+
+// DELETE - Remove a reaction (explicit handler for clients using DELETE method)
+export const DELETE = createAuthenticatedHandler(
+  async (
+    ctx: ApiContext,
+    body: import("zod").infer<typeof reactionToggleSchema>
+  ) => {
+    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const { messageId, emoji } = body;
+
+    try {
+      const id = makeReactionId(messageId, String(userId), emoji);
+      const ref = db.collection("reactions").doc(id);
+      const existing = await ref.get();
+      
+      if (!existing.exists) {
+        return errorResponse("Reaction not found", 404, { correlationId: ctx.correlationId });
+      }
+      
+      await ref.delete();
+      return successResponse({ removed: true }, 200, ctx.correlationId);
+    } catch (error) {
+      console.error("reactions DELETE error", { error, correlationId: ctx.correlationId });
+      return errorResponse("Failed to remove reaction", 500, { correlationId: ctx.correlationId });
+    }
+  },
+  {
+    bodySchema: reactionToggleSchema,
+    rateLimit: { identifier: "reactions_delete", maxRequests: 60 }
   }
 );
 

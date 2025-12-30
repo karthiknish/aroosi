@@ -25,6 +25,7 @@ import {
 } from "firebase/firestore";
 import { db, auth, setAuthTokenCookie } from "@/lib/firebase";
 import { UserProfile } from "@/lib/userProfile";
+import { handleError } from "@/lib/utils/errorHandling";
 import {
   calculateProfileCompletion,
   isOnboardingEssentialComplete,
@@ -396,7 +397,13 @@ export function useUserProfile() {
             }));
             return { success: false, error: existsMsg };
           }
-        } catch {}
+        } catch (err) {
+          handleError(
+            err,
+            { scope: "useUserProfile", action: "signup_check_existing_email" },
+            { showToast: false, logError: false }
+          );
+        }
 
         const userCredential = await createUserWithEmailAndPassword(
           auth,
@@ -595,12 +602,24 @@ export function useUserProfile() {
                   "This email is registered with email & password. Please sign in using your password.";
               }
             }
-          } catch {}
+          } catch (err) {
+            handleError(
+              err,
+              { scope: "useUserProfile", action: "google_existing_check_methods" },
+              { showToast: false, logError: false }
+            );
+          }
 
           // Sign out the just-created/linked Google session to avoid partial state
           try {
             await signOut(auth);
-          } catch {}
+          } catch (err) {
+            handleError(
+              err,
+              { scope: "useUserProfile", action: "google_existing_signout_cleanup" },
+              { showToast: false, logError: false }
+            );
+          }
           setAuthState((prev) => ({
             ...prev,
             user: null,
