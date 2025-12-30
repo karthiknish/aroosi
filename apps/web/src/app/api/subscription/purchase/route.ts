@@ -9,6 +9,10 @@ import type { Profile } from "@aroosi/shared/types";
 import { db } from "@/lib/firebaseAdmin";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { subscriptionPurchaseSchema } from "@/lib/validation/apiSchemas/subscription";
+import {
+  resolvePlanFromProductId,
+  type AppPlanId,
+} from "@/lib/subscription/catalog";
 
 interface AppleReceiptItem {
   product_id: string;
@@ -109,13 +113,8 @@ export const POST = createAuthenticatedHandler(
       return errorResponse("Missing receiptData for iOS purchase", 400, { correlationId: ctx.correlationId });
     }
 
-    const productPlanMap: Record<string, "premium" | "premiumPlus"> = {
-      aroosi_premium_monthly: "premium",
-      aroosi_premium_plus_monthly: "premiumPlus",
-      premium: "premium",
-      premiumplus: "premiumPlus",
-    };
-    const plan = productPlanMap[productId];
+    const resolved = resolvePlanFromProductId(platform, productId);
+    const plan = resolved?.planId as AppPlanId | undefined;
     if (!plan) {
       return errorResponse("Invalid product ID", 400, { correlationId: ctx.correlationId });
     }

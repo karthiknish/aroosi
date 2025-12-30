@@ -50,12 +50,27 @@ async function listUserImages(userId: string) {
         const [meta] = await f.getMetadata();
         // Use public URL since storage rules allow public read access
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${f.name}`;
+
+        const uploadedAtRaw =
+          meta.metadata?.uploadedAtMs || meta.metadata?.uploadedAt || meta.timeCreated;
+        const uploadedAtParsed =
+          typeof uploadedAtRaw === "number"
+            ? uploadedAtRaw
+            : typeof uploadedAtRaw === "string"
+              ? /^\d+$/.test(uploadedAtRaw)
+                ? Number(uploadedAtRaw)
+                : Date.parse(uploadedAtRaw)
+              : NaN;
+        const uploadedAt = Number.isFinite(uploadedAtParsed)
+          ? uploadedAtParsed
+          : undefined;
+
         return {
           storageId: f.name,
           fileName: meta.name,
           url: publicUrl,
           size: Number(meta.size || 0),
-          uploadedAt: meta.metadata?.uploadedAt || meta.timeCreated,
+          uploadedAt,
           contentType: meta.contentType || null,
         };
       })
@@ -153,7 +168,7 @@ export const POST = createAuthenticatedHandler(
             contentType,
             size,
             url: publicUrl,
-            uploadedAt: new Date().toISOString(),
+            uploadedAt: Date.now(),
           },
           { merge: true }
         );

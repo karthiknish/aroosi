@@ -80,9 +80,10 @@ export const POST = createAuthenticatedHandler(
     }
 
     try {
+      const nowMs = Date.now();
       const originalExt = (file.name.split(".").pop() || "jpg").toLowerCase();
       const sanitizedBase = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "image";
-      const fileName = `${Date.now()}_${uuidv4()}_${sanitizedBase}.${originalExt}`.slice(0, 160);
+      const fileName = `${nowMs}_${uuidv4()}_${sanitizedBase}.${originalExt}`.slice(0, 160);
       const storagePath = `users/${userId}/profile-images/${fileName}`;
 
       const bucket = adminStorage.bucket();
@@ -92,7 +93,8 @@ export const POST = createAuthenticatedHandler(
           contentType: file.type,
           metadata: {
             uploadedBy: userId,
-            uploadedAt: new Date().toISOString(),
+            // Storage custom metadata values are strings
+            uploadedAtMs: String(nowMs),
             originalName: file.name,
             correlationId: ctx.correlationId,
           },
@@ -110,7 +112,7 @@ export const POST = createAuthenticatedHandler(
           contentType: file.type,
           size: file.size,
           url,
-          uploadedAt: new Date().toISOString(),
+          uploadedAt: nowMs,
           uploadedBy: userId,
           width: validation.width,
           height: validation.height,

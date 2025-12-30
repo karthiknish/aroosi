@@ -18,7 +18,7 @@ interface FirebaseImage {
   url: string;
   storageId: string;
   fileName: string;
-  uploadedAt?: string;
+  uploadedAt?: string | number;
 }
 
 interface FirebaseImageGalleryProps {

@@ -59,7 +59,7 @@ export const GET = createAuthenticatedHandler(
       let currentUsage = 0;
       const month = monthKey();
       
-      if (feature === "profile_view" || feature === "search_performed") {
+      if (feature === "profile_view" || feature === "search_performed" || feature === "voice_message_sent") {
         const since = Date.now() - 24 * 60 * 60 * 1000;
         try {
           const snap = await db

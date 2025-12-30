@@ -2,12 +2,14 @@
  * Profile Images API - Handles profile image operations
  */
 
+import { safeRequest } from "@/lib/api/safeRequest";
+
 export interface ProfileImage {
   id: string;
   url: string;
   isMain?: boolean;
   order?: number;
-  uploadedAt?: string;
+  uploadedAt?: string | number;
 }
 
 export interface UploadResponse {
@@ -32,26 +34,19 @@ class ProfileImagesAPI {
         ? { ...headers, ...(options.headers as Record<string, string>) }
         : headers;
 
-    const res = await fetch(endpoint, {
-      method: options?.method || "GET",
-      headers: finalHeaders,
-      body: options?.body,
-      credentials: "include",
-    });
-
-    const ct = res.headers.get("content-type") || "";
-    const isJson = ct.toLowerCase().includes("application/json");
-    const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
-
-    if (!res.ok) {
-      const msg =
-        (isJson && payload && (payload as any).error) ||
-        (typeof payload === "string" && payload) ||
-        `HTTP ${res.status}`;
-      throw new Error(String(msg));
-    }
-
-    return payload;
+    return safeRequest(
+      endpoint,
+      {
+        method: options?.method || "GET",
+        headers: finalHeaders,
+        body: options?.body,
+        credentials: "include",
+      },
+      {
+        timeoutMs: 20_000,
+        cache: { ttlMs: 5 * 60_000 },
+      }
+    );
   }
 
   /**

@@ -8,7 +8,7 @@ export const interestSendSchema = z.object({
 export const interestRespondSchema = z.object({
   action: z.literal("respond"),
   interestId: z.string().min(1),
-  status: z.enum(["accepted", "rejected"]),
+  status: z.enum(["accepted", "rejected", "declined"]),
 });
 
 export const interestRemoveSchema = z.object({
@@ -25,5 +25,5 @@ export const interestsPostSchema = z.discriminatedUnion("action", [
 // Legacy endpoint /api/interests/respond accepts { interestId, status }
 export const interestsRespondOnlySchema = z.object({
   interestId: z.string().min(1, "interestId is required"),
-  status: z.enum(["accepted", "rejected"]),
+  status: z.enum(["accepted", "rejected", "declined"]),
 });

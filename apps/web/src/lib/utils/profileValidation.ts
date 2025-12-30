@@ -5,6 +5,15 @@ interface ValidationResult {
   error?: string;
 }
 
+function coercePositiveNumber(value: unknown): number | undefined {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== "string") return undefined;
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  if (!cleaned) return undefined;
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 /**
  * Validates profile data for security and correctness
  */
@@ -241,7 +250,7 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
 
   // Validate annual income
   if (data.annualIncome !== undefined) {
-    const income = typeof data.annualIncome === 'string' ? parseInt(data.annualIncome) : data.annualIncome;
+    const income = coercePositiveNumber(data.annualIncome);
     if (typeof income !== 'number' || isNaN(income) || income < 0) {
       return { isValid: false, error: 'Annual income must be a positive number' };
     }
@@ -307,6 +316,14 @@ export function sanitizeProfileInput(data: Record<string, unknown>): Record<stri
   
   for (const [key, value] of Object.entries(data)) {
     if (value === null || value === undefined) {
+      continue;
+    }
+
+    if (key === "annualIncome") {
+      const income = coercePositiveNumber(value);
+      if (typeof income === "number" && income >= 0) {
+        sanitized[key] = income;
+      }
       continue;
     }
     

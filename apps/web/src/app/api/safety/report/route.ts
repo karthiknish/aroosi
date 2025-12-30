@@ -6,6 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { COL_SAFETY_REPORTS } from "@/lib/firestoreSchema";
 import { Notifications } from "@/lib/notify";
 import { reportSchema } from "@/lib/validation/apiSchemas/safety";
 
@@ -16,7 +17,7 @@ export const POST = createAuthenticatedHandler(
     const { reportedUserId, reason, description } = body;
 
     try {
-      const ref = db.collection("reports").doc();
+      const ref = db.collection(COL_SAFETY_REPORTS).doc();
       await ref.set({
         reporterUserId: userId,
         reportedUserId,

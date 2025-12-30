@@ -10,6 +10,7 @@ import {
   buildTypingIndicator,
 } from "@/lib/firestoreSchema";
 import { typingIndicatorsSchema } from "@/lib/validation/apiSchemas/typingIndicators";
+import { emitConversationEvent } from "@/lib/realtime/conversationEvents";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext, body: import("zod").infer<typeof typingIndicatorsSchema>) => {
@@ -21,12 +22,29 @@ export const POST = createAuthenticatedHandler(
       const indicator = buildTypingIndicator(conversationId, userId, action === "start");
       await db.collection(COL_TYPING_INDICATORS).doc(docId).set(indicator, { merge: true });
 
-      // Emit SSE typing event
+      // Backward-compat: older web clients listen to a nested collection shape.
+      // Keep this in sync while we migrate all readers/writers.
       try {
-        const { eventBus } = await import("@/lib/eventBus");
-        eventBus.emit(conversationId, {
+        await db
+          .collection(COL_TYPING_INDICATORS)
+          .doc(conversationId)
+          .collection("users")
+          .doc(String(userId))
+          .set(
+            {
+              isTyping: action === "start",
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          );
+      } catch {
+        // ignore sync failures; canonical doc is still written above
+      }
+
+      // Emit SSE-compatible conversation event (stored in Firestore for multi-instance)
+      try {
+        await emitConversationEvent(conversationId, {
           type: action === "start" ? "typing_start" : "typing_stop",
-          conversationId,
           userId,
           at: Date.now(),
         });

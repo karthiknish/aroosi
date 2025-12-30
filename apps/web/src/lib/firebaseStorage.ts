@@ -39,7 +39,7 @@ export async function uploadFile(
       fileName: file.name,
       size: file.size,
       contentType: file.type,
-      uploadedAt: new Date().toISOString()
+      uploadedAt: Date.now()
     };
   } catch (error) {
     console.error("Error uploading file to Firebase Storage:", error);
@@ -174,13 +174,14 @@ export async function listFiles(
       res.items.map(async (itemRef) => {
         const url = await getDownloadURL(itemRef);
         const metadata = await getMetadata(itemRef);
+        const uploadedAtMs = metadata.timeCreated ? Date.parse(metadata.timeCreated) : NaN;
         return {
           fileName: itemRef.name,
           url,
           storageId: itemRef.fullPath,
           size: metadata.size,
           contentType: metadata.contentType,
-          uploadedAt: metadata.timeCreated
+          uploadedAt: Number.isFinite(uploadedAtMs) ? uploadedAtMs : undefined
         };
       })
     );

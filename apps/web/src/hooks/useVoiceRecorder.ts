@@ -8,6 +8,13 @@ import {
   generateWaveformPeaks,
 } from "@/lib/audio";
 
+function devLog(message: string, err?: unknown) {
+  if (process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.warn(message, err);
+  }
+}
+
 type RecorderState =
   | "idle"
   | "recording"
@@ -93,10 +100,14 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
     clearTimers();
     try {
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
-    } catch {}
+    } catch (err) {
+      devLog("useVoiceRecorder: failed to stop recorder tracks", err);
+    }
     try {
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
-    } catch {}
+    } catch (err) {
+      devLog("useVoiceRecorder: failed to stop media stream tracks", err);
+    }
     recorderRef.current = null;
     mediaStreamRef.current = null;
     chunksRef.current = [];
@@ -131,7 +142,9 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
             if (recorderRef.current && recorderRef.current.state !== "inactive") {
               recorderRef.current.stop();
             }
-          } catch {}
+          } catch (err) {
+            devLog("useVoiceRecorder: auto-stop at max duration failed", err);
+          }
         }, 0);
       }
     }, 200);
@@ -233,7 +246,9 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
       if (recorderRef.current && recorderRef.current.state === "recording") {
         recorderRef.current.pause();
       }
-    } catch {}
+    } catch (err) {
+      devLog("useVoiceRecorder: pause failed", err);
+    }
   }, []);
 
   const resume = useCallback(() => {
@@ -241,7 +256,9 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
       if (recorderRef.current && recorderRef.current.state === "paused") {
         recorderRef.current.resume();
       }
-    } catch {}
+    } catch (err) {
+      devLog("useVoiceRecorder: resume failed", err);
+    }
   }, []);
 
   const stop = useCallback(async (): Promise<{ blob: Blob; durationMs: number; mimeType: string; peaks?: number[] } | null> => {
@@ -270,9 +287,10 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
               const audioBuf = await decodeToAudioBuffer(ctx, blob);
               finalPeaks = generateWaveformPeaks(audioBuf, bars);
               setPeaks(finalPeaks);
-              ctx.close().catch(() => {});
-            } catch {
+              ctx.close().catch((closeErr) => devLog("useVoiceRecorder: AudioContext close failed", closeErr));
+            } catch (err) {
               // Non-fatal if decode fails; playback still possible via <audio>
+              devLog("useVoiceRecorder: decode/generate peaks failed", err);
             }
 
             setState("idle");
@@ -295,11 +313,14 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
             if (typeof originalOnStop === "function") {
               originalOnStop.call(this, ev);
             }
-          } catch {}
-          void finalize();
+          } catch (err) {
+            devLog("useVoiceRecorder: original onstop handler failed", err);
+          }
+          void finalize().catch((err) => devLog("useVoiceRecorder: finalize rejected", err));
         };
         rec.stop();
-      } catch {
+      } catch (err) {
+        devLog("useVoiceRecorder: stop failed", err);
         cleanup();
         resolve(null);
       }
@@ -309,7 +330,9 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
   const cancel = useCallback(() => {
     try {
       recorderRef.current?.stop();
-    } catch {}
+    } catch (err) {
+      devLog("useVoiceRecorder: cancel stop failed", err);
+    }
     cleanup();
     setState("idle");
     setError(null);

@@ -32,6 +32,105 @@ export function useMatchMessages(conversationId: string, _token: string) {
   );
   const sseRef = useRef<EventSource | null>(null);
 
+  const mergeIncomingMessage = useCallback(
+    (incoming: Message) => {
+      if (!incoming?._id || incoming.conversationId !== conversationId) return;
+
+      setMessages((prev) => {
+        // Fast path: already have the server message
+        if (prev.some((m) => m._id === incoming._id)) return prev;
+
+        const now = Date.now();
+        const incomingFrom = (incoming as any).fromUserId;
+        const incomingTo = (incoming as any).toUserId;
+        const incomingText = (incoming as any).text;
+        const incomingCreatedAt = Number((incoming as any).createdAt || 0);
+
+        // Remove only tmp messages that are likely the optimistic version of this server message.
+        // (Older code removed all tmp messages, which could incorrectly drop unrelated pending bubbles.)
+        const likelyOptimisticWindowMs = 2 * 60 * 1000;
+
+        const filtered = prev.filter((m) => {
+          const id = m._id || m.id;
+          if (!id || !id.startsWith("tmp-")) return true;
+
+          const mFrom = (m as any).fromUserId;
+          const mTo = (m as any).toUserId;
+          const mText = (m as any).text;
+          const mCreatedAt = Number((m as any).createdAt || 0);
+
+          const sameDirection =
+            incomingFrom && incomingTo
+              ? mFrom === incomingFrom && mTo === incomingTo
+              : true;
+          const sameText =
+            typeof incomingText === "string" && typeof mText === "string"
+              ? incomingText.trim() === mText.trim()
+              : false;
+
+          const closeInTime =
+            incomingCreatedAt > 0 && mCreatedAt > 0
+              ? Math.abs(incomingCreatedAt - mCreatedAt) <= likelyOptimisticWindowMs
+              : // Fallback if server message lacks timestamps
+                now - mCreatedAt <= likelyOptimisticWindowMs;
+
+          // If it looks like the optimistic duplicate, drop it.
+          if (sameDirection && sameText && closeInTime) return false;
+          return true;
+        });
+
+        return [...filtered, incoming];
+      });
+    },
+    [conversationId]
+  );
+
+  const handleRealtimeEvent = useCallback(
+    (data: any) => {
+      // Preferred canonical envelope shape:
+      // { v: 1, type, conversationId, userId?, createdAt, payload?: { ... } }
+      // Back-compat: { type, message/readAt/at, ... }
+
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "message_sent") {
+        const msg = (data?.payload?.message ?? data?.message) as Message | undefined;
+        if (!msg) return;
+        mergeIncomingMessage(msg);
+        return;
+      }
+
+      if (data.type === "message_read") {
+        const cid = data?.conversationId;
+        const userId = data?.userId;
+        const readAt = (data?.payload?.readAt ?? data?.readAt) as number | undefined;
+        if (!cid || cid !== conversationId || !userId) return;
+        setReadBy((prev) => ({ ...prev, [userId]: readAt || Date.now() }));
+        return;
+      }
+
+      if (data.type === "typing_start" || data.type === "typing_stop") {
+        const cid = data?.conversationId;
+        const userId = data?.userId;
+        const at = (data?.payload?.at ?? data?.at) as number | undefined;
+        if (!cid || cid !== conversationId || !userId) return;
+        setTypingUsers((prev) => {
+          const next = { ...prev };
+          if (data.type === "typing_start") next[userId] = at || Date.now();
+          else delete next[userId];
+          return next;
+        });
+        return;
+      }
+
+      // Backward-compat: some servers may emit raw message
+      if (data?._id && data?.conversationId) {
+        mergeIncomingMessage(data as Message);
+      }
+    },
+    [conversationId, mergeIncomingMessage]
+  );
+
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -64,7 +163,11 @@ export function useMatchMessages(conversationId: string, _token: string) {
     setLoadingOlder(true);
     setError(null);
     try {
-      const oldestTimestamp = messages[0].createdAt;
+      const oldestTimestamp = Number(messages[0]?.createdAt);
+      if (!Number.isFinite(oldestTimestamp) || oldestTimestamp <= 0) {
+        setHasMore(false);
+        return;
+      }
       const response = await matchMessagesAPI.getMessages({
         conversationId,
         limit: 20,
@@ -215,57 +318,8 @@ export function useMatchMessages(conversationId: string, _token: string) {
 
       es.onmessage = (event) => {
         try {
-          const payload = JSON.parse(event.data);
-
-          // Handle normalized event envelopes
-          if (payload?.type === "message_sent" && payload?.message) {
-            const msg = payload.message as Message;
-            if (!msg?._id || msg.conversationId !== conversationId) return;
-            setMessages((prev) => {
-              if (prev.some((m) => m._id === msg._id)) return prev;
-              // Replace any optimistic tmp if same text/fromUser matches closely
-              const withoutTmp = prev.filter((m) => !m._id?.startsWith("tmp-"));
-              return [...withoutTmp, msg];
-            });
-            return;
-          }
-
-          if (payload?.type === "message_read") {
-            const { userId, readAt, conversationId: cid } = payload;
-            if (!cid || cid !== conversationId || !userId) return;
-            setReadBy((prev) => ({ ...prev, [userId]: readAt || Date.now() }));
-            // Optional: update message read flags locally if needed
-            return;
-          }
-
-          if (
-            payload?.type === "typing_start" ||
-            payload?.type === "typing_stop"
-          ) {
-            const { userId, conversationId: cid, at } = payload;
-            if (!cid || cid !== conversationId || !userId) return;
-            setTypingUsers((prev) => {
-              const next = { ...prev };
-              if (payload.type === "typing_start") {
-                next[userId] = at || Date.now();
-              } else {
-                delete next[userId];
-              }
-              return next;
-            });
-            return;
-          }
-
-          // Backward-compat: some servers may emit raw message
-          if (payload?._id && payload?.conversationId) {
-            const msg = payload as Message;
-            if (msg.conversationId !== conversationId) return;
-            setMessages((prev) => {
-              if (prev.some((m) => m._id === msg._id)) return prev;
-              const withoutTmp = prev.filter((m) => !m._id?.startsWith("tmp-"));
-              return [...withoutTmp, msg];
-            });
-          }
+          const data = JSON.parse(event.data);
+          handleRealtimeEvent(data);
         } catch {
           // ignore parse errors
         }
@@ -301,7 +355,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
         es.close();
       }
     };
-  }, [conversationId]);
+  }, [conversationId, handleRealtimeEvent]);
 
   return {
     messages,

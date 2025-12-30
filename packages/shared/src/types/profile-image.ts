@@ -6,7 +6,7 @@ export interface ProfileImageInfo {
     url: string;
     storageId: string;
     fileName?: string;
-    uploadedAt?: string;
+    uploadedAt?: string | number;
     size?: number;
     contentType?: string | null;
 }

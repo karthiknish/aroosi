@@ -51,7 +51,7 @@ export async function declineInterest(interestId: string): Promise<ApiResponse<{
     return api.post<{ success: boolean; status: string }>('/interests', {
         action: 'respond',
         interestId,
-        status: 'rejected',
+        status: 'declined',
     });
 }
 

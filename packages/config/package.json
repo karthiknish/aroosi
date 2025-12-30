@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "private": true,
     "main": "./index.js",
+    "scripts": {
+        "type-check": "node -e \"console.log('@aroosi/config: no TS sources to type-check')\""
+    },
     "exports": {
         "./typescript": "./typescript.json",
         "./eslint": "./eslint.js"

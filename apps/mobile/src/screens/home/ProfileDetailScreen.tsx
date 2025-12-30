@@ -93,6 +93,9 @@ export default function ProfileDetailScreen({
                 // Map status to our local type, treating expired as none
                 if (status === 'pending' || status === 'accepted' || status === 'declined') {
                     setInterestStatus(status);
+                } else if (status === 'rejected') {
+                    // Backward compatibility: backend stored `rejected`
+                    setInterestStatus('declined');
                 } else {
                     setInterestStatus('none');
                 }

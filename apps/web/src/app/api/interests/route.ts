@@ -17,6 +17,11 @@ import {
 } from "@/lib/firestoreSchema";
 import { interestsPostSchema } from "@/lib/validation/apiSchemas/interests";
 
+function normaliseInterestResponseStatus(status: string): "accepted" | "rejected" {
+  if (status === "accepted") return "accepted";
+  return "rejected";
+}
+
 function snapshotUser(user: any) {
   if (!user) return undefined;
   const snap: Record<string, any> = {};
@@ -108,13 +113,14 @@ export const POST = createAuthenticatedHandler(
         if (await isBlocked(interest.fromUserId, interest.toUserId)) {
           return errorResponsePublic("Cannot respond to blocked interest", 403);
         }
-        
-        const updates: Partial<FSInterest> = { status: body.status, updatedAt: now };
+
+        const status = normaliseInterestResponseStatus(String(body.status));
+        const updates: Partial<FSInterest> = { status, updatedAt: now };
         await ref.set({ ...interest, ...updates }, { merge: true });
-        if (body.status === "accepted") {
+        if (status === "accepted") {
           await ensureMatchIfMutual(interest.fromUserId, interest.toUserId);
         }
-        return successResponse({ status: body.status }, 200, ctx.correlationId);
+        return successResponse({ status }, 200, ctx.correlationId);
         
       } else if (body.action === "remove") {
         const docId = interestId(userId, body.toUserId);

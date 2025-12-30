@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, onSnapshot } from "firebase/firestore";
+import { handleError } from "@/lib/utils/errorHandling";
 
 interface UseTypingListenerProps {
   userId: string | undefined;
@@ -76,7 +77,13 @@ export function useTypingListener({
             typingRetryTimer = setTimeout(() => {
               try {
                 unsubTypingRef.current?.();
-              } catch {}
+              } catch (unsubErr) {
+                handleError(
+                  unsubErr,
+                  { scope: "useTypingListener", action: "unsubscribe_before_retry" },
+                  { showToast: false, logError: false }
+                );
+              }
               subscribeTyping();
             }, delay);
           }
@@ -94,7 +101,7 @@ export function useTypingListener({
         const readable = await ensureConversationReadable();
         if (!readable) return;
       } catch (e) {
-        /* ignore */
+        handleError(e, { scope: "useTypingListener", action: "init_typing_subscription" }, { showToast: false });
       }
       if (!cancelled) {
         subscribeTyping();
@@ -107,7 +114,11 @@ export function useTypingListener({
 
     return () => {
       cancelled = true;
-      unsubTypingRef.current?.();
+      try {
+        unsubTypingRef.current?.();
+      } catch (err) {
+        handleError(err, { scope: "useTypingListener", action: "unsubscribe_cleanup" }, { showToast: false, logError: false });
+      }
       if (typingRetryTimer) clearTimeout(typingRetryTimer);
       clearTimeout(typingInitialTimer);
     };

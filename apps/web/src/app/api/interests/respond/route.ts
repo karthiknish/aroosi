@@ -9,10 +9,17 @@ import { db } from "@/lib/firebaseAdmin";
 import { deterministicMatchId, buildMatch } from "@/lib/firestoreSchema";
 import { interestsRespondOnlySchema } from "@/lib/validation/apiSchemas/interests";
 
+function normaliseInterestResponseStatus(status: string): "accepted" | "rejected" {
+  if (status === "accepted") return "accepted";
+  // Treat legacy/alternate decline labels as the canonical stored value.
+  return "rejected";
+}
+
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext, body: import("zod").infer<typeof interestsRespondOnlySchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const { interestId, status } = body;
+    const { interestId } = body;
+    const status = normaliseInterestResponseStatus(String(body.status));
 
     try {
       // Load interest

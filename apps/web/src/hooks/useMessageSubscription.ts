@@ -13,6 +13,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import type { Message } from "@aroosi/shared/types";
+import { handleError } from "@/lib/utils/errorHandling";
 
 interface UseMessageSubscriptionProps {
   userId: string | undefined;
@@ -130,7 +131,11 @@ export function useMessageSubscription({
                 setHasMore(false);
                 return;
               }
-              const oldest = ascWindow[0].createdAt;
+              const oldest = Number(ascWindow[0]?.createdAt);
+              if (!Number.isFinite(oldest) || oldest <= 0) {
+                setHasMore(false);
+                return;
+              }
               const probeQ = query(
                 msgsRef,
                 where("conversationId", "==", convKey),
@@ -140,8 +145,9 @@ export function useMessageSubscription({
               );
               const probeSnap = await getDocs(probeQ);
               setHasMore(!probeSnap.empty);
-            } catch {
-              /* ignore */
+            } catch (err) {
+              handleError(err, { scope: "useMessageSubscription", action: "probe_has_more" }, { showToast: false });
+              setHasMore(false);
             }
           })();
         },
@@ -187,7 +193,9 @@ export function useMessageSubscription({
             retryTimer = setTimeout(() => {
               try {
                 unsubMessagesRef.current?.();
-              } catch {}
+              } catch (err) {
+                handleError(err, { scope: "useMessageSubscription", action: "unsubscribe_before_retry" }, { showToast: false, logError: false });
+              }
               subscribe();
             }, delay);
           }
@@ -207,8 +215,9 @@ export function useMessageSubscription({
           setError("Unable to load conversation. Please try again.");
           return;
         }
-      } catch {
-        /* ignore */
+      } catch (err) {
+        handleError(err, { scope: "useMessageSubscription", action: "init_subscription" }, { showToast: false });
+        setError("Unable to load conversation. Please try again.");
       }
       if (!cancelled) {
         subscribe();

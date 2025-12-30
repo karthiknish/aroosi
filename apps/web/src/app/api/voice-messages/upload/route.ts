@@ -12,6 +12,7 @@ import { adminStorage, db } from "@/lib/firebaseAdmin";
 import { buildVoiceMessage, COL_VOICE_MESSAGES, COL_BLOCKS } from "@/lib/firestoreSchema";
 import { normalisePlan, getPlanLimits } from "@/lib/subscription/planLimits";
 import { v4 as uuidv4 } from "uuid";
+import { emitConversationEvent } from "@/lib/realtime/conversationEvents";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -135,10 +136,13 @@ export const POST = createAuthenticatedHandler(
         createdAt: vm.createdAt,
       };
 
-      // Emit SSE message_sent
+      // Emit SSE-compatible conversation event (stored in Firestore for multi-instance)
       try {
-        const { eventBus } = await import("@/lib/eventBus");
-        eventBus.emit(conversationId, { type: "message_sent", message });
+        await emitConversationEvent(conversationId, {
+          type: "message_sent",
+          userId,
+          message,
+        });
       } catch {}
 
       return successResponse({

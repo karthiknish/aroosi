@@ -55,6 +55,8 @@ async function getDailyUsage(userId: string) {
     const data = d.data() as any;
     if (data.feature === "search_performed") {
       daily[data.feature] = (daily[data.feature] || 0) + 1;
+    } else if (data.feature === "voice_message_sent") {
+      daily[data.feature] = (daily[data.feature] || 0) + 1;
     } else if (data.feature === "profile_view") {
       const tgt = data.metadata?.targetUserId || data.metadata?.profileId;
       if (tgt) {
@@ -99,7 +101,7 @@ export const POST = createAuthenticatedHandler(
       // Check limit
       let currentUsage = 0;
       const month = monthKey();
-      if (feature === "profile_view" || feature === "search_performed") {
+      if (feature === "profile_view" || feature === "search_performed" || feature === "voice_message_sent") {
         const dailyMap = await getDailyUsage(userId);
         currentUsage = dailyMap[feature] || 0;
       } else {

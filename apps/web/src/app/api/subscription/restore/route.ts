@@ -7,6 +7,11 @@ import {
 import { db } from "@/lib/firebaseAdmin";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { subscriptionRestoreSchema } from "@/lib/validation/apiSchemas/subscription";
+import {
+  IAP_PRODUCT_IDS,
+  resolvePlanFromProductId,
+  type AppPlanId,
+} from "@/lib/subscription/catalog";
 
 async function validateAppleReceipt(receiptData: string): Promise<{
   valid: boolean;
@@ -52,11 +57,17 @@ async function validateAppleReceipt(receiptData: string): Promise<{
   const subscriptions = [];
   const inAppPurchases = result.receipt?.in_app || [];
 
+  const known = new Set(
+    [
+      ...IAP_PRODUCT_IDS.ios.premium.monthly,
+      ...IAP_PRODUCT_IDS.ios.premium.yearly,
+      ...IAP_PRODUCT_IDS.ios.premiumPlus.monthly,
+      ...IAP_PRODUCT_IDS.ios.premiumPlus.yearly,
+    ].filter(Boolean)
+  );
+
   for (const purchase of inAppPurchases) {
-    if (
-      purchase.product_id === "com.aroosi.premium.monthly" ||
-      purchase.product_id === "com.aroosi.premiumplus.monthly"
-    ) {
+    if (purchase.product_id && known.has(purchase.product_id)) {
       const expiresAt = parseInt(purchase.expires_date_ms);
       if (expiresAt > Date.now()) {
         subscriptions.push({
@@ -112,25 +123,24 @@ export const POST = createAuthenticatedHandler(
           return errorResponse("Missing purchases for Android", 400, { correlationId: ctx.correlationId });
         }
 
-        let restoredSubscription = null;
+        let restoredSubscription: { plan: AppPlanId; expiresAt: number; productId: string } | null = null;
         let highestTier = 0;
         const restoredDetails = [];
         
         for (const { productId, purchaseToken } of purchases) {
           const result = await validateGooglePurchase(productId, purchaseToken);
           if (result.valid) {
-            const productPlanMap: Record<string, { plan: "premium" | "premiumPlus"; tier: number }> = {
-              aroosi_premium_monthly: { plan: "premium", tier: 1 },
-              aroosi_premium_plus_monthly: { plan: "premiumPlus", tier: 2 },
-              premium: { plan: "premium", tier: 1 },
-              premiumplus: { plan: "premiumPlus", tier: 2 },
-            };
-            const planInfo = productPlanMap[productId];
-            if (planInfo && planInfo.tier > highestTier) {
-              highestTier = planInfo.tier;
-              restoredSubscription = { plan: planInfo.plan, expiresAt: result.expiresAt, productId };
+            const resolved = resolvePlanFromProductId("android", productId);
+            const plan = resolved?.planId as AppPlanId | undefined;
+            const tier = plan === "premiumPlus" ? 2 : plan === "premium" ? 1 : 0;
+
+            if (plan && tier >= highestTier) {
+              if (tier > highestTier || !restoredSubscription || (result.expiresAt || 0) > restoredSubscription.expiresAt) {
+                highestTier = tier;
+                restoredSubscription = { plan, expiresAt: result.expiresAt!, productId };
+              }
             }
-            restoredDetails.push({ productId, plan: planInfo?.plan, expiresAt: result.expiresAt });
+            restoredDetails.push({ productId, plan: plan ?? null, expiresAt: result.expiresAt });
           }
         }
         
@@ -160,21 +170,22 @@ export const POST = createAuthenticatedHandler(
           return errorResponse(result.error || "Invalid Apple receipt", 400, { correlationId: ctx.correlationId });
         }
 
-        let restoredSubscription = null;
+        let restoredSubscription: { plan: AppPlanId; expiresAt: number; productId: string } | null = null;
         let highestTier = 0;
         const restoredDetails = [];
 
         for (const subscription of result.subscriptions || []) {
-          const productPlanMap: Record<string, { plan: "premium" | "premiumPlus"; tier: number }> = {
-            "com.aroosi.premium.monthly": { plan: "premium", tier: 1 },
-            "com.aroosi.premiumplus.monthly": { plan: "premiumPlus", tier: 2 },
-          };
-          const planInfo = productPlanMap[subscription.productId];
-          if (planInfo && planInfo.tier > highestTier) {
-            highestTier = planInfo.tier;
-            restoredSubscription = { plan: planInfo.plan, expiresAt: subscription.expiresAt, productId: subscription.productId };
+          const resolved = resolvePlanFromProductId("ios", subscription.productId);
+          const plan = resolved?.planId as AppPlanId | undefined;
+          const tier = plan === "premiumPlus" ? 2 : plan === "premium" ? 1 : 0;
+
+          if (plan && tier >= highestTier) {
+            if (tier > highestTier || !restoredSubscription || subscription.expiresAt > restoredSubscription.expiresAt) {
+              highestTier = tier;
+              restoredSubscription = { plan, expiresAt: subscription.expiresAt, productId: subscription.productId };
+            }
           }
-          restoredDetails.push({ productId: subscription.productId, plan: planInfo?.plan, expiresAt: subscription.expiresAt });
+          restoredDetails.push({ productId: subscription.productId, plan: plan ?? null, expiresAt: subscription.expiresAt });
         }
 
         if (restoredSubscription) {

@@ -1,59 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import {
+  createAuthenticatedHandler,
+  errorResponse,
+  ErrorCode,
+  successResponse,
+} from "@/lib/api/handler";
 import { adminStorage } from "@/lib/firebaseAdminInit";
 import { db } from "@/lib/firebaseAdmin";
 
 // Batch endpoint returning a mapping of userId -> array of image objects with signed URLs
 // Used by admin profile pages to fetch images efficiently
 
-export async function GET(req: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
-  try {
-    const url = new URL(req.url);
-    const userIdsParam = url.searchParams.get("userIds");
-    if (!userIdsParam) {
-      return NextResponse.json(
-        { error: "Missing userIds", correlationId },
-        { status: 400 }
-      );
-    }
-    const userIds = userIdsParam
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean);
-    if (userIds.length === 0) {
-      return NextResponse.json(
-        { error: "No valid userIds", correlationId },
-        { status: 400 }
-      );
+const querySchema = z.object({
+  userIds: z
+    .string()
+    .min(1)
+    .transform((v) =>
+      v
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+    .refine((ids) => ids.length > 0, "No valid userIds")
+    .refine((ids) => ids.length <= 50, "Too many userIds"),
+});
+
+// Admin-only endpoint returning a mapping of userId -> array of image objects with signed URLs
+export const GET = createAuthenticatedHandler(
+  async (ctx) => {
+    if (!ctx.user.isAdmin) {
+      return errorResponse("Admin privileges required", 403, {
+        correlationId: ctx.correlationId,
+        code: ErrorCode.FORBIDDEN,
+      });
     }
 
-    // Limit batch size to prevent abuse
-    const MAX_BATCH_SIZE = 50;
-    const limitedUserIds = userIds.slice(0, MAX_BATCH_SIZE);
+    const parsed = querySchema.safeParse({
+      userIds: ctx.request.nextUrl.searchParams.get("userIds"),
+    });
+    if (!parsed.success) {
+      return errorResponse("Invalid request", 400, {
+        correlationId: ctx.correlationId,
+        code: ErrorCode.VALIDATION_ERROR,
+        details: { errors: parsed.error.issues },
+      });
+    }
 
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
+    const limitedUserIds = parsed.data.userIds;
+
+    const bucketName =
+      process.env.FIREBASE_STORAGE_BUCKET ||
       process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
       `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
     const bucket = adminStorage.bucket(bucketName);
 
-    // Helper to generate signed URL
     const getSignedUrl = async (storagePath: string): Promise<string> => {
       try {
         const file = bucket.file(storagePath);
         const [signedUrl] = await file.getSignedUrl({
           action: "read",
-          expires: Date.now() + 60 * 60 * 1000, // 1 hour
+          expires: Date.now() + 60 * 60 * 1000,
         });
         return signedUrl;
       } catch {
-        // Fallback to public URL
         return `https://storage.googleapis.com/${bucketName}/${storagePath}`;
       }
     };
 
-    // Result: userId -> array of { _id, id, storageId, url }
-    const result: Record<string, Array<{ _id: string; id: string; storageId: string; url: string }>> = {};
+    const result: Record<
+      string,
+      Array<{ _id: string; id: string; storageId: string; url: string }>
+    > = {};
 
     await Promise.all(
       limitedUserIds.map(async (uid) => {
@@ -73,13 +90,14 @@ export async function GET(req: NextRequest) {
             : [];
 
           if (profileImageIds.length > 0) {
-            // Use ordered profileImageIds - generate signed URLs for each
             const images = await Promise.all(
               profileImageIds.slice(0, 10).map(async (storageId, index) => {
                 let url = profileImageUrls[index] || "";
-
-                // If URL is a GCS path or private, generate signed URL
-                if (!url || url.includes("storage.googleapis.com") && !url.includes("X-Goog-Signature")) {
+                if (
+                  !url ||
+                  (url.includes("storage.googleapis.com") &&
+                    !url.includes("X-Goog-Signature"))
+                ) {
                   url = await getSignedUrl(storageId);
                 }
 
@@ -92,19 +110,24 @@ export async function GET(req: NextRequest) {
               })
             );
             result[uid] = images;
-          } else if (profileImageUrls.length > 0) {
-            // Fallback: use profileImageUrls directly, sign if needed
+            return;
+          }
+
+          if (profileImageUrls.length > 0) {
             const images = await Promise.all(
               profileImageUrls.slice(0, 10).map(async (rawUrl, index) => {
                 let url = rawUrl;
                 const storageId = `${uid}_${index}`;
 
-                // If it's a storage path, sign it
                 if (rawUrl.startsWith("users/")) {
                   url = await getSignedUrl(rawUrl);
-                } else if (rawUrl.includes("storage.googleapis.com") && !rawUrl.includes("X-Goog-Signature")) {
-                  // Extract path and sign
-                  const match = rawUrl.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
+                } else if (
+                  rawUrl.includes("storage.googleapis.com") &&
+                  !rawUrl.includes("X-Goog-Signature")
+                ) {
+                  const match = rawUrl.match(
+                    /storage\.googleapis\.com\/[^/]+\/(.+)/
+                  );
                   if (match && match[1]) {
                     url = await getSignedUrl(decodeURIComponent(match[1]));
                   }
@@ -119,28 +142,24 @@ export async function GET(req: NextRequest) {
               })
             );
             result[uid] = images;
-          } else {
-            result[uid] = [];
+            return;
           }
+
+          result[uid] = [];
         } catch (error) {
-          console.error(`[Profile Images Batch] Error processing user ${uid}:`, error);
+          console.error(
+            `[Profile Images Batch] Error processing user ${uid}:`,
+            error
+          );
           result[uid] = [];
         }
       })
     );
 
-    return NextResponse.json(
-      { data: result, success: true, correlationId },
-      { status: 200 }
-    );
-  } catch (err) {
-    console.error(`[Profile Images Batch] Top-level error:`, err);
-    return NextResponse.json(
-      { error: "Failed to fetch images", correlationId, details: (err as Error)?.message },
-      { status: 500 }
-    );
-  } finally {
-    // Logging removed for cleaner output
+    return successResponse(result, 200, ctx.correlationId);
+  },
+  {
+    rateLimit: { identifier: "profile_images_batch", maxRequests: 30 },
   }
-}
+);
 

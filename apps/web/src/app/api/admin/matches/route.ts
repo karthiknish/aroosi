@@ -1,32 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
+import { createAuthenticatedHandler, successResponse, errorResponse, validateQueryParams } from "@/lib/api/handler";
+import { requireAdmin } from "@/lib/api/admin";
+import { devLog } from "@/app/api/_utils/auth";
 import { db } from "@/lib/firebaseAdmin";
+import { z } from "zod";
 
-export async function GET(req: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
-  const adminCheck = await requireAdminSession(req);
-  if ("errorResponse" in adminCheck) {
-    const status = 403;
-    devLog("warn", "admin.matches", "auth_failed", {
-      correlationId,
-      statusCode: status,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Admin privileges required", correlationId },
-      { status }
-    );
-  }
-  try {
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "20");
+const adminMatchesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
 
-    const matchesSnap = await db.collection("matches").get();
-    const rawMatches: Array<Record<string, any>> = matchesSnap.docs.map(
-      (d: any) => ({ id: d.id, ...d.data() })
-    );
+export const GET = createAuthenticatedHandler(
+  async (ctx) => {
+    const startedAt = Date.now();
+    const admin = requireAdmin(ctx);
+    if (!admin.ok) return admin.response;
+
+    const parsed = validateQueryParams(ctx.request, adminMatchesQuerySchema);
+    if (!parsed.success) {
+      return errorResponse("Invalid query parameters", 400, {
+        correlationId: ctx.correlationId,
+        code: "BAD_REQUEST",
+        details: { issues: parsed.errors },
+      });
+    }
+
+    const page = parsed.data.page ?? 1;
+    const pageSize = parsed.data.pageSize ?? 20;
+
+    try {
+      const matchesSnap = await db.collection("matches").get();
+      const rawMatches: Array<Record<string, any>> = matchesSnap.docs.map(
+        (d: any) => ({ id: d.id, ...d.data() })
+      );
 
     // Build adjacency: userId -> Set of partnerUserIds
     const adjacency = new Map<string, Set<string>>();
@@ -84,35 +89,37 @@ export async function GET(req: NextRequest) {
     }));
 
     devLog("info", "admin.matches", "success", {
-      correlationId,
+      correlationId: ctx.correlationId,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
       groups: grouped.length,
       total,
       edges: rawMatches.length,
     });
-    return NextResponse.json(
+    return successResponse(
       {
-        success: true,
         matches: grouped,
         total,
         page,
         pageSize,
-        correlationId,
       },
-      { status: 200 }
+      200,
+      ctx.correlationId
     );
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    devLog("error", "admin.matches", "unhandled_error", {
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-      message,
-    });
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch matches", correlationId },
-      { status: 500 }
-    );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      devLog("error", "admin.matches", "unhandled_error", {
+        correlationId: ctx.correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+        message,
+      });
+      return errorResponse("Failed to fetch matches", 500, {
+        correlationId: ctx.correlationId,
+      });
+    }
+  },
+  {
+    rateLimit: { identifier: "admin_matches_list", maxRequests: 200, windowMs: 60 * 60 * 1000 },
   }
-}
+);

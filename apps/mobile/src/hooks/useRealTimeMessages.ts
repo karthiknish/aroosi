@@ -198,7 +198,11 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
 
     try {
       setLoadingOlder(true);
-      const oldest = messages[0].createdAt;
+      const oldest = Number(messages[0]?.createdAt);
+      if (!Number.isFinite(oldest) || oldest <= 0) {
+        setHasMore(false);
+        return;
+      }
 
       const snap = await firestore()
         .collection('messages')

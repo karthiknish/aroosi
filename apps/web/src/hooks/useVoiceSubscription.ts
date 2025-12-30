@@ -10,6 +10,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import type { Message } from "@aroosi/shared/types";
+import { handleError } from "@/lib/utils/errorHandling";
 
 interface UseVoiceSubscriptionProps {
   userId: string | undefined;
@@ -100,7 +101,13 @@ export function useVoiceSubscription({
             voiceRetryTimer = setTimeout(() => {
               try {
                 unsubVoiceRef.current?.();
-              } catch {}
+              } catch (unsubErr) {
+                handleError(
+                  unsubErr,
+                  { scope: "useVoiceSubscription", action: "unsubscribe_before_retry" },
+                  { showToast: false, logError: false }
+                );
+              }
               subscribeVoice();
             }, delay);
           }
@@ -118,7 +125,7 @@ export function useVoiceSubscription({
         const readable = await ensureConversationReadable();
         if (!readable) return;
       } catch (e) {
-        /* ignore */
+        handleError(e, { scope: "useVoiceSubscription", action: "init_voice_subscription" }, { showToast: false });
       }
       if (!cancelled) {
         subscribeVoice();
@@ -126,12 +133,18 @@ export function useVoiceSubscription({
     };
 
     const voiceInitialTimer = setTimeout(() => {
-      void initVoiceSubscription();
+      void initVoiceSubscription().catch((err) =>
+        handleError(err, { scope: "useVoiceSubscription", action: "init_voice_subscription_unhandled" }, { showToast: false })
+      );
     }, authPropagationDelay);
 
     return () => {
       cancelled = true;
-      unsubVoiceRef.current?.();
+      try {
+        unsubVoiceRef.current?.();
+      } catch (err) {
+        handleError(err, { scope: "useVoiceSubscription", action: "unsubscribe_cleanup" }, { showToast: false, logError: false });
+      }
       if (voiceRetryTimer) clearTimeout(voiceRetryTimer);
       clearTimeout(voiceInitialTimer);
     };

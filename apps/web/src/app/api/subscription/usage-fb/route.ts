@@ -4,6 +4,7 @@ import { db } from '@/lib/firebaseAdmin';
 import { successResponse, errorResponse } from '@/lib/api/handler';
 import { COL_USAGE_EVENTS, COL_USAGE_MONTHLY, buildUsageEvent, buildUsageMonthly, monthKey, usageMonthlyId } from '@/lib/firestoreSchema';
 import { SUBSCRIPTION_FEATURES, getPlanLimits } from '@/lib/subscription/planLimits';
+import { buildUsageSnapshot } from '@/lib/subscription/usageSnapshot';
 
 const FEATURES = SUBSCRIPTION_FEATURES;
 
@@ -17,19 +18,34 @@ async function getMonthlyUsageMap(userId: string, currentMonth: string) {
 async function getDailyUsage(userId: string) {
   const since = Date.now() - 24*60*60*1000; // 24h
   const snap = await db.collection(COL_USAGE_EVENTS).where('userId','==', userId).where('timestamp','>=', since).get();
-  const daily: Record<string, number> = {}; snap.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => { const data = d.data() as any; if (data.feature === 'profile_view' || data.feature === 'search_performed') daily[data.feature] = (daily[data.feature]||0)+1; }); return daily;
+  const daily: Record<string, number> = {}; snap.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => { const data = d.data() as any; if (data.feature === 'profile_view' || data.feature === 'search_performed' || data.feature === 'voice_message_sent') daily[data.feature] = (daily[data.feature]||0)+1; }); return daily;
 }
 
 export async function GET(req: NextRequest) { // usage stats
   let auth; try { auth = await requireAuth(req);} catch(e){ const err = e as AuthError; return errorResponse(err.message, err.status); }
   try {
     const profile = await getProfile(auth.userId); if (!profile) return errorResponse('Profile not found',404);
-  const plan = profile.subscriptionPlan || 'free'; const limits = getPlanLimits(plan);
-    const month = monthKey();
-    const monthlyMap = await getMonthlyUsageMap(auth.userId, month);
-    const dailyMap = await getDailyUsage(auth.userId);
-    const features = FEATURES.map(f => { const isDaily = f==='profile_view'||f==='search_performed'; const used = isDaily ? (dailyMap[f]||0) : (monthlyMap[f]||0); const limit = limits[f]; return { feature: f, used, limit, unlimited: limit===-1, remaining: limit===-1? -1 : Math.max(0, limit-used), percentageUsed: limit===-1?0: Math.min(100, Math.round((used/limit)*100)), isDailyLimit: isDaily }; });
-    return successResponse({ plan, usage: features, monthlyUsage: monthlyMap, dailyUsage: dailyMap, limits });
+    const plan = profile.subscriptionPlan || 'free';
+    const snapshot = await buildUsageSnapshot(auth.userId, plan);
+
+    return successResponse({
+      plan,
+      usage: snapshot.usage,
+      monthlyUsage: snapshot.monthlyUsage,
+      dailyUsage: snapshot.dailyUsage,
+      limits: snapshot.limits,
+
+      // Also expose the newer /subscription/usage shape for consistency.
+      features: snapshot.usage.map((i) => ({
+        name: i.feature,
+        used: i.used,
+        limit: i.limit,
+        unlimited: i.unlimited,
+        remaining: i.remaining,
+        percentageUsed: i.percentageUsed,
+      })),
+      resetDate: snapshot.resetDate,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return errorResponse('Failed to fetch usage statistics', 500, { details: { message: msg } });
@@ -46,7 +62,7 @@ export async function POST(req: NextRequest) { // track usage
   const plan = profile.subscriptionPlan || 'free'; const limits = getPlanLimits(plan); const limit = limits[feature as keyof typeof limits];
     // Check limit
     let currentUsage = 0; const month = monthKey();
-    if (feature === 'profile_view' || feature === 'search_performed') { const dailyMap = await getDailyUsage(auth.userId); currentUsage = dailyMap[feature] || 0; }
+    if (feature === 'profile_view' || feature === 'search_performed' || feature === 'voice_message_sent') { const dailyMap = await getDailyUsage(auth.userId); currentUsage = dailyMap[feature] || 0; }
     else { const monthlyMap = await getMonthlyUsageMap(auth.userId, month); currentUsage = monthlyMap[feature] || 0; }
     if (limit !== -1 && currentUsage >= limit)
       return errorResponse('Feature usage limit reached', 403, {

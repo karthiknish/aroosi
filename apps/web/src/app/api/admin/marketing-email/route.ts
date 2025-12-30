@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
-import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
-import { successResponse, errorResponse } from "@/lib/api/handler";
+import { successResponse, errorResponse, createAuthenticatedHandler, AuthenticatedApiContext } from "@/lib/api/handler";
+import { devLog } from "@/app/api/_utils/auth";
+import { requireAdmin } from "@/lib/api/admin";
 import {
   MarketingEmailTemplateFn,
   profileCompletionReminderTemplate,
@@ -17,8 +17,9 @@ import type { Profile } from "@aroosi/shared/types";
 import { renderMarketingReactTemplate } from "@/lib/reactEmailRenderers";
 import { renderTemplate as renderCustomTemplate } from "@/lib/marketingTemplateRegistry";
 import { renderBuiltTemplate } from "@/lib/templateBuilder";
-import { getPublicBaseUrl, hashEmail } from "@/lib/tracking";
+import { createSignedTrackingToken, getPublicBaseUrl, hashEmail } from "@/lib/tracking";
 import { buildListUnsubscribeHeaders, isUnsubscribed } from "@/lib/unsubscribe";
+import { adminMarketingEmailBodySchema } from "@/lib/validation/apiSchemas/adminMarketingEmail";
 
 const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   profileCompletionReminder:
@@ -33,18 +34,15 @@ const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   welcomeDay1: welcomeDay1Template as unknown as MarketingEmailTemplateFn,
 };
 
-export async function POST(request: NextRequest) {
-  try {
-    const adminCheck = await requireAdminSession(request);
-    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
-    const { userId } = adminCheck;
+export const POST = createAuthenticatedHandler(
+  async (
+    ctx: AuthenticatedApiContext,
+    body: import("zod").infer<typeof adminMarketingEmailBodySchema>
+  ) => {
+    const admin = requireAdmin(ctx);
+    if (!admin.ok) return admin.response;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return errorResponse("Invalid JSON body", 400);
-    }
+    const userId = ctx.user.id;
 
     const {
       templateKey,
@@ -79,45 +77,11 @@ export async function POST(request: NextRequest) {
       sortDir,
       priority,
       listId,
-    } = (body || {}) as {
-      templateKey?: string;
-      params?: { args?: unknown[] };
-      dryRun?: boolean;
-      exportCsv?: boolean;
-      confirm?: boolean;
-      maxAudience?: number;
-      subject?: string;
-      body?: string;
-      preheader?: string;
-      abTest?: { subjects: [string, string]; ratio?: number };
-      search?: string;
-      plan?: string;
-      banned?: string;
-      lastActiveDays?: number;
-      lastActiveFrom?: number;
-      lastActiveTo?: number;
-      completionMin?: number;
-      completionMax?: number;
-      city?: string | string[];
-      country?: string | string[];
-      createdAtFrom?: number;
-      createdAtTo?: number;
-      // deprecated isProfileComplete?: string;
-      page?: number;
-      pageSize?: number;
-      sendToAll?: boolean;
-      sendToAllFromAuth?: boolean;
-      sortBy?: string;
-      sortDir?: string;
-      priority?: "high" | "normal" | "low";
-      listId?: string;
-    };
+    } = body;
 
-    if (!templateKey && !subject) {
-      return errorResponse("Provide a templateKey or custom subject/body", 400);
-    }
-    if (templateKey && !(templateKey in TEMPLATE_MAP)) {
+    if (templateKey && !(templateKey in TEMPLATE_MAP) && templateKey !== "builder") {
       return errorResponse("Invalid template", 400, {
+        correlationId: ctx.correlationId,
         details: { field: "templateKey" },
       });
     }
@@ -128,6 +92,7 @@ export async function POST(request: NextRequest) {
       : 1000;
     if (!dryRun && confirm !== true) {
       return errorResponse("Confirmation required for live send", 400, {
+        correlationId: ctx.correlationId,
         details: { hint: "Pass confirm: true or use dryRun: true" },
       });
     }
@@ -348,7 +313,12 @@ export async function POST(request: NextRequest) {
             for (const [k, v] of Object.entries(extraParams))
               target.searchParams.set(k, v);
             const redirect = new URL(`${base}/api/admin/email/tracking/click`);
-            redirect.searchParams.set("url", target.toString());
+              const t = createSignedTrackingToken({
+                url: target.toString(),
+                cid: campaignId,
+                eid,
+              });
+              redirect.searchParams.set("t", t);
             redirect.searchParams.set("cid", campaignId);
             redirect.searchParams.set("eid", eid);
             const newHref = `${quote}${redirect.toString()}${quote}`;
@@ -405,6 +375,7 @@ export async function POST(request: NextRequest) {
           headers: {
             "Content-Type": "text/csv; charset=utf-8",
             "Content-Disposition": 'attachment; filename="audience.csv"',
+            "x-correlation-id": ctx.correlationId,
           },
         });
       }
@@ -480,7 +451,7 @@ export async function POST(request: NextRequest) {
                 ratio: Math.max(1, Math.min(99, Number(abTest.ratio ?? 50))),
               }
             : undefined,
-      });
+      }, 200, ctx.correlationId);
     }
 
     // Live send with batching (simple sequential loop retained, can optimize later)
@@ -778,11 +749,10 @@ export async function POST(request: NextRequest) {
       actorId: userId,
       page: safePage,
       pageSize: safePageSize,
-    });
-  } catch (error) {
-    devLog("error", "admin.marketing-email", "unhandled_error", {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return errorResponse("Unexpected error", 500);
+    }, 200, ctx.correlationId);
+  },
+  {
+    bodySchema: adminMarketingEmailBodySchema,
+    rateLimit: { identifier: "admin_marketing_email", maxRequests: 5, windowMs: 60 * 60 * 1000 },
   }
-}
+);

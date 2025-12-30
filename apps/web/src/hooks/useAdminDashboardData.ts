@@ -4,6 +4,7 @@ import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { adminMatchesAPI } from "@/lib/api/admin/matches";
 import { adminContactAPI } from "@/lib/api/admin/contact";
 import { adminBlogAPI } from "@/lib/api/admin/blog";
+import { handleError } from "@/lib/utils/errorHandling";
 
 export interface DashboardStatsPayload {
   totalUsers: number;
@@ -74,12 +75,30 @@ export function useAdminDashboardData() {
   const { data: recentActivity, isLoading: activityLoading } = useQuery({
     queryKey: ["admin-recent-activity"],
     queryFn: async (): Promise<ActivityItem[]> => {
-      const [profilesData, matchesData, contacts, blogData] = await Promise.all([
+      const settled = await Promise.allSettled([
         adminProfilesAPI.list({ page: 1, pageSize: 10, sortBy: "createdAt", sortDir: "desc" }),
         adminMatchesAPI.list({ page: 1, pageSize: 10 }),
         adminContactAPI.list({ page: 1, pageSize: 10 }),
         adminBlogAPI.list({ page: 1, pageSize: 10 }),
       ]);
+
+      const profilesData = settled[0].status === "fulfilled" ? settled[0].value : null;
+      const matchesData = settled[1].status === "fulfilled" ? settled[1].value : null;
+      const contacts = settled[2].status === "fulfilled" ? settled[2].value : [];
+      const blogData = settled[3].status === "fulfilled" ? settled[3].value : null;
+
+      if (settled[0].status === "rejected") {
+        handleError(settled[0].reason, { scope: "useAdminDashboardData", action: "fetch_profiles" }, { showToast: false });
+      }
+      if (settled[1].status === "rejected") {
+        handleError(settled[1].reason, { scope: "useAdminDashboardData", action: "fetch_matches" }, { showToast: false });
+      }
+      if (settled[2].status === "rejected") {
+        handleError(settled[2].reason, { scope: "useAdminDashboardData", action: "fetch_contacts" }, { showToast: false });
+      }
+      if (settled[3].status === "rejected") {
+        handleError(settled[3].reason, { scope: "useAdminDashboardData", action: "fetch_blog" }, { showToast: false });
+      }
 
       const activities: ActivityItem[] = [];
 
@@ -98,7 +117,9 @@ export function useAdminDashboardData() {
             status: "pending",
           });
         });
-      } catch { }
+      } catch (err) {
+        handleError(err, { scope: "useAdminDashboardData", action: "process_profiles" }, { showToast: false });
+      }
 
       // Process Matches
       try {
@@ -131,11 +152,13 @@ export function useAdminDashboardData() {
             });
           }
         });
-      } catch { }
+      } catch (err) {
+        handleError(err, { scope: "useAdminDashboardData", action: "process_matches" }, { showToast: false });
+      }
 
       // Process Contact Messages
       try {
-        contacts.slice(0, 5).forEach((c: any) =>
+        (Array.isArray(contacts) ? contacts : []).slice(0, 5).forEach((c: any) =>
           activities.push({
             id: `contact_${c._id || c.id}`,
             type: "message",
@@ -146,7 +169,9 @@ export function useAdminDashboardData() {
             status: "pending",
           })
         );
-      } catch { }
+      } catch (err) {
+        handleError(err, { scope: "useAdminDashboardData", action: "process_contacts" }, { showToast: false });
+      }
 
       // Process Blog Posts
       try {
@@ -160,7 +185,9 @@ export function useAdminDashboardData() {
             timestamp: parseTimestamp(b.createdAt || b.publishedAt),
           })
         );
-      } catch { }
+      } catch (err) {
+        handleError(err, { scope: "useAdminDashboardData", action: "process_blog" }, { showToast: false });
+      }
 
       // Sort descending by timestamp
       activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());

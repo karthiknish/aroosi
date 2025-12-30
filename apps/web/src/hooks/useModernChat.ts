@@ -147,8 +147,10 @@ export function useModernChat({
       if (!mounted) return;
       try {
         await heartbeat();
-      } catch {
-        // Ignore heartbeat errors silently
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("heartbeat failed", err);
+        }
       }
     }, 30000); // Reduced from 10s to 30s
 
@@ -158,8 +160,10 @@ export function useModernChat({
       try {
         const p = await getPresence(matchUserId);
         if (mounted) setOtherPresence(p);
-      } catch {
-        // Ignore presence fetch errors
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("getPresence failed", err);
+        }
       }
     }, 30000); // Reduced from 10s to 30s
 
@@ -171,8 +175,10 @@ export function useModernChat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "offline" }),
         });
-      } catch {
-        // Ignore errors when setting offline on page unload
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("beforeunload presence offline failed", err);
+        }
       }
     };
 
@@ -183,7 +189,11 @@ export function useModernChat({
       if (!mounted) return;
       try {
         await heartbeat();
-      } catch { }
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("initial heartbeat failed", err);
+        }
+      }
     })();
 
     // Delay presence fetch slightly to avoid concurrent calls
@@ -192,7 +202,11 @@ export function useModernChat({
       try {
         const p = await getPresence(matchUserId);
         if (mounted) setOtherPresence(p);
-      } catch { }
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("initial getPresence failed", err);
+        }
+      }
     }, 500);
 
     return () => {
@@ -402,7 +416,11 @@ export function useModernChat({
               );
             }
           }
-        } catch { }
+        } catch (err) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("soft quota warning check failed", err);
+          }
+        }
 
         markMessageAsSent(tempId);
 

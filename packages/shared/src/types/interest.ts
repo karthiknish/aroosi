@@ -2,7 +2,9 @@
  * Interest Types - Shared between web and mobile
  */
 
-export type InterestStatus = 'pending' | 'accepted' | 'declined' | 'expired';
+// Backward-compatible status set. Older clients used `declined` while the
+// backend historically stored `rejected`.
+export type InterestStatus = 'pending' | 'accepted' | 'declined' | 'rejected' | 'expired';
 
 export interface Interest {
     id: string;
@@ -30,7 +32,7 @@ export interface SendInterestRequest {
 export interface RespondInterestRequest {
     action: 'respond';
     interestId: string;
-    status: 'accepted' | 'rejected';
+    status: 'accepted' | 'declined' | 'rejected';
 }
 
 export interface RemoveInterestRequest {

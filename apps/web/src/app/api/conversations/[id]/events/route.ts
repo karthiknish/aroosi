@@ -1,4 +1,3 @@
-import { eventBus } from "@/lib/eventBus";
 import { validateUserCanAccessConversation } from "@/lib/utils/matchValidation";
 import { isValidConversationIdFormat } from "@/lib/utils/secureConversation";
 import {
@@ -6,6 +5,7 @@ import {
   errorResponse,
   ApiContext,
 } from "@/lib/api/handler";
+import { fetchConversationEvents } from "@/lib/realtime/conversationEvents";
 
 export const runtime = "nodejs";
 
@@ -32,9 +32,14 @@ export const GET = createAuthenticatedHandler(
       return errorResponse("Access validation failed", 500, { correlationId: ctx.correlationId });
     }
 
-    let heartbeat: NodeJS.Timeout;
-    let send: (data: unknown) => void;
     let closed = false;
+    let poller: NodeJS.Timeout;
+    let heartbeat: NodeJS.Timeout;
+    // Mimic the previous in-memory EventEmitter behavior: only stream new events.
+    // Use an inclusive cursor + per-timestamp de-dupe to avoid missing events
+    // created within the same millisecond.
+    let lastSeenCreatedAt = Date.now();
+    let sentIdsAtLastSeen = new Set<string>();
 
     const stream = new ReadableStream({
       start(controller) {
@@ -42,7 +47,7 @@ export const GET = createAuthenticatedHandler(
           if (closed) return;
           closed = true;
           clearInterval(heartbeat);
-          eventBus.off(conversationId, send);
+          clearInterval(poller);
           try {
             controller.close();
           } catch {
@@ -50,40 +55,45 @@ export const GET = createAuthenticatedHandler(
           }
         };
 
-        send = (data: unknown) => {
-          if (closed) return;
-          try {
-            controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
-          } catch {
-            cleanup();
-          }
-        };
-        eventBus.on(conversationId, send);
-
-        // Immediately notify client that stream is open so UI can mark delivered
+        // Immediately notify client that stream is open
         try {
           controller.enqueue(`event: open\n` + `data: {"type":"sse_open"}\n\n`);
         } catch {
           /* ignore */
         }
 
-        heartbeat = setInterval(async () => {
+        // Poll Firestore-backed event stream (multi-instance safe)
+        poller = setInterval(async () => {
           if (closed) return;
           try {
-            // Update presence heartbeat for this user via local API
-            try {
-              const response = await fetch(`${request.nextUrl.origin}/api/presence`, {
-                method: "POST",
-                headers: {
-                  Cookie: request.headers.get("cookie") || "",
-                },
-              });
-              if (!response.ok) {
-                console.warn("Presence heartbeat failed:", response.status);
+            const events = await fetchConversationEvents({
+              conversationId,
+              since: lastSeenCreatedAt,
+              sinceInclusive: true,
+              limit: 50,
+            });
+            for (const ev of events) {
+              if (closed) return;
+              const createdAt = ev.createdAt || 0;
+              if (createdAt < lastSeenCreatedAt) continue;
+
+              if (createdAt > lastSeenCreatedAt) {
+                lastSeenCreatedAt = createdAt;
+                sentIdsAtLastSeen = new Set<string>();
               }
-            } catch (error) {
-              console.warn("Presence heartbeat error:", error);
+
+              if (ev.id && sentIdsAtLastSeen.has(ev.id)) continue;
+              if (ev.id) sentIdsAtLastSeen.add(ev.id);
+              controller.enqueue(`data: ${JSON.stringify(ev)}\n\n`);
             }
+          } catch {
+            // If polling fails, keep the connection alive; client will reconnect if needed
+          }
+        }, 1000);
+
+        heartbeat = setInterval(() => {
+          if (closed) return;
+          try {
             controller.enqueue(`:keep-alive\n\n`);
           } catch {
             cleanup();
@@ -93,22 +103,7 @@ export const GET = createAuthenticatedHandler(
       cancel() {
         closed = true;
         clearInterval(heartbeat);
-        eventBus.off(conversationId, send);
-
-        // Set user as offline when SSE connection is cancelled
-        setTimeout(async () => {
-          try {
-            await fetch(`${request.nextUrl.origin}/api/presence`, {
-              method: "POST",
-              headers: {
-                Cookie: request.headers.get("cookie") || "",
-              },
-              body: JSON.stringify({ status: "offline" }),
-            });
-          } catch (error) {
-            console.warn("Failed to set offline status:", error);
-          }
-        }, 1000); // Small delay to avoid race conditions
+        clearInterval(poller);
       },
     });
 

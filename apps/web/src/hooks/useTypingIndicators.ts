@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, query, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 
 interface TypingUser {
   userId: string;
@@ -38,20 +38,21 @@ export function useTypingIndicators({
           lastSentRef.current = Date.now();
         }
 
-        const ref = doc(
-          db,
-          "typingIndicators",
-          conversationId,
-          "users",
-          currentUserId
-        );
-        await setDoc(
-          ref,
-          { isTyping: action === "start", updatedAt: Date.now() },
-          { merge: true }
-        );
+        // Canonical writer path: server API.
+        // This keeps SSE + canonical Firestore typingIndicators in sync.
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 5000);
+        await fetch("/api/typing-indicators", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversationId, action }),
+          signal: controller.signal,
+        });
+        clearTimeout(t);
       } catch (e) {
-        // ignore
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("sendTypingStatus failed", e);
+        }
       }
     },
     [conversationId, currentUserId]

@@ -22,12 +22,29 @@ export async function GET(request: NextRequest) {
     }
     // Count last 24h events for voice_message_sent
     const since = Date.now() - 24*60*60*1000;
-    const snap = await db.collection(COL_USAGE_EVENTS)
-      .where('userId','==', userId)
-      .where('timestamp','>=', since)
-      .where('feature','==','voice_message_sent')
-      .get();
-    const used = snap.size;
+    let used = 0;
+    try {
+      const snap = await db.collection(COL_USAGE_EVENTS)
+        .where('userId','==', userId)
+        .where('timestamp','>=', since)
+        .where('feature','==','voice_message_sent')
+        .get();
+      used = snap.size;
+    } catch (idxErr: any) {
+      // Graceful fallback if composite index not yet built
+      if (typeof idxErr?.message === 'string' && idxErr.message.includes('FAILED_PRECONDITION')) {
+        const snap = await db.collection(COL_USAGE_EVENTS)
+          .where('userId','==', userId)
+          .where('timestamp','>=', since)
+          .get();
+        snap.docs.forEach((d: any) => {
+          const data = d.data() as any;
+          if (data.feature === 'voice_message_sent') used++;
+        });
+      } else {
+        throw idxErr;
+      }
+    }
     const remaining = Math.max(0, limit - used);
     return successResponse({ plan, unlimited: false, limit, used, remaining, window: 'rolling_24h' });
   } catch (e) {

@@ -243,20 +243,38 @@ export function useMessageActions({
   const sendTypingStart = useCallback(async () => {
     if (!userId || !convKey) return;
     try {
-      const ref = doc(db, "typingIndicators", convKey, "users", userId);
-      await setDoc(ref, { isTyping: true, updatedAt: Date.now() }, { merge: true });
-    } catch {
-      /* ignore */
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 5000);
+      await fetch("/api/typing-indicators", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: convKey, action: "start" }),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("sendTypingStart failed", err);
+      }
     }
   }, [userId, convKey]);
 
   const sendTypingStop = useCallback(async () => {
     if (!userId || !convKey) return;
     try {
-      const ref = doc(db, "typingIndicators", convKey, "users", userId);
-      await setDoc(ref, { isTyping: false, updatedAt: Date.now() }, { merge: true });
-    } catch {
-      /* ignore */
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 5000);
+      await fetch("/api/typing-indicators", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: convKey, action: "stop" }),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("sendTypingStop failed", err);
+      }
     }
   }, [userId, convKey]);
 

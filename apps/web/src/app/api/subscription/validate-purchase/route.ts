@@ -7,6 +7,11 @@ import {
 import { db } from "@/lib/firebaseAdmin";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { subscriptionValidatePurchaseSchema } from "@/lib/validation/apiSchemas/subscription";
+import {
+  IAP_PRODUCT_IDS,
+  resolvePlanFromProductId,
+  type AppPlanId,
+} from "@/lib/subscription/catalog";
 
 // Apple App Store receipt validation helper
 async function validateAppleReceipt(receiptData: string): Promise<{
@@ -49,20 +54,31 @@ async function validateAppleReceipt(receiptData: string): Promise<{
     return { valid: false, error: `Apple validation failed with status ${result.status}` };
   }
 
-  const inAppPurchases = result.receipt?.in_app || [];
-  let latestPurchase = null;
+  const candidates = [
+    ...(Array.isArray(result.latest_receipt_info) ? result.latest_receipt_info : []),
+    ...(Array.isArray(result.receipt?.in_app) ? result.receipt.in_app : []),
+  ];
+
+  const known = new Set(
+    [
+      ...IAP_PRODUCT_IDS.ios.premium.monthly,
+      ...IAP_PRODUCT_IDS.ios.premium.yearly,
+      ...IAP_PRODUCT_IDS.ios.premiumPlus.monthly,
+      ...IAP_PRODUCT_IDS.ios.premiumPlus.yearly,
+    ].filter(Boolean)
+  );
+
+  let latestPurchase: any = null;
   let latestExpiresAt = 0;
 
-  for (const purchase of inAppPurchases) {
-    if (
-      purchase.product_id === "com.aroosi.premium.monthly" ||
-      purchase.product_id === "com.aroosi.premiumplus.monthly"
-    ) {
-      const expiresAt = parseInt(purchase.expires_date_ms);
-      if (expiresAt > latestExpiresAt) {
-        latestExpiresAt = expiresAt;
-        latestPurchase = purchase;
-      }
+  for (const purchase of candidates) {
+    const productId = purchase?.product_id;
+    const expiresStr = purchase?.expires_date_ms;
+    if (!productId || !known.has(productId) || !expiresStr) continue;
+    const expiresAt = parseInt(expiresStr, 10);
+    if (Number.isFinite(expiresAt) && expiresAt > latestExpiresAt) {
+      latestExpiresAt = expiresAt;
+      latestPurchase = purchase;
     }
   }
 
@@ -115,7 +131,7 @@ export const POST = createAuthenticatedHandler(
     const { platform, productId, purchaseToken, receiptData } = body;
 
     let validationResult;
-    let plan: "premium" | "premiumPlus";
+    let plan: AppPlanId;
     let expiresAt: number;
 
     try {
@@ -129,15 +145,9 @@ export const POST = createAuthenticatedHandler(
           return errorResponse(validationResult.error || "Invalid purchase", 400, { correlationId: ctx.correlationId });
         }
 
-        const productPlanMap: Record<string, "premium" | "premiumPlus"> = {
-          aroosi_premium_monthly: "premium",
-          aroosi_premium_plus_monthly: "premiumPlus",
-          premium: "premium",
-          premiumplus: "premiumPlus",
-        };
-
-        plan = productPlanMap[productId];
-        if (!plan) {
+        const resolved = resolvePlanFromProductId("android", productId);
+        plan = (resolved?.planId as AppPlanId | undefined) || "free";
+        if (plan === "free") {
           return errorResponse("Invalid product ID", 400, { correlationId: ctx.correlationId });
         }
 
@@ -152,13 +162,9 @@ export const POST = createAuthenticatedHandler(
           return errorResponse(validationResult.error || "Invalid receipt", 400, { correlationId: ctx.correlationId });
         }
 
-        const productPlanMap: Record<string, "premium" | "premiumPlus"> = {
-          "com.aroosi.premium.monthly": "premium",
-          "com.aroosi.premiumplus.monthly": "premiumPlus",
-        };
-
-        plan = productPlanMap[validationResult.productId!];
-        if (!plan) {
+        const resolved = resolvePlanFromProductId("ios", validationResult.productId!);
+        plan = (resolved?.planId as AppPlanId | undefined) || "free";
+        if (plan === "free") {
           return errorResponse("Invalid product ID", 400, { correlationId: ctx.correlationId });
         }
 

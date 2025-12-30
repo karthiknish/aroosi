@@ -86,7 +86,12 @@ async function saveChatbotMessage({
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const response = await fetch(`${baseUrl}/api/saveChatbotMessage`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.INTERNAL_API_KEY
+          ? { "x-internal-api-key": process.env.INTERNAL_API_KEY }
+          : {}),
+      },
       body: JSON.stringify({
         email,
         role,

@@ -4,6 +4,7 @@
 
 import type { SearchFilters as SharedSearchFilters, RecommendedProfile } from "@aroosi/shared/types";
 import type { ProfileSearchResult } from "@/components/search/ProfileCard";
+import { safeRequest } from "@/lib/api/safeRequest";
 
 export type SearchFilters = SharedSearchFilters & {
   page?: number;
@@ -35,26 +36,19 @@ class SearchAPI {
         ? { ...baseHeaders, ...(options.headers as Record<string, string>) }
         : baseHeaders;
 
-    const res = await fetch(endpoint, {
-      method: options?.method || "GET",
-      headers,
-      body: options?.body,
-      credentials: "include",
-    });
-
-    const ct = res.headers.get("content-type") || "";
-    const isJson = ct.toLowerCase().includes("application/json");
-    const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
-
-    if (!res.ok) {
-      const msg =
-        (isJson && payload && (payload as any).error) ||
-        (typeof payload === "string" && payload) ||
-        `HTTP ${res.status}`;
-      throw new Error(String(msg));
-    }
-
-    return payload;
+    return safeRequest(
+      endpoint,
+      {
+        method: options?.method || "GET",
+        headers,
+        body: options?.body,
+        credentials: "include",
+      },
+      {
+        timeoutMs: 15_000,
+        cache: { ttlMs: 2 * 60_000 },
+      }
+    );
   }
 
   /**

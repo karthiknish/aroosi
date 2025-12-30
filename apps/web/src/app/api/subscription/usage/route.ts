@@ -5,51 +5,11 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
-import {
-  COL_USAGE_EVENTS,
-  COL_USAGE_MONTHLY,
-  monthKey,
-} from "@/lib/firestoreSchema";
-import {
-  SUBSCRIPTION_FEATURES,
-  getPlanLimits,
-  featureRemaining,
-} from "@/lib/subscription/planLimits";
+import { buildUsageSnapshot } from "@/lib/subscription/usageSnapshot";
 
 async function getProfile(userId: string) {
   const p = await db.collection("users").doc(userId).get();
   return p.exists ? (p.data() as any) : null;
-}
-
-async function getMonthlyUsageMap(userId: string, currentMonth: string) {
-  const snap = await db
-    .collection(COL_USAGE_MONTHLY)
-    .where("userId", "==", userId)
-    .where("month", "==", currentMonth)
-    .get();
-  const map: Record<string, number> = {};
-  snap.docs.forEach((d: any) => {
-    const data = d.data() as any;
-    map[data.feature] = data.count;
-  });
-  return map;
-}
-
-async function getDailyUsage(userId: string) {
-  const since = Date.now() - 24 * 60 * 60 * 1000;
-  const snap = await db
-    .collection(COL_USAGE_EVENTS)
-    .where("userId", "==", userId)
-    .where("timestamp", ">=", since)
-    .get();
-  const daily: Record<string, number> = {};
-  snap.docs.forEach((d: any) => {
-    const data = d.data() as any;
-    if (data.feature === "profile_view" || data.feature === "search_performed") {
-      daily[data.feature] = (daily[data.feature] || 0) + 1;
-    }
-  });
-  return daily;
 }
 
 export const GET = createAuthenticatedHandler(
@@ -63,26 +23,9 @@ export const GET = createAuthenticatedHandler(
       }
       
       const plan = profile.subscriptionPlan || "free";
-      const limits = getPlanLimits(plan);
-      const month = monthKey();
-      const monthlyMap = await getMonthlyUsageMap(userId, month);
-      const dailyMap = await getDailyUsage(userId);
-      
-      const usageList = SUBSCRIPTION_FEATURES.map((f) => {
-        const isDaily = f === "profile_view" || f === "search_performed";
-        const used = isDaily ? dailyMap[f] || 0 : monthlyMap[f] || 0;
-        const rem = featureRemaining(plan, f as any, used);
-        return {
-          feature: f,
-          used,
-          limit: rem.limit,
-          unlimited: rem.unlimited,
-          remaining: rem.remaining,
-          percentageUsed: rem.unlimited || rem.limit <= 0
-            ? 0
-            : Math.min(100, Math.round((used / rem.limit) * 100)),
-        };
-      });
+
+      const snapshot = await buildUsageSnapshot(userId, plan);
+      const usageList = snapshot.usage;
       
       const usage = {
         plan,
@@ -94,11 +37,7 @@ export const GET = createAuthenticatedHandler(
           remaining: i.remaining,
           percentageUsed: i.percentageUsed,
         })),
-        resetDate: (() => {
-          const now = new Date();
-          const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-          return nextMonth.getTime();
-        })(),
+        resetDate: snapshot.resetDate,
         messaging: {
           sent: usageList.find((u) => u.feature === "message_sent")?.used || 0,
           limit: usageList.find((u) => u.feature === "message_sent")?.limit || 0,
@@ -115,6 +54,12 @@ export const GET = createAuthenticatedHandler(
           used: usageList.find((u) => u.feature === "profile_boost_used")?.used || 0,
           monthlyLimit: usageList.find((u) => u.feature === "profile_boost_used")?.limit || 0,
         },
+
+        // Backwards-compatible fields for clients still expecting the legacy shape.
+        usage: snapshot.usage,
+        monthlyUsage: snapshot.monthlyUsage,
+        dailyUsage: snapshot.dailyUsage,
+        limits: snapshot.limits,
       };
       
       return successResponse(usage, 200, ctx.correlationId);
