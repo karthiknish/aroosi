@@ -5,7 +5,8 @@ import {
   errorResponsePublic,
   ApiContext
 } from "@/lib/api/handler";
-import { db } from "@/lib/firebaseAdmin";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   COL_USAGE_EVENTS,
   COL_USAGE_MONTHLY,
@@ -129,7 +130,7 @@ export const POST = createAuthenticatedHandler(
       if (feature === "profile_view") {
         const targetId = metadata?.targetUserId || metadata?.profileId;
         if (targetId) {
-          const since = Date.now() - 24 * 60 * 60 * 1000;
+          const since = nowTimestamp() - 24 * 60 * 60 * 1000;
           const dupSnap = await db
             .collection(COL_USAGE_EVENTS)
             .where("userId", "==", userId)
@@ -168,7 +169,7 @@ export const POST = createAuthenticatedHandler(
       
       if (monthlySnap.exists) {
         const data = monthlySnap.data() as any;
-        batch.update(monthlyRef, { count: (data.count || 0) + 1, updatedAt: Date.now() });
+        batch.update(monthlyRef, { count: (data.count || 0) + 1, updatedAt: nowTimestamp() });
       } else {
         batch.set(monthlyRef, buildUsageMonthly(userId, feature, event.month, 1));
       }

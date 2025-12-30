@@ -22,7 +22,7 @@ export interface AuthUser {
 }
 
 class AuthAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -45,17 +45,26 @@ class AuthAPI {
 
     if (!res.ok) {
       const msg =
-        (isJson && payload && (payload as any).error) ||
+        (isJson && payload && ((payload as any).message || (payload as any).error)) ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
     }
 
-    if (isJson && payload && typeof payload === "object" && "success" in (payload as any) && (payload as any).success === false) {
-      throw new Error(String((payload as any).error || "Request failed"));
+    // Unwrap standardized { success, data } envelope from API handler
+    if (isJson && payload && typeof payload === "object") {
+      const maybe = payload as any;
+      if ("success" in maybe) {
+        if (maybe.success === false) {
+          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+        }
+        if ("data" in maybe) {
+          return maybe.data as T;
+        }
+      }
     }
 
-    return payload;
+    return payload as T;
   }
 
   /**

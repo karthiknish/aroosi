@@ -87,3 +87,5 @@ export function calculateDistance(
 function toRad(deg: number): number {
     return deg * (Math.PI / 180);
 }
+
+export * from './timestamp';

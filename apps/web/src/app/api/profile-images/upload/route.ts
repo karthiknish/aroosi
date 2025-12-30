@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { adminStorage } from "@/lib/firebaseAdminInit";
 import { v4 as uuidv4 } from "uuid";
@@ -80,7 +81,7 @@ export const POST = createAuthenticatedHandler(
     }
 
     try {
-      const nowMs = Date.now();
+      const nowMs = nowTimestamp();
       const originalExt = (file.name.split(".").pop() || "jpg").toLowerCase();
       const sanitizedBase = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "image";
       const fileName = `${nowMs}_${uuidv4()}_${sanitizedBase}.${originalExt}`.slice(0, 160);
@@ -126,12 +127,12 @@ export const POST = createAuthenticatedHandler(
         const current = (userDoc.data() as any)?.profileImageIds || [];
         if (!Array.isArray(current) || current.length === 0) {
           await db.collection("users").doc(userId).set(
-            { profileImageIds: [storagePath], updatedAt: Date.now() },
+            { profileImageIds: [storagePath], updatedAt: nowTimestamp() },
             { merge: true }
           );
         } else if (!current.includes(storagePath)) {
           await db.collection("users").doc(userId).set(
-            { profileImageIds: [...current, storagePath], updatedAt: Date.now() },
+            { profileImageIds: [...current, storagePath], updatedAt: nowTimestamp() },
             { merge: true }
           );
         }

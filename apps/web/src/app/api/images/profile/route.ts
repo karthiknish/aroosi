@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { applySecurityHeaders, validateSecurityRequirements } from "@/lib/utils/securityHeaders";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { imagesProfileUploadSchema } from "@/lib/validation/apiSchemas/imagesProfile";
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     ids.push(storageId);
     // We cannot derive public URL here without a separate signed URL step; leave placeholder null or keep existing length alignment.
     urls.push(urls.length < ids.length ? "" : urls[urls.length - 1]);
-    await userRef.set({ profileImageIds: ids, profileImageUrls: urls, updatedAt: Date.now() }, { merge: true });
+    await userRef.set({ profileImageIds: ids, profileImageUrls: urls, updatedAt: nowTimestamp() }, { merge: true });
     return applySecurityHeaders(successResponse({ success: true, imageId: storageId }));
   } catch (e: any) {
     return applySecurityHeaders(errorResponse(e?.message || "Failed", 500));

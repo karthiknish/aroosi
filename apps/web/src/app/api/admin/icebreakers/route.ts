@@ -6,6 +6,7 @@ import {
 } from "@/lib/utils/securityHeaders";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   adminIcebreakersCreateSchema,
   adminIcebreakersUpdateSchema,
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
         active: !!d.active,
         category: d.category ?? null,
         weight: typeof d.weight === "number" ? d.weight : null,
-        createdAt: d.createdAt || Date.now(),
+        createdAt: d.createdAt || nowTimestamp(),
       });
     });
     return applySecurityHeaders(successResponse({ items }));
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
       })
     );
   try {
-    const now = Date.now();
+    const now = nowTimestamp();
     const docRef = await db
       .collection("icebreakerQuestions")
       .add({

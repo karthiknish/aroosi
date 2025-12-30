@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import type { SupervisedConversation } from "@aroosi/shared/types";
 import { supervisedConversationInitiateSchema } from "@/lib/validation/apiSchemas/supervisedConversation";
@@ -41,7 +42,7 @@ export const POST = createAuthenticatedHandler(
         return errorResponse("A supervised conversation already exists for this pair", 409, { correlationId: ctx.correlationId });
       }
 
-      const now = Date.now();
+      const now = nowTimestamp();
       const conversationData: Omit<SupervisedConversation, "_id"> = {
         requesterId: userId,
         targetUserId,

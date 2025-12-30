@@ -39,12 +39,13 @@ import {
     type Icebreaker,
     type IcebreakerAnswer,
 } from '../../services/api/icebreakers';
+import { nowTimestamp } from '../../utils/timestamp';
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'Icebreakers'>;
 
 interface IcebreakerWithAnswer extends Icebreaker {
     answer?: string;
-    answeredAt?: string | Date;
+    answeredAt?: string | Date | number;
 }
 
 export default function IcebreakersScreen() {
@@ -136,7 +137,7 @@ export default function IcebreakersScreen() {
                 setIcebreakers((prev) =>
                     prev.map((q) =>
                         q.id === questionId
-                            ? { ...q, answer: editingAnswer.trim(), answeredAt: new Date().toISOString() }
+                            ? { ...q, answer: editingAnswer.trim(), answeredAt: nowTimestamp() }
                             : q
                     )
                 );

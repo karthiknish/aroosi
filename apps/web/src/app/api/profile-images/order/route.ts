@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { profileImagesOrderSchema } from "@/lib/validation/apiSchemas/profileImages";
 
@@ -78,7 +79,7 @@ export const POST = createAuthenticatedHandler(
         {
           profileImageIds: normalized,
           ...(skipUrlReorder ? {} : { profileImageUrls: urls }),
-          updatedAt: Date.now(),
+          updatedAt: nowTimestamp(),
         },
         { merge: true }
       );

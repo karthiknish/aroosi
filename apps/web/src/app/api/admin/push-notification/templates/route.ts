@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { errorResponse, successResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 type TemplateDoc = {
   name: string;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
       description: description ? String(description) : undefined,
       payload,
       createdBy: { userId: auth.userId, email: auth.email },
-      createdAt: Date.now(),
+      createdAt: nowTimestamp(),
     };
     const ref = await db.collection(COLLECTION).add(doc);
     const created = await ref.get();

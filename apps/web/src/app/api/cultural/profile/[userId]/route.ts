@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import type { CulturalProfile } from "@aroosi/shared/types";
 import { NextRequest } from "next/server";
@@ -28,7 +29,7 @@ async function getCulturalProfile(userId: string): Promise<{ success: boolean; p
 
 async function createOrUpdateCulturalProfile(userId: string, profileData: Partial<CulturalProfile>): Promise<{ success: boolean; profile?: CulturalProfile; error?: string }> {
   try {
-    const now = Date.now();
+    const now = nowTimestamp();
     const docRef = db.collection("culturalProfiles").doc(userId);
 
     const profile: CulturalProfile = {

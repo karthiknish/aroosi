@@ -5,6 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { reactionToggleSchema } from "@/lib/validation/apiSchemas/reactions";
 
 function makeReactionId(messageId: string, userId: string, emoji: string) {
@@ -43,7 +44,7 @@ export const GET = createAuthenticatedHandler(
           messageId: r.messageId,
           userId: r.userId,
           emoji: r.emoji,
-          updatedAt: r.updatedAt || r.createdAt || Date.now(),
+          updatedAt: r.updatedAt || r.createdAt || nowTimestamp(),
         };
       });
       
@@ -111,7 +112,7 @@ export const POST = createAuthenticatedHandler(
         return errorResponse("Message missing conversationId", 400, { correlationId: ctx.correlationId });
       }
 
-      const now = Date.now();
+      const now = nowTimestamp();
       const id = makeReactionId(messageId, String(userId), emoji);
       const ref = db.collection("reactions").doc(id);
       const existing = await ref.get();

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { adminDb } from "@/lib/firebaseAdminInit";
+import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { hourKey, verifySignedTrackingToken } from "@/lib/tracking";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   const resolved = token
-    ? verifySignedTrackingToken(token, { maxAgeMs: 30 * 24 * 60 * 60 * 1000 })
+    ? await verifySignedTrackingToken(token)
     : null;
 
   const targetUrl = resolved?.url || legacyTarget;
@@ -56,10 +57,10 @@ export async function GET(request: NextRequest) {
   // Record click but don't block redirect on failure
   try {
     if (allowWrite && cid && eid) {
-      const now = Date.now();
+      const now = nowTimestamp();
       const hour = hourKey(now);
-      const ref = adminDb.collection("email_tracking").doc(cid).collection("clicks").doc(eid);
-      await adminDb.runTransaction(async (tx) => {
+      const ref = db.collection("email_tracking").doc(cid).collection("clicks").doc(eid);
+      await db.runTransaction(async (tx: any) => {
         const snap = await tx.get(ref);
         const data = snap.exists ? (snap.data() as any) : { count: 0, byHour: {} as Record<string, number>, firstAt: now };
         data.count = (data.count || 0) + 1;

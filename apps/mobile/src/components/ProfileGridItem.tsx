@@ -26,6 +26,7 @@ import {
     isSmallDevice,
 } from '../theme';
 import type { RecommendedProfile } from '../services/api/recommendations';
+import { getMainProfileImage, getGenderPlaceholder } from '../utils/profileImage';
 
 // Calculate grid item size based on screen width - 2 columns with padding
 const GRID_PADDING = responsiveValues.screenPadding;
@@ -40,9 +41,11 @@ interface ProfileGridItemProps {
 }
 
 export function ProfileGridItem({ profile, onPress }: ProfileGridItemProps) {
-    const { displayName, photoURL, photos, age, location, isVerified, compatibility } = profile;
+    const { displayName, age, location, isVerified, compatibility } = profile;
+    const gender = (profile as any).gender;
 
-    const mainPhoto = photos?.[0] || photoURL;
+    const mainPhoto = getMainProfileImage(profile as any);
+    const genderPlaceholder = getGenderPlaceholder(gender);
 
     return (
         <TouchableOpacity
@@ -60,7 +63,7 @@ export function ProfileGridItem({ profile, onPress }: ProfileGridItemProps) {
                     />
                 ) : (
                     <View style={styles.placeholderImage}>
-                        <Text style={styles.placeholderEmoji}>👤</Text>
+                        <Text style={styles.placeholderEmoji}>{genderPlaceholder}</Text>
                     </View>
                 )}
 

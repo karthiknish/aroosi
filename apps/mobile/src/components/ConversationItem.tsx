@@ -23,6 +23,8 @@ import {
     isSmallDevice,
 } from '../theme';
 import type { Conversation } from '../services/api/messages';
+import { nowTimestamp } from '../utils/timestamp';
+import { getMainProfileImage } from '../utils/profileImage';
 
 interface ConversationItemProps {
     conversation: Conversation;
@@ -33,9 +35,9 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
     const { user, lastMessage, unreadCount, updatedAt } = conversation;
 
     // Format time
-    const formatTime = (dateStr: string | Date) => {
+    const formatTime = (dateStr: string | Date | number) => {
         const date = new Date(dateStr);
-        const now = new Date();
+        const now = new Date(nowTimestamp());
         const diffMs = now.getTime() - date.getTime();
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
@@ -70,15 +72,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 
     const hasUnread = unreadCount > 0;
 
-        const timestampValue = lastMessage?.createdAt ?? updatedAt;
-        const displayTimestamp: string | Date =
-                timestampValue instanceof Date
-                        ? timestampValue
-                        : typeof timestampValue === 'number'
-                            ? new Date(timestampValue)
-                            : typeof timestampValue === 'string'
-                                ? timestampValue
-                                : new Date();
+        const displayTimestamp = lastMessage?.createdAt ?? updatedAt ?? nowTimestamp();
 
     return (
         <TouchableOpacity
@@ -88,21 +82,12 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
         >
             {/* Avatar */}
             <View style={styles.avatarContainer}>
-                {user?.photoURL ? (
-                    <Image
-                        source={{ uri: user.photoURL }}
-                        style={styles.avatar}
-                        contentFit="cover"
-                        transition={200}
-                    />
-                ) : (
-                    <View style={styles.avatarPlaceholder}>
-                        <Text style={styles.avatarText}>
-                            {user?.displayName?.charAt(0) || '?'}
-                        </Text>
-                    </View>
-                )}
-                {/* Online indicator could go here */}
+                <Image
+                    source={getMainProfileImage({ photoURL: user?.photoURL })}
+                    style={styles.avatar}
+                    contentFit="cover"
+                    transition={200}
+                />
             </View>
 
             {/* Content */}

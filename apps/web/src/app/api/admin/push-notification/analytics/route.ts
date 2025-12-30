@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { errorResponse, successResponse } from "@/lib/api/handler";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     // Recent push sends: approximate count from latest docs.
     // We store push sends in adminSends (see /api/admin/push-notification).
-    const sinceMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const sinceMs = nowTimestamp() - 7 * 24 * 60 * 60 * 1000;
     const recentSnap = await db
       .collection("adminSends")
       .where("type", "==", "push")

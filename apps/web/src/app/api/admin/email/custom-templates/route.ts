@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { errorResponse, successResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // Email template schema
 // { id, name, description?, subject, html?, text?, variablesSchema?, createdBy, createdAt, updatedAt, lastUsedAt? }
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
   if (!html && !text) {
     return errorResponse("Provide html or text content", 400);
   }
-  const now = Date.now();
+  const now = nowTimestamp();
   const docRef = db.collection("emailTemplates").doc();
   await docRef.set({
     name: String(name),

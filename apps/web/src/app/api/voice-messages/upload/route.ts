@@ -9,6 +9,7 @@ import { validateVoiceMessage, validateConversationId } from "@/lib/validation/m
 import { moderateProfanity } from "@/lib/moderation/profanity";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { buildVoiceMessage, COL_VOICE_MESSAGES, COL_BLOCKS } from "@/lib/firestoreSchema";
 import { normalisePlan, getPlanLimits } from "@/lib/subscription/planLimits";
 import { v4 as uuidv4 } from "uuid";
@@ -105,7 +106,7 @@ export const POST = createAuthenticatedHandler(
         contentType: audioFile.type,
         metadata: { cacheControl: "public,max-age=31536000" },
       });
-      const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 60 * 60 * 1000 });
+      const [signedUrl] = await file.getSignedUrl({ action: "read", expires: nowTimestamp() + 60 * 60 * 1000 });
 
       const vm = buildVoiceMessage({
         conversationId,

@@ -2,7 +2,7 @@
  * Login Screen
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -30,92 +30,71 @@ import {
 import { useAuthStore } from '../../store';
 import { loginWithEmail, loginWithGoogle } from '../../services/api/auth';
 import { loginWithApple, isAppleSignInAvailable } from '../../services/api/appleAuth';
-import { useOffline, isNetworkError } from '../../hooks/useOffline';
+import { useOffline } from '../../hooks/useOffline';
+import { useAsyncActions } from '../../hooks/useAsyncAction';
 
 export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'>) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { setError } = useAuthStore();
-    const { isOffline, checkNetworkOrAlert, getErrorMessage } = useOffline();
+    const { checkNetworkOrAlert } = useOffline();
+
+    // Unified loading states for all login methods
+    const { loading, execute } = useAsyncActions({
+        email: async () => {
+            const result = await loginWithEmail({ email, password });
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            return result;
+        },
+        google: async () => {
+            const result = await loginWithGoogle();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            return result;
+        },
+        apple: async () => {
+            const result = await loginWithApple();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            return result;
+        },
+    }, { 
+        errorMode: 'alert',
+        errorTitle: 'Login Failed',
+        networkAware: true,
+    });
+
+    // Combined loading state
+    const isLoading = loading.email || loading.google || loading.apple;
 
     // Check Apple Sign-In availability on mount
     useEffect(() => {
         isAppleSignInAvailable().then(setAppleSignInAvailable);
     }, []);
 
-    const handleLogin = async () => {
+    const handleLogin = useCallback(async () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
-
-        // Check network before attempting login
         if (!checkNetworkOrAlert(() => handleLogin())) return;
+        await execute.email();
+    }, [email, password, checkNetworkOrAlert, execute]);
 
-        setIsLoading(true);
-        try {
-            const result = await loginWithEmail({ email, password });
-            
-            if (result.error) {
-                Alert.alert('Login Failed', result.error);
-            }
-            // Auth state listener in App.tsx will handle navigation
-        } catch (error) {
-            const message = getErrorMessage(error);
-            Alert.alert(
-                isNetworkError(error) ? 'Connection Error' : 'Login Failed',
-                message
-            );
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleGoogleLogin = async () => {
+    const handleGoogleLogin = useCallback(async () => {
         if (!checkNetworkOrAlert(() => handleGoogleLogin())) return;
+        await execute.google();
+    }, [checkNetworkOrAlert, execute]);
 
-        setIsLoading(true);
-        try {
-            const result = await loginWithGoogle();
-            
-            if (result.error) {
-                Alert.alert('Login Failed', result.error);
-            }
-            // Auth state listener in App.tsx will handle navigation
-        } catch (error) {
-            const message = getErrorMessage(error);
-            Alert.alert(
-                isNetworkError(error) ? 'Connection Error' : 'Login Failed',
-                message
-            );
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleAppleLogin = async () => {
+    const handleAppleLogin = useCallback(async () => {
         if (!checkNetworkOrAlert(() => handleAppleLogin())) return;
-
-        setIsLoading(true);
-        try {
-            const result = await loginWithApple();
-            
-            if (result.error) {
-                Alert.alert('Login Failed', result.error);
-            }
-            // Auth state listener in App.tsx will handle navigation
-        } catch (error) {
-            const message = getErrorMessage(error);
-            Alert.alert(
-                isNetworkError(error) ? 'Connection Error' : 'Login Failed',
-                message
-            );
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        await execute.apple();
+    }, [checkNetworkOrAlert, execute]);
 
     return (
         <SafeAreaView style={styles.container}>

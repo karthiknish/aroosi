@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 /**
  * POST /api/admin/push-notification
@@ -326,7 +327,7 @@ export async function POST(request: NextRequest) {
       await db.collection("adminSends").add({
         type: "push",
         mode: "dry-run",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
         actor: { userId, email },
         templateId: (body as any)?.templateId || null,
         audience: {
@@ -461,7 +462,7 @@ export async function POST(request: NextRequest) {
         await db.collection("adminSends").add({
           type: "push",
           mode: "live",
-          createdAt: Date.now(),
+          createdAt: nowTimestamp(),
           actor: { userId, email },
           templateId: templateId || null,
           audience: {
@@ -488,7 +489,7 @@ export async function POST(request: NextRequest) {
         await db
           .collection("pushTemplates")
           .doc(templateId)
-          .set({ lastUsedAt: Date.now() }, { merge: true });
+          .set({ lastUsedAt: nowTimestamp() }, { merge: true });
       } catch (e) {
         console.warn(
           "Failed to update push template lastUsedAt",
@@ -503,7 +504,7 @@ export async function POST(request: NextRequest) {
       await db.collection("adminSends").add({
         type: "push",
         mode: "live",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
         actor: { userId, email },
         templateId: templateId || null,
         audience: {
@@ -531,7 +532,7 @@ export async function POST(request: NextRequest) {
       await db.collection("adminSends").add({
         type: "push",
         mode: "live",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
         actor: { userId, email },
         templateId: (body as any)?.templateId || null,
         status: "error",

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import React from "react";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { requireAdminSession } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { render as renderEmail } from "@react-email/render";
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
         React.createElement(NewDeviceLoginEmail as any, {
           device: vars.device || 'Chrome',
           location: vars.location,
-          time: vars.time || new Date().toISOString(),
+          time: vars.time || new Date(nowTimestamp()).toISOString(),
           manageUrl: vars.manageUrl || '#',
         })
       );

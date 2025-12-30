@@ -3,11 +3,12 @@ import { requireAdmin } from "@/lib/api/admin";
 import { devLog } from "@/app/api/_utils/auth";
 import { Notifications } from "@/lib/notify";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { adminCreateMatchBodySchema } from "@/lib/validation/apiSchemas/adminMatches";
 
 export const POST = createAuthenticatedHandler(
   async (ctx, body: import("zod").infer<typeof adminCreateMatchBodySchema>) => {
-    const startedAt = Date.now();
+    const startedAt = nowTimestamp();
     const admin = requireAdmin(ctx);
     if (!admin.ok) return admin.response;
 
@@ -51,7 +52,7 @@ export const POST = createAuthenticatedHandler(
         fromUserId: fromUser,
         toUserId: toUser,
         status: "accepted",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
       });
       return docRef.id;
     };
@@ -78,7 +79,7 @@ export const POST = createAuthenticatedHandler(
         user1Id: fromUserId,
         user2Id: toUserId,
         status: "matched",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
         conversationId,
       });
     }
@@ -110,7 +111,7 @@ export const POST = createAuthenticatedHandler(
       devLog("info", "admin.matches_create", "success", {
         correlationId: ctx.correlationId,
         statusCode: 200,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
         fromProfileId,
         toProfileId,
       });
@@ -120,7 +121,7 @@ export const POST = createAuthenticatedHandler(
       devLog("error", "admin.matches_create", "unhandled_error", {
         correlationId: ctx.correlationId,
         statusCode: 500,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
         message,
       });
       return errorResponse("Failed to create match", 500, {

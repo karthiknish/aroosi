@@ -10,6 +10,7 @@ import {
   sendFcmNotificationToTokens,
 } from "@/lib/notifications/firebaseNotifications";
 import { engagementShortlistToggleSchema } from "@/lib/validation/apiSchemas/engagement";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -27,7 +28,7 @@ export const GET = createAuthenticatedHandler(
           return {
             id: d.id,
             toUserId: data.toUserId as string,
-            createdAt: (data.createdAt as number) || Date.now(),
+            createdAt: (data.createdAt as number) || nowTimestamp(),
           };
         });
         
@@ -116,7 +117,7 @@ export const POST = createAuthenticatedHandler(
       await db.collection("shortlists").add({
         fromUserId: userId,
         toUserId,
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
       });
       
       // Fetch sender details for enrichment

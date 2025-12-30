@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
   const adminCheck = await requireAdminSession(req);
   if ("errorResponse" in adminCheck) {
     const status = 403;
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     devLog("warn", "admin.interests", "auth_failed", {
       correlationId,
       statusCode: status,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
     });
     return NextResponse.json(body, { status });
   }
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
     devLog("info", "admin.interests", "success", {
       correlationId,
       statusCode: 200,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
       count: interests.length,
     });
     return NextResponse.json(
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
     devLog("error", "admin.interests", "unhandled_error", {
       correlationId,
       statusCode: 500,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
       message,
     });
     return NextResponse.json(

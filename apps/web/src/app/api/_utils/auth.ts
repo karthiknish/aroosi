@@ -11,6 +11,7 @@ import {
   adminAuth,
   COLLECTIONS,
 } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // Backward compatibility: some call sites imported Id<"users"> types from Convex.
 // We alias to string so existing type annotations (if any) tolerate transition.
@@ -98,7 +99,7 @@ export async function requireSession(
     try {
       const authUser = await adminAuth.getUser(uid);
       if (authUser) {
-        const now = Date.now();
+        const now = nowTimestamp();
         const email = authUser.email ? authUser.email.toLowerCase() : "";
         await db.collection(COLLECTIONS.USERS).doc(uid).set(
           {
@@ -187,7 +188,7 @@ async function requireSessionCore(
     try {
       const authUser = await adminAuth.getUser(uid);
       if (authUser) {
-        const now = Date.now();
+        const now = nowTimestamp();
         const email = authUser.email ? authUser.email.toLowerCase() : "";
         await db.collection(COLLECTIONS.USERS).doc(uid).set(
           {
@@ -265,7 +266,7 @@ export function devLog(
 ) {
   if (process.env.NODE_ENV === "production") return;
   const payload = {
-    ts: new Date().toISOString(),
+    ts: new Date(nowTimestamp()).toISOString(),
     level,
     scope,
     message,

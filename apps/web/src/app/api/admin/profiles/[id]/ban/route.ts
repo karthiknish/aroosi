@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Notifications } from "@/lib/notify";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import { db, adminAuth } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 interface BanRequestBody {
   banned?: boolean;
@@ -15,7 +16,7 @@ async function getUserProfile(userId: string) {
 
 export async function PUT(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
 
   try {
     await ensureAdmin();
@@ -27,7 +28,7 @@ export async function PUT(req: NextRequest) {
       type: "auth_failed",
       correlationId,
       statusCode: status,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
     });
     return NextResponse.json(body, { status });
   }
@@ -44,7 +45,7 @@ export async function PUT(req: NextRequest) {
       type: "validation_error",
       correlationId,
       statusCode: 400,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
     });
     return NextResponse.json(
       { error: "Missing or invalid banned status", correlationId },
@@ -60,7 +61,7 @@ export async function PUT(req: NextRequest) {
         message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
       });
       return null;
     });
@@ -76,7 +77,7 @@ export async function PUT(req: NextRequest) {
       await db
         .collection("users")
         .doc(profile.id)
-        .set({ banned: body.banned, updatedAt: Date.now() }, { merge: true });
+        .set({ banned: body.banned, updatedAt: nowTimestamp() }, { merge: true });
     } catch (e) {
       console.error("Admin profile.ban PUT update error", {
         scope: "admin.profile_ban",
@@ -84,7 +85,7 @@ export async function PUT(req: NextRequest) {
         message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
       });
       return NextResponse.json(
         { error: "Failed to update ban status", correlationId },
@@ -138,7 +139,7 @@ export async function PUT(req: NextRequest) {
       type: "success",
       correlationId,
       statusCode: 200,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
       banned: body.banned,
       profileId: id,
     });
@@ -151,7 +152,7 @@ export async function PUT(req: NextRequest) {
       message,
       correlationId,
       statusCode: 500,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
     });
     return NextResponse.json(
       { error: "Failed to update ban status", correlationId },

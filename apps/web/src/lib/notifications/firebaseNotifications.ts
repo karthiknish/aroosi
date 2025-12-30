@@ -1,5 +1,6 @@
 import { adminMessaging, adminDb as db } from '@/lib/firebaseAdminInit';
 import { v4 as uuid } from 'uuid';
+import { nowTimestamp } from '@/lib/utils/timestamp';
 import type { InAppNotification } from "@aroosi/shared/types";
 
 // Local alias for shared type
@@ -8,7 +9,7 @@ type NotificationRecord = InAppNotification;
 const COLLECTION = 'notifications';
 
 export async function createInAppNotification(payload: Omit<NotificationRecord, 'id' | 'createdAt' | 'read'> & { read?: boolean }) {
-  const now = Date.now();
+  const now = nowTimestamp();
   const id = uuid();
   await db.collection(COLLECTION).doc(id).set({ 
     read: false, // default
@@ -34,7 +35,7 @@ export async function listUserNotifications(userId: string, limit = 50, before?:
 export async function markNotificationsRead(userId: string, ids: string[]) {
   if (!Array.isArray(ids) || ids.length === 0) return { updated: 0 };
   const batch = db.batch();
-  const ts = Date.now();
+  const ts = nowTimestamp();
   for (const id of ids) {
     const ref = db.collection(COLLECTION).doc(id);
     batch.update(ref, { read: true, readAt: ts });

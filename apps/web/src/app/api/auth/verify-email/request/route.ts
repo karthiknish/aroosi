@@ -8,6 +8,7 @@ import {
   errorResponse,
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // POST: issue a new email verification link (idempotent if already verified)
 export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
@@ -35,16 +36,16 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
     const tokenHashHex = Array.from(new Uint8Array(tokenHash))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    const expiresAt = Date.now() + 1000 * 60 * 60 * 24; // 24h
+    const expiresAt = nowTimestamp() + 1000 * 60 * 60 * 24; // 24h
 
     await userDocRef.set(
       {
         emailVerification: {
           tokenHash: tokenHashHex,
           expiresAt,
-          issuedAt: Date.now(),
+          issuedAt: nowTimestamp(),
         },
-        updatedAt: Date.now(),
+        updatedAt: nowTimestamp(),
       },
       { merge: true }
     );

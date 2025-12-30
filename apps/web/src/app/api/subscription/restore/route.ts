@@ -2,9 +2,10 @@ import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
+  AuthenticatedApiContext
 } from "@/lib/api/handler";
-import { db } from "@/lib/firebaseAdmin";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { subscriptionRestoreSchema } from "@/lib/validation/apiSchemas/subscription";
 import {
@@ -69,7 +70,7 @@ async function validateAppleReceipt(receiptData: string): Promise<{
   for (const purchase of inAppPurchases) {
     if (purchase.product_id && known.has(purchase.product_id)) {
       const expiresAt = parseInt(purchase.expires_date_ms);
-      if (expiresAt > Date.now()) {
+      if (expiresAt > nowTimestamp()) {
         subscriptions.push({
           productId: purchase.product_id,
           expiresAt,
@@ -101,7 +102,7 @@ async function validateGooglePurchase(
   const data = await res.json();
   if (data && data.expiryTimeMillis && (!data.cancelReason || data.cancelReason === 0)) {
     const expiresAt = parseInt(data.expiryTimeMillis, 10);
-    if (expiresAt > Date.now()) {
+    if (expiresAt > nowTimestamp()) {
       return { valid: true, expiresAt };
     }
     return { valid: false, error: "Subscription expired" };
@@ -111,10 +112,10 @@ async function validateGooglePurchase(
 
 export const POST = createAuthenticatedHandler(
   async (
-    ctx: ApiContext,
-    body: import("zod").infer<typeof subscriptionRestoreSchema>
+    ctx: AuthenticatedApiContext,
+    body: any
   ) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const userId = ctx.user.id;
     const { platform, purchases, receiptData } = body;
 
     try {
@@ -146,7 +147,7 @@ export const POST = createAuthenticatedHandler(
         
         if (restoredSubscription) {
           await db.collection("users").doc(userId).set(
-            { subscriptionPlan: restoredSubscription.plan, subscriptionExpiresAt: restoredSubscription.expiresAt, updatedAt: Date.now() },
+            { subscriptionPlan: restoredSubscription.plan, subscriptionExpiresAt: restoredSubscription.expiresAt, updatedAt: nowTimestamp() },
             { merge: true }
           );
         }
@@ -190,7 +191,7 @@ export const POST = createAuthenticatedHandler(
 
         if (restoredSubscription) {
           await db.collection("users").doc(userId).set(
-            { subscriptionPlan: restoredSubscription.plan, subscriptionExpiresAt: restoredSubscription.expiresAt, updatedAt: Date.now() },
+            { subscriptionPlan: restoredSubscription.plan, subscriptionExpiresAt: restoredSubscription.expiresAt, updatedAt: nowTimestamp() },
             { merge: true }
           );
         }

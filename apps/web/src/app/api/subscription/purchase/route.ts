@@ -2,11 +2,12 @@ import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
+  AuthenticatedApiContext
 } from "@/lib/api/handler";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@aroosi/shared/types";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { subscriptionPurchaseSchema } from "@/lib/validation/apiSchemas/subscription";
 import {
@@ -66,7 +67,7 @@ async function validateAppleReceipt(
     }
 
     const expiresDate = parseInt(subscription.expires_date_ms, 10);
-    if (expiresDate > Date.now()) {
+    if (expiresDate > nowTimestamp()) {
       return { valid: true, expiresAt: expiresDate };
     }
     return { valid: false, error: "Subscription expired" };
@@ -93,7 +94,7 @@ async function validateGooglePurchase(
   const data = await res.json();
   if (data && data.expiryTimeMillis && (!data.cancelReason || data.cancelReason === 0)) {
     const expiresAt = parseInt(data.expiryTimeMillis, 10);
-    if (expiresAt > Date.now()) {
+    if (expiresAt > nowTimestamp()) {
       return { valid: true, expiresAt };
     }
     return { valid: false, error: "Subscription expired" };
@@ -103,10 +104,10 @@ async function validateGooglePurchase(
 
 export const POST = createAuthenticatedHandler(
   async (
-    ctx: ApiContext,
-    body: import("zod").infer<typeof subscriptionPurchaseSchema>
+    ctx: AuthenticatedApiContext,
+    body: any
   ) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const userId = ctx.user.id;
     const { productId, purchaseToken, platform, receiptData } = body;
 
     if (platform === "ios" && !receiptData) {
@@ -125,17 +126,17 @@ export const POST = createAuthenticatedHandler(
         if (!result.valid) {
           return errorResponse(`Google Play validation failed: ${result.error || "Unknown error"}`, 400, { correlationId: ctx.correlationId });
         }
-        const expiresAt = result.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000;
+        const expiresAt = result.expiresAt || nowTimestamp() + 30 * 24 * 60 * 60 * 1000;
         await db.collection("users").doc(userId).set(
-          { subscriptionPlan: plan, subscriptionExpiresAt: expiresAt, updatedAt: Date.now() },
+          { subscriptionPlan: plan, subscriptionExpiresAt: expiresAt, updatedAt: nowTimestamp() },
           { merge: true }
         );
         
         const profileSnap = await db.collection("users").doc(userId).get();
-        const profile = profileSnap.exists ? { _id: profileSnap.id, ...(profileSnap.data() as any) } : null;
-        if (profile?.email) {
+        const profileData = profileSnap.exists ? { _id: profileSnap.id, ...(profileSnap.data() as any) } : null;
+        if (profileData?.email) {
           try {
-            await Notifications.subscriptionPurchasedAdmin(profile as Profile, plan);
+            await Notifications.subscriptionPurchasedAdmin(profileData as any, plan);
           } catch {}
         }
         
@@ -147,17 +148,17 @@ export const POST = createAuthenticatedHandler(
         if (!result.valid) {
           return errorResponse(`Apple receipt validation failed: ${result.error || "Unknown error"}`, 400, { correlationId: ctx.correlationId });
         }
-        const expiresAt = result.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000;
+        const expiresAt = result.expiresAt || nowTimestamp() + 30 * 24 * 60 * 60 * 1000;
         await db.collection("users").doc(userId).set(
-          { subscriptionPlan: plan, subscriptionExpiresAt: expiresAt, updatedAt: Date.now() },
+          { subscriptionPlan: plan, subscriptionExpiresAt: expiresAt, updatedAt: nowTimestamp() },
           { merge: true }
         );
         
         const profileSnap = await db.collection("users").doc(userId).get();
-        const profile = profileSnap.exists ? { _id: profileSnap.id, ...(profileSnap.data() as any) } : null;
-        if (profile?.email) {
+        const profileData = profileSnap.exists ? { _id: profileSnap.id, ...(profileSnap.data() as any) } : null;
+        if (profileData?.email) {
           try {
-            await Notifications.subscriptionPurchasedAdmin(profile as Profile, plan);
+            await Notifications.subscriptionPurchasedAdmin(profileData as any, plan);
           } catch {}
         }
         

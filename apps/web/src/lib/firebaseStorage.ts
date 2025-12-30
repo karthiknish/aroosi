@@ -10,6 +10,7 @@ import {
 } from "firebase/storage";
 import { AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
+import { nowTimestamp } from "./utils/timestamp";
 
 // Define storage paths
 export const STORAGE_PATHS = {
@@ -39,7 +40,7 @@ export async function uploadFile(
       fileName: file.name,
       size: file.size,
       contentType: file.type,
-      uploadedAt: Date.now()
+      uploadedAt: nowTimestamp()
     };
   } catch (error) {
     console.error("Error uploading file to Firebase Storage:", error);
@@ -60,7 +61,7 @@ export async function uploadProfileImage(
     }
 
     // Generate a unique filename
-    const timestamp = Date.now();
+    const timestamp = nowTimestamp();
     const fileExtension = file.name.split(".").pop() || "jpg";
     const fileName = `${timestamp}_${file.size}.${fileExtension}`;
     const path = STORAGE_PATHS.profileImage(userId, fileName);
@@ -69,7 +70,7 @@ export async function uploadProfileImage(
     const result = await uploadFile(file, path, {
       customMetadata: {
         uploadedBy: userId,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: new Date(nowTimestamp()).toISOString(),
       },
     });
 
@@ -88,13 +89,13 @@ export async function uploadBlogImage(
   try {
     // Generate a unique filename if not provided
     const fileName =
-      customFileName || `${Date.now()}_${file.size}_${file.name}`;
+      customFileName || `${nowTimestamp()}_${file.size}_${file.name}`;
     const path = STORAGE_PATHS.blogImage(fileName);
 
     // Upload the file
     const result = await uploadFile(file, path, {
       customMetadata: {
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: new Date(nowTimestamp()).toISOString(),
       },
     });
 
@@ -120,7 +121,7 @@ export async function uploadVoiceMessage(
     }
 
     // Generate a unique filename
-    const timestamp = Date.now();
+    const timestamp = nowTimestamp();
     const fileExtension = file.name.split(".").pop() || "mp3";
     const fileName = `${timestamp}_${file.size}.${fileExtension}`;
     const path = STORAGE_PATHS.voiceMessage(userId, fileName);
@@ -129,7 +130,7 @@ export async function uploadVoiceMessage(
     const result = await uploadFile(file, path, {
       customMetadata: {
         uploadedBy: userId,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: new Date(nowTimestamp()).toISOString(),
       },
     });
 

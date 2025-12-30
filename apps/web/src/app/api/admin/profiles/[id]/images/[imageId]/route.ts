@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 function json(data: unknown, status = 200) {
   return new NextResponse(JSON.stringify(data), {
@@ -11,7 +12,7 @@ function json(data: unknown, status = 200) {
 
 export async function DELETE(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
 
   try {
     await ensureAdmin();
@@ -79,7 +80,7 @@ export async function DELETE(req: NextRequest) {
       {
         success: true,
         correlationId,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
       },
       200
     );

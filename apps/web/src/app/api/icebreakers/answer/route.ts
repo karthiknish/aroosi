@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_USAGE_EVENTS } from "@/lib/firestoreSchema";
 import { FieldValue } from "firebase-admin/firestore";
@@ -35,7 +36,7 @@ export const POST = createAuthenticatedHandler(
         .where("questionId", "==", questionId)
         .get();
       
-      const now = Date.now();
+      const now = nowTimestamp();
       
       if (!existingSnap.empty) {
         // Update existing answer
@@ -113,7 +114,7 @@ export const PATCH = createAuthenticatedHandler(
       
       const docRef = existingSnap.docs[0].ref;
       await docRef.set(
-        { answer: val, updatedAt: Date.now() },
+        { answer: val, updatedAt: nowTimestamp() },
         { merge: true }
       );
       

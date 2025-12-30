@@ -6,6 +6,7 @@ import {
   successResponse,
 } from "@/lib/api/handler";
 import { db, adminStorage } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // POST /api/images/blog
 // Upload metadata for a blog image and retrieve its public URL.
@@ -56,7 +57,7 @@ const blogImageHandler = createAuthenticatedHandler(
           contentType: contentType || null,
           fileSize: fileSize || null,
           uploadedBy: ctx.user.id,
-          createdAt: Date.now(),
+          createdAt: nowTimestamp(),
         },
         { merge: true }
       );

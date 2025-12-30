@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import type {
   FamilyApprovalRequest,
@@ -30,7 +31,7 @@ export const POST = createAuthenticatedHandler(
         return errorResponse("You already have a pending request to this family member", 409, { correlationId: ctx.correlationId });
       }
 
-      const now = Date.now();
+      const now = nowTimestamp();
       const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
 
       const requestData: Omit<FamilyApprovalRequest, "_id"> = {

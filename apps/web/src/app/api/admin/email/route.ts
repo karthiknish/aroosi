@@ -2,6 +2,7 @@ import { createAuthenticatedHandler, errorResponse, successResponse } from "@/li
 import { requireAdmin } from "@/lib/api/admin";
 import { sendEmail } from "@/lib/email/resend";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { adminSendEmailBodySchema } from "@/lib/validation/apiSchemas/adminEmail";
 
 export const POST = createAuthenticatedHandler(
@@ -40,7 +41,7 @@ export const POST = createAuthenticatedHandler(
       await db.collection("adminSends").add({
         type: "email",
         mode: "dry-run",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
         actor: { userId: ctx.user.id, email: ctx.user.email },
         templateId: templateId || null,
         audience: {
@@ -105,7 +106,7 @@ export const POST = createAuthenticatedHandler(
           await db
             .collection("emailTemplates")
             .doc(templateId)
-            .set({ lastUsedAt: Date.now() }, { merge: true });
+            .set({ lastUsedAt: nowTimestamp() }, { merge: true });
         } catch (e) {
           console.warn(
             "Failed to update email template lastUsedAt",
@@ -119,7 +120,7 @@ export const POST = createAuthenticatedHandler(
         await db.collection("adminSends").add({
           type: "email",
           mode: "live",
-          createdAt: Date.now(),
+          createdAt: nowTimestamp(),
           actor: { userId: ctx.user.id, email: ctx.user.email },
           templateId: templateId || null,
           audience: {
@@ -143,7 +144,7 @@ export const POST = createAuthenticatedHandler(
         await db.collection("adminSends").add({
           type: "email",
           mode: "live",
-          createdAt: Date.now(),
+          createdAt: nowTimestamp(),
           actor: { userId: ctx.user.id, email: ctx.user.email },
           templateId: templateId || null,
           status: "error",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/firebaseAdmin";
-// import { getAuth } from "firebase/auth"; // not needed directly here
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // Return current user with profile using Firebase authentication
 export async function GET(_request: Request) {
@@ -39,7 +39,7 @@ export async function GET(_request: Request) {
           email: userData.email || "",
           role: userData.role || "user",
           emailVerified: userData.emailVerified || false,
-          createdAt: userData.createdAt || Date.now(),
+          createdAt: userData.createdAt || nowTimestamp(),
           fullName: userData.fullName || userData.displayName || undefined,
           profile: userData
             ? {

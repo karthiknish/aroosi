@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 import type { Icebreaker } from "@aroosi/shared/types";
@@ -15,7 +16,7 @@ interface IcebreakerQuestionDoc extends Omit<Icebreaker, "id" | "question"> {
   createdAt?: number;
 }
 
-function dayKey(ts = Date.now()): string {
+function dayKey(ts = nowTimestamp()): string {
   const d = new Date(ts);
   return (
     d.getUTCFullYear().toString() +
@@ -61,7 +62,7 @@ export const GET = createApiHandler(
       }
 
       const key = dayKey();
-      const rand = seededRandom(Number.parseInt(key, 10) || Date.now());
+      const rand = seededRandom(Number.parseInt(key, 10) || nowTimestamp());
       const pickCount = Math.min(3, all.length);
       const pool = [...all];
       const picked: Array<{ id: string; text: string }> = [];
@@ -87,10 +88,11 @@ export const GET = createApiHandler(
       }
       
       // Determine answered today
+      const now = new Date(nowTimestamp());
       const since = Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate()
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
       );
       const answersSnap = await db
         .collection("userIcebreakerAnswers")

@@ -1,123 +1,93 @@
 import { db } from "@/lib/firebaseAdmin";
 import { 
   createAuthenticatedHandler, 
-  successResponse, 
-  errorResponse,
-  ApiContext
+  errorResponse, 
+  successResponse,
+  AuthenticatedApiContext
 } from "@/lib/api/handler";
 import { NextRequest } from "next/server";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/matches/[id]
- * Get a specific match by ID
- */
-export const GET = createAuthenticatedHandler(
-  async (ctx: ApiContext, _body: unknown, routeCtx?: RouteContext) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const { id: matchId } = await (routeCtx?.params || Promise.resolve({ id: "" }));
+// GET: Fetch a specific match
+export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, _req: NextRequest, routeCtx?: RouteContext) => {
+  try {
+    if (!routeCtx) return errorResponse("Missing context", 400);
+    const { id } = await routeCtx.params;
+    const userId = ctx.user.id;
 
-    if (!matchId) {
-      return errorResponse("Match ID is required", 400, { correlationId: ctx.correlationId });
+    const matchSnap = await db.collection("matches").doc(id).get();
+
+    if (!matchSnap.exists) {
+      return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
     }
 
-    try {
-      const matchDoc = await db.collection("matches").doc(matchId).get();
-      
-      if (!matchDoc.exists) {
-        return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
-      }
+    const match = matchSnap.data() as any;
 
-      const match = matchDoc.data()!;
-      
-      // Verify user is part of this match
-      if (match.user1Id !== userId && match.user2Id !== userId) {
-        return errorResponse("Not authorized to view this match", 403, { correlationId: ctx.correlationId });
-      }
-
-      // Get the other user's profile
-      const otherUserId = match.user1Id === userId ? match.user2Id : match.user1Id;
-      const userDoc = await db.collection("users").doc(otherUserId).get();
-      const profile = userDoc.exists ? userDoc.data() : {};
-
-      return successResponse({
-        id: matchDoc.id,
-        userId: otherUserId,
-        fullName: profile?.fullName ?? null,
-        profileImageUrls: profile?.profileImageUrls ?? [],
-        createdAt: match.createdAt ?? Date.now(),
-        status: match.status,
-      }, 200, ctx.correlationId);
-    } catch (e) {
-      console.error("matches/[id] GET error", { error: e, correlationId: ctx.correlationId });
-      return errorResponse("Failed to fetch match", 500, { correlationId: ctx.correlationId });
+    if (!match.userIds.includes(userId)) {
+      return errorResponse("Unauthorized access to match", 403, { correlationId: ctx.correlationId });
     }
-  },
-  {
-    rateLimit: { identifier: "matches_get_one", maxRequests: 50 }
+
+    const otherUserId = match.userIds.find((uid: string) => uid !== userId);
+    const profileSnap = await db.collection("users").doc(otherUserId).get();
+    const profile = profileSnap.exists ? profileSnap.data() : null;
+
+    return successResponse({
+      id: matchSnap.id,
+      userId: otherUserId,
+      fullName: profile?.fullName ?? null,
+      profileImageUrls: profile?.profileImageUrls ?? [],
+      createdAt: match.createdAt ?? nowTimestamp(),
+      status: match.status,
+    }, 200, ctx.correlationId);
+  } catch (e) {
+    console.error("matches/[id] GET error", e);
+    return errorResponse("Failed to fetch match", 500, { correlationId: ctx.correlationId });
   }
-);
+});
 
-/**
- * DELETE /api/matches/[id]
- * Delete/unmatch a specific match
- */
-export const DELETE = createAuthenticatedHandler(
-  async (ctx: ApiContext, _body: unknown, routeCtx?: RouteContext) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const { id: matchId } = await (routeCtx?.params || Promise.resolve({ id: "" }));
+// DELETE: Unmatch
+export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, _req: NextRequest, routeCtx?: RouteContext) => {
+  try {
+    if (!routeCtx) return errorResponse("Missing context", 400);
+    const { id } = await routeCtx.params;
+    const userId = ctx.user.id;
 
-    if (!matchId) {
-      return errorResponse("Match ID is required", 400, { correlationId: ctx.correlationId });
+    const matchRef = db.collection("matches").doc(id);
+    const matchSnap = await matchRef.get();
+
+    if (!matchSnap.exists) {
+      return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
     }
 
-    try {
-      const matchRef = db.collection("matches").doc(matchId);
-      const matchDoc = await matchRef.get();
-      
-      if (!matchDoc.exists) {
-        return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
-      }
+    const match = matchSnap.data() as any;
 
-      const match = matchDoc.data()!;
-      
-      // Verify user is part of this match
-      if (match.user1Id !== userId && match.user2Id !== userId) {
-        return errorResponse("Not authorized to delete this match", 403, { correlationId: ctx.correlationId });
-      }
-
-      // Option 1: Hard delete
-      // await matchRef.delete();
-
-      // Option 2: Soft delete - mark as unmatched
-      await matchRef.set({
-        status: "unmatched",
-        unmatchedBy: userId,
-        unmatchedAt: Date.now(),
-      }, { merge: true });
-
-      console.info("matches/[id] DELETE success", {
-        scope: "matches",
-        type: "unmatched",
-        correlationId: ctx.correlationId,
-        matchId,
-        unmatchedBy: userId,
-      });
-
-      return successResponse({ 
-        deleted: true, 
-        matchId,
-        message: "Match removed successfully" 
-      }, 200, ctx.correlationId);
-    } catch (e) {
-      console.error("matches/[id] DELETE error", { error: e, correlationId: ctx.correlationId });
-      return errorResponse("Failed to delete match", 500, { correlationId: ctx.correlationId });
+    if (!match.userIds.includes(userId)) {
+      return errorResponse("Unauthorized to unmatch", 403, { correlationId: ctx.correlationId });
     }
-  },
-  {
-    rateLimit: { identifier: "matches_delete", maxRequests: 20 }
+
+    if (match.status === "unmatched") {
+      return successResponse({ ok: true, alreadyUnmatched: true }, 200, ctx.correlationId);
+    }
+
+    await matchRef.set({
+      status: "unmatched",
+      unmatchedBy: userId,
+      unmatchedAt: nowTimestamp(),
+    }, { merge: true });
+
+    console.info("matches/[id] DELETE success", {
+      matchId: id,
+      userId,
+      correlationId: ctx.correlationId
+    });
+
+    return successResponse({ ok: true }, 200, ctx.correlationId);
+  } catch (e) {
+    console.error("matches/[id] DELETE error", e);
+    return errorResponse("Failed to unmatch", 500, { correlationId: ctx.correlationId });
   }
-);
+});

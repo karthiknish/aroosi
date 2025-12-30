@@ -38,6 +38,8 @@ import {
     type RecommendedProfile,
     type SearchFilters,
 } from '../../services/api/recommendations';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { useOffline } from '../../hooks/useOffline';
 
 type DiscoverNavigation = NativeStackNavigationProp<DiscoverStackParamList, 'DiscoverMain'>;
 
@@ -109,13 +111,40 @@ const FILTER_OPTIONS = {
 export default function DiscoverScreen() {
     const navigation = useNavigation<DiscoverNavigation>();
     const [profiles, setProfiles] = useState<RecommendedProfile[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState<SearchFilters>({});
-    const [error, setError] = useState<string | null>(null);
     const [isPremium, setIsPremium] = useState(false);
+
+    const { checkNetworkOrAlert } = useOffline();
+
+    // Load profiles
+    const loadAction = useAsyncAction(async (params?: { isRefresh?: boolean, query?: string }) => {
+        const query = params?.query;
+        let response;
+        
+        if (query || Object.keys(filters).length > 0) {
+            const searchFilters = {
+                ...filters,
+                city: query || filters.city,
+                ageMin: filters.ageRange?.min,
+                ageMax: filters.ageRange?.max,
+            };
+            response = await searchProfiles(searchFilters);
+        } else {
+            response = await getRecommendations(50);
+        }
+
+        if (response.error) throw new Error(response.error);
+        
+        if (response.data) {
+            const data = response.data as any;
+            const newProfiles = Array.isArray(data) ? data : (data.profiles || []);
+            setProfiles(newProfiles);
+            return newProfiles;
+        }
+        return [];
+    }, { errorMode: 'inline' });
 
     // Check subscription status on mount
     useEffect(() => {
@@ -134,56 +163,21 @@ export default function DiscoverScreen() {
         checkPremium();
     }, []);
 
-    // Load profiles
-    const loadProfiles = useCallback(async (isRefresh = false, query?: string) => {
-        try {
-            if (isRefresh) {
-                setRefreshing(true);
-            } else {
-                setLoading(true);
-            }
-            setError(null);
-
-            let response;
-            if (query || Object.keys(filters).length > 0) {
-                // Map query to city for now as backend doesn't have a general query field
-                const searchFilters = {
-                    ...filters,
-                    city: query || filters.city,
-                    ageMin: filters.ageRange?.min,
-                    ageMax: filters.ageRange?.max,
-                };
-                response = await searchProfiles(searchFilters);
-            } else {
-                response = await getRecommendations(50);
-            }
-
-            if (response.error) {
-                setError(response.error);
-                return;
-            }
-
-            if (response.data) {
-                // Handle both array response and object with profiles array
-                const data = response.data as any;
-                setProfiles(Array.isArray(data) ? data : (data.profiles || []));
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load profiles');
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [filters]);
-
     useEffect(() => {
-        loadProfiles();
-    }, [loadProfiles]);
+        loadAction.execute();
+    }, [filters]);
 
     // Handle search
     const handleSearch = useCallback(() => {
-        loadProfiles(false, searchQuery);
-    }, [loadProfiles, searchQuery]);
+        if (!checkNetworkOrAlert(() => handleSearch())) return;
+        loadAction.execute({ query: searchQuery });
+    }, [loadAction.execute, searchQuery, checkNetworkOrAlert]);
+
+    // Handle refresh
+    const handleRefresh = useCallback(() => {
+        if (!checkNetworkOrAlert()) return;
+        loadAction.execute({ isRefresh: true, query: searchQuery });
+    }, [loadAction.execute, searchQuery, checkNetworkOrAlert]);
 
     // Handle profile press
     const handleProfilePress = useCallback((profile: RecommendedProfile) => {
@@ -196,8 +190,9 @@ export default function DiscoverScreen() {
     // Apply filters
     const applyFilters = useCallback(() => {
         setShowFilters(false);
-        loadProfiles(false, searchQuery);
-    }, [loadProfiles, searchQuery]);
+        if (!checkNetworkOrAlert(() => applyFilters())) return;
+        loadAction.execute({ query: searchQuery });
+    }, [loadAction.execute, searchQuery, checkNetworkOrAlert]);
 
     // Clear filters
     const clearFilters = useCallback(() => {
@@ -214,7 +209,7 @@ export default function DiscoverScreen() {
     ), [handleProfilePress]);
 
     // Render loading state
-    if (loading && profiles.length === 0) {
+    if (loadAction.loading && profiles.length === 0) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -293,18 +288,18 @@ export default function DiscoverScreen() {
             )}
 
             {/* Error State */}
-            {error && (
+            {loadAction.error && (
                 <EmptyState
                     emoji="😕"
                     title="Something went wrong"
-                    message={error}
+                    message={loadAction.error}
                     actionLabel="Try Again"
-                    onAction={() => loadProfiles()}
+                    onAction={() => loadAction.execute()}
                 />
             )}
 
             {/* Profile Grid */}
-            {!error && (
+            {!loadAction.error && (
                 <FlatList
                     data={profiles}
                     renderItem={renderItem}
@@ -314,8 +309,8 @@ export default function DiscoverScreen() {
                     columnWrapperStyle={styles.gridRow}
                     refreshControl={
                         <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={() => loadProfiles(true, searchQuery)}
+                            refreshing={loadAction.loading && profiles.length > 0}
+                            onRefresh={handleRefresh}
                             tintColor={colors.primary.DEFAULT}
                         />
                     }

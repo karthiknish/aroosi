@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 export const POST = createAuthenticatedHandler(
@@ -30,7 +31,7 @@ export const POST = createAuthenticatedHandler(
           playerId: id,
           token: token || undefined,
           deviceType: deviceType || "web",
-          registeredAt: Date.now(),
+          registeredAt: nowTimestamp(),
           isActive: true,
         },
         { merge: true }
@@ -39,7 +40,7 @@ export const POST = createAuthenticatedHandler(
       return successResponse({
         message: "Push token registered",
         playerId: id,
-        registeredAt: Date.now(),
+        registeredAt: nowTimestamp(),
       }, 200, ctx.correlationId);
     } catch (error) {
       console.error("push/register POST error", { error, correlationId: ctx.correlationId });
@@ -75,7 +76,7 @@ export const DELETE = createAuthenticatedHandler(
           playerId: id,
           token: token || undefined,
           isActive: false,
-          unregisteredAt: Date.now(),
+          unregisteredAt: nowTimestamp(),
         },
         { merge: true }
       );
@@ -83,7 +84,7 @@ export const DELETE = createAuthenticatedHandler(
       return successResponse({
         message: "Push token unregistered",
         playerId: id,
-        unregisteredAt: Date.now(),
+        unregisteredAt: nowTimestamp(),
       }, 200, ctx.correlationId);
     } catch (error) {
       console.error("push/register DELETE error", { error, correlationId: ctx.correlationId });

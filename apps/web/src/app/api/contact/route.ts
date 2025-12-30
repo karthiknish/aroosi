@@ -5,6 +5,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { sendAdminNotification, sendUserNotification } from "@/lib/email";
 import {
   contactFormAdminTemplate,
@@ -81,7 +82,7 @@ export const POST = createApiHandler(
         name,
         subject,
         message,
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
       });
       
       // Send emails in background

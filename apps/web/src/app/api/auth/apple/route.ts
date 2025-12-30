@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { adminAuth, getFirebaseUser, db } from "@/lib/firebaseAdmin";
+import { db, adminAuth, COLLECTIONS, getFirebaseUser } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
+import { createApiHandler, successResponse, errorResponse, ApiContext } from "@/lib/api/handler";
 
 /**
  * POST /api/auth/apple
@@ -11,15 +13,14 @@ import { adminAuth, getFirebaseUser, db } from "@/lib/firebaseAdmin";
  * 
  * Body: { uid, email, displayName, photoURL }
  */
-export const POST = async (req: NextRequest) => {
+export const POST = createApiHandler(async (ctx: ApiContext) => {
+  const { request: req, correlationId } = ctx;
   try {
     const body = await req.json();
     const { uid, email, displayName, photoURL } = body || {};
 
     if (!uid) {
-      return new Response(JSON.stringify({ error: "Missing uid" }), {
-        status: 400,
-      });
+      return errorResponse("Missing uid", 400);
     }
 
     // Verify the user exists in Firebase Auth
@@ -27,25 +28,16 @@ export const POST = async (req: NextRequest) => {
     try {
       firebaseUser = await adminAuth.getUser(uid);
     } catch (err) {
-      return new Response(
-        JSON.stringify({ error: "User not found in Firebase" }),
-        { status: 404 }
-      );
+      return errorResponse("User not found in Firebase", 404);
     }
 
     // Create a custom token for the user to set a session cookie
     const customToken = await adminAuth.createCustomToken(uid);
     
-    // Exchange custom token for an ID token isn't possible server-side,
-    // so we'll set the UID directly as the session identifier
-    // and rely on the mobile app's Firebase Auth state
-    
     // Set session cookie with the UID
     const cookieStore = await cookies();
     const cookieDomain = process.env.COOKIE_BASE_DOMAIN?.trim();
     
-    // For mobile apps, we use a simpler session approach
-    // The mobile app manages its own Firebase Auth state
     cookieStore.set("firebaseUserId", uid, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -56,38 +48,50 @@ export const POST = async (req: NextRequest) => {
     });
 
     // Ensure user exists in Firestore users collection
-    const userRef = db.collection("users").doc(uid);
+    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
     const userDoc = await userRef.get();
     
+    let userData = userDoc.data();
+
     if (!userDoc.exists) {
       // Create minimal user profile for new Apple sign-ins
-      await userRef.set({
+      const initialData = {
         uid,
         email: email || firebaseUser.email || null,
         fullName: displayName || firebaseUser.displayName || "",
         photoURL: photoURL || firebaseUser.photoURL || null,
         provider: "apple",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }, { merge: true });
+        createdAt: nowTimestamp(),
+        updatedAt: nowTimestamp(),
+        lastLoginAt: nowTimestamp(),
+        loginCount: 1,
+        emailVerified: true,
+        onboardingComplete: false,
+      };
+
+      await userRef.set(initialData);
+      userData = initialData;
     } else {
-      // Update last sign-in time
-      await userRef.set({
-        lastLoginAt: Date.now(),
-        updatedAt: Date.now(),
-      }, { merge: true });
+      // Update existing user
+      const updateData = {
+        lastLoginAt: nowTimestamp(),
+        updatedAt: nowTimestamp(),
+        loginCount: (userData?.loginCount || 0) + 1,
+      };
+      await userRef.update(updateData);
+      userData = { ...userData, ...updateData };
     }
 
     // Fetch complete user data
-    const userData = await getFirebaseUser(uid);
+    const fullUserData = await getFirebaseUser(uid);
 
-    return new Response(JSON.stringify({ success: true, user: userData }), {
-      status: 200,
+    return successResponse({ 
+      success: true, 
+      user: fullUserData,
+      type: userDoc.exists ? 'updated' : 'created'
     });
   } catch (err) {
     console.error("Apple auth error:", err);
-    return new Response(JSON.stringify({ error: "Apple auth failed" }), {
-      status: 500,
-    });
+    return errorResponse("Apple auth failed", 500);
   }
-};
+});

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import {
   sanitizeBlogContent,
@@ -17,7 +18,7 @@ const RATE_LIMIT_MAX = 20;
 export async function GET(req: NextRequest) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const now = Date.now();
+  const now = nowTimestamp();
   const entry = rateLimitMap.get(ip) || { count: 0, last: now };
   if (now - entry.last > RATE_LIMIT_WINDOW) {
     entry.count = 0;
@@ -155,7 +156,7 @@ export async function PUT(req: NextRequest) {
       categories: Array.isArray(body.categories)
         ? body.categories.slice(0, 10)
         : [],
-      updatedAt: Date.now(),
+      updatedAt: nowTimestamp(),
     };
     await ref.set(updated, { merge: true });
     const doc = await ref.get();

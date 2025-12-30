@@ -4,6 +4,7 @@ import {
   errorResponse,
   AuthenticatedApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { appealCreateSchema } from "@/lib/validation/apiSchemas/appeals";
 
@@ -17,7 +18,7 @@ export const POST = createAuthenticatedHandler(
     const { reason, details } = body;
 
     try {
-      const now = Date.now();
+      const now = nowTimestamp();
       const appealsCol = COLLECTIONS.APPEALS || "appeals";
       const appealRef = db.collection(appealsCol).doc();
       

@@ -4,7 +4,8 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
-import { db } from "@/lib/firebaseAdmin";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   COL_USAGE_EVENTS,
   COL_USAGE_MONTHLY,
@@ -60,7 +61,7 @@ export const GET = createAuthenticatedHandler(
       const month = monthKey();
       
       if (feature === "profile_view" || feature === "search_performed" || feature === "voice_message_sent") {
-        const since = Date.now() - 24 * 60 * 60 * 1000;
+        const since = nowTimestamp() - 24 * 60 * 60 * 1000;
         try {
           const snap = await db
             .collection(COL_USAGE_EVENTS)

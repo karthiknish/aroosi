@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import {
   COL_TYPING_INDICATORS,
@@ -33,7 +34,7 @@ export const POST = createAuthenticatedHandler(
           .set(
             {
               isTyping: action === "start",
-              updatedAt: Date.now(),
+              updatedAt: nowTimestamp(),
             },
             { merge: true }
           );
@@ -46,7 +47,7 @@ export const POST = createAuthenticatedHandler(
         await emitConversationEvent(conversationId, {
           type: action === "start" ? "typing_start" : "typing_stop",
           userId,
-          at: Date.now(),
+          at: nowTimestamp(),
         });
       } catch {}
 
@@ -79,7 +80,7 @@ export const GET = createAuthenticatedHandler(
     }
 
     try {
-      const cutoff = Date.now() - 10000; // 10s window
+      const cutoff = nowTimestamp() - 10000; // 10s window
       const snap = await db
         .collection(COL_TYPING_INDICATORS)
         .where("conversationId", "==", conversationId)

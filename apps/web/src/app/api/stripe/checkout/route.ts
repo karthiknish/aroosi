@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { stripe } from "@/lib/stripe";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { SUBSCRIPTION_PLANS } from "../../../../constants";
@@ -104,7 +105,7 @@ export const POST = createAuthenticatedHandler(
 
       // Check for existing active subscription
       const existingPlan = normaliseInternalPlan(userDoc.subscriptionPlan as any);
-      const now = Date.now();
+      const now = nowTimestamp();
       const firestoreActive = existingPlan && (typeof userDoc.subscriptionExpiresAt === "number" ? userDoc.subscriptionExpiresAt > now : true);
       
       if (firestoreActive && userDoc.stripeSubscriptionId) {

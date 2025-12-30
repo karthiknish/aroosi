@@ -6,6 +6,7 @@ import {
   errorResponse,
   successResponse,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 const bodySchema = z
@@ -52,7 +53,7 @@ export const POST = createApiHandler(
       role: body.role,
       text: body.text,
       timestamp: body.timestamp,
-      createdAt: Date.now(),
+      createdAt: nowTimestamp(),
       userId: user?.id || null,
       source: internalOk && !user ? "internal" : "user",
       ip: user ? null : getClientIp(ctx.request),

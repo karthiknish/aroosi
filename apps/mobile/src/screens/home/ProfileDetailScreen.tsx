@@ -37,6 +37,9 @@ import { likeUser, passUser, blockUser } from '../../services/api/matches';
 import { isUserShortlisted, toggleShortlist } from '../../services/api/engagement';
 import { sendInterest, checkInterestStatus } from '../../services/api/interests';
 import { getUserIcebreakerAnswers, type IcebreakerAnswer } from '../../services/api/icebreakers';
+import { useAsyncAction, useAsyncActions } from '../../hooks/useAsyncAction';
+import { useOffline } from '../../hooks/useOffline';
+import { getProfilePhotos, getGenderPlaceholder } from '../../utils/profileImage';
 
 // Responsive photo height
 const PHOTO_HEIGHT = Math.min(SCREEN_WIDTH * 1.25, SCREEN_HEIGHT * 0.6);
@@ -55,119 +58,131 @@ export default function ProfileDetailScreen({
     onMatch,
 }: ProfileDetailScreenProps) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
     
     // Engagement state
     const [isShortlisted, setIsShortlisted] = useState(false);
     const [interestStatus, setInterestStatus] = useState<'none' | 'pending' | 'accepted' | 'declined'>('none');
     const [icebreakerAnswers, setIcebreakerAnswers] = useState<IcebreakerAnswer[]>([]);
-    const [shortlistLoading, setShortlistLoading] = useState(false);
-    const [interestLoading, setInterestLoading] = useState(false);
     
     // Report modal state
     const [showReportModal, setShowReportModal] = useState(false);
 
+    const { checkNetworkOrAlert } = useOffline();
+
     // Load profile and engagement data
-    const loadProfile = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            const [profileRes, interestRes, icebreakerRes, shortlistRes] = await Promise.all([
-                getProfileById(userId),
-                checkInterestStatus(userId),
-                getUserIcebreakerAnswers(userId),
-                isUserShortlisted(userId), // Fetch shortlist status here
-            ]);
-            
-            if (profileRes.error) {
-                setError(profileRes.error);
-            } else if (profileRes.data) {
-                setProfile(profileRes.data);
-            }
-            
-            if (interestRes.data) {
-                const status = interestRes.data.status;
-                // Map status to our local type, treating expired as none
-                if (status === 'pending' || status === 'accepted' || status === 'declined') {
-                    setInterestStatus(status);
-                } else if (status === 'rejected') {
-                    // Backward compatibility: backend stored `rejected`
-                    setInterestStatus('declined');
-                } else {
-                    setInterestStatus('none');
-                }
-            }
-            
-            if (icebreakerRes.data) {
-                setIcebreakerAnswers(icebreakerRes.data);
-            }
-
-            // Set shortlist status - shortlistRes is a boolean
-            setIsShortlisted(shortlistRes);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load profile');
-        } finally {
-            setLoading(false);
+    const loadAction = useAsyncAction(async () => {
+        const [profileRes, interestRes, icebreakerRes, shortlistRes] = await Promise.all([
+            getProfileById(userId),
+            checkInterestStatus(userId),
+            getUserIcebreakerAnswers(userId),
+            isUserShortlisted(userId),
+        ]);
+        
+        if (profileRes.error) {
+            throw new Error(profileRes.error);
         }
-    }, [userId]);
+        
+        if (profileRes.data) setProfile(profileRes.data);
+        
+        if (interestRes.data) {
+            const status = interestRes.data.status;
+            if (status === 'pending' || status === 'accepted' || status === 'declined') {
+                setInterestStatus(status);
+            } else if (status === 'rejected') {
+                setInterestStatus('declined');
+            } else {
+                setInterestStatus('none');
+            }
+        }
+        
+        if (icebreakerRes.data) setIcebreakerAnswers(icebreakerRes.data);
+        setIsShortlisted(shortlistRes);
+        
+        return profileRes.data;
+    }, { errorMode: 'inline' });
 
     useEffect(() => {
-        loadProfile();
-    }, [loadProfile]);
+        loadAction.execute();
+    }, [userId]);
 
-    // Handle like
-    const handleLike = useCallback(async () => {
-        try {
-            const response = await likeUser(userId, false);
-
+    // Engagement actions
+    const actions = useAsyncActions({
+        like: async (superLike: boolean) => {
+            const response = await likeUser(userId, superLike);
+            if (response.error) throw new Error(response.error);
+            
             if (response.data?.matched) {
                 Alert.alert(
-                    "It's a Match! 💕",
+                    `It's a Match! ${superLike ? '⭐' : '💕'}`,
                     `You and ${profile?.displayName || 'this person'} liked each other!`,
                     [{ text: 'Send Message', onPress: onMatch }]
                 );
             } else {
-                Alert.alert('Liked!', 'Your interest has been sent.');
+                Alert.alert(
+                    superLike ? 'Super Like sent!' : 'Liked!',
+                    superLike ? "They'll know you really like them." : 'Your interest has been sent.'
+                );
             }
             onBack?.();
-        } catch (err) {
-            Alert.alert('Error', 'Failed to like profile');
+            return response.data;
+        },
+        pass: async () => {
+            const response = await passUser(userId);
+            if (response.error) throw new Error(response.error);
+            onBack?.();
+            return response;
+        },
+        block: async () => {
+            const response = await blockUser(userId);
+            if (response.error) throw new Error(response.error);
+            onBack?.();
+            return response;
+        },
+        shortlist: async () => {
+            const response = await toggleShortlist(userId);
+            // toggleShortlist returns void, but throws on error in our implementation usually
+            // but let's check its definition if possible. Assuming it throws or returns something.
+            setIsShortlisted(prev => !prev);
+            Alert.alert(
+                !isShortlisted ? 'Added to Shortlist' : 'Removed',
+                !isShortlisted 
+                    ? 'Profile added to your shortlist! You can add notes in the Shortlists screen.'
+                    : 'Profile removed from your shortlist.'
+            );
+        },
+        sendInterest: async () => {
+            if (interestStatus !== 'none') {
+                Alert.alert('Already Sent', 'You have already sent interest to this person.');
+                return;
+            }
+            const response = await sendInterest(userId);
+            if (response.error) throw new Error(response.error);
+            if (response.data?.success) {
+                setInterestStatus('pending');
+                Alert.alert('Interest Sent! 💌', 'Your interest has been sent. You\'ll be notified when they respond.');
+            }
+            return response.data;
         }
-    }, [userId, profile?.displayName, onBack, onMatch]);
+    }, { errorMode: 'alert', networkAware: true });
+
+    // Handle like
+    const handleLike = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handleLike())) return;
+        actions.execute.like(false);
+    }, [checkNetworkOrAlert, actions.execute]);
 
     // Handle pass
-    const handlePass = useCallback(async () => {
-        try {
-            await passUser(userId);
-            onBack?.();
-        } catch (err) {
-            console.error('Pass failed:', err);
-            Alert.alert('Error', 'Failed to pass user');
-        }
-    }, [userId, onBack]);
+    const handlePass = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handlePass())) return;
+        actions.execute.pass();
+    }, [checkNetworkOrAlert, actions.execute]);
 
     // Handle super like
-    const handleSuperLike = useCallback(async () => {
-        try {
-            const response = await likeUser(userId, true);
-
-            if (response.data?.matched) {
-                Alert.alert(
-                    "It's a Match! ⭐",
-                    `Your Super Like worked! You matched with ${profile?.displayName || 'this person'}!`,
-                    [{ text: 'Send Message', onPress: onMatch }]
-                );
-            } else {
-                Alert.alert('Super Like sent!', 'They\'ll know you really like them.');
-            }
-            onBack?.();
-        } catch (err) {
-            Alert.alert('Error', 'Failed to send Super Like');
-        }
-    }, [userId, profile?.displayName, onBack, onMatch]);
+    const handleSuperLike = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handleSuperLike())) return;
+        actions.execute.like(true);
+    }, [checkNetworkOrAlert, actions.execute]);
 
     // Handle report - opens the report modal
     const handleReport = useCallback(() => {
@@ -176,7 +191,6 @@ export default function ProfileDetailScreen({
 
     // Handle report submitted
     const handleReportSubmitted = useCallback(() => {
-        // Go back after reporting
         onBack?.();
     }, [onBack]);
 
@@ -190,61 +204,29 @@ export default function ProfileDetailScreen({
                 {
                     text: 'Block',
                     style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await blockUser(userId);
-                            onBack?.();
-                        } catch (err) {
-                            Alert.alert('Error', 'Failed to block user');
-                        }
+                    onPress: () => {
+                        if (checkNetworkOrAlert()) actions.execute.block();
                     }
                 },
             ]
         );
-    }, [userId, profile?.displayName, onBack]);
+    }, [profile?.displayName, checkNetworkOrAlert, actions.execute]);
 
     // Handle shortlist toggle
-    const handleShortlist = useCallback(async () => {
-        try {
-            setShortlistLoading(true);
-            await toggleShortlist(userId);
-            setIsShortlisted(prev => !prev);
-            Alert.alert(
-                isShortlisted ? 'Removed' : 'Added to Shortlist',
-                isShortlisted 
-                    ? 'Profile removed from your shortlist.' 
-                    : 'Profile added to your shortlist! You can add notes in the Shortlists screen.'
-            );
-        } catch (err) {
-            Alert.alert('Error', 'Failed to update shortlist');
-        } finally {
-            setShortlistLoading(false);
-        }
-    }, [userId, isShortlisted]);
+    const handleShortlist = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handleShortlist())) return;
+        actions.execute.shortlist();
+    }, [checkNetworkOrAlert, actions.execute]);
 
     // Handle send interest
-    const handleSendInterest = useCallback(async () => {
-        if (interestStatus !== 'none') {
-            Alert.alert('Already Sent', 'You have already sent interest to this person.');
-            return;
-        }
-        
-        try {
-            setInterestLoading(true);
-            const response = await sendInterest(userId);
-            if (response.data?.success) {
-                setInterestStatus('pending');
-                Alert.alert('Interest Sent! 💌', 'Your interest has been sent. You\'ll be notified when they respond.');
-            }
-        } catch (err) {
-            Alert.alert('Error', 'Failed to send interest');
-        } finally {
-            setInterestLoading(false);
-        }
-    }, [userId, interestStatus]);
+    const handleSendInterest = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handleSendInterest())) return;
+        actions.execute.sendInterest();
+    }, [checkNetworkOrAlert, actions.execute]);
 
     // Get photos array
-    const photos = profile?.photos || (profile?.photoURL ? [profile.photoURL] : []);
+    const photos = getProfilePhotos(profile);
+    const genderPlaceholder = getGenderPlaceholder(profile?.gender);
 
     // Navigate photos
     const nextPhoto = useCallback(() => {
@@ -259,7 +241,7 @@ export default function ProfileDetailScreen({
         }
     }, [currentPhotoIndex]);
 
-    if (loading) {
+    if (loadAction.loading) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -272,7 +254,7 @@ export default function ProfileDetailScreen({
         );
     }
 
-    if (error || !profile) {
+    if (loadAction.error || !profile) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -283,7 +265,7 @@ export default function ProfileDetailScreen({
                 <EmptyState
                     emoji="😕"
                     title="Profile Not Found"
-                    message={error || 'This profile is no longer available'}
+                    message={loadAction.error || 'This profile is no longer available'}
                     actionLabel="Go Back"
                     onAction={onBack}
                 />
@@ -359,7 +341,7 @@ export default function ProfileDetailScreen({
                         </>
                     ) : (
                         <View style={styles.noPhoto}>
-                            <Text style={styles.noPhotoEmoji}>👤</Text>
+                            <Text style={styles.noPhotoEmoji}>{genderPlaceholder}</Text>
                         </View>
                     )}
 
@@ -493,13 +475,13 @@ export default function ProfileDetailScreen({
                                 isShortlisted && styles.engagementButtonActive,
                             ]}
                             onPress={handleShortlist}
-                            disabled={shortlistLoading}
+                            disabled={actions.loading.shortlist}
                         >
                             <Text style={styles.engagementIcon}>
                                 {isShortlisted ? '💝' : '💛'}
                             </Text>
                             <Text style={styles.engagementLabel}>
-                                {shortlistLoading ? '...' : isShortlisted ? 'Saved' : 'Shortlist'}
+                                {actions.loading.shortlist ? '...' : isShortlisted ? 'Saved' : 'Shortlist'}
                             </Text>
                         </TouchableOpacity>
 
@@ -509,11 +491,11 @@ export default function ProfileDetailScreen({
                                 interestStatus !== 'none' && styles.engagementButtonActive,
                             ]}
                             onPress={handleSendInterest}
-                            disabled={interestLoading || interestStatus !== 'none'}
+                            disabled={actions.loading.sendInterest || interestStatus !== 'none'}
                         >
                             <Text style={styles.engagementIcon}>💌</Text>
                             <Text style={styles.engagementLabel}>
-                                {interestLoading ? '...' : 
+                                {actions.loading.sendInterest ? '...' : 
                                  interestStatus === 'pending' ? 'Sent' :
                                  interestStatus === 'accepted' ? 'Accepted' :
                                  'Interest'}

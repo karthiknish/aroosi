@@ -12,6 +12,7 @@ import {
   AuthenticatedApiContext
 } from "@/lib/api/handler";
 import { profileSchema, createProfileSchema, updateProfileSchema } from "@/lib/validation/profileSchema";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 const PROTECTED_FIELDS = [
   'id', 'uid', 'email', 'emailVerified', 'createdAt', 'role', 
@@ -66,7 +67,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
       type: "success",
       correlationId: ctx.correlationId,
       statusCode: 200,
-      durationMs: Date.now() - ctx.startTime,
+      durationMs: nowTimestamp() - ctx.startTime,
       requestedUserId: requestedUserId || "(self)",
     });
     
@@ -104,7 +105,7 @@ const handleUpdate = async (ctx: AuthenticatedApiContext, body: any) => {
     await db
       .collection("users")
       .doc(userId)
-      .set({ ...sanitizedBody, updatedAt: Date.now() }, { merge: true });
+      .set({ ...sanitizedBody, updatedAt: nowTimestamp() }, { merge: true });
       
     const updated = await db.collection("users").doc(userId).get();
     const updatedProfile = { _id: updated.id, ...(updated.data() as any) };
@@ -126,7 +127,7 @@ const handleUpdate = async (ctx: AuthenticatedApiContext, body: any) => {
       type: "success",
       correlationId: ctx.correlationId,
       statusCode: 200,
-      durationMs: Date.now() - ctx.startTime,
+      durationMs: nowTimestamp() - ctx.startTime,
       method: ctx.request.method
     });
     
@@ -170,7 +171,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
         )
       : undefined;
 
-    const now = Date.now();
+    const now = nowTimestamp();
     const profileData = {
       ...sanitizedBody,
       profileImageIds: filteredImageIds,
@@ -211,7 +212,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
       type: "success",
       correlationId: ctx.correlationId,
       statusCode: 200,
-      durationMs: Date.now() - ctx.startTime,
+      durationMs: nowTimestamp() - ctx.startTime,
     });
     
     return successResponse({ 
@@ -225,7 +226,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
       message: error instanceof Error ? error.message : String(error),
       correlationId: ctx.correlationId,
       statusCode: 500,
-      durationMs: Date.now() - ctx.startTime,
+      durationMs: nowTimestamp() - ctx.startTime,
     });
     return errorResponse("Internal server error", 500, { correlationId: ctx.correlationId });
   }
@@ -250,7 +251,7 @@ export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiCon
       type: "success",
       correlationId: ctx.correlationId,
       statusCode: 200,
-      durationMs: Date.now() - ctx.startTime,
+      durationMs: nowTimestamp() - ctx.startTime,
     });
     
     return successResponse({ message: "User and profile deleted successfully" }, 200, ctx.correlationId);
@@ -261,7 +262,7 @@ export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiCon
       message: error instanceof Error ? error.message : String(error),
       correlationId: ctx.correlationId,
       statusCode: 500,
-      durationMs: Date.now() - ctx.startTime,
+      durationMs: nowTimestamp() - ctx.startTime,
     });
     return errorResponse("Failed to delete user and profile", 500, { correlationId: ctx.correlationId });
   }

@@ -5,6 +5,7 @@ import {
   errorResponsePublic,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import {
   buildInterest,
@@ -60,7 +61,7 @@ async function isBlocked(a: string, b: string) {
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext, body: import("zod").infer<typeof interestsPostSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const now = Date.now();
+    const now = nowTimestamp();
 
     try {
       if (body.action === "send") {

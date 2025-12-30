@@ -6,6 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { stripe } from "@/lib/stripe";
 import { inferPlanFromSubscription } from "@/lib/subscription/stripePlanMapping";
 
@@ -81,7 +82,7 @@ export const POST = createAuthenticatedHandler(
           subscriptionPlan: planId,
           subscriptionExpiresAt: sub.current_period_end * 1000,
           stripeCustomerId: typeof sub.customer === "string" ? sub.customer : undefined,
-          updatedAt: Date.now(),
+          updatedAt: nowTimestamp(),
         },
         { merge: true }
       );

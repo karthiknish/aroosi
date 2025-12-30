@@ -15,7 +15,7 @@ export type QuickPick = SharedQuickPick;
 export type EngagementProfile = RecommendedProfile;
 
 class EngagementAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -38,13 +38,26 @@ class EngagementAPI {
 
     if (!res.ok) {
       const msg =
-        (isJson && payload && (payload as any).error) ||
+        (isJson && payload && ((payload as any).message || (payload as any).error)) ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
     }
 
-    return payload;
+    // Unwrap standardized { success, data } envelope from API handler
+    if (isJson && payload && typeof payload === "object") {
+      const maybe = payload as any;
+      if ("success" in maybe) {
+        if (maybe.success === false) {
+          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+        }
+        if ("data" in maybe) {
+          return maybe.data as T;
+        }
+      }
+    }
+
+    return payload as T;
   }
 
   // === Shortlist ===
@@ -53,8 +66,8 @@ class EngagementAPI {
    * Get user's shortlist
    */
   async getShortlist(): Promise<ShortlistEntry[]> {
-    const res = await this.makeRequest("/api/engagement/shortlist");
-    return res.data?.shortlist || res.shortlist || [];
+    const res = await this.makeRequest<ShortlistEntry[]>("/api/engagement/shortlist");
+    return Array.isArray(res) ? res : [];
   }
 
   /**
@@ -81,12 +94,18 @@ class EngagementAPI {
 
   async getNote(toUserId: string): Promise<Note | null> {
     try {
-      const res = await this.makeRequest(`/api/engagement/notes?toUserId=${encodeURIComponent(toUserId)}`);
-      const note = res.data?.note || res.note || null;
-      if (note && !note.note && note.content) {
-        note.note = note.content;
-      }
-      return note;
+      const res = await this.makeRequest<{ note: string; updatedAt: number } | null>(
+        `/api/engagement/notes?toUserId=${encodeURIComponent(toUserId)}`
+      );
+      if (!res) return null;
+      return {
+        id: `${toUserId}`,
+        fromUserId: "", // Filled by caller if needed
+        toUserId,
+        note: res.note,
+        createdAt: new Date(res.updatedAt),
+        updatedAt: new Date(res.updatedAt),
+      };
     } catch {
       return null;
     }
@@ -116,10 +135,16 @@ class EngagementAPI {
 
   /**
    * Get today's quick picks
+   * Returns { userIds: string[], profiles: QuickPick[] }
    */
-  async getQuickPicks(): Promise<QuickPick[]> {
-    const res = await this.makeRequest("/api/engagement/quick-picks");
-    return res.data?.picks || res.picks || [];
+  async getQuickPicks(): Promise<{ userIds: string[]; profiles: QuickPick[] }> {
+    const res = await this.makeRequest<{ userIds: string[]; profiles: QuickPick[] }>(
+      "/api/engagement/quick-picks"
+    );
+    return {
+      userIds: Array.isArray(res?.userIds) ? res.userIds : [],
+      profiles: Array.isArray(res?.profiles) ? res.profiles : [],
+    };
   }
 
   /**
@@ -138,8 +163,13 @@ class EngagementAPI {
    * Get recommended engagement profiles
    */
   async getProfiles(limit = 10): Promise<EngagementProfile[]> {
-    const res = await this.makeRequest(`/api/engagement/profiles?limit=${limit}`);
-    return res.data?.profiles || res.profiles || [];
+    const res = await this.makeRequest<EngagementProfile[] | { profiles: EngagementProfile[] }>(
+      `/api/engagement/profiles?limit=${limit}`
+    );
+    // Handle both array and wrapped { profiles: [] } formats
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.profiles)) return res.profiles;
+    return [];
   }
 }
 

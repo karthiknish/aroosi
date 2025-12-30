@@ -34,6 +34,7 @@ import {
     validateEducation,
     validateOccupation,
 } from '../../utils/validation';
+import { nowTimestamp } from '../../utils/timestamp';
 
 // Onboarding steps
 type OnboardingStep = 
@@ -89,7 +90,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     const calculateAge = (): number | undefined => {
         if (!birthYear || !birthMonth || !birthDay) return undefined;
         const birthDate = new Date(parseInt(birthYear), parseInt(birthMonth) - 1, parseInt(birthDay));
-        const today = new Date();
+        const today = new Date(nowTimestamp());
         let age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {

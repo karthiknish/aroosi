@@ -30,113 +30,98 @@ import {
     type RecommendedProfile
 } from '../../services/api/recommendations';
 import { likeUser, passUser } from '../../services/api/matches';
+import { useAsyncAction, useAsyncActions } from '../../hooks/useAsyncAction';
+import { useOffline } from '../../hooks/useOffline';
 
 export default function HomeScreen() {
     const [profiles, setProfiles] = useState<RecommendedProfile[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    // Load recommendations
-    const loadRecommendations = useCallback(async (isRefresh = false) => {
-        try {
-            if (isRefresh) {
-                setRefreshing(true);
-            } else {
-                setLoading(true);
-            }
-            setError(null);
+    const { checkNetworkOrAlert } = useOffline();
 
-            const response = await getRecommendations(20);
-
-            if (response.error) {
-                setError(response.error);
-                return;
-            }
-
-            if (response.data) {
-                setProfiles(response.data);
-                setCurrentIndex(0);
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load profiles');
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+    const loadAction = useAsyncAction(async () => {
+        const response = await getRecommendations(20);
+        if (response.error) throw new Error(response.error);
+        if (response.data) {
+            setProfiles(response.data);
+            setCurrentIndex(0);
         }
-    }, []);
+        return response.data || [];
+    }, { errorMode: 'inline' });
 
-    useEffect(() => {
-        loadRecommendations();
-    }, [loadRecommendations]);
-
-    // Handle like action
-    const handleLike = useCallback(async () => {
-        const currentProfile = profiles[currentIndex];
-        if (!currentProfile) return;
-
-        const profileId = currentProfile.id || currentProfile.userId;
-        if (!profileId) return;
-
-        try {
-            const response = await likeUser(profileId, false);
-
+    const swipeActions = useAsyncActions({
+        like: async (params: { profileId: string, isSuperLike: boolean, displayName?: string }) => {
+            const { profileId, isSuperLike, displayName } = params;
+            const response = await likeUser(profileId, isSuperLike);
             if (response.data?.matched) {
                 Alert.alert(
-                    "It's a Match! 💕",
-                    `You and ${currentProfile.displayName || 'this person'} liked each other!`,
-                    [{ text: 'Keep Swiping', style: 'default' }]
+                    isSuperLike ? "It's a Match! ⭐" : "It's a Match! 💕",
+                    isSuperLike 
+                        ? `Your Super Like worked! You matched with ${displayName || 'this person'}!`
+                        : `You and ${displayName || 'this person'} liked each other!`,
+                    [{ text: isSuperLike ? 'Awesome!' : 'Keep Swiping', style: 'default' }]
                 );
             }
-
-            // Move to next profile
             setCurrentIndex(prev => prev + 1);
-        } catch (err) {
-            console.error('Like failed:', err);
-        }
-    }, [profiles, currentIndex]);
-
-    // Handle super like action
-    const handleSuperLike = useCallback(async () => {
-        const currentProfile = profiles[currentIndex];
-        if (!currentProfile) return;
-
-        const profileId = currentProfile.id || currentProfile.userId;
-        if (!profileId) return;
-
-        try {
-            const response = await likeUser(profileId, true);
-
-            if (response.data?.matched) {
-                Alert.alert(
-                    "It's a Match! ⭐",
-                    `Your Super Like worked! You matched with ${currentProfile.displayName || 'this person'}!`,
-                    [{ text: 'Awesome!', style: 'default' }]
-                );
-            }
-
-            setCurrentIndex(prev => prev + 1);
-        } catch (err) {
-            console.error('Super like failed:', err);
-        }
-    }, [profiles, currentIndex]);
-
-    // Handle pass action
-    const handlePass = useCallback(async () => {
-        const currentProfile = profiles[currentIndex];
-        if (!currentProfile) return;
-
-        const profileId = currentProfile.id || currentProfile.userId;
-        if (!profileId) return;
-
-        try {
+            return response.data;
+        },
+        pass: async (profileId: string) => {
             await passUser(profileId);
             setCurrentIndex(prev => prev + 1);
-        } catch (err) {
-            console.error('Pass failed:', err);
         }
-    }, [profiles, currentIndex]);
+    }, { errorMode: 'silent', networkAware: true });
+
+    const loading = loadAction.loading;
+    const error = loadAction.error;
+    const refreshing = loadAction.loading && profiles.length > 0;
+
+    useEffect(() => {
+        loadAction.execute();
+    }, []);
+
+    // Handle like action
+    const handleLike = useCallback(() => {
+        const currentProfile = profiles[currentIndex];
+        if (!currentProfile) return;
+
+        const profileId = currentProfile.id || currentProfile.userId;
+        if (!profileId) return;
+
+        if (!checkNetworkOrAlert(() => handleLike())) return;
+        swipeActions.execute.like({ 
+            profileId, 
+            isSuperLike: false, 
+            displayName: currentProfile.displayName || undefined
+        });
+    }, [profiles, currentIndex, swipeActions.execute, checkNetworkOrAlert]);
+
+    // Handle super like action
+    const handleSuperLike = useCallback(() => {
+        const currentProfile = profiles[currentIndex];
+        if (!currentProfile) return;
+
+        const profileId = currentProfile.id || currentProfile.userId;
+        if (!profileId) return;
+
+        if (!checkNetworkOrAlert(() => handleSuperLike())) return;
+        swipeActions.execute.like({ 
+            profileId, 
+            isSuperLike: true, 
+            displayName: currentProfile.displayName || undefined
+        });
+    }, [profiles, currentIndex, swipeActions.execute, checkNetworkOrAlert]);
+
+    // Handle pass action
+    const handlePass = useCallback(() => {
+        const currentProfile = profiles[currentIndex];
+        if (!currentProfile) return;
+
+        const profileId = currentProfile.id || currentProfile.userId;
+        if (!profileId) return;
+
+        if (!checkNetworkOrAlert(() => handlePass())) return;
+        swipeActions.execute.pass(profileId);
+    }, [profiles, currentIndex, swipeActions.execute, checkNetworkOrAlert]);
 
     // Handle info action
     const handleInfo = useCallback(() => {
@@ -182,7 +167,7 @@ export default function HomeScreen() {
                     title="Oops!"
                     message={error}
                     actionLabel="Try Again"
-                    onAction={() => loadRecommendations()}
+                    onAction={() => loadAction.execute()}
                 />
             </SafeAreaView>
         );
@@ -202,7 +187,7 @@ export default function HomeScreen() {
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
-                            onRefresh={() => loadRecommendations(true)}
+                            onRefresh={() => loadAction.execute()}
                             tintColor={colors.primary.DEFAULT}
                         />
                     }
@@ -212,7 +197,7 @@ export default function HomeScreen() {
                         title="You're All Caught Up!"
                         message="You've seen all available profiles. Check back later for new matches or pull down to refresh."
                         actionLabel="Refresh"
-                        onAction={() => loadRecommendations(true)}
+                        onAction={() => loadAction.execute()}
                     />
                 </ScrollView>
             </SafeAreaView>

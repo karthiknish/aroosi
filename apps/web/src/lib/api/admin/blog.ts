@@ -40,6 +40,19 @@ class AdminBlogAPI {
       throw new Error(String(msg));
     }
 
+    // Unwrap standardized { success, data } envelope from API handler
+    if (isJson && payload && typeof payload === "object") {
+      const maybe = payload as any;
+      if ("success" in maybe) {
+        if (maybe.success === false) {
+          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+        }
+        if ("data" in maybe) {
+          return maybe.data;
+        }
+      }
+    }
+
     return payload;
   }
 
@@ -58,24 +71,23 @@ class AdminBlogAPI {
 
     const data = await this.makeRequest(`/api/blog?${query.toString()}`);
 
-    // Handle the wrapped response format {success: true, data: {posts, total, page, pageSize}}
-    if (data && data.success && data.data) {
+    // Normal shape after unwrapping: { posts, total, page, pageSize }
+    if (data && typeof data === "object" && Array.isArray((data as any).posts)) {
+      const posts = (data as any).posts as BlogPost[];
       return {
-        posts: data.data.posts || [],
-        total: data.data.total || 0,
-        page: data.data.page || 0,
-        pageSize: data.data.pageSize || 6,
+        posts,
+        total: Number((data as any).total ?? posts.length) || 0,
+        page: Number((data as any).page ?? 0) || 0,
+        pageSize: Number((data as any).pageSize ?? posts.length ?? 6) || 6,
       };
     }
 
-    // Fallback for direct data format or other shapes
+    // Fallback for array format or other shapes
     const posts = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data?.posts)
-          ? data.posts
-          : [];
+      ? (data as BlogPost[])
+      : Array.isArray((data as any)?.posts)
+        ? ((data as any).posts as BlogPost[])
+        : [];
 
     return {
       posts,

@@ -5,6 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { deliveryReceiptCreateSchema } from "@/lib/validation/apiSchemas/deliveryReceipts";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export const GET = createAuthenticatedHandler(
           messageId: data.messageId,
           userId: data.userId,
           status: data.status,
-          updatedAt: data.updatedAt || data.timestamp || Date.now(),
+          updatedAt: data.updatedAt || data.timestamp || nowTimestamp(),
         };
       });
 
@@ -68,7 +69,7 @@ export const POST = createAuthenticatedHandler(
       const conversationId = messageData?.conversationId || null;
 
       const receiptId = `${messageId}_${userId}`;
-      const updatedAt = Date.now();
+      const updatedAt = nowTimestamp();
       
       await db
         .collection("messageReceipts")

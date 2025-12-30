@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 export const POST = createAuthenticatedHandler(
@@ -20,7 +21,7 @@ export const POST = createAuthenticatedHandler(
     if (!fileName || !uploadId) {
       return errorResponse("Missing fileName or uploadId", 400, { correlationId: ctx.correlationId });
     }
-
+    
     try {
       const docId = uploadId.split("/").pop() || uploadId;
       const snap = await db.collection("users").doc(userId).collection("images").doc(docId).get();
@@ -33,7 +34,7 @@ export const POST = createAuthenticatedHandler(
         message: "Image upload confirmed",
         fileName,
         uploadId,
-        confirmedAt: Date.now(),
+        confirmedAt: nowTimestamp(),
       }, 200, ctx.correlationId);
     } catch (error) {
       console.error("profile-images/confirm error", { error, correlationId: ctx.correlationId });

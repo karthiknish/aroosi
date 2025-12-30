@@ -8,6 +8,7 @@ import {
 import { db } from "@/lib/firebaseAdmin";
 import { COL_RECOMMENDATIONS } from "@/lib/firestoreSchema";
 import { blockSchema } from "@/lib/validation/apiSchemas/safety";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // Use createAuthenticatedHandler with per-target rate limiting
 export const POST = createAuthenticatedHandler(
@@ -27,14 +28,14 @@ export const POST = createAuthenticatedHandler(
         {
           blockerId: userId,
           blockedUserId,
-          createdAt: Date.now(),
+          createdAt: nowTimestamp(),
         },
         { merge: true }
       );
 
       // Invalidate recommendation cache
       try {
-        const now = Date.now();
+        const now = nowTimestamp();
         const snaps = await db
           .collection(COL_RECOMMENDATIONS)
           .where("userId", "in", [userId, blockedUserId])

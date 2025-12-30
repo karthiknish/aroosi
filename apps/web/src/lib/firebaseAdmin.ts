@@ -3,6 +3,7 @@
 // Firebase Admin initialization (server-side only)
 // Ensure this file is imported only in server contexts (API routes, server components).
 import { adminDb, adminAuth, adminStorage } from '@/lib/firebaseAdminInit';
+import { nowTimestamp } from './utils/timestamp';
 // Re-export specific admin handles for convenience
 export { adminAuth, adminStorage };
 
@@ -69,7 +70,7 @@ export async function getUserByEmail(email: string) {
 
 export async function upsertUser(email: string, data: Partial<FirestoreUserProfile>) {
   const existing = await getUserByEmail(email);
-  const now = Date.now();
+  const now = nowTimestamp();
   if (existing) {
     await db.collection(COLLECTIONS.USERS).doc(existing.id).set({ ...existing, ...data, updatedAt: now }, { merge: true });
     const updated = await db.collection(COLLECTIONS.USERS).doc(existing.id).get();

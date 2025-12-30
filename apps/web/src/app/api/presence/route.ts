@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 export const POST = createAuthenticatedHandler(
@@ -23,7 +24,7 @@ export const POST = createAuthenticatedHandler(
 
     try {
       await db.collection("presence").doc(userId).set(
-        { userId, lastSeen: Date.now(), status },
+        { userId, lastSeen: nowTimestamp(), status },
         { merge: true }
       );
       return new Response(null, { status: 204 });
@@ -59,7 +60,7 @@ export const GET = createAuthenticatedHandler(
       const presenceData = doc.data() as any;
       const lastSeen = presenceData?.lastSeen || 0;
       const status = presenceData?.status || "offline";
-      const now = Date.now();
+      const now = nowTimestamp();
 
       // User is online if status is "online" AND last seen within 30 seconds
       const isOnline = status === "online" && now - lastSeen < 30 * 1000;

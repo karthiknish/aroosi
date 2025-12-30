@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import {
   sanitizeBlogContent,
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
       400
     );
   }
-  const now = Date.now();
+  const now = nowTimestamp();
   const slug = sanitizeBlogSlug(String(body.slug));
   // Check duplicate slug
   const existing = await db

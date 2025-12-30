@@ -5,6 +5,7 @@ import {
   ErrorCode,
   successResponse,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { adminStorage } from "@/lib/firebaseAdminInit";
 import { db } from "@/lib/firebaseAdmin";
 
@@ -59,7 +60,7 @@ export const GET = createAuthenticatedHandler(
         const file = bucket.file(storagePath);
         const [signedUrl] = await file.getSignedUrl({
           action: "read",
-          expires: Date.now() + 60 * 60 * 1000,
+          expires: nowTimestamp() + 60 * 60 * 1000,
         });
         return signedUrl;
       } catch {

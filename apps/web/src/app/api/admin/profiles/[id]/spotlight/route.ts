@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 function devLog(level: "info" | "warn" | "error", scope: string, event: string, meta: Record<string, unknown>) {
   if (process.env.NODE_ENV !== "production") console[level](`[${scope}] ${event}`, meta);
@@ -27,7 +28,7 @@ export async function PUT(request: NextRequest) {
         : undefined;
 
     const userRef = db.collection("users").doc(profileId);
-    const now = Date.now();
+    const now = nowTimestamp();
     let spotlightExpiresAt: number | null = null;
     if (hasSpotlightBadge && durationDays && durationDays > 0) {
       spotlightExpiresAt = now + durationDays * 24 * 60 * 60 * 1000;

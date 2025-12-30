@@ -4,13 +4,14 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { markMessagesRead } from "@/lib/messages/firebaseMessages";
 import { messageMarkReadSchema } from "@/lib/validation/apiSchemas/messages";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext, body: import("zod").infer<typeof messageMarkReadSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const startedAt = Date.now();
+    const startedAt = nowTimestamp();
     
     try {
       const { conversationId } = body;
@@ -24,7 +25,7 @@ export const POST = createAuthenticatedHandler(
       const { updated, readAt } = await markMessagesRead(conversationId, userId);
       
       return successResponse(
-        { updated, readAt, durationMs: Date.now() - startedAt },
+        { updated, readAt, durationMs: nowTimestamp() - startedAt },
         200,
         ctx.correlationId
       );

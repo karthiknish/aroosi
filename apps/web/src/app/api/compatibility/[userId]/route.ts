@@ -5,6 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
         if (!Number.isNaN(min) && !Number.isNaN(max)) {
           const dobStr = target?.dateOfBirth as string | undefined;
           const year = dobStr ? parseInt(dobStr.slice(0, 4)) : NaN;
-          const nowYear = new Date().getUTCFullYear();
+          const nowYear = new Date(nowTimestamp()).getUTCFullYear();
           const age = nowYear - (Number.isFinite(year) ? year : nowYear);
           if (age >= min && age <= max) {
             score += 20;

@@ -5,6 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { messagePatchSchema } from "@/lib/validation/apiSchemas/messages";
 
 interface RouteContext {
@@ -41,7 +42,7 @@ export const PATCH = createAuthenticatedHandler(
         return errorResponse("Cannot edit a deleted message", 400, { correlationId: ctx.correlationId });
       }
 
-      const now = Date.now();
+      const now = nowTimestamp();
       await msgRef.set({ text: body.text, edited: true, editedAt: now }, { merge: true });
 
       // Update denormalized lastMessage if needed
@@ -100,7 +101,7 @@ export const DELETE = createAuthenticatedHandler(
       }
 
       // Soft delete
-      const now = Date.now();
+      const now = nowTimestamp();
       await msgRef.set(
         { deleted: true, deletedAt: now, deletedBy: userId, text: "" },
         { merge: true }

@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   uploadMessageImage,
   sendFirebaseMessage,
@@ -81,7 +82,7 @@ export const POST = createAuthenticatedHandler(
 
       // Denormalize lastMessage
       try {
-        const now = Date.now();
+        const now = nowTimestamp();
         const convRef = db.collection("conversations").doc(conversationId);
         await convRef.set(
           {

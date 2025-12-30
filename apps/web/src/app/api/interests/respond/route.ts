@@ -5,6 +5,7 @@ import {
   errorResponsePublic,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { deterministicMatchId, buildMatch } from "@/lib/firestoreSchema";
 import { interestsRespondOnlySchema } from "@/lib/validation/apiSchemas/interests";
@@ -45,7 +46,7 @@ export const POST = createAuthenticatedHandler(
       }
       
       // Update status
-      await interestDoc.ref.update({ status });
+      await interestDoc.ref.update({ status, updatedAt: nowTimestamp() });
       
       if (status === "accepted") {
         const matchId = deterministicMatchId(interest.fromUserId, interest.toUserId);

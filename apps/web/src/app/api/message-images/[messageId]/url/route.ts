@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { db, adminStorage } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -7,84 +8,63 @@ import {
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
 
-// GET /api/message-images/:messageId/url -> returns a signed URL for the image message
-export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
-  const { user, correlationId, nextCtx } = ctx;
-  
-  try {
-    const userId = user.id;
-    
-    // Get messageId from params (Next.js 15+ async params)
-    const { messageId } = await nextCtx.params;
-    
-    if (!messageId) {
-      return errorResponse("Missing messageId", 400, { correlationId });
+interface RouteContext {
+  params: Promise<{ messageId: string }>;
+}
+
+export const GET = createAuthenticatedHandler(
+  async (ctx: AuthenticatedApiContext, _req: NextRequest, routeCtx?: RouteContext) => {
+    if (!routeCtx) return errorResponse("Missing context", 400);
+    const { messageId } = await routeCtx.params;
+    const userId = ctx.user.id;
+
+    // 1. Get image metadata from firestore
+    const imageSnap = await db
+      .collection("messageImages")
+      .doc(messageId)
+      .get();
+
+    if (!imageSnap.exists) {
+      return errorResponse("Image metadata not found", 404, {
+        correlationId: ctx.correlationId,
+      });
     }
 
-    // Load message
-    const ref = db.collection("messages").doc(messageId);
-    const snap = await ref.get();
-    
-    if (!snap.exists) {
-      return errorResponse("Message not found", 404, { correlationId });
-    }
-    
-    const m = snap.data() as any;
-    if (!m || m.type !== "image") {
-      return errorResponse("Not an image message", 400, { correlationId });
+    const imageData = imageSnap.data() as any;
+
+    // 2. Check permission (must be part of conversation)
+    const convSnap = await db
+      .collection("conversations")
+      .doc(imageData.conversationId)
+      .get();
+      
+    if (!convSnap.exists || !convSnap.data()?.userIds.includes(userId)) {
+      return errorResponse("Unauthorized", 403, {
+        correlationId: ctx.correlationId,
+      });
     }
 
-    // AuthZ: requester must be a participant
-    if (m.fromUserId !== userId && m.toUserId !== userId) {
-      return errorResponse("Forbidden", 403, { correlationId });
+    // 3. Generate signed URL
+    const storagePath = imageData.storagePath;
+    if (!storagePath) {
+      return errorResponse("Storage path missing", 500, {
+        correlationId: ctx.correlationId,
+      });
     }
 
-    const storagePath: string | undefined = m.audioStorageId || m.storageId;
-    if (!storagePath || typeof storagePath !== "string") {
-      return errorResponse("Storage path missing", 500, { correlationId });
-    }
-
-    // Resolve bucket defensively
-    let bucket: any;
-    try {
-      bucket = adminStorage.bucket();
-    } catch (e) {
-      const fallbackName =
-        process.env.FIREBASE_STORAGE_BUCKET ||
-        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-        (process.env.GCLOUD_PROJECT
-          ? `${process.env.GCLOUD_PROJECT}.appspot.com`
-          : undefined);
-      if (!fallbackName) throw e;
-      bucket = adminStorage.bucket(fallbackName);
-    }
-
+    const bucket = adminStorage.bucket();
     const file = bucket.file(storagePath);
     const [imageUrl] = await file.getSignedUrl({
       action: "read",
-      expires: Date.now() + 60 * 60 * 1000, // 1h
+      expires: nowTimestamp() + 60 * 60 * 1000, // 1h
     });
     
     if (!imageUrl) {
-      return errorResponse("Failed to sign image URL", 500, { correlationId });
+      return errorResponse("Failed to generate playback URL", 500, {
+        correlationId: ctx.correlationId,
+      });
     }
 
-    return successResponse({
-      imageUrl,
-      contentType: m.mimeType || "image/jpeg",
-      fileSize: m.fileSize || undefined,
-      width: m.width || undefined,
-      height: m.height || undefined,
-    }, 200, correlationId);
-  } catch (error) {
-    console.error("[message-images.url] fatal error", {
-      correlationId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    const message = error instanceof Error ? error.message : String(error);
-    return errorResponse(message || "Failed to get image URL", 500, { correlationId });
+    return successResponse({ imageUrl }, 200, ctx.correlationId);
   }
-}, {
-  rateLimit: { identifier: "message_image_url", maxRequests: 100 }
-});
-
+);

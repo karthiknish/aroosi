@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Conversation, Message } from '../services/api/messages';
+import { nowTimestamp } from '../utils/timestamp';
 
 export function useRealTimeConversations() {
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -67,13 +68,13 @@ export function useRealTimeConversations() {
                             },
                             lastMessage,
                             unreadCount: unreadSnapshot.size,
-                            updatedAt: lastMessage?.createdAt || matchData.createdAt || new Date().toISOString(),
+                            updatedAt: lastMessage?.createdAt || matchData.createdAt || nowTimestamp(),
                         } as Conversation;
                     });
 
                     const results = await Promise.all(conversationPromises);
                     // Sort by updatedAt desc
-                    results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                    results.sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
                     
                     setConversations(results);
                     setLoading(false);

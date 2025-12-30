@@ -29,13 +29,36 @@ import {
     responsiveFontSizes,
 } from '../../theme';
 import { registerWithEmail } from '../../services/api/auth';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { useOffline } from '../../hooks/useOffline';
 
 export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Register'>) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    
+    const { checkNetworkOrAlert } = useOffline();
+
+    const registerAction = useAsyncAction(async () => {
+        const result = await registerWithEmail({
+            email,
+            password,
+            displayName: name,
+        });
+        
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        
+        return result;
+    }, { 
+        errorMode: 'alert',
+        errorTitle: 'Registration Failed',
+        networkAware: true 
+    });
+
+    const isLoading = registerAction.loading;
 
     const handleRegister = async () => {
         // Validation
@@ -61,23 +84,9 @@ export default function RegisterScreen({ navigation }: AuthStackScreenProps<'Reg
             return;
         }
 
-        setIsLoading(true);
-        try {
-            const result = await registerWithEmail({
-                email,
-                password,
-                displayName: name,
-            });
-            
-            if (result.error) {
-                Alert.alert('Registration Failed', result.error);
-            }
-            // Auth state listener in App.tsx will handle navigation
-        } catch (error) {
-            Alert.alert('Error', 'Registration failed. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
+        if (!checkNetworkOrAlert(() => handleRegister())) return;
+
+        await registerAction.execute();
     };
 
     const openLink = (url: string) => {

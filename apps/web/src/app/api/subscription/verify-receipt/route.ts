@@ -5,6 +5,7 @@ import {
   ApiContext,
 } from "@/lib/api/handler";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { normalisePlan } from "@/lib/subscription/planLimits";
 import {
   IAP_PRODUCT_IDS,
@@ -79,7 +80,7 @@ async function verifyAppleReceipt(receiptData: string): Promise<
       }
     }
 
-    if (!latest || latestExpiresAt <= Date.now()) {
+    if (!latest || latestExpiresAt <= nowTimestamp()) {
       return { valid: false, error: "No active subscription found" };
     }
 
@@ -121,7 +122,7 @@ export const POST = createAuthenticatedHandler(
       {
         subscriptionPlan: plan,
         subscriptionExpiresAt: verified.expiresAt,
-        updatedAt: Date.now(),
+        updatedAt: nowTimestamp(),
       },
       { merge: true }
     );
@@ -131,7 +132,7 @@ export const POST = createAuthenticatedHandler(
       tier: planIdToTier(plan),
       status: "active",
       features: [],
-      startDate: new Date().toISOString(),
+      startDate: new Date(nowTimestamp()).toISOString(),
       endDate: new Date(verified.expiresAt).toISOString(),
       autoRenew: true,
     };

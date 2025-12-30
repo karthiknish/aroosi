@@ -5,6 +5,7 @@
 
 import { api, ApiResponse } from './client';
 import type { QuickPickProfile, ShortlistEntry, NoteData } from '@aroosi/shared';
+import { nowTimestamp } from '../../utils/timestamp';
 
 // Re-export types for convenience
 export type { QuickPickProfile, ShortlistEntry, NoteData } from '@aroosi/shared';
@@ -15,7 +16,7 @@ export type { QuickPickProfile, ShortlistEntry, NoteData } from '@aroosi/shared'
  * Get current day key for quick picks
  */
 function todayKey(): string {
-    const d = new Date();
+    const d = new Date(nowTimestamp());
     return (
         d.getUTCFullYear().toString() +
         String(d.getUTCMonth() + 1).padStart(2, '0') +

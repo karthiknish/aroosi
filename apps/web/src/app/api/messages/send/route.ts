@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { sendFirebaseMessage } from "@/lib/messages/firebaseMessages";
 import {
@@ -20,7 +21,7 @@ import { messageSendSchema } from "@/lib/validation/apiSchemas/messages";
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext, body: import("zod").infer<typeof messageSendSchema>) => {
     const userId = (ctx.user as any).userId || (ctx.user as any).id;
-    const startedAt = Date.now();
+    const startedAt = nowTimestamp();
     
     try {
       // Subscription-based rate limiting
@@ -102,7 +103,7 @@ export const POST = createAuthenticatedHandler(
       // Monthly quota enforcement
       try {
         const feature = resolvedType === "voice" ? "voice_message_sent" : "message_sent";
-        const monthKey = new Date().toISOString().slice(0, 7);
+        const monthKey = new Date(nowTimestamp()).toISOString().slice(0, 7);
         const usageDocId = `${userId}_${feature}_${monthKey}`;
         const usageRef = db.collection("usageEvents").doc(usageDocId);
         const usageSnap = await usageRef.get();
@@ -116,7 +117,7 @@ export const POST = createAuthenticatedHandler(
           });
         }
         await usageRef.set(
-          { feature, month: monthKey, userId, count: currentCount + 1, updatedAt: Date.now() },
+          { feature, month: monthKey, userId, count: currentCount + 1, updatedAt: nowTimestamp() },
           { merge: true }
         );
       } catch (quotaErr) {
@@ -141,7 +142,7 @@ export const POST = createAuthenticatedHandler(
       console.error("messages/send error", {
         error: msg,
         correlationId: ctx.correlationId,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
       });
       return errorResponse("Failed to send message", 500, {
         correlationId: ctx.correlationId,

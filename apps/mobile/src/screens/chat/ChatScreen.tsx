@@ -37,6 +37,10 @@ import { useRealTimeMessages, type MessageData } from '../../hooks/useRealTimeMe
 import {
     markMessagesAsRead as markAsReadApi,
 } from '../../services/api/messages';
+import { useAsyncActions } from '../../hooks/useAsyncAction';
+import { useOffline } from '../../hooks/useOffline';
+import { nowTimestamp } from '../../utils/timestamp';
+import { getMainProfileImage } from '../../utils/profileImage';
 
 interface ChatScreenProps {
     matchId: string;
@@ -53,13 +57,14 @@ export default function ChatScreen({
 }: ChatScreenProps) {
     const { user } = useAuthStore();
     const [inputText, setInputText] = useState('');
-    const [sending, setSending] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     
     // Refs for debouncing and preventing duplicate API calls
     const markAsReadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingReadIdsRef = useRef<Set<string>>(new Set());
     const lastSyncedIdsRef = useRef<Set<string>>(new Set());
+
+    const { checkNetworkOrAlert } = useOffline();
 
     const {
         messages,
@@ -72,6 +77,34 @@ export default function ChatScreen({
         error,
         markAsRead,
     } = useRealTimeMessages({ conversationId: matchId });
+
+    const actions = useAsyncActions({
+        send: async (text: string) => {
+            if (!user?.id) return;
+            const parts = matchId.split('_');
+            const recipientId = parts.find(id => id !== user.id) || '';
+            
+            try {
+                await sendMessageFs(text, recipientId);
+            } catch (err) {
+                // Restore input text on error so user can retry
+                setInputText(text);
+                throw err;
+            }
+        },
+        attach: async (uri: string) => {
+            if (!user?.id) return;
+            const parts = matchId.split('_');
+            const recipientId = parts.find(id => id !== user.id) || '';
+            await sendImageFs(uri, recipientId);
+        }
+    }, { 
+        errorMode: 'alert',
+        errorTitle: 'Message Failed',
+        networkAware: true 
+    });
+
+    const sending = actions.loading.send || actions.loading.attach;
 
     // Mark incoming messages as read - with debouncing to prevent excessive API calls
     useEffect(() => {
@@ -126,27 +159,11 @@ export default function ChatScreen({
 
         const messageText = inputText.trim();
         setInputText('');
-        setSending(true);
-
-        try {
-            // Extract recipientId from matchId (it's user1_user2)
-            const parts = matchId.split('_');
-            const recipientId = parts.find(id => id !== user.id) || '';
-            
-            await sendMessageFs(messageText, recipientId);
-        } catch (err) {
-            console.error('Send error:', err);
-            // Restore the message so user can retry
-            setInputText(messageText);
-            Alert.alert(
-                'Message Failed',
-                'Failed to send your message. Please try again.',
-                [{ text: 'OK' }]
-            );
-        } finally {
-            setSending(false);
-        }
-    }, [inputText, matchId, sending, user?.id, sendMessageFs]);
+        
+        if (!checkNetworkOrAlert(() => setInputText(messageText))) return;
+        
+        await actions.execute.send(messageText);
+    }, [inputText, sending, user?.id, actions.execute, checkNetworkOrAlert]);
 
     // Handle image attachment
     const handleAttach = useCallback(async () => {
@@ -164,22 +181,10 @@ export default function ChatScreen({
         const asset = result.assets[0];
         if (!asset.uri) return;
 
-        setSending(true);
-        try {
-            const parts = matchId.split('_');
-            const recipientId = parts.find(id => id !== user.id) || '';
-            await sendImageFs(asset.uri, recipientId);
-        } catch (err) {
-            console.error('Image send error:', err);
-            Alert.alert(
-                'Image Failed',
-                'Failed to send the image. Please try again.',
-                [{ text: 'OK' }]
-            );
-        } finally {
-            setSending(false);
-        }
-    }, [matchId, sending, user?.id, sendImageFs]);
+        if (!checkNetworkOrAlert()) return;
+
+        await actions.execute.attach(asset.uri);
+    }, [sending, user?.id, actions.execute, checkNetworkOrAlert]);
 
     // Format time
     const formatTime = (timestamp: number) => {
@@ -190,7 +195,7 @@ export default function ChatScreen({
     // Format date header
     const formatDateHeader = (timestamp: number) => {
         const date = new Date(timestamp);
-        const today = new Date();
+        const today = new Date(nowTimestamp());
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
@@ -291,19 +296,11 @@ export default function ChatScreen({
                     <Text style={styles.backIcon}>←</Text>
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
-                    {recipientPhoto ? (
-                        <Image
-                            source={{ uri: recipientPhoto }}
-                            style={styles.headerAvatar}
-                            contentFit="cover"
-                        />
-                    ) : (
-                        <View style={styles.headerAvatarPlaceholder}>
-                            <Text style={styles.headerAvatarText}>
-                                {recipientName.charAt(0)}
-                            </Text>
-                        </View>
-                    )}
+                    <Image
+                        source={getMainProfileImage({ photoURL: recipientPhoto })}
+                        style={styles.headerAvatar}
+                        contentFit="cover"
+                    />
                     <Text style={styles.headerTitle}>{recipientName}</Text>
                 </View>
                 <TouchableOpacity style={styles.headerRight}>

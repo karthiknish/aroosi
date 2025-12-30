@@ -29,6 +29,8 @@ import {
     isSmallDevice,
     moderateScale,
 } from '../../theme';
+import { nowTimestamp } from '../../utils/timestamp';
+import { getMainProfileImage } from '../../utils/profileImage';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import {
@@ -169,7 +171,7 @@ export default function ProfileViewersScreen() {
     // Format date
     const formatDate = (dateValue: string | number | Date) => {
         const date = new Date(dateValue);
-        const now = new Date();
+        const now = new Date(nowTimestamp());
         const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
         if (diffHours < 1) return 'Just now';
@@ -224,20 +226,12 @@ export default function ProfileViewersScreen() {
 
                         {/* Avatar */}
                         <View style={styles.avatarContainer}>
-                            {item.profileImageUrls && item.profileImageUrls[0] ? (
-                                <Image
-                                    source={{ uri: item.profileImageUrls[0] }}
-                                    style={styles.avatar}
-                                    contentFit="cover"
-                                    blurRadius={isBlurred ? 20 : 0}
-                                />
-                            ) : (
-                                <View style={styles.avatarPlaceholder}>
-                                    <Text style={styles.avatarText}>
-                                        {isBlurred ? '?' : item.fullName?.charAt(0) || '?'}
-                                    </Text>
-                                </View>
-                            )}
+                            <Image
+                                source={getMainProfileImage({ profileImageUrls: isBlurred ? undefined : item.profileImageUrls })}
+                                style={styles.avatar}
+                                contentFit="cover"
+                                blurRadius={isBlurred ? 20 : 0}
+                            />
                         </View>
 
                         {/* Info */}

@@ -9,6 +9,7 @@ import { db } from "@/lib/firebaseAdmin";
 import { COL_SAFETY_REPORTS } from "@/lib/firestoreSchema";
 import { Notifications } from "@/lib/notify";
 import { reportSchema } from "@/lib/validation/apiSchemas/safety";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // Use createAuthenticatedHandler with per-target rate limiting
 export const POST = createAuthenticatedHandler(
@@ -24,7 +25,7 @@ export const POST = createAuthenticatedHandler(
         reason,
         description: description?.trim() || undefined,
         status: "pending",
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
       });
 
       // Notify admins for moderation

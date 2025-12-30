@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/handler";
 import { stripe } from "@/lib/stripe";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -45,7 +46,7 @@ export const POST = createAuthenticatedHandler(
                 subscriptionExpiresAt: current.current_period_end
                   ? current.current_period_end * 1000
                   : profile.subscriptionExpiresAt || null,
-                updatedAt: Date.now(),
+                updatedAt: nowTimestamp(),
               },
               { merge: true }
             );

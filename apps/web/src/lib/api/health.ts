@@ -28,6 +28,19 @@ class HealthAPI {
       throw new Error(`HTTP ${res.status}`);
     }
 
+    // Unwrap standardized { success, data } envelope from API handler
+    if (isJson && payload && typeof payload === "object") {
+      const maybe = payload as any;
+      if ("success" in maybe) {
+        if (maybe.success === false) {
+          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+        }
+        if ("data" in maybe) {
+          return maybe.data;
+        }
+      }
+    }
+
     return payload;
   }
 

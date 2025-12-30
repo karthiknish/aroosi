@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
 import { successResponse, errorResponse } from '@/lib/api/handler';
-import { db } from '@/lib/firebaseAdmin';
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { COL_USAGE_EVENTS, COL_USAGE_MONTHLY, monthKey, usageMonthlyId } from '@/lib/firestoreSchema';
 import { getPlanLimits } from '@/lib/subscription/planLimits';
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       return successResponse({ plan, unlimited: true, remaining: -1, used: 0, limit });
     }
     // Count last 24h events for voice_message_sent
-    const since = Date.now() - 24*60*60*1000;
+    const since = nowTimestamp() - 24*60*60*1000;
     let used = 0;
     try {
       const snap = await db.collection(COL_USAGE_EVENTS)

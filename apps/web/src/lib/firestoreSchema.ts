@@ -4,6 +4,7 @@
  * Central definitions for collections replacing legacy Convex modules.
  * Keep side-effect free; only exports types + pure builders.
  */
+import { nowTimestamp } from "./utils/timestamp";
 
 export type TimestampMillis = number;
 
@@ -26,7 +27,7 @@ export const buildInterest = (p: Omit<FSInterest,'createdAt'|'updatedAt'>): FSIn
 
 // profileViews
 export interface FSProfileView { id?: string; viewerId: string; viewedId: string; createdAt: TimestampMillis; }
-export const buildProfileView = (viewerId: string, viewedId: string): FSProfileView => ({ viewerId, viewedId, createdAt: Date.now() });
+export const buildProfileView = (viewerId: string, viewedId: string): FSProfileView => ({ viewerId, viewedId, createdAt: nowTimestamp() });
 
 // boosts
 export interface FSBoost { id?: string; userId: string; startedAt: TimestampMillis; expiresAt: TimestampMillis; type: 'profile'; source?: 'purchase'|'grant'|'reward'; }
@@ -34,7 +35,7 @@ export const buildBoost = (userId: string, durationMs: number, source?: FSBoost[
 
 // blocks
 export interface FSBlock { id?: string; blockerId: string; blockedId: string; createdAt: TimestampMillis; reason?: string; reviewed?: boolean; }
-export const buildBlock = (blockerId: string, blockedId: string, reason?: string): FSBlock => ({ blockerId, blockedId, createdAt: Date.now(), reason });
+export const buildBlock = (blockerId: string, blockedId: string, reason?: string): FSBlock => ({ blockerId, blockedId, createdAt: nowTimestamp(), reason });
 
 // quickPicks
 export interface FSQuickPick { id?: string; userId: string; candidateUserId: string; createdAt: TimestampMillis; rank: number; algorithm: string; expiresAt?: TimestampMillis; }
@@ -61,7 +62,7 @@ export const buildQuickPick = (
 
 // engagementNotes
 export interface FSEngagementNote { id?: string; userId: string; actorUserId: string; note: string; createdAt: TimestampMillis; category?: string; }
-export const buildEngagementNote = (userId: string, actorUserId: string, note: string, category?: string): FSEngagementNote => ({ userId, actorUserId, note, category, createdAt: Date.now() });
+export const buildEngagementNote = (userId: string, actorUserId: string, note: string, category?: string): FSEngagementNote => ({ userId, actorUserId, note, category, createdAt: nowTimestamp() });
 
 // usageTracking raw events
 export interface FSUsageEvent { id?: string; userId: string; feature: string; timestamp: TimestampMillis; month: string; metadata?: Record<string, unknown>; }
@@ -143,7 +144,7 @@ export const COL_TYPING_INDICATORS = 'typingIndicators';
 export const COL_VOICE_MESSAGES = 'voiceMessages';
 
 // Helper id builders
-export function monthKey(ts: number = Date.now()): string { return new Date(ts).toISOString().slice(0,7); }
+export function monthKey(ts: number = nowTimestamp()): string { return new Date(ts).toISOString().slice(0,7); }
 export function usageMonthlyId(userId: string, feature: string, month: string = monthKey()): string { return `${userId}_${month}_${feature}`; }
 export function interestId(fromUserId: string, toUserId: string): string { return `${fromUserId}_${toUserId}`; }
 export function blockId(blockerId: string, blockedId: string): string { return `${blockerId}_${blockedId}`; }
@@ -168,7 +169,7 @@ export function deterministicMatchId(userA: string, userB: string): string {
   return `${sorted[0]}__${sorted[1]}`; // double underscore to avoid accidental collisions
 }
 export const buildMatch = (userA: string, userB: string): FSMatch => {
-  const createdAt = Date.now();
+  const createdAt = nowTimestamp();
   const sorted = [userA, userB].sort();
   return {
     user1Id: sorted[0],
@@ -182,7 +183,7 @@ export const COL_MATCHES = 'matches';
 
 // notes (private engagement notes)
 export interface FSNote { id?: string; userId: string; toUserId: string; note: string; updatedAt: TimestampMillis; createdAt: TimestampMillis; }
-export const buildNote = (userId: string, toUserId: string, note: string): FSNote => { const now = Date.now(); return { userId, toUserId, note, updatedAt: now, createdAt: now }; };
+export const buildNote = (userId: string, toUserId: string, note: string): FSNote => { const now = nowTimestamp(); return { userId, toUserId, note, updatedAt: now, createdAt: now }; };
 
 // voice messages
 export interface FSVoiceMessage { id?: string; conversationId: string; fromUserId: string; toUserId: string; storagePath: string; duration: number; fileSize: number; mimeType: string; createdAt: TimestampMillis; peaks?: number[]; }

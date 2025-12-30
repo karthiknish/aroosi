@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // GET /api/auth/verify-email?token=...  (public link)
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
   try {
     const token = req.nextUrl.searchParams.get("token")?.trim();
     if (!token) {
@@ -22,11 +23,11 @@ export async function GET(req: NextRequest) {
     const doc = snap.docs[0];
     const data = doc.data() as any;
     const meta = data.emailVerification || {};
-    if (!meta.expiresAt || meta.expiresAt < Date.now()) {
+    if (!meta.expiresAt || meta.expiresAt < nowTimestamp()) {
       return NextResponse.json({ error: "Token expired", correlationId }, { status: 400 });
     }
 
-    await doc.ref.set({ emailVerified: true, emailVerification: { ...meta, verifiedAt: Date.now() }, updatedAt: Date.now() }, { merge: true });
+    await doc.ref.set({ emailVerified: true, emailVerification: { ...meta, verifiedAt: nowTimestamp() }, updatedAt: nowTimestamp() }, { merge: true });
 
     // OPTIONAL: redirect to success page instead of JSON
     const redirectBase = process.env.NEXT_PUBLIC_APP_BASE_URL || "https://aroosi.app";
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Verification failed", correlationId }, { status: 500 });
   } finally {
     if (process.env.NODE_ENV !== "production") {
-      console.info("verify-email.consume", { correlationId, durationMs: Date.now() - startedAt });
+      console.info("verify-email.consume", { correlationId, durationMs: nowTimestamp() - startedAt });
     }
   }
 }

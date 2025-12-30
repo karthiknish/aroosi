@@ -14,6 +14,7 @@ import {
   errorResponse,
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
   const { user, correlationId } = ctx;
@@ -27,7 +28,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
     }
     
     const profile = snap.data() as any;
-    const now = Date.now();
+    const now = nowTimestamp();
     const plan = normalisePlan(profile.subscriptionPlan);
     const expiresAt: number | undefined = profile.subscriptionExpiresAt;
     
@@ -113,7 +114,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
           const data = monthlySnap.data() as any;
           batch.update(monthlyRef, {
             count: (data.count || 0) + 1,
-            updatedAt: Date.now(),
+            updatedAt: nowTimestamp(),
           });
         } else {
           batch.set(

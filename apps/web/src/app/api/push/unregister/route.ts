@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 /**
@@ -36,7 +37,7 @@ export const POST = createAuthenticatedHandler(
           playerId: id,
           token: token || undefined,
           isActive: false,
-          unregisteredAt: Date.now(),
+          unregisteredAt: nowTimestamp(),
         },
         { merge: true }
       );
@@ -44,7 +45,7 @@ export const POST = createAuthenticatedHandler(
       return successResponse({
         message: "Push token unregistered",
         playerId: id,
-        unregisteredAt: Date.now(),
+        unregisteredAt: nowTimestamp(),
       }, 200, ctx.correlationId);
     } catch (error) {
       console.error("push/unregister POST error", { error, correlationId: ctx.correlationId });

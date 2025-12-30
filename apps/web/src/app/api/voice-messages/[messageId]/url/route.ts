@@ -5,6 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db, adminStorage } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { COL_VOICE_MESSAGES } from "@/lib/firestoreSchema";
 
 interface RouteContext {
@@ -40,7 +41,7 @@ export const GET = createAuthenticatedHandler(
       const file = adminStorage.bucket().file(voiceMessage.storagePath);
       const [audioUrl] = await file.getSignedUrl({
         action: "read",
-        expires: Date.now() + 60 * 60 * 1000,
+        expires: nowTimestamp() + 60 * 60 * 1000,
       });
 
       if (!audioUrl) {

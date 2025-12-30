@@ -9,6 +9,7 @@ import {
 import { searchSchema } from "@/lib/api/schemas";
 import { db, COLLECTIONS, adminStorage } from "@/lib/firebaseAdmin";
 import { FieldPath, Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   calculateAge as robustCalculateAge,
   deriveDateFromAny,
@@ -365,7 +366,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
     if (!primaryBoostOrderingApplied || !primaryAnsweredOrderingApplied) {
       try {
         docs.sort((a: any, b: any) => {
-          const nowTs = Date.now();
+          const nowTs = nowTimestamp();
           const aBoostActive =
             typeof a.boostedUntil === "number" && a.boostedUntil > nowTs;
           const bBoostActive =
@@ -405,7 +406,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
             const file = adminStorage.bucket(bucketName).file(storagePath);
             const [signedUrl] = await file.getSignedUrl({
               action: "read",
-              expires: Date.now() + 60 * 60 * 1000,
+              expires: nowTimestamp() + 60 * 60 * 1000,
             });
             return signedUrl;
           } catch {
@@ -419,7 +420,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
           const file = adminStorage.bucket(bucketName).file(urlOrPath);
           const [signedUrl] = await file.getSignedUrl({
             action: "read",
-            expires: Date.now() + 60 * 60 * 1000,
+            expires: nowTimestamp() + 60 * 60 * 1000,
           });
           return signedUrl;
         } catch {

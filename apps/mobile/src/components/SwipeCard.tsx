@@ -27,6 +27,7 @@ import {
     isSmallDevice,
 } from '../theme';
 import type { RecommendedProfile } from '../services/api/recommendations';
+import { getMainProfileImage, getGenderPlaceholder } from '../utils/profileImage';
 
 const CARD_WIDTH = SCREEN_WIDTH - (responsiveValues.screenPadding * 2);
 const CARD_HEIGHT = Math.min(SCREEN_HEIGHT * 0.65, 550);
@@ -42,10 +43,12 @@ interface SwipeCardProps {
 }
 
 export function SwipeCard({ profile, onLike, onPass, onSuperLike, onInfo }: SwipeCardProps) {
-    const { displayName, photoURL, photos, age, location, bio, interests, isVerified } = profile;
+    const { displayName, age, location, bio, interests, isVerified } = profile;
+    const gender = (profile as any).gender;
 
     // Get the main photo
-    const mainPhoto = photos?.[0] || photoURL;
+    const mainPhoto = getMainProfileImage(profile as any);
+    const genderPlaceholder = getGenderPlaceholder(gender);
 
     return (
         <View style={styles.card}>
@@ -60,7 +63,7 @@ export function SwipeCard({ profile, onLike, onPass, onSuperLike, onInfo }: Swip
                     />
                 ) : (
                     <View style={styles.placeholderImage}>
-                        <Text style={styles.placeholderEmoji}>👤</Text>
+                        <Text style={styles.placeholderEmoji}>{genderPlaceholder}</Text>
                     </View>
                 )}
 

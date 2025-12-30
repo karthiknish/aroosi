@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 const COLL = 'email_builder_presets';
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const name = String(body?.name || '').trim();
     const schema = body?.schema;
     if (!name || !schema || typeof schema !== 'object') return errorResponse('Invalid payload', 400);
-    const now = Date.now();
+    const now = nowTimestamp();
     const doc = await db.collection(COLL).add({ name, schema, createdAt: now, updatedAt: now });
     return successResponse({ id: doc.id });
   } catch (e) {

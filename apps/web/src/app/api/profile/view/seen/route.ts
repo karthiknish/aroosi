@@ -6,6 +6,7 @@ import {
   errorResponse,
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 /**
  * POST  /api/profile/view/seen
@@ -15,7 +16,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
   const { user, correlationId } = ctx;
   try {
     await db.collection("users").doc(user.id).set(
-      { lastSeenViewersAt: Date.now() },
+      { lastSeenViewersAt: nowTimestamp() },
       { merge: true }
     );
 

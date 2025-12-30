@@ -7,12 +7,13 @@ import {
   deleteProfileById,
 } from "@/lib/admin/firestoreAdminProfiles";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@aroosi/shared/types";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
 
   try {
     await ensureAdmin();
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
         correlationId,
         profileId: id,
         statusCode: 404,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
       });
       return NextResponse.json(
         { success: false, error: "Profile not found", correlationId },
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
       type: "success",
       correlationId,
       statusCode: 200,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
     });
     const nocache = searchParams.get("nocache") === "true";
     return NextResponse.json(
@@ -96,7 +97,7 @@ export async function GET(req: NextRequest) {
       message,
       correlationId,
       statusCode: 500,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
     });
     return NextResponse.json(
       { error: "Failed", correlationId },
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
 
   try {
     await ensureAdmin();
@@ -180,7 +181,7 @@ export async function PUT(req: NextRequest) {
     type: "success",
     correlationId,
     statusCode: 200,
-    durationMs: Date.now() - startedAt,
+    durationMs: nowTimestamp() - startedAt,
   });
   return NextResponse.json(
     { success: true, result, correlationId },
@@ -190,7 +191,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
 
   try {
     await ensureAdmin();
@@ -226,7 +227,7 @@ export async function DELETE(req: NextRequest) {
     type: "success",
     correlationId,
     statusCode: 200,
-    durationMs: Date.now() - startedAt,
+    durationMs: nowTimestamp() - startedAt,
   });
   return NextResponse.json(
     { success: true, deleted: true, correlationId },

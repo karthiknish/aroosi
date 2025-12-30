@@ -2,6 +2,7 @@ import { createAuthenticatedHandler, successResponse, errorResponse, validateQue
 import { requireAdmin } from "@/lib/api/admin";
 import { devLog } from "@/app/api/_utils/auth";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { z } from "zod";
 
 const adminMatchesQuerySchema = z.object({
@@ -11,7 +12,7 @@ const adminMatchesQuerySchema = z.object({
 
 export const GET = createAuthenticatedHandler(
   async (ctx) => {
-    const startedAt = Date.now();
+    const startedAt = nowTimestamp();
     const admin = requireAdmin(ctx);
     if (!admin.ok) return admin.response;
 
@@ -91,7 +92,7 @@ export const GET = createAuthenticatedHandler(
     devLog("info", "admin.matches", "success", {
       correlationId: ctx.correlationId,
       statusCode: 200,
-      durationMs: Date.now() - startedAt,
+      durationMs: nowTimestamp() - startedAt,
       groups: grouped.length,
       total,
       edges: rawMatches.length,
@@ -111,7 +112,7 @@ export const GET = createAuthenticatedHandler(
       devLog("error", "admin.matches", "unhandled_error", {
         correlationId: ctx.correlationId,
         statusCode: 500,
-        durationMs: Date.now() - startedAt,
+        durationMs: nowTimestamp() - startedAt,
         message,
       });
       return errorResponse("Failed to fetch matches", 500, {

@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { recordProfileViewSchema } from "@/lib/validation/apiSchemas/profileView";
 import { db } from "@/lib/firebaseAdmin";
 import { adminFieldValue } from "@/lib/firebaseAdminInit";
@@ -12,7 +13,7 @@ import {
   sendFcmNotificationToTokens,
 } from "@/lib/notifications/firebaseNotifications";
 
-function dayKey(ts: number = Date.now()) {
+function dayKey(ts: number = nowTimestamp()) {
   const d = new Date(ts);
   return (
     d.getUTCFullYear().toString() +
@@ -40,7 +41,7 @@ export const POST = createAuthenticatedHandler(
       await db.collection("profileViews").add({
         profileId,
         viewerId: userId,
-        createdAt: Date.now(),
+        createdAt: nowTimestamp(),
       });
       
       // Increment aggregate counter on target profile
@@ -66,7 +67,7 @@ export const POST = createAuthenticatedHandler(
             targetUserId: profileId,
             viewerId: userId,
             dayKey: dk,
-            createdAt: Date.now(),
+            createdAt: nowTimestamp(),
           });
           
           await createInAppNotification({
@@ -138,11 +139,11 @@ export const GET = createAuthenticatedHandler(
       }
 
       // Calculate time filter cutoff
-      const now = Date.now();
+      const now = nowTimestamp();
       let cutoffTime = 0;
       switch (filter) {
         case "today":
-          const todayStart = new Date();
+          const todayStart = new Date(nowTimestamp());
           todayStart.setHours(0, 0, 0, 0);
           cutoffTime = todayStart.getTime();
           break;

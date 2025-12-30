@@ -5,6 +5,7 @@ import {
   ApiContext,
   validateQueryParams
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { publicProfileQuerySchema } from "@/lib/validation/apiSchemas/publicProfile";
 
@@ -35,7 +36,7 @@ export const GET = createApiHandler(
           type: "not_found",
           correlationId: ctx.correlationId,
           statusCode: 404,
-          durationMs: Date.now() - ctx.startTime,
+          durationMs: nowTimestamp() - ctx.startTime,
         });
         return errorResponse("Not found", 404, { correlationId: ctx.correlationId });
       }
@@ -73,7 +74,7 @@ export const GET = createApiHandler(
         type: "success",
         correlationId: ctx.correlationId,
         statusCode: 200,
-        durationMs: Date.now() - ctx.startTime,
+        durationMs: nowTimestamp() - ctx.startTime,
       });
 
       return successResponse(publicProfile, 200, ctx.correlationId);
@@ -85,7 +86,7 @@ export const GET = createApiHandler(
         message,
         correlationId: ctx.correlationId,
         statusCode: 500,
-        durationMs: Date.now() - ctx.startTime,
+        durationMs: nowTimestamp() - ctx.startTime,
       });
       return errorResponse("Failed to fetch profile", 500, { correlationId: ctx.correlationId });
     }

@@ -6,6 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { normalisePlan } from "@/lib/subscription/planLimits";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ export const GET = createApiHandler(
     }
 
     const p = profile as any;
-    const now = Date.now();
+    const now = nowTimestamp();
     const expiresAt = typeof p.subscriptionExpiresAt === "number" ? p.subscriptionExpiresAt : null;
     const isActive = expiresAt ? expiresAt > now : false;
     const rawPlan = (p.subscriptionPlan ?? "free") || "free";

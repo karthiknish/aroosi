@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 const COLL = 'email_builder_presets';
 
@@ -11,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const updates: any = { updatedAt: Date.now() };
+    const updates: any = { updatedAt: nowTimestamp() };
     if (typeof body?.name === 'string') updates.name = String(body.name).trim();
     if (body?.schema && typeof body.schema === 'object') {
       updates.schema = body.schema;
@@ -21,7 +22,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         if (current.exists) {
           const cur = current.data() as any;
           const versionDoc = {
-            createdAt: Date.now(),
+            createdAt: nowTimestamp(),
             name: cur?.name,
             schema: cur?.schema,
             updatedAt: cur?.updatedAt,

@@ -19,6 +19,7 @@ import { renderTemplate as renderCustomTemplate } from "@/lib/marketingTemplateR
 import { renderBuiltTemplate } from "@/lib/templateBuilder";
 import { createSignedTrackingToken, getPublicBaseUrl, hashEmail } from "@/lib/tracking";
 import { buildListUnsubscribeHeaders, isUnsubscribed } from "@/lib/unsubscribe";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { adminMarketingEmailBodySchema } from "@/lib/validation/apiSchemas/adminMarketingEmail";
 
 const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
@@ -218,7 +219,7 @@ export const POST = createAuthenticatedHandler(
       profiles = profiles.filter((p) => p.banned !== true);
     // last active filters
     if (Number.isFinite(lastActiveDays)) {
-      const cutoff = Date.now() - Number(lastActiveDays) * 24 * 60 * 60 * 1000;
+      const cutoff = nowTimestamp() - Number(lastActiveDays) * 24 * 60 * 60 * 1000;
       profiles = profiles.filter(
         (p: any) => !p.lastLoginAt || p.lastLoginAt <= cutoff
       );
@@ -483,7 +484,7 @@ export const POST = createAuthenticatedHandler(
               ratio: Math.max(1, Math.min(99, Number(abTest.ratio ?? 50))),
             }
           : null,
-      createdAt: Date.now(),
+      createdAt: nowTimestamp(),
       startedBy: userId,
       totalCandidates: finalProfiles.length,
       sent: 0,
@@ -709,7 +710,7 @@ export const POST = createAuthenticatedHandler(
           sent += 1;
           if (sent % 25 === 0) {
             await campaignRef.set(
-              { sent, updatedAt: Date.now() },
+              { sent, updatedAt: nowTimestamp() },
               { merge: true }
             );
           }
@@ -723,7 +724,7 @@ export const POST = createAuthenticatedHandler(
           {
             errors,
             lastError: err?.message || String(err),
-            updatedAt: Date.now(),
+            updatedAt: nowTimestamp(),
           },
           { merge: true }
         );
@@ -735,8 +736,8 @@ export const POST = createAuthenticatedHandler(
         status: "completed",
         sent,
         skippedUnsubscribed,
-        completedAt: Date.now(),
-        updatedAt: Date.now(),
+        completedAt: nowTimestamp(),
+        updatedAt: nowTimestamp(),
       },
       { merge: true }
     );

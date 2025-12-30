@@ -5,6 +5,7 @@ import {
   AuthenticatedApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 async function countCollection(col: string): Promise<number> {
   try {
@@ -24,7 +25,7 @@ async function countCollection(col: string): Promise<number> {
 
 export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
   const { correlationId, user } = ctx;
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
   
   // Basic admin role check (handler.ts handles authentication)
   if (user.role !== "admin") {
@@ -51,7 +52,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
     ]);
 
     // Active users: distinct fromUserId in messages last 30 days
-    const THIRTY_DAYS = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const THIRTY_DAYS = nowTimestamp() - 30 * 24 * 60 * 60 * 1000;
     let activeUsers = 0;
     try {
       const activitySnap = await db
@@ -71,7 +72,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
     // New registrations last 7 days (users collection)
     let newRegistrations = 0;
     try {
-      const sevenDays = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const sevenDays = nowTimestamp() - 7 * 24 * 60 * 60 * 1000;
       const newSnap = await db
         .collection("users")
         .where("createdAt", ">=", sevenDays)
@@ -101,8 +102,8 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
       contactMessages,
       blogPosts,
       approvalsPending,
-      generatedAt: Date.now(),
-      durationMs: Date.now() - startedAt,
+      generatedAt: nowTimestamp(),
+      durationMs: nowTimestamp() - startedAt,
     };
     
     return successResponse({ stats: payload }, 200, correlationId);

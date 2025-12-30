@@ -6,6 +6,7 @@ import auth from '@react-native-firebase/auth';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, DEBUG } from '../../config';
+import { nowTimestamp } from '../../utils/timestamp';
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -77,7 +78,7 @@ export async function apiRequest<T>(
             const cachedData = await AsyncStorage.getItem(cacheKey);
             if (cachedData) {
                 const { data, timestamp, ttl } = JSON.parse(cachedData);
-                const isExpired = Date.now() - timestamp > (ttl || DEFAULT_CACHE_TTL);
+                const isExpired = nowTimestamp() - timestamp > (ttl || DEFAULT_CACHE_TTL);
                 
                 // Check network status
                 const netInfo = await NetInfo.fetch();
@@ -196,7 +197,7 @@ export async function apiRequest<T>(
                     cacheKey,
                     JSON.stringify({
                         data: finalData,
-                        timestamp: Date.now(),
+                        timestamp: nowTimestamp(),
                         ttl: options.cacheTTL || DEFAULT_CACHE_TTL,
                     })
                 );

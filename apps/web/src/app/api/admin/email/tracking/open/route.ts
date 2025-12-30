@@ -1,69 +1,70 @@
 import { NextRequest } from "next/server";
-import { adminDb } from "@/lib/firebaseAdminInit";
+import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { hourKey } from "@/lib/tracking";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
-// 1x1 transparent PNG (base64)
-const PIXEL = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQImWP4////fwAJ+wP+g6l4kQAAAABJRU5ErkJggg==",
-  "base64"
-);
+export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const cid = searchParams.get("cid") || undefined; // campaignId
-    const eid = searchParams.get("eid") || undefined; // email hash id
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const cid = searchParams.get("cid");
+  const eid = searchParams.get("eid");
 
-    const clientIp =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "anonymous";
-
-    // Best-effort rate limit: never block the pixel, only skip writes.
-    const rl = checkApiRateLimit(`email_tracking_open_${clientIp}`, 600, 60_000);
-    const allowWrite = rl.allowed;
-
-    const isSafeId = (v: string | undefined) =>
-      !!v && v.length <= 200 && /^[a-zA-Z0-9._:-]+$/.test(v);
-
-    if (!cid || !eid) {
-      return new Response(PIXEL, {
-        status: 200,
-        headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" },
-      });
-    }
-
-    if (!isSafeId(cid) || !isSafeId(eid)) {
-      return new Response(PIXEL, {
-        status: 200,
-        headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" },
-      });
-    }
-
-    if (!allowWrite) {
-      return new Response(PIXEL, {
-        status: 200,
-        headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" },
-      });
-    }
-
-    const now = Date.now();
-    const hour = hourKey(now);
-    const ref = adminDb.collection("email_tracking").doc(cid).collection("opens").doc(eid);
-    await adminDb.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const data = snap.exists ? (snap.data() as any) : { count: 0, byHour: {} as Record<string, number>, firstAt: now };
-      data.count = (data.count || 0) + 1;
-      data.lastAt = now;
-      data.byHour[hour] = (data.byHour[hour] || 0) + 1;
-      tx.set(ref, data, { merge: true });
-    });
-  } catch {
-    // ignore errors and still return pixel
+  if (!cid || !eid) {
+    return new Response(null, { status: 400 });
   }
-  return new Response(PIXEL, {
-    status: 200,
-    headers: { "Content-Type": "image/png", "Cache-Control": "no-store, max-age=0" },
+
+  // Basic rate limiting for open tracking
+  const rl = checkApiRateLimit(`email_open_${cid}`, 500, 60000);
+  if (!rl.allowed) {
+    return new Response(null, { status: 429 });
+  }
+
+  try {
+    const now = nowTimestamp();
+    const hour = hourKey(now);
+    const ref = db.collection("email_tracking").doc(cid).collection("opens").doc(eid);
+    
+    await db.runTransaction(async (tx: any) => {
+      const doc = await tx.get(ref);
+      if (doc.exists) return; // already tracked
+
+      tx.set(ref, {
+        timestamp: now,
+        hour,
+        userAgent: req.headers.get("user-agent") || "unknown",
+        ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
+      });
+
+      // Update aggregations
+      const campaignRef = db.collection("email_tracking").doc(cid);
+      tx.set(campaignRef, {
+        opens: (db as any).FieldValue.increment(1),
+        updatedAt: now,
+      }, { merge: true });
+
+      const hourRef = campaignRef.collection("hourly_stats").doc(hour);
+      tx.set(hourRef, {
+        opens: (db as any).FieldValue.increment(1),
+        updatedAt: now,
+      }, { merge: true });
+    });
+  } catch (e) {
+    console.error("Failed to track email open", e);
+  }
+
+  // Still return the transparent pixel even if tracking failed
+  const pixel = Buffer.from(
+    "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+    "base64"
+  );
+  return new Response(pixel, {
+    headers: {
+      "Content-Type": "image/gif",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
   });
 }

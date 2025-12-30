@@ -13,6 +13,7 @@ import {
   errorResponse,
   ApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
 import {
   profileImagesDeleteSchema,
@@ -168,7 +169,7 @@ export const POST = createAuthenticatedHandler(
             contentType,
             size,
             url: publicUrl,
-            uploadedAt: Date.now(),
+            uploadedAt: nowTimestamp(),
           },
           { merge: true }
         );
@@ -276,7 +277,7 @@ export const DELETE = createAuthenticatedHandler(
           await userRef.update({
             profileImageUrls: currentUrls,
             profileImageIds: currentIds,
-            updatedAt: Date.now(),
+            updatedAt: nowTimestamp(),
           });
         }
       }

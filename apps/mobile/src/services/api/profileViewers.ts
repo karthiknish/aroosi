@@ -3,9 +3,10 @@
  * Handles tracking and fetching profile views
  */
 
-import { api } from './client';
-import type { ProfileViewer, ViewersResponse, ViewerFilter } from '@aroosi/shared';
+import { api, ApiResponse } from './client';
+import { nowTimestamp } from '../../utils/timestamp';
 
+import type { ProfileViewer, ViewersResponse, ViewerFilter } from '@aroosi/shared';
 // Re-export types for convenience
 export type { ProfileViewer, ViewersResponse, ViewerFilter } from '@aroosi/shared';
 
@@ -59,8 +60,8 @@ export function groupViewersByDate(viewers: ProfileViewer[]): {
     thisWeek: ProfileViewer[];
     earlier: ProfileViewer[];
 } {
-    const now = Date.now();
-    const todayStart = new Date();
+    const now = nowTimestamp();
+    const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     const weekStart = now - 7 * 24 * 60 * 60 * 1000;
 
@@ -86,4 +87,3 @@ export function groupViewersByDate(viewers: ProfileViewer[]): {
 
     return { today, thisWeek, earlier };
 }
-

@@ -6,6 +6,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { headers } from "next/headers";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // GET: Fetch matches for current user
 export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
@@ -50,7 +51,7 @@ export const GET = createAuthenticatedHandler(async (ctx: ApiContext) => {
             userId: otherUserId,
             fullName: profile.fullName ?? null,
             profileImageUrls: profile.profileImageUrls ?? [],
-            createdAt: match.createdAt ?? Date.now(),
+            createdAt: match.createdAt ?? nowTimestamp(),
           };
         }
       )

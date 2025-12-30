@@ -41,6 +41,19 @@ class AdminIcebreakersAPI {
       throw new Error(String(msg));
     }
 
+    // Unwrap standardized { success, data } envelope from API handler
+    if (isJson && payload && typeof payload === "object") {
+      const maybe = payload as any;
+      if ("success" in maybe) {
+        if (maybe.success === false) {
+          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+        }
+        if ("data" in maybe) {
+          return maybe.data;
+        }
+      }
+    }
+
     return payload;
   }
 
@@ -49,7 +62,10 @@ class AdminIcebreakersAPI {
    */
   async list(): Promise<AdminIcebreaker[]> {
     const res = await this.makeRequest("/api/admin/icebreakers");
-    return res.data?.items || [];
+    const items = res?.items ?? res?.data?.items;
+    if (Array.isArray(items)) return items;
+    if (Array.isArray(res)) return res;
+    return [];
   }
 
   /**

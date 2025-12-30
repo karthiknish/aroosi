@@ -8,8 +8,9 @@ import { db, adminStorage } from "@/lib/firebaseAdmin";
 import { FieldPath } from "firebase-admin/firestore";
 import { buildQuickPick, COL_QUICK_PICKS } from "@/lib/firestoreSchema";
 import { engagementQuickPickActionSchema } from "@/lib/validation/apiSchemas/engagement";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
-const DAY_FMT = () => new Date().toISOString().slice(0, 10);
+const DAY_FMT = () => new Date(nowTimestamp()).toISOString().slice(0, 10);
 
 async function ensureQuickPicks(userId: string, dayKey?: string) {
   const day = dayKey || DAY_FMT();
@@ -89,7 +90,7 @@ async function fetchQuickPickProfiles(userIds: string[]) {
       if (match && match[1]) {
         try {
           const file = adminStorage.bucket(bucketName).file(decodeURIComponent(match[1]));
-          const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 60 * 60 * 1000 });
+          const [signedUrl] = await file.getSignedUrl({ action: "read", expires: nowTimestamp() + 60 * 60 * 1000 });
           return signedUrl;
         } catch { return urlOrPath; }
       }
@@ -98,7 +99,7 @@ async function fetchQuickPickProfiles(userIds: string[]) {
     if (urlOrPath.startsWith("users/")) {
       try {
         const file = adminStorage.bucket(bucketName).file(urlOrPath);
-        const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 60 * 60 * 1000 });
+        const [signedUrl] = await file.getSignedUrl({ action: "read", expires: nowTimestamp() + 60 * 60 * 1000 });
         return signedUrl;
       } catch { return `https://storage.googleapis.com/${bucketName}/${urlOrPath}`; }
     }
@@ -179,12 +180,12 @@ export const POST = createAuthenticatedHandler(
             fromUserId: userId,
             toUserId,
             status: "pending",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: nowTimestamp(),
+            updatedAt: nowTimestamp(),
           });
         }
       } else {
-        await db.collection("quickPickSkips").add({ userId, toUserId, createdAt: Date.now() });
+        await db.collection("quickPickSkips").add({ userId, toUserId, createdAt: nowTimestamp() });
       }
 
       return successResponse({ action, toUserId }, 200, ctx.correlationId);

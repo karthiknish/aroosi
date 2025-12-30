@@ -5,6 +5,7 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { subscriptionValidatePurchaseSchema } from "@/lib/validation/apiSchemas/subscription";
 import {
@@ -82,7 +83,7 @@ async function validateAppleReceipt(receiptData: string): Promise<{
     }
   }
 
-  if (!latestPurchase || latestExpiresAt <= Date.now()) {
+  if (!latestPurchase || latestExpiresAt <= nowTimestamp()) {
     return { valid: false, error: "No active subscription found" };
   }
 
@@ -114,7 +115,7 @@ async function validateGooglePurchase(
   const data = await res.json();
   if (data && data.expiryTimeMillis && (!data.cancelReason || data.cancelReason === 0)) {
     const expiresAt = parseInt(data.expiryTimeMillis, 10);
-    if (expiresAt > Date.now()) {
+    if (expiresAt > nowTimestamp()) {
       return { valid: true, expiresAt };
     }
     return { valid: false, error: "Subscription expired" };
@@ -177,7 +178,7 @@ export const POST = createAuthenticatedHandler(
         {
           subscriptionPlan: plan,
           subscriptionExpiresAt: expiresAt,
-          updatedAt: Date.now(),
+          updatedAt: nowTimestamp(),
         },
         { merge: true }
       );

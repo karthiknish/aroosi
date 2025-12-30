@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { sanitizeBlogContent, sanitizeBlogExcerpt, sanitizeBlogTitle, sanitizeBlogSlug } from "@/lib/blogSanitize";
 import { requireSession } from "@/app/api/_utils/auth";
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   for (const f of required)
     if (!(f in body)) return errorResponse(`Missing field: ${f}`, 400);
   try {
-    const now = Date.now();
+    const now = nowTimestamp();
     const doc = db.collection(COLLECTION).doc();
     const submission = {
       title: sanitizeBlogTitle(String(body.title)),

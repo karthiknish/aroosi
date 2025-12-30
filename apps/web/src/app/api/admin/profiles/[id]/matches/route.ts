@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import { db } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 function devLog(
   level: "info" | "warn" | "error",
@@ -15,7 +16,7 @@ function devLog(
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const startedAt = nowTimestamp();
 
   try {
     await ensureAdmin();
@@ -40,14 +41,14 @@ export async function GET(req: NextRequest) {
     })
   );
 
-    devLog("info", "admin.profile_matches", "success", { correlationId, statusCode: 200, durationMs: Date.now() - startedAt });
+    devLog("info", "admin.profile_matches", "success", { correlationId, statusCode: 200, durationMs: nowTimestamp() - startedAt });
   return NextResponse.json(
     { success: true, matches, correlationId },
     { status: 200 }
   );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    devLog("error", "admin.profile_matches", "unhandled_error", { message, correlationId, statusCode: 500, durationMs: Date.now() - startedAt });
+    devLog("error", "admin.profile_matches", "unhandled_error", { message, correlationId, statusCode: 500, durationMs: nowTimestamp() - startedAt });
     return NextResponse.json({ error: "Failed", correlationId }, { status: 500 });
   }
 }

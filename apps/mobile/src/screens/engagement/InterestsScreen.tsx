@@ -28,6 +28,8 @@ import {
     responsiveFontSizes,
     isSmallDevice,
 } from '../../theme';
+import { nowTimestamp } from '../../utils/timestamp';
+import { getMainProfileImage } from '../../utils/profileImage';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import {
@@ -149,7 +151,7 @@ export default function InterestsScreen() {
     // Format date
     const formatDate = (dateValue: string | number | Date) => {
         const date = new Date(dateValue);
-        const now = new Date();
+        const now = new Date(nowTimestamp());
         const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
         if (diffDays === 0) return 'Today';
@@ -183,19 +185,11 @@ export default function InterestsScreen() {
                     <View style={styles.itemContent}>
                         {/* Avatar */}
                         <View style={styles.avatarContainer}>
-                            {user?.profileImageUrls && user.profileImageUrls[0] ? (
-                                <Image
-                                    source={{ uri: user.profileImageUrls[0] }}
-                                    style={styles.avatar}
-                                    contentFit="cover"
-                                />
-                            ) : (
-                                <View style={styles.avatarPlaceholder}>
-                                    <Text style={styles.avatarText}>
-                                        {user?.fullName?.charAt(0) || '?'}
-                                    </Text>
-                                </View>
-                            )}
+                            <Image
+                                source={getMainProfileImage({ profileImageUrls: user?.profileImageUrls })}
+                                style={styles.avatar}
+                                contentFit="cover"
+                            />
                         </View>
 
                         {/* Info */}

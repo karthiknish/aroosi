@@ -5,7 +5,8 @@ import {
   ApiContext
 } from "@/lib/api/handler";
 import { getSubscriptionFeatures } from "@/lib/utils/subscriptionUtils";
-import { db } from "@/lib/firebaseAdmin";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
@@ -33,7 +34,7 @@ export const GET = createAuthenticatedHandler(
         plan,
         features: enhancedFeatures,
         isActive: profile.subscriptionExpiresAt
-          ? profile.subscriptionExpiresAt > Date.now()
+          ? profile.subscriptionExpiresAt > nowTimestamp()
           : false,
       }, 200, ctx.correlationId);
     } catch (error) {

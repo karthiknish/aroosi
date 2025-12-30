@@ -14,6 +14,7 @@ import {
   errorResponse,
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 // Activate (or renew) a spotlight badge for Premium Plus users.
 // If plan limit spotlight_badge is -1 => unlimited activations (no usage decrement).
@@ -31,7 +32,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
     }
     
     const profile = snap.data() as any;
-    const now = Date.now();
+    const now = nowTimestamp();
     const plan = normalisePlan(profile.subscriptionPlan);
     const expiresAt: number | undefined = profile.subscriptionExpiresAt;
     
@@ -89,7 +90,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
           const data = monthlySnap.data() as any;
           batch.update(monthlyRef, {
             count: (data.count || 0) + 1,
-            updatedAt: Date.now(),
+            updatedAt: nowTimestamp(),
           });
         } else {
           batch.set(

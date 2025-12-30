@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
-import { 
+import {
   getUserProfileByUid,
   updateUserProfile,
   deleteUserProfile
 } from "@/lib/userProfile";
 import { adminAuth } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import {
   createAuthenticatedHandler,
   successResponse,
@@ -36,7 +37,7 @@ export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiCon
       disabled: true,
       banned: true,
       banReason: `Account deleted: ${reason || 'User requested deletion'}`,
-      updatedAt: Date.now()
+      updatedAt: nowTimestamp()
     });
 
     // Step 2: Delete Firebase user account using admin SDK

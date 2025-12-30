@@ -2,6 +2,7 @@
  * Mobile Validation Utilities
  * Provides consistent validation for mobile app matching web app standards
  */
+import { nowTimestamp } from './timestamp';
 
 // Unicode name validation pattern (matches web app)
 const NAME_PATTERN = /^[\p{L}\s\-'.]+$/u;
@@ -104,7 +105,7 @@ export function validateDateOfBirth(
   }
 
   // Check valid ranges
-  if (y < 1900 || y > new Date().getFullYear()) {
+  if (y < 1900 || y > new Date(nowTimestamp()).getFullYear()) {
     return { valid: false, error: 'Invalid year' };
   }
 
@@ -127,7 +128,7 @@ export function validateDateOfBirth(
   }
 
   // Calculate age
-  const today = new Date();
+  const today = new Date(nowTimestamp());
   let age = today.getFullYear() - y;
   const monthDiff = today.getMonth() + 1 - m;
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {

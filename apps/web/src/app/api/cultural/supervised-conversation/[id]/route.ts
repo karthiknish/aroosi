@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import type {
   SupervisedConversation,
@@ -42,7 +43,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
           }
         }
 
-        const now = Date.now();
+        const now = nowTimestamp();
         const updateData: Partial<SupervisedConversation> = { updatedAt: now };
 
         if (status) {

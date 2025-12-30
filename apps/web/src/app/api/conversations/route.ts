@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 
 export const GET = createAuthenticatedHandler(
@@ -122,9 +123,9 @@ export const GET = createAuthenticatedHandler(
               }
             }
 
-            const createdAt = m.createdAt || Date.now();
+            const createdAt = m.createdAt || nowTimestamp();
             const lastActivity =
-              lastMessage?.createdAt || createdAt || Date.now();
+              lastMessage?.createdAt || createdAt || nowTimestamp();
             return {
               _id: conversationId,
               id: conversationId,

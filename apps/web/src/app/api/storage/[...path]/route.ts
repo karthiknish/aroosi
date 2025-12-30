@@ -3,13 +3,14 @@ import {
   errorResponse,
   ApiContext,
 } from "@/lib/api/handler";
-import { adminStorage } from "@/lib/firebaseAdmin";
+import { db, adminStorage } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { Readable } from "node:stream";
 
 export const GET = createApiHandler(
   async (ctx: ApiContext) => {
     const { request, nextCtx } = ctx;
-    const start = Date.now();
+    const start = nowTimestamp();
     
     // nextCtx contains params
     const params = await nextCtx?.params;
@@ -108,7 +109,7 @@ export const GET = createApiHandler(
       // For other objects, keep redirect behavior (cheaper than streaming).
       const [signedUrl] = await file.getSignedUrl({
         action: "read",
-        expires: Date.now() + 60 * 60 * 1000,
+        expires: nowTimestamp() + 60 * 60 * 1000,
       });
 
       return new Response(null, {

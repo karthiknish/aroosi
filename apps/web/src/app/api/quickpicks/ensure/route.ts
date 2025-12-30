@@ -6,8 +6,9 @@ import {
   errorResponse,
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
-function utcDayKey(ts: number = Date.now()): string {
+function utcDayKey(ts: number = nowTimestamp()): string {
   const d = new Date(ts);
   return (
     d.getUTCFullYear().toString() +
@@ -67,7 +68,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
       userId: user.id,
       dayKey,
       picks,
-      createdAt: Date.now(),
+      createdAt: nowTimestamp(),
     });
 
     return successResponse({ picks, dayKey }, 200, correlationId);

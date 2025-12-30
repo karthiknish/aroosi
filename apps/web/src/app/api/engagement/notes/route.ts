@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_NOTES, buildNote, FSNote } from "@/lib/firestoreSchema";
 import { engagementNoteSchema } from "@/lib/validation/apiSchemas/engagement";
@@ -32,7 +33,7 @@ export const GET = createAuthenticatedHandler(
       
       const doc = snap.docs[0];
       const data = doc.data() as FSNote;
-      return successResponse({ note: data.note, updatedAt: data.updatedAt }, 200, ctx.correlationId);
+      return successResponse({ note: data.note, updatedAt: data.updatedAt || nowTimestamp() }, 200, ctx.correlationId);
     } catch (e) {
       console.error("engagement/notes GET error", { error: e, correlationId: ctx.correlationId });
       return errorResponse("Failed to fetch note", 500, { correlationId: ctx.correlationId });
@@ -69,7 +70,7 @@ export const POST = createAuthenticatedHandler(
         return successResponse({ created: true }, 200, ctx.correlationId);
       } else {
         const ref = existingSnap.docs[0].ref;
-        await ref.set({ note, updatedAt: Date.now() }, { merge: true });
+        await ref.set({ note, updatedAt: nowTimestamp() }, { merge: true });
         return successResponse({ updated: true }, 200, ctx.correlationId);
       }
     } catch (e) {

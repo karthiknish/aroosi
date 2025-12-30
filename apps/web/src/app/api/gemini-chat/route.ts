@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -96,7 +97,7 @@ async function saveChatbotMessage({
         email,
         role,
         text,
-        timestamp: Date.now(),
+        timestamp: nowTimestamp(),
       }),
     });
     if (!response.ok) {

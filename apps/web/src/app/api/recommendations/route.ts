@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import {
   COL_MATCHES,
@@ -96,7 +97,7 @@ export const GET = createAuthenticatedHandler(
     const cursor = searchParams.get("cursor");
 
     try {
-      const startedAt = Date.now();
+      const startedAt = nowTimestamp();
       const isFirstPage = !cursor;
       const useCache = isFirstPage && limit === 20;
 
@@ -105,7 +106,7 @@ export const GET = createAuthenticatedHandler(
           .collection(COL_RECOMMENDATIONS)
           .where("userId", "==", userId)
           .where("algorithm", "==", CACHE_ALGO)
-          .where("expiresAt", ">", Date.now())
+          .where("expiresAt", ">", nowTimestamp())
           .orderBy("expiresAt", "desc")
           .limit(1)
           .get();
@@ -118,7 +119,7 @@ export const GET = createAuthenticatedHandler(
               cursor: null,
               hasMore: doc.payload.length > limit,
               count: Math.min(limit, doc.payload.length),
-              meta: { cached: true, algorithm: CACHE_ALGO, diversity: doc.diversity, durationMs: Date.now() - startedAt },
+              meta: { cached: true, algorithm: CACHE_ALGO, diversity: doc.diversity, durationMs: nowTimestamp() - startedAt },
             }, 200, ctx.correlationId);
           }
         }
@@ -158,7 +159,7 @@ export const GET = createAuthenticatedHandler(
         : new Set();
 
       const scored: RecommendationCandidate[] = [];
-      const now = Date.now();
+      const now = nowTimestamp();
 
       for (const doc of snapshot.docs) {
         if (excludedIds.has(doc.id)) continue;
@@ -256,7 +257,7 @@ export const GET = createAuthenticatedHandler(
           diversity: "city",
           cached: false,
           algorithm: CACHE_ALGO,
-          durationMs: Date.now() - startedAt,
+          durationMs: nowTimestamp() - startedAt,
         },
       }, 200, ctx.correlationId);
     } catch (error) {

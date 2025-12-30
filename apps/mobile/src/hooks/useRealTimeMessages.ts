@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import firestore from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage';
 import { useAuthStore } from '../store';
+import { nowTimestamp } from '../utils/timestamp';
 
 export interface MessageData {
   id: string;
@@ -81,7 +82,7 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
               mimeType: d.mimeType,
               isRead: !!d.readAt,
               readAt: d.readAt,
-              createdAt: d.createdAt || Date.now(),
+              createdAt: d.createdAt || nowTimestamp(),
               replyToMessageId: d.replyToMessageId,
               replyToText: d.replyToText,
               replyToType: d.replyToType,
@@ -110,7 +111,7 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
     async (text: string, toUserId: string) => {
       if (!userId || !text.trim()) return;
 
-      const createdAt = Date.now();
+      const createdAt = nowTimestamp();
       const normalizedConvId = [userId, toUserId].sort().join('_');
 
       try {
@@ -149,9 +150,9 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
     async (imageUri: string, toUserId: string) => {
       if (!userId || !imageUri) return;
 
-      const createdAt = Date.now();
+      const createdAt = nowTimestamp();
       const normalizedConvId = [userId, toUserId].sort().join('_');
-      const filename = `messages/${normalizedConvId}/${Date.now()}.jpg`;
+      const filename = `messages/${normalizedConvId}/${nowTimestamp()}.jpg`;
 
       try {
         // 1. Upload to Storage
@@ -223,7 +224,7 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
           text: d.text || '',
           type: d.type || 'text',
           mediaUrl: d.mediaUrl,
-          createdAt: d.createdAt || Date.now(),
+          createdAt: d.createdAt || nowTimestamp(),
           isRead: !!d.readAt,
           readAt: d.readAt,
         });
@@ -244,7 +245,7 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
     if (!userId || messageIds.length === 0) return;
 
     const batch = firestore().batch();
-    const readAt = Date.now();
+    const readAt = nowTimestamp();
 
     messageIds.forEach((id) => {
       const ref = firestore().collection('messages').doc(id);

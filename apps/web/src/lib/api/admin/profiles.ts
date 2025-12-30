@@ -37,6 +37,19 @@ class AdminProfilesAPI {
       throw new Error(String(msg));
     }
 
+    // Unwrap standardized { success, data } envelope from API handler
+    if (isJson && payload && typeof payload === "object") {
+      const maybe = payload as any;
+      if ("success" in maybe) {
+        if (maybe.success === false) {
+          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+        }
+        if ("data" in maybe) {
+          return maybe.data;
+        }
+      }
+    }
+
     return payload;
   }
 
@@ -68,10 +81,7 @@ class AdminProfilesAPI {
     qs.set("v", String(Date.now()));
 
     const res = await this.makeRequest(`/api/admin/profiles?${qs.toString()}`);
-    
-    if (res.success && res.data) {
-      return res.data;
-    }
+
     return res;
   }
 
@@ -81,7 +91,7 @@ class AdminProfilesAPI {
   async get(id: string): Promise<AdminProfile | null> {
     try {
       const res = await this.makeRequest(`/api/admin/profiles/${id}?nocache=true&v=${Date.now()}`);
-      if (res.success && res.profile) return res.profile;
+      if (res?.profile) return res.profile;
       if (res._id || res.userId) return res;
       return null;
     } catch {
@@ -147,7 +157,7 @@ class AdminProfilesAPI {
 
     try {
       const res = await this.makeRequest(`/api/profile-images/batch?userIds=${userIds.join(",")}&v=${Date.now()}`);
-      const batchData = res.data || {};
+      const batchData = (res && typeof res === "object" ? res : {}) as Record<string, ProfileImageInfo[]>;
       
       const result: Record<string, ProfileImageInfo[]> = {};
       for (const profile of profiles) {

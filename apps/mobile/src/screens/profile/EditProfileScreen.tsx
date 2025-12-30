@@ -29,6 +29,7 @@ import {
     responsiveFontSizes,
 } from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { EmptyState } from '../../components/EmptyState';
 import {
     getProfile,
     updateProfile,
@@ -37,6 +38,9 @@ import {
     type UserProfile,
     type ProfileUpdateData,
 } from '../../services/api/profile';
+import { useAsyncAction, useAsyncActions } from '../../hooks/useAsyncAction';
+import { useOffline } from '../../hooks/useOffline';
+import { getProfilePhotos } from '../../utils/profileImage';
 
 interface EditProfileScreenProps {
     onBack?: () => void;
@@ -45,8 +49,6 @@ interface EditProfileScreenProps {
 
 export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenProps) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
     // Form state
@@ -68,48 +70,122 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     const [newInterest, setNewInterest] = useState('');
     const [photos, setPhotos] = useState<(string | null)[]>([null, null, null, null, null, null]);
 
-    // Load profile
-    const loadProfile = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await getProfile();
+    const { checkNetworkOrAlert } = useOffline();
 
-            if (response.data) {
-                const p = response.data;
-                setProfile(p);
-                setDisplayName(p.displayName || p.fullName || '');
-                setBio(p.bio || p.aboutMe || '');
-                setAge(p.age?.toString() || '');
-                setCity(p.location?.city || '');
-                setState(p.location?.state || '');
-                setCountry(p.location?.country || '');
-                setEducation(p.education || '');
-                setOccupation(p.occupation || '');
-                setIncome(p.income || '');
-                setHeight(p.height || '');
-                setMaritalStatus(p.maritalStatus || '');
-                setReligion(p.religion || '');
-                setSect(p.sect || '');
-                setMotherTongue(p.motherTongue || '');
-                setInterests(p.interests || []);
-                
-                // Initialize photos array
-                const photoArray: (string | null)[] = [null, null, null, null, null, null];
-                p.photos?.forEach((photo, index) => {
-                    if (index < 6) photoArray[index] = photo;
-                });
-                setPhotos(photoArray);
+    // Actions
+    const actions = useAsyncActions({
+        save: async () => {
+            const updateData: ProfileUpdateData = {
+                displayName: displayName.trim(),
+                fullName: displayName.trim(),
+                bio: bio.trim(),
+                aboutMe: bio.trim(),
+                age: age ? parseInt(age, 10) : undefined,
+                location: { 
+                    city: city.trim(),
+                    state: state.trim(),
+                    country: country.trim(),
+                },
+                education: education.trim(),
+                occupation: occupation.trim(),
+                income: income.trim(),
+                height: height.trim(),
+                maritalStatus,
+                religion: religion.trim(),
+                sect: sect.trim(),
+                motherTongue: motherTongue.trim(),
+                interests,
+            };
+
+            const response = await updateProfile(updateData);
+            if (response.error) throw new Error(response.error);
+            
+            Alert.alert('Success', 'Profile updated successfully');
+            onSave?.();
+            return response.data;
+        },
+        uploadPhoto: async (params: { uri: string, index: number }) => {
+            const { uri, index } = params;
+            setUploadingIndex(index);
+            try {
+                const response = await uploadProfilePhoto(uri, index);
+                if (response.error) throw new Error(response.error);
+                if (response.data?.url) {
+                    setPhotos(prev => {
+                        const newPhotos = [...prev];
+                        newPhotos[index] = response.data!.url;
+                        return newPhotos;
+                    });
+                }
+                return response.data;
+            } finally {
+                setUploadingIndex(null);
             }
-        } catch (err) {
-            Alert.alert('Error', 'Failed to load profile');
-        } finally {
-            setLoading(false);
+        },
+        deletePhoto: async (index: number) => {
+            const photoUrl = photos[index];
+            if (!photoUrl) return;
+            
+            setUploadingIndex(index);
+            try {
+                const response = await deleteProfilePhoto(photoUrl);
+                // deleteProfilePhoto should ideally return something, but assuming it throws or is successful
+                setPhotos(prev => {
+                    const newPhotos = [...prev];
+                    newPhotos[index] = null;
+                    return newPhotos;
+                });
+            } finally {
+                setUploadingIndex(null);
+            }
         }
-    }, []);
+    }, { errorMode: 'alert', networkAware: true });
+
+    // Load profile
+    const loadAction = useAsyncAction(async () => {
+        const response = await getProfile();
+        if (response.error) throw new Error(response.error);
+        
+        if (response.data) {
+            const p = response.data;
+            setProfile(p);
+            setDisplayName(p.displayName || p.fullName || '');
+            setBio(p.bio || p.aboutMe || '');
+            setAge(p.age?.toString() || '');
+            setCity(p.location?.city || '');
+            setState(p.location?.state || '');
+            setCountry(p.location?.country || '');
+            setEducation(p.education || '');
+            setOccupation(p.occupation || '');
+            setIncome(p.income || '');
+            setHeight(p.height || '');
+            setMaritalStatus(p.maritalStatus || '');
+            setReligion(p.religion || '');
+            setSect(p.sect || '');
+            setMotherTongue(p.motherTongue || '');
+            setInterests(p.interests || []);
+            const currentPhotos = getProfilePhotos(p);
+            const photoArray: (string | null)[] = [null, null, null, null, null, null];
+            currentPhotos.forEach((photo, index) => {
+                if (index < 6) photoArray[index] = photo;
+            });
+            setPhotos(photoArray);
+        }
+        return response.data;
+    }, { errorMode: 'inline' });
 
     useEffect(() => {
-        loadProfile();
-    }, [loadProfile]);
+        loadAction.execute();
+    }, []);
+
+    const loading = loadAction.loading;
+    const saving = actions.loading.save;
+
+    // Save profile
+    const handleSave = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handleSave())) return;
+        actions.execute.save();
+    }, [checkNetworkOrAlert, actions.execute]);
 
     // Handle photo selection
     const handlePhotoPress = useCallback((index: number) => {
@@ -187,85 +263,16 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
         }
 
         const imageUri = result.assets[0].uri;
-        setUploadingIndex(index);
-
-        try {
-            const response = await uploadProfilePhoto(imageUri, index);
-            
-            if (response.data?.url) {
-                const newPhotos = [...photos];
-                newPhotos[index] = response.data.url;
-                setPhotos(newPhotos);
-            } else if (response.error) {
-                Alert.alert('Error', response.error);
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to upload photo');
-        } finally {
-            setUploadingIndex(null);
-        }
+        if (!checkNetworkOrAlert()) return;
+        
+        actions.execute.uploadPhoto({ uri: imageUri, index });
     };
 
     // Delete photo
     const handleDeletePhoto = async (index: number) => {
-        const photoUrl = photos[index];
-        if (!photoUrl) return;
-
-        setUploadingIndex(index);
-        try {
-            await deleteProfilePhoto(photoUrl);
-            const newPhotos = [...photos];
-            newPhotos[index] = null;
-            setPhotos(newPhotos);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to delete photo');
-        } finally {
-            setUploadingIndex(null);
-        }
+        if (!checkNetworkOrAlert(() => handleDeletePhoto(index))) return;
+        actions.execute.deletePhoto(index);
     };
-
-    // Save profile
-    const handleSave = useCallback(async () => {
-        try {
-            setSaving(true);
-
-            const updateData: ProfileUpdateData = {
-                displayName: displayName.trim(),
-                fullName: displayName.trim(), // Keep in sync
-                bio: bio.trim(),
-                aboutMe: bio.trim(), // Keep in sync
-                age: age ? parseInt(age, 10) : undefined,
-                location: { 
-                    city: city.trim(),
-                    state: state.trim(),
-                    country: country.trim(),
-                },
-                education: education.trim(),
-                occupation: occupation.trim(),
-                income: income.trim(),
-                height: height.trim(),
-                maritalStatus,
-                religion: religion.trim(),
-                sect: sect.trim(),
-                motherTongue: motherTongue.trim(),
-                interests,
-            };
-
-            const response = await updateProfile(updateData);
-
-            if (response.error) {
-                Alert.alert('Error', response.error);
-                return;
-            }
-
-            Alert.alert('Success', 'Profile updated successfully');
-            onSave?.();
-        } catch (err) {
-            Alert.alert('Error', 'Failed to save profile');
-        } finally {
-            setSaving(false);
-        }
-    }, [displayName, bio, age, city, state, country, education, occupation, income, height, maritalStatus, religion, sect, motherTongue, interests, onSave]);
 
     // Add interest
     const addInterest = useCallback(() => {
@@ -282,7 +289,7 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
     }, []);
 
 
-    if (loading) {
+    if (loadAction.loading) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -293,6 +300,27 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
                     <View style={styles.headerRight} />
                 </View>
                 <LoadingSpinner message="Loading profile..." />
+            </SafeAreaView>
+        );
+    }
+
+    if (loadAction.error) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Text style={styles.backIcon}>←</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Edit Profile</Text>
+                    <View style={styles.headerRight} />
+                </View>
+                <EmptyState
+                    emoji="😞"
+                    title="Load Failed"
+                    message={loadAction.error}
+                    actionLabel="Try Again"
+                    onAction={() => loadAction.execute()}
+                />
             </SafeAreaView>
         );
     }

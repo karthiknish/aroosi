@@ -5,6 +5,7 @@ import {
   errorResponse,
   ApiContext,
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { fetchConversationEvents } from "@/lib/realtime/conversationEvents";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export const GET = createAuthenticatedHandler(
     // Mimic the previous in-memory EventEmitter behavior: only stream new events.
     // Use an inclusive cursor + per-timestamp de-dupe to avoid missing events
     // created within the same millisecond.
-    let lastSeenCreatedAt = Date.now();
+    let lastSeenCreatedAt = nowTimestamp();
     let sentIdsAtLastSeen = new Set<string>();
 
     const stream = new ReadableStream({

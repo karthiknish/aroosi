@@ -4,6 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { db } from "@/lib/firebaseAdmin";
 import { profileImagesMainSchema } from "@/lib/validation/apiSchemas/profileImages";
 
@@ -32,7 +33,7 @@ export const PUT = createAuthenticatedHandler(
       const newOrder = [storageId, ...current.filter((id) => id !== storageId)];
 
       await db.collection("users").doc(userId).set(
-        { profileImageIds: newOrder, updatedAt: Date.now() },
+        { profileImageIds: newOrder, updatedAt: nowTimestamp() },
         { merge: true }
       );
 

@@ -4,10 +4,10 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
-import { db, COLLECTIONS, adminAuth } from "@/lib/firebaseAdmin";
+import { adminAuth, db, COLLECTIONS, getFirebaseUser } from "@/lib/firebaseAdmin";
+import { nowTimestamp } from "@/lib/utils/timestamp";
 import { sendWelcomeEmail, sendVerificationLinkEmail } from "@/lib/auth/email";
 import { randomBytes } from "crypto";
-import { NextResponse } from "next/server";
 import { authRegisterSchema } from "@/lib/validation/apiSchemas/authRegister";
 
 /**
@@ -20,7 +20,7 @@ export const POST = createApiHandler(
     body: import("zod").infer<typeof authRegisterSchema>
   ) => {
     const { uid: bodyUid, email, displayName, password } = body;
-    const now = Date.now();
+    const now = nowTimestamp();
 
     // ---------------------------------------------------------
     // MODE 1: Server-side Signup (Password provided)
@@ -155,7 +155,6 @@ export const POST = createApiHandler(
       // Email logic for sync mode
       let verificationEmailQueued = false;
       try {
-         // Same verification logic...
          const tokenRaw = randomBytes(32).toString("hex");
          const tokenHashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tokenRaw));
          const tokenHashHex = Array.from(new Uint8Array(tokenHashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
@@ -193,7 +192,7 @@ export const POST = createApiHandler(
     }
   },
   {
-    requireAuth: false, // Optional because password-signup is unauthenticated
+    requireAuth: false,
     bodySchema: authRegisterSchema,
     rateLimit: { identifier: "auth_register", maxRequests: 10, windowMs: 60000 }
   }
