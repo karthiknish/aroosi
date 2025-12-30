@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 import { Eye, EyeOff } from "lucide-react";
 
 interface CustomSignInFormProps {
@@ -24,15 +25,23 @@ export default function CustomSignInForm({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn, refreshUser, user, signInWithGoogleExistingOnly } =
+  const { signIn, refreshUser, user, profile, signInWithGoogleExistingOnly } =
     useFirebaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const redirectUrl = searchParams.get("redirect_url") || "/search";
 
-  // Unified onboarding completion handler
+  // Unified onboarding completion handler - checks profile first
   const handleOnboardingComplete = () => {
+    // Check if profile is complete before redirecting to target
+    const profileData = (profile as unknown as Record<string, unknown>) || {};
+    if (!isOnboardingEssentialComplete(profileData)) {
+      // Profile incomplete - redirect to onboarding
+      router.push("/profile/onboarding");
+      return;
+    }
+    
     if (onComplete) {
       onComplete();
     } else {

@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 /**
  * ProfileCompletionGuard
@@ -28,7 +29,7 @@ export default function ProfileCompletionGuard({
   requireComplete = false,
   redirectTo,
 }: GuardProps) {
-  const { isLoaded, isAuthenticated, refreshUser } = useAuthContext();
+  const { isLoaded, isAuthenticated, refreshUser, profile } = useAuthContext();
   const router = useRouter();
 
   // Add robust diagnostics to trace guard-driven redirects
@@ -78,7 +79,19 @@ export default function ProfileCompletionGuard({
       }
 
       // For routes requiring completed profile, enforce completion
-          // onboarding completion enforcement removed
+      if (requireComplete && !isOnboardingEssentialComplete(profile || {})) {
+        // eslint-disable-next-line no-console
+        console.warn("[Guard] redirecting: profile incomplete");
+        const dest = redirectTo || "/profile/onboarding";
+        try {
+          const url = new URL(dest, window.location.origin);
+          url.searchParams.set("redirect_url", window.location.pathname);
+          router.replace(url.toString());
+        } catch {
+          router.replace(dest);
+        }
+        return;
+      }
 
       // eslint-disable-next-line no-console
       console.info("[Guard] allow render");
@@ -90,6 +103,7 @@ export default function ProfileCompletionGuard({
   }, [
     isLoaded,
     isAuthenticated,
+    profile,
     requireComplete,
     redirectTo,
     refreshUser,
@@ -103,7 +117,10 @@ export default function ProfileCompletionGuard({
   if (!isAuthenticated) {
     return null;
   }
-  // onboarding gate removed
+  // Block render if profile is incomplete and completion is required
+  if (requireComplete && !isOnboardingEssentialComplete(profile || {})) {
+    return null;
+  }
 
   return <>{children}</>;
 }

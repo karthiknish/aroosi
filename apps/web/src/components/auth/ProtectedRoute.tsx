@@ -4,18 +4,19 @@ import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { showErrorToast } from "@/lib/ui/toast";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireProfile?: boolean;
-  requireOnboarding?: boolean; // deprecated
+  requireOnboarding?: boolean; // enforced by default
   adminOnly?: boolean;
 }
 
 export default function ProtectedRoute({
   children,
   requireProfile = false,
-  requireOnboarding = false,
+  requireOnboarding = true,
   adminOnly = false,
 }: ProtectedRouteProps) {
   const { user, isLoading, isAuthenticated, profile } = useAuth() as any;
@@ -63,8 +64,15 @@ export default function ProtectedRoute({
       return;
     }
 
-    // Check if profile completion is required
-    // onboarding requirement removed
+    // Check if onboarding completion is required
+    if (requireOnboarding) {
+      const profileData = (profile as Record<string, unknown>) || {};
+      if (!isOnboardingEssentialComplete(profileData)) {
+        notify("Please complete your profile to continue");
+        router.push("/profile/onboarding");
+        return;
+      }
+    }
 
     setIsChecking(false);
   }, [

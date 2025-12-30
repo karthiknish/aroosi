@@ -7,7 +7,7 @@ export default function AuthenticatedLayout({
   children: ReactNode;
 }) {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requireOnboardingComplete={true}>
       {children}
     </ProtectedRoute>
   );

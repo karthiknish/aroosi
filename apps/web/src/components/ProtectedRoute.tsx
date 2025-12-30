@@ -12,11 +12,12 @@ import {
 } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { showInfoToast, showErrorToast } from "@/lib/ui/toast";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  requireOnboardingComplete?: boolean; // currently not enforced
+  requireOnboardingComplete?: boolean; // enforced by default for all authenticated routes
   redirectTo?: string;
   /** @deprecated use requireOnboardingComplete; kept for backward compatibility with older tests */
   requireProfileComplete?: boolean;
@@ -31,7 +32,7 @@ const planManagementRoute = "/plans" as const;
 function ProtectedRouteInner({
   children,
   requireAuth = true,
-  requireOnboardingComplete = false,
+  requireOnboardingComplete = true,
   redirectTo,
   requireProfileComplete,
 }: ProtectedRouteProps) {
@@ -208,7 +209,18 @@ function ProtectedRouteInner({
       }
 
       // Enforce onboarding/profile completeness when requested via either prop
-      // onboarding completion gating removed
+      const shouldEnforceOnboarding = requireOnboardingComplete || requireProfileComplete;
+      if (shouldEnforceOnboarding && !isOnboardingRoute && !isCreateProfileRoute && !isProfileEditRoute) {
+        const profileData = (profile as Record<string, unknown>) || {};
+        if (!isOnboardingEssentialComplete(profileData)) {
+          void handleNavigation(
+            "/profile/onboarding",
+            "Please complete your profile to continue.",
+            "info"
+          );
+          return;
+        }
+      }
     }
   }, [
     authDisabled,

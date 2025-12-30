@@ -6,8 +6,9 @@ import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
 import { useRouter } from "next/navigation";
 import { getJson } from "@/lib/http/client";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 export default function SignInPage() {
-  const { isAuthenticated, isLoaded, refreshUser } = useFirebaseAuth();
+  const { isAuthenticated, isLoaded, refreshUser, profile } = useFirebaseAuth();
 
   const router = useRouter();
 
@@ -43,10 +44,16 @@ export default function SignInPage() {
       } catch {
         // non-fatal
       }
+      // Check profile completion before redirecting
+      const profileData = (profile as unknown as Record<string, unknown>) || {};
+      if (!isOnboardingEssentialComplete(profileData)) {
+        router.push("/profile/onboarding");
+        return;
+      }
       router.push(finalRedirect);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isTrulyAuthenticated, finalRedirect]);
+  }, [isLoaded, isTrulyAuthenticated, finalRedirect, profile]);
 
   return (
     <>

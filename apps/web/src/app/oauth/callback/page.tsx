@@ -4,10 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 // OAuth callback page for handling authentication redirects
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useAuthContext();
+  const { isSignedIn, isLoaded, profile } = useAuthContext();
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -26,13 +27,18 @@ export default function OAuthCallbackPage() {
       }
 
       // Not a popup, handle normal redirect
-      // Always redirect to search now that onboarding flag removed
-      router.push("/search");
+      // Check if profile is complete before redirecting to search
+      const profileData = (profile as unknown as Record<string, unknown>) || {};
+      if (!isOnboardingEssentialComplete(profileData)) {
+        router.push("/profile/onboarding");
+      } else {
+        router.push("/search");
+      }
     } else {
       // Not signed in, redirect to sign-in page
       router.push("/sign-in");
     }
-  }, [isSignedIn, isLoaded, router]);
+  }, [isSignedIn, isLoaded, router, profile]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-base-light">
