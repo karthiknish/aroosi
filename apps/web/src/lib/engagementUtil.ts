@@ -8,17 +8,13 @@ export type ShortlistEntry = {
 };
 
 export async function fetchShortlists(): Promise<ShortlistEntry[]> {
-  try {
-    const res = await getJson<{ success?: boolean; data?: ShortlistEntry[] }>(
-      "/api/engagement/shortlist"
-    );
-    if (Array.isArray((res as any)?.data))
-      return (res as any).data as ShortlistEntry[];
-    if (Array.isArray(res)) return res as unknown as ShortlistEntry[];
-    return [];
-  } catch {
-    return [];
-  }
+  const res = await getJson<{ success?: boolean; data?: ShortlistEntry[] }>(
+    "/api/engagement/shortlist"
+  );
+  if (Array.isArray((res as any)?.data))
+    return (res as any).data as ShortlistEntry[];
+  if (Array.isArray(res)) return res as unknown as ShortlistEntry[];
+  return [];
 }
 
 export async function toggleShortlist(
@@ -63,14 +59,10 @@ export async function enrichProfiles(
 export async function fetchNote(
   toUserId: string
 ): Promise<{ note?: string; updatedAt?: number } | null> {
-  try {
-    const res = await getJson(
-      `/api/engagement/notes?toUserId=${encodeURIComponent(toUserId)}`
-    );
-    return (res as any)?.data || res || null;
-  } catch {
-    return null;
-  }
+  const res = await getJson(
+    `/api/engagement/notes?toUserId=${encodeURIComponent(toUserId)}`
+  );
+  return (res as any)?.data || res || null;
 }
 
 export async function setNote(
@@ -92,35 +84,38 @@ export type QuickPickProfile = {
   imageUrl?: string | null;
 };
 
+/**
+ * Get current day key for quick picks (standardized to YYYY-MM-DD)
+ */
+export function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export async function getQuickPicks(
   dayKey?: string
 ): Promise<{ userIds: string[]; profiles: QuickPickProfile[] }> {
-  try {
-    const url = dayKey
-      ? `/api/engagement/quick-picks?day=${encodeURIComponent(dayKey)}`
-      : "/api/engagement/quick-picks";
-    const res = await getJson<any>(url);
+  const url = dayKey
+    ? `/api/engagement/quick-picks?day=${encodeURIComponent(dayKey)}`
+    : "/api/engagement/quick-picks";
+  
+  const res = await getJson<any>(url);
 
-    // Handle wrapped response format: { success: true, data: { userIds, profiles } }
-    const envelope = res?.data ?? res;
-    const userIds = Array.isArray(envelope?.userIds) ? envelope.userIds : [];
-    const rawProfiles = Array.isArray(envelope?.profiles) ? envelope.profiles : [];
+  // Handle wrapped response format: { success: true, data: { userIds, profiles } }
+  const envelope = res?.data ?? res;
+  const userIds = Array.isArray(envelope?.userIds) ? envelope.userIds : [];
+  const rawProfiles = Array.isArray(envelope?.profiles) ? envelope.profiles : [];
 
-    // Transform profiles to have imageUrl from profileImageUrls
-    const profiles: QuickPickProfile[] = rawProfiles.map((p: any) => ({
-      userId: p.userId || p._id || p.id,
-      fullName: p.fullName || null,
-      city: p.city || null,
-      imageUrl: Array.isArray(p.profileImageUrls) && p.profileImageUrls.length > 0
-        ? p.profileImageUrls[0]
-        : (p.imageUrl || null),
-    }));
+  // Transform profiles to have imageUrl from profileImageUrls
+  const profiles: QuickPickProfile[] = rawProfiles.map((p: any) => ({
+    userId: p.userId || p._id || p.id,
+    fullName: p.fullName || null,
+    city: p.city || null,
+    imageUrl: Array.isArray(p.profileImageUrls) && p.profileImageUrls.length > 0
+      ? p.profileImageUrls[0]
+      : (p.imageUrl || null),
+  }));
 
-    return { userIds, profiles };
-  } catch {
-    // Return empty data on error to prevent page crashes
-    return { userIds: [], profiles: [] };
-  }
+  return { userIds, profiles };
 }
 
 export async function actOnQuickPick(

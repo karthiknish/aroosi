@@ -22,6 +22,7 @@ interface RequestOptions {
 export interface ApiResponse<T> {
     data?: T;
     error?: string;
+    code?: string;
     status: number;
     correlationId?: string;
     fromCache?: boolean;
@@ -185,6 +186,7 @@ export async function apiRequest<T>(
         if (!response.ok) {
             return {
                 error: responseJson?.error || responseJson?.message || `Request failed with status ${response.status}`,
+                code: responseJson?.code,
                 status: response.status,
                 correlationId,
             };

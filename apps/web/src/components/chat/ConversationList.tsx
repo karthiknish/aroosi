@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useVisibility } from "@/hooks/useVisibility";
 import { motion, AnimatePresence } from "framer-motion";
+import { Virtuoso } from "react-virtuoso";
 import { Search, MessageCircle, Mic, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -11,6 +13,7 @@ import { formatMessageTime, ConversationData } from "@/lib/utils/messageUtils";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { getConversations, getPresence } from "@/lib/api/conversation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import Image from "next/image";
 
 // Type for conversation from API
 interface ApiConversation {
@@ -75,6 +78,7 @@ export default function ConversationList({
   const [presenceMap, setPresenceMap] = useState<
     Record<string, { isOnline: boolean; lastSeen: number }>
   >({});
+  const isVisible = useVisibility();
 
   // Fetch conversations from API
   const fetchConversations = useCallback(async () => {
@@ -169,6 +173,7 @@ export default function ConversationList({
     if (!partnerIds.length) return;
 
     const loadPresence = async () => {
+      if (!isVisible) return; // Skip polling when tab is hidden
       try {
         const results = await Promise.allSettled(
           partnerIds.map(async (uid) => ({ uid, res: await getPresence(uid) }))
@@ -284,7 +289,7 @@ export default function ConversationList({
       </div>
 
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-hidden">
         {filteredConversations.length === 0 ? (
           <div className="flex items-center justify-center h-full p-4">
             <div className="text-center space-y-3">
@@ -306,95 +311,96 @@ export default function ConversationList({
             </div>
           </div>
         ) : (
-          <div className="space-y-1 p-2">
-            <AnimatePresence>
-              {filteredConversations.map((conv) => (
-                <motion.div
-                  key={conv.id || conv._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className={cn(
-                    "font-medium text-sm truncate cursor-pointer p-2 rounded-lg transition-colors",
-                    selectedConversationId === (conv.id || conv._id)
-                      ? "bg-primary-light/20"
-                      : "hover:bg-secondary-light/10",
-                    conv.unreadCount > 0 ? "text-neutral" : "text-neutral-light"
-                  )}
-                  onClick={() => handleConversationClick(conv)}
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Profile Image */}
-                    <div className="relative">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary-light/30 to-secondary-light/30 rounded-full flex items-center justify-center">
-                        {conv.otherUser.profileImage ? (
-                          <img
-                            src={conv.otherUser.profileImage}
-                            alt={conv.otherUser.fullName}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-primary font-medium text-lg">
-                            {conv.otherUser.fullName.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      {/* Online indicator */}
-                      {(presenceMap[conv.otherUser._id]?.isOnline ||
-                        conv.otherUser.isOnline) && (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-base rounded-full" />
+          <Virtuoso
+            data={filteredConversations}
+            className="h-full"
+            itemContent={(index, conv) => (
+              <motion.div
+                key={conv.id || conv._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "font-medium text-sm truncate cursor-pointer p-2 m-2 rounded-lg transition-colors",
+                  selectedConversationId === (conv.id || conv._id)
+                    ? "bg-primary-light/20"
+                    : "hover:bg-secondary-light/10",
+                  conv.unreadCount > 0 ? "text-neutral" : "text-neutral-light"
+                )}
+                onClick={() => handleConversationClick(conv)}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Profile Image */}
+                  <div className="relative">
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary-light/30 to-secondary-light/30 rounded-full flex items-center justify-center">
+                      {conv.otherUser.profileImage ? (
+                        <Image
+                          src={conv.otherUser.profileImage}
+                          alt={conv.otherUser.fullName}
+                          width={48}
+                          height={48}
+                          className="rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-primary font-medium text-lg">
+                          {conv.otherUser.fullName.charAt(0).toUpperCase()}
+                        </span>
                       )}
-                      {/* Unread badge */}
-                      {conv.unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
-                          {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
-                        </div>
-                      )}{" "}
+                    </div>
+                    {/* Online indicator */}
+                    {(presenceMap[conv.otherUser._id]?.isOnline ||
+                      conv.otherUser.isOnline) && (
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-base rounded-full" />
+                    )}
+                    {/* Unread badge */}
+                    {conv.unreadCount > 0 && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
+                        {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
+                      </div>
+                    )}{" "}
+                  </div>
+
+                  {/* Conversation Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3
+                        className={cn(
+                          "font-medium text-sm truncate",
+                          conv.unreadCount > 0
+                            ? "text-neutral"
+                            : "text-neutral-light"
+                        )}
+                      >
+                        {conv.otherUser.fullName}
+                      </h3>
+                      <span className="text-xs text-neutral-light flex-shrink-0">
+                        {conv.lastMessage
+                          ? formatMessageTime(Number(conv.lastMessage.createdAt || conv.lastMessage._creationTime))
+                          : ""}
+                      </span>
                     </div>
 
-                    {/* Conversation Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3
-                          className={cn(
-                            "font-medium text-sm truncate",
-                            conv.unreadCount > 0
-                              ? "text-neutral"
-                              : "text-neutral-light"
-                          )}
-                        >
-                          {conv.otherUser.fullName}
-                        </h3>
-                        <span className="text-xs text-neutral-light flex-shrink-0">
-                          {conv.lastMessage
-                            ? formatMessageTime(Number(conv.lastMessage.createdAt || conv.lastMessage._creationTime))
-                            : ""}
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      {/* Message type indicator */}
+                      {conv.lastMessage?.type === "voice" && (
+                        <Mic className="w-3 h-3 text-secondary flex-shrink-0" />
+                      )}
 
-                      <div className="flex items-center gap-1">
-                        {/* Message type indicator */}
-                        {conv.lastMessage?.type === "voice" && (
-                          <Mic className="w-3 h-3 text-secondary flex-shrink-0" />
+                      <p
+                        className={cn(
+                          "text-sm truncate",
+                          conv.unreadCount > 0
+                            ? "text-neutral font-medium"
+                            : "text-neutral-light"
                         )}
-
-                        <p
-                          className={cn(
-                            "text-sm truncate",
-                            conv.unreadCount > 0
-                              ? "text-neutral font-medium"
-                              : "text-neutral-light"
-                          )}
-                        >
-                          {conv.lastMessagePreview}
-                        </p>
-                      </div>
+                      >
+                        {conv.lastMessagePreview}
+                      </p>
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+                </div>
+              </motion.div>
+            )}
+          />
         )}
       </div>
 

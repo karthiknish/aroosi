@@ -181,8 +181,8 @@ export class MessagingPermissions {
 /**
  * Hook for managing messaging features and permissions based on subscription tier
  */
-export function useMessagingFeatures(token: string) {
-  const subscriptionStatus = useSubscriptionStatus(token);
+export function useMessagingFeatures() {
+  const subscriptionStatus = useSubscriptionStatus();
   const subscriptionTier = (subscriptionStatus.data?.plan ||
     "free") as SubscriptionTier;
 
@@ -270,13 +270,13 @@ export function useMessagingFeatures(token: string) {
 /**
  * Hook for managing daily message limits
  */
-export function useDailyMessageLimit(token: string) {
+export function useDailyMessageLimit() {
   const {
     features,
     getRemainingDailyMessages,
     recordMessageSent,
     subscriptionTier,
-  } = useMessagingFeatures(token);
+  } = useMessagingFeatures();
 
   const [remainingMessages, setRemainingMessages] = useState<number>(0);
 
@@ -322,9 +322,9 @@ export function useDailyMessageLimit(token: string) {
 /**
  * Hook for voice message duration limits
  */
-export function useVoiceMessageLimits(token: string) {
+export function useVoiceMessageLimits() {
   const { features, canSendVoiceMessage, subscriptionTier } =
-    useMessagingFeatures(token);
+    useMessagingFeatures();
 
   const maxDuration = features?.voiceMessageDurationLimit || 0;
   const canSendVoice = features?.canSendVoiceMessages || false;

@@ -8,6 +8,7 @@ import { ArrowDown, Shield, Smile, Sparkles, Lightbulb, MessageSquare } from "lu
 import { cn } from "@/lib/utils";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import type { MatchMessage } from "@/lib/api/matchMessages";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 const STARTERS = [
   "What's something that made you smile today?",
@@ -133,11 +134,17 @@ export default function MessagesList(props: MessagesListProps) {
     otherLastReadAt,
   });
 
+  const virtuosoRef = React.useRef<VirtuosoHandle>(null);
+
   const scrollToMessage = (targetId: string) => {
     if (!scrollRef.current) return;
-    const el = scrollRef.current.querySelector(`[data-message-id="${targetId}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const index = messages.findIndex(m => (m.id || m._id) === targetId);
+    if (index !== -1 && virtuosoRef.current) {
+      virtuosoRef.current.scrollToIndex({
+        index,
+        align: "center",
+        behavior: "smooth",
+      });
       setHighlightedId(targetId);
     }
   };
@@ -209,98 +216,85 @@ export default function MessagesList(props: MessagesListProps) {
         navigateSearch={navigateSearch}
       />
 
-      <ScrollArea
-        viewportRef={scrollRef}
-        className="flex-1 min-h-0 px-4 py-5 chat-scrollbar focus:outline-none"
-      >
-        <div className="space-y-2">
-          {hasMore && !empty && (
-            <div ref={loadMoreRef} className="flex items-center justify-center py-4">
-              {loadingOlder ? (
-                <div className="flex items-center gap-2 text-neutral-light text-sm bg-white/80 px-4 py-2 rounded-full shadow-sm border border-neutral/10">
-                  <LoadingSpinner size={16} />
-                  <span>Loading older messages...</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-neutral-light text-xs">
-                  <div className="w-6 h-[1px] bg-neutral/20" />
-                  <span>Scroll up for more</span>
-                  <div className="w-6 h-[1px] bg-neutral/20" />
-                </div>
-              )}
-            </div>
-          )}
-
-          {empty ? (
-            <div className="flex flex-col items-center justify-center min-h-full py-12 px-6 space-y-10">
-              {/* Header Section */}
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-warning/10 to-primary/10 rounded-3xl flex items-center justify-center mx-auto shadow-sm border border-warning/20 relative">
-                  <div className="absolute inset-0 bg-white/40 backdrop-blur-sm rounded-3xl -z-10" />
-                  <Smile className="w-10 h-10 text-warning animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="font-bold text-neutral text-2xl tracking-tight">
-                    Start the conversation!
-                  </h3>
-                  <p className="text-neutral-light text-sm max-w-[260px] mx-auto leading-relaxed">
-                    Break the ice with {matchUserName || "your match"} and see where it leads.
-                  </p>
-                </div>
+      <div className="flex-1 min-h-0 relative">
+        {empty ? (
+          <div className="flex flex-col items-center justify-center min-h-full py-12 px-6 space-y-10">
+            {/* Header Section */}
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-warning/10 to-primary/10 rounded-3xl flex items-center justify-center mx-auto shadow-sm border border-warning/20 relative">
+                <div className="absolute inset-0 bg-white/40 backdrop-blur-sm rounded-3xl -z-10" />
+                <Smile className="w-10 h-10 text-warning animate-pulse" />
               </div>
+              <div className="space-y-2">
+                <h3 className="font-bold text-neutral text-2xl tracking-tight">
+                  Start the conversation!
+                </h3>
+                <p className="text-neutral-light text-sm max-w-[260px] mx-auto leading-relaxed">
+                  Break the ice with {matchUserName || "your match"} and see where it leads.
+                </p>
+              </div>
+            </div>
 
-              {/* Conversation Starters */}
-              <div className="w-full max-w-sm space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral/60">
-                    Conversation Starters
-                  </span>
-                </div>
-                <div className="grid gap-2.5">
-                  {STARTERS.map((starter, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1 }}
+            {/* Conversation Starters */}
+            <div className="w-full max-w-sm space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral/60">
+                  Conversation Starters
+                </span>
+              </div>
+              <div className="grid gap-2.5">
+                {STARTERS.map((starter, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      onClick={() => onSelectStarter?.(starter)}
+                      className="w-full h-auto text-left p-4 rounded-2xl bg-white border border-neutral/10 hover:border-primary/30 hover:bg-primary/5 transition-all group relative overflow-hidden shadow-sm active:scale-[0.98] flex items-start gap-3"
                     >
-                      <Button
-                        variant="ghost"
-                        onClick={() => onSelectStarter?.(starter)}
-                        className="w-full h-auto text-left p-4 rounded-2xl bg-white border border-neutral/10 hover:border-primary/30 hover:bg-primary/5 transition-all group relative overflow-hidden shadow-sm active:scale-[0.98] flex items-start gap-3"
-                      >
-                        <MessageSquare className="w-4 h-4 text-primary/40 mt-0.5 group-hover:text-primary transition-colors shrink-0" />
-                        <span className="text-sm text-neutral/80 group-hover:text-neutral transition-colors leading-snug whitespace-normal">
-                          {starter}
-                        </span>
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pro Tips */}
-              <div className="w-full max-w-sm p-5 rounded-3xl bg-gradient-to-br from-neutral/5 to-transparent border border-neutral/10 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-warning" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral/60">
-                    Pro Tips
-                  </span>
-                </div>
-                <ul className="space-y-2.5">
-                  {TIPS.map((tip, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-xs text-neutral-light leading-relaxed">
-                      <div className="w-1 h-1 rounded-full bg-warning/40 mt-1.5 shrink-0" />
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
+                      <MessageSquare className="w-4 h-4 text-primary/40 mt-0.5 group-hover:text-primary transition-colors shrink-0" />
+                      <span className="text-sm text-neutral/80 group-hover:text-neutral transition-colors leading-snug whitespace-normal">
+                        {starter}
+                      </span>
+                    </Button>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          ) : (
-            <AnimatePresence initial={false}>
-              {messages.map((msg, index) => (
+
+            {/* Pro Tips */}
+            <div className="w-full max-w-sm p-5 rounded-3xl bg-gradient-to-br from-neutral/5 to-transparent border border-neutral/10 space-y-3">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-warning" />
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral/60">
+                  Pro Tips
+                </span>
+              </div>
+              <ul className="space-y-2.5">
+                {TIPS.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-neutral-light leading-relaxed">
+                    <div className="w-1 h-1 rounded-full bg-warning/40 mt-1.5 shrink-0" />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <Virtuoso
+            ref={virtuosoRef}
+            data={messages}
+            initialTopMostItemIndex={messages.length - 1}
+            followOutput="smooth"
+            className="flex-1 min-h-0 chat-scrollbar focus:outline-none"
+            startReached={onFetchOlder}
+            increaseViewportBy={200}
+            itemContent={(index, msg) => (
+              <div className="px-4 py-1">
                 <MessageItem
                   key={msg.id || msg._id}
                   msg={msg}
@@ -322,19 +316,46 @@ export default function MessagesList(props: MessagesListProps) {
                   isFirstUnread={index === firstUnreadIndex}
                   isLastSeen={index === lastSeenSeparatorIndex}
                 />
-              ))}
-
-              {Array.isArray(typingUsers) && typingUsers.length > 0 && (
-                <TypingIndicator
-                  userName={matchUserName}
-                  avatarUrl={matchUserAvatarUrl}
-                  key="typing-indicator"
-                />
-              )}
-            </AnimatePresence>
-          )}
-        </div>
-      </ScrollArea>
+              </div>
+            )}
+            components={{
+              Header: () => (
+                <div className="pt-5">
+                  {hasMore && (
+                    <div className="flex items-center justify-center py-4">
+                      {loadingOlder ? (
+                        <div className="flex items-center gap-2 text-neutral-light text-sm bg-white/80 px-4 py-2 rounded-full shadow-sm border border-neutral/10">
+                          <LoadingSpinner size={16} />
+                          <span>Loading older messages...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-neutral-light text-xs">
+                          <div className="w-6 h-[1px] bg-neutral/20" />
+                          <span>Scroll up for more</span>
+                          <div className="w-6 h-[1px] bg-neutral/20" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ),
+              Footer: () => (
+                <div className="pb-5 px-4">
+                  <AnimatePresence>
+                    {Array.isArray(typingUsers) && typingUsers.length > 0 && (
+                      <TypingIndicator
+                        userName={matchUserName}
+                        avatarUrl={matchUserAvatarUrl}
+                        key="typing-indicator"
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              ),
+            }}
+          />
+        )}
+      </div>
 
       <AnimatePresence>
         {showScrollToBottom && (

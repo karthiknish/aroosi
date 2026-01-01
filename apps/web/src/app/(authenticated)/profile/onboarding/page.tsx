@@ -1,27 +1,20 @@
 "use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { OnboardingWizard } from "@/components/profile/OnboardingWizard";
 
 /**
- * Onboarding route - redirects to profile edit page
- * This route exists to provide a clear onboarding entry point for users
- * who haven't completed their profile yet.
+ * Onboarding route - shows the multi-step profile setup wizard
  */
 export default function OnboardingPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirect to profile edit page where they can complete their profile
-    router.replace("/profile/edit");
-  }, [router]);
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-base-light">
-      <div className="text-center">
-        <LoadingSpinner size={32} colorClassName="text-primary" />
-        <p className="mt-4 text-neutral-light">Setting up your profile...</p>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-base-light to-secondary/5">
+      <div className="container mx-auto py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-serif font-bold text-neutral-dark mb-2">Welcome to Aroosi</h1>
+          <p className="text-neutral-light max-w-lg mx-auto">
+            Let's get your profile set up so you can start meeting amazing people.
+          </p>
+        </div>
+        <OnboardingWizard />
       </div>
     </div>
   );

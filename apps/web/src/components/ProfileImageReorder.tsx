@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from "react";
+import NextImage from "next/image";
 import {
   DndContext,
   closestCenter,
@@ -163,13 +164,14 @@ const SortableImageBase = ({
           aria-label={`View image ${imageIndex + 1}`}
           onClick={() => setModalState({ open: true, index: imageIndex })}
         >
-          <AspectRatio ratio={1 / 1} className="w-full h-full">
-            <img
+          <AspectRatio ratio={1 / 1} className="w-full h-full relative">
+            <NextImage
               src={img.url.split("#")[0]}
               alt="Profile"
-              loading="lazy"
-              className={"w-full h-full object-cover"}
-              onLoad={() => setLoaded(true)}
+              fill
+              sizes="100px"
+              className="object-cover"
+              onLoadingComplete={() => setLoaded(true)}
               onError={(e) => {
                 // Attempt fallback using alt url encoded after hash (#alt=...)
                 try {
@@ -183,6 +185,7 @@ const SortableImageBase = ({
                 } catch {}
                 setError(true);
               }}
+              priority={imageIndex === 0}
             />
           </AspectRatio>
         </button>
@@ -604,11 +607,13 @@ export function ProfileImageReorder({
                     style={{ width: 100, height: 100 }}
                     className="rounded-lg overflow-hidden shadow-lg"
                   >
-                    <AspectRatio ratio={1 / 1} className="w-full h-full">
-                      <img
+                    <AspectRatio ratio={1 / 1} className="w-full h-full relative">
+                      <NextImage
                         src={img.url}
                         alt="Dragging"
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="100px"
+                        className="object-cover"
                       />
                     </AspectRatio>
                   </div>

@@ -13,16 +13,40 @@ export type { AuthUser, LoginCredentials, RegisterData } from '@aroosi/shared';
 /**
  * Sign in with email and password
  */
-export async function loginWithEmail(credentials: LoginCredentials): Promise<ApiResponse<FirebaseAuthTypes.User>> {
+export async function loginWithEmail(credentials: LoginCredentials): Promise<ApiResponse<FirebaseAuthTypes.UserCredential>> {
     try {
-        const result = await auth().signInWithEmailAndPassword(
-            credentials.email,
-            credentials.password
-        );
-        return { data: result.user, status: 200 };
+        // 1. Call backend /auth/login for centralization of auth logic
+        const backendResult = await api.post<{
+            uid: string;
+            email: string;
+            customToken: string;
+            idToken?: string;
+            refreshToken?: string;
+        }>('/auth/login', {
+            email: credentials.email,
+            password: credentials.password,
+        }, { authenticated: false });
+
+        if (backendResult.error || !backendResult.data?.customToken) {
+            return { 
+                error: backendResult.error || 'Login failed', 
+                status: backendResult.status,
+                code: backendResult.code
+            };
+        }
+
+        // 2. Sign in to Firebase with the custom token
+        const result = await auth().signInWithCustomToken(backendResult.data.customToken);
+        
+        return { data: result, status: 200 };
     } catch (error: unknown) {
         const firebaseError = error as { code?: string; message?: string };
-        return { error: firebaseError.message || 'Login failed', status: 401 };
+        console.error('[Auth] loginWithEmail error:', firebaseError);
+        return { 
+            error: firebaseError.message || 'Login failed', 
+            status: 401,
+            code: firebaseError.code
+        };
     }
 }
 

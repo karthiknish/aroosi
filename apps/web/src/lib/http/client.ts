@@ -14,10 +14,20 @@ export interface FetchJsonOptions extends Omit<RequestInit, "headers"> {
    * If not provided, a stable per-session id will be generated (browser only).
    */
   correlationId?: string;
+  /**
+   * Request timeout in milliseconds. Defaults to 15000 (15 seconds).
+   */
+  timeout?: number;
 }
 
 export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptions = {}): Promise<T> {
-  const { method = "GET", headers: userHeaders, correlationId, ...rest } = opts;
+  const { 
+    method = "GET", 
+    headers: userHeaders, 
+    correlationId, 
+    timeout = 15000,
+    ...rest 
+  } = opts;
 
   // Generate or reuse a stable correlation id per browser session if not provided
   let cid = correlationId;
@@ -69,13 +79,25 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
     console.warn("[HTTP Client] Failed to attach auth token for", input, err);
   }
 
-  const resp = await fetch(input, {
-    method,
-    headers,
-    ...rest,
-    // Cookies are automatically sent for same-origin requests by default.
-    // Ensure your routes set proper SameSite and domain flags.
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  let resp: Response;
+  try {
+    resp = await fetch(input, {
+      method,
+      headers,
+      signal: controller.signal,
+      ...rest,
+    });
+    clearTimeout(timeoutId);
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new Error(`Request timeout after ${timeout}ms for ${method} ${input}`);
+    }
+    throw err;
+  }
 
   // Throw on non-2xx
   if (!resp.ok) {
@@ -90,7 +112,7 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
       statusText: resp.statusText,
       method,
       url: input,
-      responseBody: errText?.substring(0, 500), // Truncate long responses
+      responseBody: errText?.substring(0, 500),
     });
     const error = new Error(
       `HTTP ${resp.status} ${resp.statusText} for ${method} ${input}` +

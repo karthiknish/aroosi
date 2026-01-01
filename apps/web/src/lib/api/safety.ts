@@ -32,8 +32,7 @@ export type { UserReport };
 class SafetyAPI {
   private async makeRequest<T>(
     endpoint: string,
-    options?: RequestInit,
-    _token?: string | null
+    options?: RequestInit
   ): Promise<T> {
     const baseHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -63,70 +62,44 @@ class SafetyAPI {
     return data.data || data;
   }
 
-  async reportUser(
-    token: string | null,
-    data: ReportData
-  ): Promise<ReportResponse> {
-    return this.makeRequest<ReportResponse>(
-      "/report",
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      },
-      token
-    );
+  async reportUser(data: ReportData): Promise<ReportResponse> {
+    return this.makeRequest<ReportResponse>("/report", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
-  async blockUser(
-    token: string | null,
-    blockedUserId: string
-  ): Promise<{ message: string }> {
-    return this.makeRequest(
-      "/block",
-      {
-        method: "POST",
-        body: JSON.stringify({ blockedUserId }),
-      },
-      token
-    );
+  async blockUser(blockedUserId: string): Promise<{ message: string }> {
+    return this.makeRequest("/block", {
+      method: "POST",
+      body: JSON.stringify({ blockedUserId }),
+    });
   }
 
-  async unblockUser(
-    token: string | null,
-    blockedUserId: string
-  ): Promise<{ message: string }> {
-    return this.makeRequest(
-      "/unblock",
-      {
-        method: "POST",
-        body: JSON.stringify({ blockedUserId }),
-      },
-      token
-    );
+  async unblockUser(blockedUserId: string): Promise<{ message: string }> {
+    return this.makeRequest("/unblock", {
+      method: "POST",
+      body: JSON.stringify({ blockedUserId }),
+    });
   }
 
-  async getBlockedUsers(
-    token: string | null,
-    opts?: { limit?: number; cursor?: string | null }
-  ): Promise<{ blockedUsers: BlockedUser[]; nextCursor?: string | null }> {
+  async getBlockedUsers(opts?: {
+    limit?: number;
+    cursor?: string | null;
+  }): Promise<{ blockedUsers: BlockedUser[]; nextCursor?: string | null }> {
     const params = new URLSearchParams();
     if (opts?.limit) params.set("limit", String(opts.limit));
     if (opts?.cursor) params.set("cursor", opts.cursor);
     const qs = params.toString();
-    return this.makeRequest(`/blocked${qs ? "?" + qs : ""}`, undefined, token);
+    return this.makeRequest(`/blocked${qs ? "?" + qs : ""}`);
   }
 
   // Overload signatures for backward compatibility
+  async checkBlockStatus(userId: string): Promise<BlockStatus>;
   async checkBlockStatus(
-    token: string | null,
-    userId: string
-  ): Promise<BlockStatus>;
-  async checkBlockStatus(
-    token: string | null,
     ids: { profileId?: string; userId?: string }
   ): Promise<BlockStatus>;
   async checkBlockStatus(
-    token: string | null,
     arg: string | { profileId?: string; userId?: string }
   ): Promise<BlockStatus> {
     const params = new URLSearchParams();
@@ -136,11 +109,7 @@ class SafetyAPI {
       if (arg.profileId) params.append("profileId", arg.profileId);
       if (arg.userId) params.append("userId", arg.userId);
     }
-    return this.makeRequest(
-      `/blocked/check?${params.toString()}`,
-      undefined,
-      token
-    );
+    return this.makeRequest(`/blocked/check?${params.toString()}`);
   }
 }
 

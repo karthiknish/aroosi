@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { sendForgotPasswordEmail } from "@/lib/auth/email";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 
 /**
  * Send password reset email using Firebase
@@ -13,10 +14,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (!email) {
-      return NextResponse.json(
-        { error: "Missing email", code: "BAD_REQUEST" },
-        { status: 400 }
-      );
+      return errorResponse("Missing email", 400, { code: "BAD_REQUEST" });
     }
 
     try {
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
 
       if (!link) {
         // Do not reveal non-existence of user
-        return NextResponse.json({
+        return successResponse({
           ok: true,
           message: "If an account exists with this email, a password reset link has been sent",
         });
@@ -52,25 +50,16 @@ export async function POST(request: NextRequest) {
       // Send via Resend using our template (consistent with forgot-password)
       await sendForgotPasswordEmail(email, resetUrl).catch(() => null);
 
-      return NextResponse.json(
-        {
-          ok: true,
-          message: "Password reset email sent successfully",
-        },
-        { status: 200 }
-      );
+      return successResponse({
+        ok: true,
+        message: "Password reset email sent successfully",
+      });
     } catch (firebaseError: any) {
       console.error("Firebase password reset error:", firebaseError);
-      return NextResponse.json(
-        { error: "Failed to send password reset email", code: "UNKNOWN" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to send password reset email", 500, { code: "UNKNOWN" });
     }
   } catch (e) {
     console.error("Unexpected error in password reset route:", e);
-    return NextResponse.json(
-      { error: "Password reset failed", code: "UNKNOWN" },
-      { status: 500 }
-    );
+    return errorResponse("Password reset failed", 500, { code: "UNKNOWN" });
   }
 }

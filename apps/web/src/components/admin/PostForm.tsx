@@ -6,8 +6,18 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import BlogEditor from "@/components/admin/BlogEditor";
+import dynamic from "next/dynamic";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
+
+const BlogEditor = dynamic(() => import("@/components/admin/BlogEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[400px] flex items-center justify-center bg-neutral/5 rounded-lg border border-neutral/10">
+      <LoadingSpinner size={32} />
+    </div>
+  ),
+});
 
 interface PostFormProps {
   mode: "create" | "edit";

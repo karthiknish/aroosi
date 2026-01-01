@@ -6,24 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { format } from "date-fns";
-import {
-  Bar,
-  BarChart,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { type ChartConfig } from "@/components/ui/chart";
+
+const UsageCharts = dynamic(() => import("@/components/usage/UsageCharts").then(m => m.UsageCharts), {
+  ssr: false,
+  loading: () => <div className="h-[300px] bg-neutral/5 animate-pulse rounded-lg" />
+});
+
+import dynamic from "next/dynamic";
 import {
   Activity,
   TrendingUp,
@@ -222,83 +212,17 @@ export default function UsagePage() {
           <div className="space-y-8 lg:col-span-1">
             <UsageTracker />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity Distribution</CardTitle>
-                <CardDescription>Breakdown by feature type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full">
-                  {isLoading ? (
-                    <div className="h-full w-full bg-neutral/10 animate-pulse rounded-lg" />
-                  ) : (
-                    <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                      <PieChart>
-                        <Pie
-                          data={chartData.distribution}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                          nameKey="name"
-                        >
-                          {chartData.distribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={`var(--color-${Object.keys(chartConfig)[index % Object.keys(chartConfig).length]})`} />
-                          ))}
-                        </Pie>
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <ChartLegend content={<ChartLegendContent />} />
-                      </PieChart>
-                    </ChartContainer>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Right Column: Trends & History */}
           <div className="space-y-8 lg:col-span-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Daily Activity Trends</CardTitle>
-                <CardDescription>Activity volume over the last 7 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] w-full">
-                  {isLoading ? (
-                    <div className="h-full w-full bg-neutral/10 animate-pulse rounded-lg" />
-                  ) : (
-                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                      <BarChart data={chartData.daily} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/50" />
-                        <XAxis
-                          dataKey="date"
-                          axisLine={false}
-                          tickLine={false}
-                          tickMargin={10}
-                          className="text-muted-foreground text-xs"
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          className="text-muted-foreground text-xs"
-                        />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        {Object.keys(chartConfig).map((feature, index) => (
-                          <Bar
-                            key={feature}
-                            dataKey={feature}
-                            stackId="a"
-                            fill={`var(--color-${feature})`}
-                            radius={index === Object.keys(chartConfig).length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                          />
-                        ))}
-                      </BarChart>
-                    </ChartContainer>
-                  )}
-                </div>
+              <CardContent className="pt-6">
+                {isLoading ? (
+                  <div className="h-[300px] w-full bg-neutral/10 animate-pulse rounded-lg" />
+                ) : (
+                  <UsageCharts chartData={chartData} chartConfig={chartConfig} />
+                )}
               </CardContent>
             </Card>
 

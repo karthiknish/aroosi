@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useVisibility } from "@/hooks/useVisibility";
 // Firestore real-time messaging hook
 import { useRealTimeMessages } from "@/hooks/useRealTimeMessages";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
@@ -39,8 +40,9 @@ export function useModernChat({
   currentUserId,
   matchUserId,
 }: UseModernChatArgs) {
+  const isVisible = useVisibility();
   const subscriptionStatus = useSubscriptionStatus();
-  const { trackUsage } = useUsageTracking(undefined);
+  const { trackUsage } = useUsageTracking();
 
   const {
     messages,
@@ -144,7 +146,7 @@ export function useModernChat({
 
     // Heartbeat interval - update self presence every 30 seconds
     const heartbeatInterval = setInterval(async () => {
-      if (!mounted) return;
+      if (!mounted || !isVisible) return; // Skip if tab not visible
       try {
         await heartbeat();
       } catch (err) {
@@ -156,7 +158,7 @@ export function useModernChat({
 
     // Separate presence poll interval - check other user every 30 seconds
     const presenceInterval = setInterval(async () => {
-      if (!mounted) return;
+      if (!mounted || !isVisible) return; // Skip if tab not visible
       try {
         const p = await getPresence(matchUserId);
         if (mounted) setOtherPresence(p);

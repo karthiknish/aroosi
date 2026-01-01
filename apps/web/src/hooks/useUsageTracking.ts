@@ -40,7 +40,7 @@ interface UsageResponse {
   resetDate: number;
 }
 
-export function useUsageTracking(_providedToken?: string): {
+export function useUsageTracking(): {
   trackUsage: (params: TrackUsageParams) => void;
   isTracking: boolean;
 } {

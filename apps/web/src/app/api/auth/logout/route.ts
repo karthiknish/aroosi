@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest } from "next/server";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 
 // Logout user by clearing Firebase auth cookies
 export async function POST(_request: NextRequest) {
   try {
-    const response = NextResponse.json({ ok: true }, { status: 200 });
+    const response = successResponse({ ok: true });
     
     // Clear the Firebase auth cookies
     response.cookies.set("firebaseAuthToken", "", {
@@ -24,9 +24,6 @@ export async function POST(_request: NextRequest) {
     return response;
   } catch (e) {
     console.error("Unexpected error in logout route:", e);
-    return NextResponse.json(
-      { error: "Logout failed", code: "UNKNOWN" },
-      { status: 500 }
-    );
+    return errorResponse("Logout failed", 500, { code: "UNKNOWN" });
   }
 }

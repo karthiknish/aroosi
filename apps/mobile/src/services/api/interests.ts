@@ -29,16 +29,15 @@ export async function getSentInterests(): Promise<ApiResponse<Interest[]>> {
 /**
  * Get interests received by current user
  */
-export async function getReceivedInterests(): Promise<ApiResponse<Interest[]>> {
-    return api.get<Interest[]>('/interests?mode=received');
+export async function getReceivedInterests(userId: string): Promise<ApiResponse<Interest[]>> {
+    return api.get<Interest[]>(`/interests/received?userId=${encodeURIComponent(userId)}`);
 }
 
 /**
  * Accept an interest
  */
 export async function acceptInterest(interestId: string): Promise<ApiResponse<{ success: boolean; status: string; matchId?: string }>> {
-    return api.post<{ success: boolean; status: string; matchId?: string }>('/interests', {
-        action: 'respond',
+    return api.post<{ success: boolean; status: string; matchId?: string }>('/interests/respond', {
         interestId,
         status: 'accepted',
     });
@@ -48,8 +47,7 @@ export async function acceptInterest(interestId: string): Promise<ApiResponse<{ 
  * Decline an interest
  */
 export async function declineInterest(interestId: string): Promise<ApiResponse<{ success: boolean; status: string }>> {
-    return api.post<{ success: boolean; status: string }>('/interests', {
-        action: 'respond',
+    return api.post<{ success: boolean; status: string }>('/interests/respond', {
         interestId,
         status: 'declined',
     });
@@ -60,6 +58,6 @@ export async function declineInterest(interestId: string): Promise<ApiResponse<{
  */
 export async function checkInterestStatus(toUserId: string): Promise<ApiResponse<{ status: InterestStatus | null }>> {
     return api.get<{ status: InterestStatus | null }>(
-        `/interests?mode=status&userId=${encodeURIComponent(toUserId)}`
+        `/interests/status?userId=${encodeURIComponent(toUserId)}`
     );
 }

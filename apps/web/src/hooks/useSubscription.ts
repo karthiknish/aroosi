@@ -8,7 +8,7 @@ import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { SubscriptionErrorHandler } from "@/lib/utils/subscriptionErrorHandler";
 import { handleError } from "@/lib/utils/errorHandling";
 
-export const useSubscriptionStatus = (_providedToken?: string) => {
+export const useSubscriptionStatus = () => {
   // Access auth context for profile + refresh capability (cookie-based auth; no token required)
   const { profile, refreshProfile } = useAuthContext();
 
@@ -23,7 +23,7 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
 
   const query = useQuery({
     queryKey: ["subscription", "status"],
-    queryFn: () => subscriptionAPI.getStatus(undefined),
+    queryFn: () => subscriptionAPI.getStatus(),
     enabled: true,
     staleTime: quickRefresh ? 5_000 : 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -182,7 +182,7 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
 export const useUsageStats = () => {
   return useQuery({
     queryKey: ["subscription", "usage"],
-    queryFn: () => subscriptionAPI.getUsage(undefined),
+    queryFn: () => subscriptionAPI.getUsage(),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
@@ -191,7 +191,7 @@ export const useSubscriptionActions = () => {
   const queryClient = useQueryClient();
 
   const cancelMutation = useMutation({
-    mutationFn: () => subscriptionAPI.cancel(undefined),
+    mutationFn: () => subscriptionAPI.cancel(),
     onSuccess: (data) => {
       const end =
         typeof (data as any)?.accessUntil === "number"
@@ -226,7 +226,7 @@ export const useSubscriptionActions = () => {
 
   const upgradeMutation = useMutation({
     mutationFn: (tier: "premium" | "premiumPlus") =>
-      subscriptionAPI.upgrade(tier, undefined),
+      subscriptionAPI.upgrade(tier),
     onSuccess: (data) => {
       showSuccessToast(data.message);
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
@@ -250,7 +250,7 @@ export const useSubscriptionActions = () => {
   });
 
   const restoreMutation = useMutation({
-    mutationFn: () => subscriptionAPI.restorePurchases(undefined),
+    mutationFn: () => subscriptionAPI.restorePurchases(),
     onSuccess: (data) => {
       showSuccessToast(data.message);
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });

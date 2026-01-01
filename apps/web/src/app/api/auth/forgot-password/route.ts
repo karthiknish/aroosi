@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { sendForgotPasswordEmail } from "@/lib/auth/email";
+import { successResponse, errorResponse } from "@/lib/api/handler";
 
 // Alias endpoint for requesting password reset emails
 export async function POST(request: NextRequest) {
@@ -9,10 +10,7 @@ export async function POST(request: NextRequest) {
       email?: string;
     };
     if (!email) {
-      return NextResponse.json(
-        { error: "Missing email", code: "BAD_REQUEST" },
-        { status: 400 }
-      );
+      return errorResponse("Missing email", 400, { code: "BAD_REQUEST" });
     }
     try {
       // Generate Firebase reset link to obtain the secure oobCode
@@ -25,7 +23,7 @@ export async function POST(request: NextRequest) {
 
       if (!link) {
         // Do not reveal non-existence of user
-        return NextResponse.json({
+        return successResponse({
           ok: true,
           message: "If an account exists, a reset link was sent",
         });
@@ -49,18 +47,15 @@ export async function POST(request: NextRequest) {
       // Send via Resend using our template
       await sendForgotPasswordEmail(email, resetUrl).catch(() => null);
 
-      return NextResponse.json({
+      return successResponse({
         ok: true,
         message: "If an account exists, a reset link was sent",
       });
     } catch (err: any) {
       console.error("forgot-password error", err);
-      return NextResponse.json(
-        { error: "Failed to process request" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to process request", 500);
     }
   } catch (e) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    return errorResponse("Invalid request", 400);
   }
 }

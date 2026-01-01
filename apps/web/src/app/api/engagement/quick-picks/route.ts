@@ -4,7 +4,7 @@ import {
   errorResponse,
   ApiContext
 } from "@/lib/api/handler";
-import { db, adminStorage } from "@/lib/firebaseAdmin";
+import { db, getAccessibleStorageUrl } from "@/lib/firebaseAdmin";
 import { FieldPath } from "firebase-admin/firestore";
 import { buildQuickPick, COL_QUICK_PICKS } from "@/lib/firestoreSchema";
 import { engagementQuickPickActionSchema } from "@/lib/validation/apiSchemas/engagement";
@@ -76,37 +76,6 @@ async function ensureQuickPicks(userId: string, dayKey?: string) {
 async function fetchQuickPickProfiles(userIds: string[]) {
   if (userIds.length === 0) return [];
 
-  const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-    `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
-
-  const getAccessibleImageUrl = async (urlOrPath: string): Promise<string> => {
-    if (!urlOrPath) return "";
-    if (urlOrPath.includes("X-Goog-Signature")) return urlOrPath;
-    if (urlOrPath.startsWith("/api/")) return urlOrPath;
-
-    if (urlOrPath.includes("storage.googleapis.com")) {
-      const match = urlOrPath.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
-      if (match && match[1]) {
-        try {
-          const file = adminStorage.bucket(bucketName).file(decodeURIComponent(match[1]));
-          const [signedUrl] = await file.getSignedUrl({ action: "read", expires: nowTimestamp() + 60 * 60 * 1000 });
-          return signedUrl;
-        } catch { return urlOrPath; }
-      }
-    }
-
-    if (urlOrPath.startsWith("users/")) {
-      try {
-        const file = adminStorage.bucket(bucketName).file(urlOrPath);
-        const [signedUrl] = await file.getSignedUrl({ action: "read", expires: nowTimestamp() + 60 * 60 * 1000 });
-        return signedUrl;
-      } catch { return `https://storage.googleapis.com/${bucketName}/${urlOrPath}`; }
-    }
-
-    return urlOrPath;
-  };
-
   const out: any[] = [];
   const chunkSize = 10;
   for (let i = 0; i < userIds.length; i += chunkSize) {
@@ -117,7 +86,7 @@ async function fetchQuickPickProfiles(userIds: string[]) {
       snap.docs.map(async (d: any) => {
         const data = d.data() as any;
         const profileImageUrls = Array.isArray(data.profileImageUrls) ? data.profileImageUrls : [];
-        const signedUrls = await Promise.all(profileImageUrls.slice(0, 3).map((url: string) => getAccessibleImageUrl(url)));
+        const signedUrls = await Promise.all(profileImageUrls.slice(0, 3).map((url: string) => getAccessibleStorageUrl(url)));
 
         out.push({
           _id: d.id,

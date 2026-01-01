@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
@@ -130,10 +131,12 @@ export function FirebaseImageGallery({
           {images.map((image) => (
             <Card key={image.storageId} className="overflow-hidden">
               <div className="relative aspect-square">
-                <img
+                <Image
                   src={image.url}
                   alt={image.fileName}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
+                  className="object-cover"
                 />
                 <div className="absolute inset-0 bg-neutral-dark/0 hover:bg-neutral-dark/30 transition-all duration-200 flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
                   <Button
@@ -180,10 +183,12 @@ export function FirebaseImageGallery({
                 <CarouselItem key={image.storageId}>
                   <Card className="overflow-hidden">
                     <div className="relative aspect-square">
-                      <img
+                      <Image
                         src={image.url}
                         alt={image.fileName}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 600px"
+                        className="object-cover"
                       />
                       <div className="absolute bottom-4 right-4 flex gap-2">
                         <Button

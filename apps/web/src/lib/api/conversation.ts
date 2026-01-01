@@ -3,8 +3,7 @@
 /**
  * Returns the SSE URL for conversation events (for use with EventSource).
  * @param {string} conversationId - The conversation ID
- * @param {string} token - Auth token
- * @returns {string} - The SSE URL with token as query param
+ * @returns {string} - The SSE URL with identity derived from cookies
  */
 export function getConversationEventsSSEUrl({
   conversationId,
@@ -18,7 +17,6 @@ export function getConversationEventsSSEUrl({
 /**
  * Marks a conversation as read for the current user.
  * @param {string} conversationId - The conversation ID
- * @param {string} token - Auth token
  * @returns {Promise<{ success: boolean; error?: string }>} - The API response
  */
 export async function markConversationRead({
@@ -64,7 +62,6 @@ export async function heartbeat(): Promise<void> {
 
 /**
  * Fetches the user's conversations from the API.
- * @param {string} token - Auth token
  * @returns {Promise<{ conversations: Array<{ id: string; participants: string[]; lastMessage?: string; updatedAt: number }> }>} - The conversations data
  */
 export async function getConversations(): Promise<unknown> {

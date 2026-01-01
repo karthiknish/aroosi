@@ -90,8 +90,7 @@ class SubscriptionAPI {
    */
   private async makeRequest(
     endpoint: string,
-    options?: RequestInit,
-    _token?: string
+    options?: RequestInit
   ): Promise<any> {
     const baseHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -150,7 +149,6 @@ class SubscriptionAPI {
    * Accepts optional profileId/userId passthrough for admin views.
    */
   async getStatus(
-    token?: string,
     profileId?: string,
     userId?: string
   ): Promise<SubscriptionStatusResponse> {
@@ -160,7 +158,7 @@ class SubscriptionAPI {
     const qs = params.toString();
     const endpoint = `/api/subscription/status${qs ? `?${qs}` : ""}`;
 
-    const payload = (await this.makeRequest(endpoint, undefined, token)) as {
+    const payload = (await this.makeRequest(endpoint)) as {
       subscriptionPlan?: string | null;
       subscriptionExpiresAt?: number | null;
       isActive?: boolean;
@@ -247,11 +245,10 @@ class SubscriptionAPI {
    * Fetch subscription usage statistics
    * GET /api/subscription/usage
    */
-  async getUsage(token?: string): Promise<SubscriptionUsageResponse> {
+  async getUsage(): Promise<SubscriptionUsageResponse> {
     const data = (await this.makeRequest(
       "/api/subscription/usage",
-      { method: "GET" },
-      token
+      { method: "GET" }
     )) as SubscriptionUsageResponse;
     // Basic shape validation/fallbacks
     return {
@@ -280,13 +277,10 @@ class SubscriptionAPI {
    * Cancel current user's subscription
    * POST /api/subscription/cancel
    */
-  async cancel(
-    token?: string
-  ): Promise<{ message: string; accessUntil?: number; scheduled?: boolean }> {
+  async cancel(): Promise<{ message: string; accessUntil?: number; scheduled?: boolean }> {
     const data = (await this.makeRequest(
       "/api/subscription/cancel",
-      { method: "POST" },
-      token
+      { method: "POST" }
     )) as { message?: string; accessUntil?: number; scheduled?: boolean };
     return {
       message: data?.message ?? "Subscription cancellation requested",
@@ -342,11 +336,10 @@ class SubscriptionAPI {
    * Restore purchases (server-side reconciliation)
    * POST /api/subscription/restore
    */
-  async restorePurchases(token?: string): Promise<{ message: string }> {
+  async restorePurchases(): Promise<{ message: string }> {
     const data = (await this.makeRequest(
       "/api/subscription/restore",
-      { method: "POST" },
-      token
+      { method: "POST" }
     )) as { message?: string };
     return { message: data?.message ?? "Subscription restored if eligible" };
   }
@@ -359,14 +352,12 @@ class SubscriptionAPI {
    * - Else returns { hasAccess: false }
    */
   async checkFeatureAccess(
-    feature: string,
-    token?: string
+    feature: string
   ): Promise<{ hasAccess: boolean; feature?: string }> {
     try {
       const res = (await this.makeRequest(
         "/api/subscription/features",
-        { method: "GET" },
-        token
+        { method: "GET" }
       )) as
         | { hasAccess?: boolean; feature?: string }
         | { features?: Array<{ name: string; available: boolean }> };
@@ -493,7 +484,7 @@ export function useSubscriptionStatus(options?: { profileId?: string; userId?: s
   const { profileId, userId } = options || {};
   return useQuery({
     queryKey: ["subscription", "status", profileId || null, userId || null],
-    queryFn: () => subscriptionAPI.getStatus(undefined, profileId, userId),
+    queryFn: () => subscriptionAPI.getStatus(profileId, userId),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });

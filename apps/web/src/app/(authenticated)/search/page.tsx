@@ -34,7 +34,7 @@ export default function SearchProfilesPage() {
   } | null;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { trackUsage } = useUsageTracking(undefined);
+  const { trackUsage } = useUsageTracking();
 
   // All hooks must be declared before any conditional returns
   const [mounted, setMounted] = React.useState(false);

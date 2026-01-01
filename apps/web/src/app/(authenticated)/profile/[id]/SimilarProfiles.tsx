@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { searchAPI } from "@/lib/api/search";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import Image from "next/image";
 
 type Props = {
   baseCity?: string;
@@ -49,10 +50,15 @@ export function SimilarProfiles({ baseCity, baseCountry, baseMotherTongue, exclu
       {items.map((p) => (
         <Card key={p.userId} className="hover:shadow-md transition border-neutral/10">
           <CardContent className="p-3">
-            <div className="w-full aspect-square rounded-md overflow-hidden bg-neutral/5 mb-2">
+            <div className="w-full aspect-square rounded-md overflow-hidden bg-neutral/5 mb-2 relative">
               {p.profile.profileImageUrls && p.profile.profileImageUrls[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.profile.profileImageUrls[0]} alt={p.profile.fullName || "Profile"} className="w-full h-full object-cover" />
+                <Image
+                  src={p.profile.profileImageUrls[0]}
+                  alt={p.profile.fullName || "Profile"}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 200px"
+                  className="object-cover"
+                />
               ) : null}
             </div>
             <div className="text-sm font-medium truncate text-neutral-dark">{p.profile.fullName || "Member"}</div>

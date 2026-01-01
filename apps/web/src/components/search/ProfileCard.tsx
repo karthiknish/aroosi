@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, Rocket, Heart, Check } from "lucide-react";
@@ -47,7 +48,7 @@ function getAge(dateOfBirth: string) {
   return isNaN(age) ? "-" : age;
 }
 
-export function ProfileCard({
+function ProfileCardComponent({
   result,
   index,
   imgLoaded,
@@ -105,6 +106,7 @@ export function ProfileCard({
         <div 
           className="relative cursor-pointer group"
           onClick={() => router.push(`/profile/${result.userId}`)}
+          onMouseEnter={() => router.prefetch(`/profile/${result.userId}`)}
         >
           {matchImageUrl ? (
             <div className="w-full aspect-square bg-neutral/10 flex items-center justify-center overflow-hidden relative">
@@ -112,17 +114,14 @@ export function ProfileCard({
               {!imgLoaded && (
                 <div className="absolute inset-0 bg-neutral/10 animate-pulse z-0" />
               )}
-              <img
+              <Image
                 src={matchImageUrl}
                 alt={typeof p.fullName === "string" ? p.fullName : ""}
-                className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className={`object-cover transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
                 onLoad={() => setImgLoaded(result.userId)}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src.includes("placeholder")) return; // prevent loop
-                  target.src = "/placeholder.jpg";
-                  setImgLoaded(result.userId);
-                }}
+                priority={index < 4}
               />
               {p.boostedUntil && p.boostedUntil > Date.now() && (
                 <div className="absolute top-2 left-2 bg-gradient-to-r from-primary via-primary-dark to-primary-dark text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-white/20">
@@ -133,10 +132,12 @@ export function ProfileCard({
             </div>
           ) : (
             <div className="w-full aspect-square bg-neutral/10 flex items-center justify-center overflow-hidden relative">
-              <img
+              <Image
                 src="/placeholder.jpg"
                 alt="Profile placeholder"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
               {p.boostedUntil && p.boostedUntil > Date.now() && (
                 <div className="absolute top-2 left-2 bg-gradient-to-r from-primary via-primary-dark to-primary-dark text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-white/20">
@@ -207,3 +208,5 @@ export function ProfileCard({
     </motion.div>
   );
 }
+
+export const ProfileCard = React.memo(ProfileCardComponent);

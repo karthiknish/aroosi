@@ -7,6 +7,7 @@ import {
   actOnQuickPick,
   QuickPickProfile,
   fetchIcebreakers,
+  todayKey,
 } from "@/lib/engagementUtil";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,14 +18,7 @@ import Image from "next/image";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 
-function todayKey(): string {
-  const d = new Date();
-  return (
-    d.getUTCFullYear().toString() +
-    String(d.getUTCMonth() + 1).padStart(2, "0") +
-    String(d.getUTCDate()).padStart(2, "0")
-  );
-}
+// todayKey imported from engagementUtil instead of local duplicate
 
 export default function QuickPicksPage() {
   const { trackUsage } = useUsageTracking();

@@ -146,3 +146,57 @@ export async function getFirebaseUser(userId: string) {
     return null;
   }
 }
+
+/**
+ * Converts a Firebase Storage path or legacy GS URL into a public/signed URL.
+ * Derived from logic in quick-picks API to centralize storage access.
+ */
+export async function getAccessibleStorageUrl(
+  urlOrPath: string | null | undefined,
+  ttlSeconds = 3600
+): Promise<string> {
+  if (!urlOrPath) return "";
+  
+  // 1. Skip if already a signed/public URL or a local API proxy
+  if (urlOrPath.includes("X-Goog-Signature")) return urlOrPath;
+  if (urlOrPath.startsWith("/api/")) return urlOrPath;
+  if (urlOrPath.startsWith("http") && !urlOrPath.includes("storage.googleapis.com")) {
+    return urlOrPath;
+  }
+
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
+
+  try {
+    let filePath: string | null = null;
+
+    // 2. Handle storage.googleapis.com/bucket/path format
+    if (urlOrPath.includes("storage.googleapis.com")) {
+      const match = urlOrPath.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
+      if (match && match[1]) {
+        filePath = decodeURIComponent(match[1]);
+      }
+    } 
+    // 3. Handle relative 'users/...' or 'profiles/...' paths
+    else if (urlOrPath.startsWith("users/") || urlOrPath.startsWith("profiles/")) {
+      filePath = urlOrPath;
+    }
+
+    if (filePath) {
+      const file = adminStorage.bucket(bucketName).file(filePath);
+      const [signedUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: nowTimestamp() + ttlSeconds * 1000,
+      });
+      return signedUrl;
+    }
+  } catch (err) {
+    console.error(`[getAccessibleStorageUrl] Failed for ${urlOrPath}:`, err);
+  }
+
+  // Fallback to original URL or a basic construct
+  return urlOrPath.startsWith("users/") 
+    ? `https://storage.googleapis.com/${bucketName}/${urlOrPath}`
+    : urlOrPath;
+}

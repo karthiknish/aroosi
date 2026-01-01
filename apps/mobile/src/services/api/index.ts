@@ -18,5 +18,10 @@ export * from './notifications';
 export * from './engagement';
 export * from './interests';
 export * from './profileViewers';
+export * from './conversations';
+export * from './search';
+export * from './blog';
+export * from './cultural';
+export * from './spotlight';
 // Note: report.ts exports overlap with matches.ts - use direct import if needed
 

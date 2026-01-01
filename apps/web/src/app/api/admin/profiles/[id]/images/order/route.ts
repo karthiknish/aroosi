@@ -10,33 +10,54 @@ import { nowTimestamp } from "@/lib/utils/timestamp";
 import { NextRequest } from "next/server";
 
 export const POST = createAuthenticatedHandler(
-  async (ctx: AuthenticatedApiContext, _req: NextRequest, routeCtx?: { params: Promise<{ id: string }> }) => {
+  async (ctx: AuthenticatedApiContext, body: any) => {
     try {
-      await ensureAdmin(ctx.request);
-      
-      if (!routeCtx) return errorResponse("Missing context", 400);
-      const { id } = await routeCtx.params;
-      const startedAt = nowTimestamp();
-      
-      const body = await ctx.request.json();
-      const { imageIds } = body;
-
-      if (!Array.isArray(imageIds)) {
-        return errorResponse("imageIds must be an array", 400, { correlationId: ctx.correlationId });
+      // Role check: only admins allowed
+      if (!ctx.user.isAdmin) {
+        return errorResponse("Admin access required", 403, {
+          correlationId: ctx.correlationId,
+          code: "FORBIDDEN",
+        });
       }
 
-      await db.collection("users").doc(id).set({
-        profileImageOrder: imageIds,
-        updatedAt: nowTimestamp(),
-      }, { merge: true });
+      const params = await ctx.nextCtx?.params;
+      const id = params?.id;
+      if (!id) {
+        return errorResponse("User ID is required", 400, {
+          correlationId: ctx.correlationId,
+        });
+      }
 
-      return successResponse({
-        ok: true,
-        durationMs: nowTimestamp() - startedAt,
-      }, 200, ctx.correlationId);
+      const startedAt = ctx.startTime;
+      const { imageIds } = body || {};
+
+      if (!Array.isArray(imageIds)) {
+        return errorResponse("imageIds must be an array", 400, {
+          correlationId: ctx.correlationId,
+        });
+      }
+
+      await db.collection("users").doc(id).set(
+        {
+          profileImageOrder: imageIds,
+          updatedAt: nowTimestamp(),
+        },
+        { merge: true }
+      );
+
+      return successResponse(
+        {
+          ok: true,
+          durationMs: nowTimestamp() - startedAt,
+        },
+        200,
+        ctx.correlationId
+      );
     } catch (e) {
       console.error("image order error", e);
-      return errorResponse("Failed to update image order", 500, { correlationId: ctx.correlationId });
+      return errorResponse("Failed to update image order", 500, {
+        correlationId: ctx.correlationId,
+      });
     }
   }
 );

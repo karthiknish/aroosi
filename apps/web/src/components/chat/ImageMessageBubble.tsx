@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMessageImageUrl } from "@/lib/api/messages";
+import Image from "next/image";
 
 type ImageMessageBubbleProps = {
   messageId: string;
@@ -75,11 +76,13 @@ export default function ImageMessageBubble({
                 return {};
               })()}
             >
-              <img
+              <Image
                 src={url}
                 alt="Chat message"
+                width={320}
+                height={400}
+                sizes="(max-width: 768px) 100vw, 320px"
                 className="block max-h-72 md:max-h-96 h-auto w-auto max-w-full rounded-xl object-contain bg-black/5"
-                loading="lazy"
               />
             </div>
           ) : (

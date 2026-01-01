@@ -74,12 +74,13 @@ export function MatchesSidebar() {
   );
 }
 
-function MatchItem({ match, isActive }: { match: Profile & { unread: number }; isActive: boolean }) {
+function MatchItemComponent({ match, isActive }: { match: Profile & { unread: number }; isActive: boolean }) {
   const { imageUrl: avatar } = useProfileImage(match.userId, "");
 
   return (
     <Link
       href={`/matches/${match.userId}`}
+      prefetch={true}
       className={cn(
         "flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral/5 relative",
         isActive && "bg-primary/5 after:absolute after:left-0 after:top-0 after:bottom-0 after:w-1 after:bg-primary"
@@ -126,3 +127,5 @@ function MatchItem({ match, isActive }: { match: Profile & { unread: number }; i
     </Link>
   );
 }
+
+const MatchItem = React.memo(MatchItemComponent);

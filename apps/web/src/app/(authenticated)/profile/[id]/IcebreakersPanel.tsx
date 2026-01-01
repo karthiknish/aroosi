@@ -76,21 +76,32 @@ export function IcebreakersPanel() {
     (q) => submitted[q.id] || q.answered
   ).length;
 
-  // Prefill answers
-  useMemo(() => {
-    const map: Record<string, string> = {};
-    const sub: Record<string, boolean> = {};
-    for (const q of questions) {
-      if (q.answer && typeof q.answer === "string") {
-        map[q.id] = q.answer;
-      }
-      if (q.answered) sub[q.id] = true;
-    }
-    if (Object.keys(map).length > 0) {
-      setAnswers((prev) => ({ ...map, ...prev }));
-    }
-    if (Object.keys(sub).length > 0) {
-      setSubmitted((prev) => ({ ...sub, ...prev }));
+  // Prefill answers and submission status from query data
+  useEffect(() => {
+    if (questions.length > 0) {
+      setAnswers((prev) => {
+        const newAnswers = { ...prev };
+        let changed = false;
+        for (const q of questions) {
+          if (q.answer && !newAnswers[q.id]) {
+            newAnswers[q.id] = q.answer;
+            changed = true;
+          }
+        }
+        return changed ? newAnswers : prev;
+      });
+      
+      setSubmitted((prev) => {
+        const newSubmitted = { ...prev };
+        let changed = false;
+        for (const q of questions) {
+          if (q.answered && !newSubmitted[q.id]) {
+            newSubmitted[q.id] = true;
+            changed = true;
+          }
+        }
+        return changed ? newSubmitted : prev;
+      });
     }
   }, [questions]);
 

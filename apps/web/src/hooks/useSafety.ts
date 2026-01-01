@@ -18,7 +18,7 @@ import { useAuthContext } from "@/components/FirebaseAuthProvider";
 export const useReportUser = () => {
   useAuthContext(); // cookie-based auth
   return useMutation({
-    mutationFn: (data: ReportData) => safetyAPI.reportUser(null, data),
+    mutationFn: (data: ReportData) => safetyAPI.reportUser(data),
     onSuccess: () => {
       showSuccessToast(
         "User reported successfully. Our team will review this report."
@@ -37,7 +37,7 @@ export const useBlockUser = () => {
 
   return useMutation({
     mutationFn: (blockedUserId: string) =>
-      safetyAPI.blockUser(null, blockedUserId),
+      safetyAPI.blockUser(blockedUserId),
     onSuccess: (_, blockedUserId) => {
       showSuccessToast("User blocked successfully");
       void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
@@ -59,7 +59,7 @@ export const useUnblockUser = () => {
 
   return useMutation({
     mutationFn: (blockedUserId: string) =>
-      safetyAPI.unblockUser(null, blockedUserId),
+      safetyAPI.unblockUser(blockedUserId),
     onSuccess: (_, blockedUserId) => {
       showSuccessToast("User unblocked successfully");
       void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
@@ -79,7 +79,7 @@ export const useBlockedUsers = (limit: number = 25) => {
   return useInfiniteQuery({
     queryKey: ["blockedUsers", limit],
     queryFn: async ({ pageParam }) => {
-      const res = await safetyAPI.getBlockedUsers(null, {
+      const res = await safetyAPI.getBlockedUsers({
         limit,
         cursor: pageParam ?? null,
       });
@@ -102,7 +102,7 @@ export const useBlockStatus = (
   const key = params.profileId ?? params.userId ?? "unknown";
   return useQuery({
     queryKey: ["blockStatus", key],
-    queryFn: () => safetyAPI.checkBlockStatus(null, params),
+    queryFn: () => safetyAPI.checkBlockStatus(params),
     enabled: !!params.profileId || !!params.userId,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -131,7 +131,7 @@ export const useSafety = () => {
 
   const checkIfBlocked = async (userId: string): Promise<boolean> => {
     try {
-      const result = await safetyAPI.checkBlockStatus(null, userId);
+      const result = await safetyAPI.checkBlockStatus(userId);
       return result.isBlocked;
     } catch {
       return false;
@@ -139,7 +139,7 @@ export const useSafety = () => {
   };
 
   const loadBlockedUsers = async (): Promise<void> => {
-    await safetyAPI.getBlockedUsers(null);
+    await safetyAPI.getBlockedUsers();
   };
 
   return {

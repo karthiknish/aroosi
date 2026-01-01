@@ -33,7 +33,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Search, Plus, Edit, Trash2, Eye, Grid, List, FileText } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 export default function AdminBlogPage() {
   // Cookie-auth only; remove token from context
@@ -65,10 +65,10 @@ export default function AdminBlogPage() {
     mutationFn: (id: string) => adminBlogAPI.delete(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminBlogs"] });
-      toast.success("Blog post deleted successfully");
+      showSuccessToast("Blog post deleted successfully");
     },
     onError: (err: Error) => {
-      toast.error(`Failed to delete blog post: ${err.message}`);
+      showErrorToast(err, "Failed to delete blog post");
     },
   });
 
@@ -79,10 +79,10 @@ export default function AdminBlogPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminBlogs"] });
       setSelectedPosts([]);
-      toast.success("Selected blog posts deleted successfully");
+      showSuccessToast("Selected blog posts deleted successfully");
     },
     onError: (err: Error) => {
-      toast.error(`Failed to delete blog posts: ${err.message}`);
+      showErrorToast(err, "Failed to delete blog posts");
     },
   });
 

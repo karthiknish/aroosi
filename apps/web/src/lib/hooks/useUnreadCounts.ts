@@ -21,6 +21,7 @@ export function useUnreadCounts(
     },
     enabled: !!userId,
     refetchInterval: 30000, // Increased from 10s to 30s to reduce API load
+    refetchIntervalInBackground: false, // Pause polling when tab is hidden
     staleTime: 15000, // Increased from 5s to 15s
   });
 }

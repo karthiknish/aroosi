@@ -8,14 +8,9 @@ import { API_BASE_URL } from '../../config';
 import type { Message, MessageType, Conversation } from '@aroosi/shared';
 
 // Re-export types for convenience
-export type { Message, MessageType, Conversation } from '@aroosi/shared';
+export type { Message, MessageType } from '@aroosi/shared';
 
-/**
- * Get conversations
- */
-export async function getConversations(): Promise<ApiResponse<Conversation[]>> {
-    return api.get<Conversation[]>('/conversations');
-}
+// getConversations moved to conversations.ts
 
 /**
  * Get messages for a conversation
