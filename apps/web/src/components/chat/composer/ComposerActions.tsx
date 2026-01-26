@@ -48,8 +48,9 @@ export function ComposerActions({
         disabled={!canUseVoice || isSending || isBlocked || isRecording}
         onClick={startRecording}
         title={canUseVoice ? "Record voice" : "Voice not available"}
+        aria-label={canUseVoice ? "Record voice message" : "Voice messaging not available"}
       >
-        <Mic className="w-5 h-5" />
+        <Mic className="w-5 h-5" aria-hidden="true" />
       </Button>
 
       <Button
@@ -71,16 +72,25 @@ export function ComposerActions({
             ? "Uploading…"
             : `Send image (max ${MAX_FILE_SIZE_DISPLAY})`
         }
+        aria-label={
+          isCompressing
+            ? `Compressing image ${compressionProgress} percent`
+            : isImageConverting
+            ? "Converting image"
+            : isImageUploading
+            ? "Uploading image"
+            : "Attach image"
+        }
       >
         {isCompressing ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" aria-hidden="true">
             <LoadingSpinner size={12} />
             <span className="text-[10px]">{compressionProgress}%</span>
           </div>
         ) : isImageUploading || isImageConverting ? (
           <LoadingSpinner size={14} />
         ) : (
-          <ImageIcon className="w-5 h-5" />
+          <ImageIcon className="w-5 h-5" aria-hidden="true" />
         )}
       </Button>
 
@@ -91,11 +101,12 @@ export function ComposerActions({
           "bg-gradient-to-br from-primary to-primary-dark text-white font-semibold h-11 w-11 rounded-xl shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center ml-1",
           (!text.trim() || isSending || isBlocked) && "opacity-50 cursor-not-allowed bg-neutral/20 shadow-none transform-none"
         )}
+        aria-label={isSending ? "Sending message" : "Send message"}
       >
         {isSending ? (
           <LoadingSpinner size={16} className="text-white" />
         ) : (
-          <Send className="w-5 h-5 ml-0.5" />
+          <Send className="w-5 h-5 ml-0.5" aria-hidden="true" />
         )}
       </Button>
 
@@ -104,6 +115,7 @@ export function ComposerActions({
           type="button"
           onClick={() => (window.location.href = "/subscription")}
           className="h-9 text-xs bg-warning text-white rounded-xl font-semibold px-3"
+          aria-label="Upgrade to premium for voice messaging"
         >
           Upgrade
         </Button>

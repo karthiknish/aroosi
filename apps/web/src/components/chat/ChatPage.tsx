@@ -167,6 +167,7 @@ export default function ChatPage({
                     size="sm"
                     onClick={handleBackToConversations}
                     className="p-2"
+                    aria-label="Back to conversations"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </Button>
@@ -186,14 +187,21 @@ export default function ChatPage({
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      {/* Presence dot placeholder; can be wired to real presence later */}
-                      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-base bg-success" />
+                      {/* Presence indicator */}
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-base bg-success"
+                        aria-label="Online"
+                        role="status"
+                      />
                     </div>
                     <div>
                       <h3 className="font-medium text-neutral">
                         {selectedConversation.otherUserName}
                       </h3>
-                      <p className="text-xs text-neutral-light">Active now</p>
+                      <p className="text-xs text-neutral-light flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success" aria-hidden="true" />
+                        <span>Active now</span>
+                      </p>
                     </div>
                   </div>
                 </div>

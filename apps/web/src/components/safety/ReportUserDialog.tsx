@@ -237,7 +237,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
             </div>
 
             <div className="space-y-3">
-              <Label className="text-base font-medium">
+              <Label className="text-base font-medium" id="report-reason-label">
                 Why are you reporting this user?
               </Label>
               <div className="max-h-[240px] overflow-y-auto pr-2 -mr-2">
@@ -245,9 +245,14 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                   value={selectedReason}
                   onValueChange={(value) => setSelectedReason(value as ReportReason)}
                   className="space-y-3"
+                  aria-labelledby="report-reason-label"
                 >
                   {reportReasons.map((reason) => (
-                    <div key={reason.value} className="flex items-start space-x-2 p-2 rounded-md hover:bg-neutral/5 transition-colors">
+                    <div
+                      key={reason.value}
+                      role="presentation"
+                      className="flex items-start space-x-2 p-2 rounded-md hover:bg-neutral/5 transition-colors cursor-pointer"
+                    >
                       <RadioGroupItem
                         value={reason.value}
                         id={reason.value}
@@ -288,8 +293,9 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={500}
                   className="min-h-[80px] resize-none"
+                  aria-required={isDescriptionRequired}
                 />
-                <div className="text-xs text-neutral-light text-right">
+                <div className="text-xs text-neutral-light text-right" aria-live="polite" aria-atomic="true">
                   {description.length}/500
                 </div>
               </div>

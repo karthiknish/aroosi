@@ -85,7 +85,7 @@ export function useProfileCreationController(params: {
       contextData?.phoneNumber
   );
 
-  const totalSteps = 8;
+  const totalSteps = 7;
 
   const formData = ((): Record<string, unknown> => ({
     profileFor: (contextData?.profileFor as string) || "",
@@ -283,7 +283,7 @@ export function useProfileCreationController(params: {
         step,
         hasBasicData: !!hasBasicData,
         direction: "back",
-        min: 1,
+        min: hasBasicData ? 2 : 1, // When hasBasicData, don't go below step 2
         max: 7,
       });
       setStep(prev);

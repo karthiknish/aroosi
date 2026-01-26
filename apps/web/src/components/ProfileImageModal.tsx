@@ -109,17 +109,33 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
     );
   };
 
+  // Handle keyboard navigation within the modal
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isCropping) return; // Don't navigate while cropping
+
+    switch (e.key) {
+      case "ArrowLeft":
+        e.preventDefault();
+        handlePrevious();
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        handleNext();
+        break;
+    }
+  };
+
   if (!images || images.length === 0) {
     return null;
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-base-light">
+      <DialogContent className="sm:max-w-md bg-base-light" onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle>{images[currentIndex]?.name}</DialogTitle>
         </DialogHeader>
-        <div className="relative w-full aspect-square bg-black/80 rounded-md overflow-hidden">
+        <div className="relative w-full aspect-square bg-black/80 rounded-md overflow-hidden" role="region" aria-label="Image preview">
           {isCropping ? (
             <Cropper
               image={previewUrl || images[currentIndex]?.url}
@@ -148,7 +164,7 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
             <>
               <button
                 onClick={handlePrevious}
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 p-2 rounded-full"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/80 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white transition-colors"
                 aria-label="Previous image"
                 type="button"
               >
@@ -156,7 +172,7 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
               </button>
               <button
                 onClick={handleNext}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 p-2 rounded-full"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/80 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-white transition-colors"
                 aria-label="Next image"
                 type="button"
               >
@@ -166,58 +182,63 @@ const ProfileImageModal: React.FC<ProfileImageModalProps> = ({
           )}
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" role="group" aria-label="Rotation controls">
             <button
               type="button"
-              className="px-2 py-1 text-sm rounded border border-neutral/10 hover:bg-neutral/5"
+              className="px-2 py-1 text-sm rounded border border-neutral/10 hover:bg-neutral/5 focus:outline-none focus:ring-2 focus:ring-primary/50"
               onClick={() => setRotate((r) => (r - 90 + 360) % 360)}
               disabled={isCropping}
+              aria-label="Rotate counterclockwise"
             >
-              <RotateCcw className="w-4 h-4 inline-block mr-1" /> Rotate
+              <RotateCcw className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> Rotate
             </button>
             <button
               type="button"
-              className="px-2 py-1 text-sm rounded border border-neutral/10 hover:bg-neutral/5"
+              className="px-2 py-1 text-sm rounded border border-neutral/10 hover:bg-neutral/5 focus:outline-none focus:ring-2 focus:ring-primary/50"
               onClick={() => setRotate((r) => (r + 90) % 360)}
               disabled={isCropping}
+              aria-label="Rotate clockwise"
             >
-              <RotateCw className="w-4 h-4 inline-block mr-1" /> Rotate
+              <RotateCw className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> Rotate
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" role="group" aria-label="Image editing controls">
             {!isCropping ? (
               <button
                 type="button"
-                className="px-3 py-1.5 text-sm rounded bg-primary text-white hover:bg-primary/90"
+                className="px-3 py-1.5 text-sm rounded bg-primary text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 onClick={() => {
                   setPreviewUrl(null);
                   setIsCropping(true);
                   setZoom(1);
                   setRotate(0);
                 }}
+                aria-label="Start cropping"
               >
-                <CropIcon className="w-4 h-4 inline-block mr-1" /> Crop
+                <CropIcon className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> Crop
               </button>
             ) : (
               <>
                 <button
                   type="button"
-                  className="px-3 py-1.5 text-sm rounded bg-success text-white hover:bg-success/90"
+                  className="px-3 py-1.5 text-sm rounded bg-success text-white hover:bg-success/90 focus:outline-none focus:ring-2 focus:ring-success/50"
                   onClick={handleApplyCrop}
+                  aria-label="Apply crop"
                 >
-                  <Check className="w-4 h-4 inline-block mr-1" /> Apply
+                  <Check className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> Apply
                 </button>
                 <button
                   type="button"
-                  className="px-3 py-1.5 text-sm rounded border border-neutral/10 hover:bg-neutral/5"
+                  className="px-3 py-1.5 text-sm rounded border border-neutral/10 hover:bg-neutral/5 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   onClick={() => {
                     setIsCropping(false);
                     setCroppedAreaPixels(null);
                     setZoom(1);
                     setRotate(0);
                   }}
+                  aria-label="Cancel cropping"
                 >
-                  <X className="w-4 h-4 inline-block mr-1" /> Cancel
+                  <X className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> Cancel
                 </button>
               </>
             )}

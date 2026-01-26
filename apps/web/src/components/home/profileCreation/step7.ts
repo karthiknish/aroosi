@@ -2,6 +2,7 @@
 
 export function getGlobalRequiredFields(): string[] {
   return [
+    "profileFor",
     "fullName",
     "dateOfBirth",
     "gender",

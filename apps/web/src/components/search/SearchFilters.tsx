@@ -137,6 +137,7 @@ export function SearchFilters({
         <Input
           type="text"
           placeholder="City"
+          aria-label="Filter by city"
           value={city}
           onChange={(e) => setCity(e.target.value)}
           className="w-40 bg-base-light rounded-lg shadow-sm"
@@ -155,6 +156,7 @@ export function SearchFilters({
           min={18}
           max={99}
           placeholder="Min Age"
+          aria-label="Minimum age"
           value={ageMin || ""}
           onChange={(e) => setAgeMin(e.target.value)}
           className="w-24 bg-base-light rounded-lg shadow-sm"
@@ -164,6 +166,7 @@ export function SearchFilters({
           min={18}
           max={99}
           placeholder="Max Age"
+          aria-label="Maximum age"
           value={ageMax || ""}
           onChange={(e) => setAgeMax(e.target.value)}
           className="w-24 bg-base-light rounded-lg shadow-sm"
@@ -172,7 +175,7 @@ export function SearchFilters({
         {isPremiumUser ? (
           <>
             <Select value={ethnicity} onValueChange={setEthnicity}>
-              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm">
+              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm" aria-label="Filter by ethnicity">
                 <SelectValue placeholder="Ethnicity" />
               </SelectTrigger>
               <SelectContent className="max-h-60 overflow-y-auto bg-base-light">
@@ -185,7 +188,7 @@ export function SearchFilters({
             </Select>
 
             <Select value={motherTongue} onValueChange={setMotherTongue}>
-              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm">
+              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm" aria-label="Filter by mother tongue">
                 <SelectValue placeholder="Mother Tongue" />
               </SelectTrigger>
               <SelectContent className="max-h-60 overflow-y-auto bg-base-light">
@@ -198,7 +201,7 @@ export function SearchFilters({
             </Select>
 
             <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm">
+              <SelectTrigger className="w-44 bg-base-light rounded-lg shadow-sm" aria-label="Filter by language">
                 <SelectValue placeholder="Language" />
               </SelectTrigger>
               <SelectContent className="max-h-60 overflow-y-auto bg-base-light">
@@ -226,8 +229,8 @@ export function SearchFilters({
           <Badge key={pill.key} variant="outline" className="pr-1">
             <span>{pill.label}</span>
             <button
-              aria-label={`Clear ${pill.key}`}
-              className="ml-1 inline-flex items-center justify-center rounded hover:bg-muted/60"
+              aria-label={`Clear ${pill.key} filter`}
+              className="ml-1 inline-flex items-center justify-center rounded hover:bg-muted/60 min-h-[44px] min-w-[44px] p-2"
               onClick={() => {
                 pill.onClear();
                 setPage(0);

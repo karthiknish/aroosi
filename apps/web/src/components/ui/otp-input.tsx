@@ -10,6 +10,7 @@ interface OtpInputProps {
   disabled?: boolean;
   className?: string;
   autoFocus?: boolean;
+  "aria-label"?: string;
 }
 
 export function OtpInput({
@@ -19,6 +20,7 @@ export function OtpInput({
   disabled = false,
   className,
   autoFocus = false,
+  "aria-label": ariaLabel = "One-time password",
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -74,7 +76,11 @@ export function OtpInput({
   };
 
   return (
-    <div className={cn("flex gap-2 justify-center", className)}>
+    <div
+      className={cn("flex gap-2 justify-center", className)}
+      role="group"
+      aria-label={ariaLabel}
+    >
       {Array.from({ length }, (_, index) => (
         <input
           key={index}
@@ -90,7 +96,10 @@ export function OtpInput({
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}
           disabled={disabled}
-          className="w-12 h-12 text-center text-lg font-semibold border border-neutral/20 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label={`Digit ${index + 1} of ${length}`}
+          aria-invalid={value.length > 0 && value.length < length ? "false" : undefined}
+          autoComplete={index === 0 ? "one-time-code" : "off"}
+          className="w-12 h-12 text-center text-lg font-semibold border border-neutral/20 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed transition-shadow"
         />
       ))}
     </div>

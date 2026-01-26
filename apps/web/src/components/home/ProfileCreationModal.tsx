@@ -264,7 +264,7 @@ export function ProfileCreationModal({
 
           {/* Footer Actions */}
           <div className="p-6 sm:p-8 border-t border-neutral/10 bg-base-light/80 backdrop-blur-md flex justify-between items-center z-10">
-            {step > 2 ? (
+            {step > 1 ? (
               <Button
                 variant="ghost"
                 onClick={handleBack}

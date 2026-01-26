@@ -182,15 +182,7 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
   }, [step, formData, isLoaded]);
 
   const updateFormData = (updates: Partial<WizardFormData>) => {
-    setFormData((prev) => {
-      const newData = { ...prev, ...updates };
-      // Log data updates for debugging
-      console.log("ProfileWizardContext: Updating formData", {
-        updates,
-        newData,
-      });
-      return newData;
-    });
+    setFormData((prev) => ({ ...prev, ...updates }));
   };
 
   const reset = () => {

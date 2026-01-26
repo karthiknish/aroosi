@@ -4,6 +4,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Star, Check } from "lucide-react";
 import {
   useSubscriptionStatus,
   useSubscriptionGuard,
@@ -97,9 +98,10 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           {effectivePlanKey === "premiumPlus" && (
             <Badge
               variant="outline"
-              className="text-accent-dark border-accent"
+              className="text-accent-dark border-accent flex items-center gap-1"
             >
-              ✨ Spotlight
+              <Star className="h-3 w-3 fill-current" />
+              Spotlight
             </Badge>
           )}
           {effectivePlanKey !== planKey && (
@@ -170,8 +172,8 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               key={index}
               className="text-sm text-neutral-light flex items-center gap-2"
             >
-              <span className="text-success">✓</span>
-              {feature.text}
+              <Check className="h-4 w-4 text-success flex-shrink-0" aria-hidden="true" />
+              <span>{feature.text}</span>
             </li>
           ))}
         </ul>
