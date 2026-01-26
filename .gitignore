@@ -70,6 +70,28 @@ pnpm-lock.yaml
 
 # env files (can opt-in for committing if needed)
 .env*
+.env.local
+.env.*.local
+
+# Sensitive files - Google Services (iOS/Android)
+**/GoogleService-Info.plist
+**/GoogleService-Info.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/Android/google-services.json
+**/ios/GoogleService-Info.plist
+**/ios/GoogleService-Info.plist
+**/ios/*/GoogleService-Info.plist
+
+# Sensitive files - Firebase
+firebase-service-account.json
+serviceAccountKey.json
+**/firebase-service-account*.json
+**/serviceAccount*.json
+**/firebase-adminsdk*.json
+**/firebase-export-*.json
+firebase-credentials.json
+app.config Firebase secrets
 
 # vercel
 .vercel
@@ -127,3 +149,4 @@ DEPLOYMENT.md
 !CHANGELOG.md
 !LICENSE.md
 !CONTRIBUTING.md
+apps/mobile/GoogleService-Info.plist

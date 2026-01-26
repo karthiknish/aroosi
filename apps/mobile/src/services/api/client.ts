@@ -2,9 +2,9 @@
  * API Client - Base HTTP client for API requests
  */
 
+import 'expo-sqlite/localStorage/install';
 import auth from '@react-native-firebase/auth';
 import NetInfo from '@react-native-community/netinfo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, DEBUG } from '../../config';
 import { nowTimestamp } from '../../utils/timestamp';
 
@@ -76,7 +76,7 @@ export async function apiRequest<T>(
     const cacheKey = getCacheKey(endpoint);
     if (method === 'GET' && options.cache) {
         try {
-            const cachedData = await AsyncStorage.getItem(cacheKey);
+            const cachedData = localStorage.getItem(cacheKey);
             if (cachedData) {
                 const { data, timestamp, ttl } = JSON.parse(cachedData);
                 const isExpired = nowTimestamp() - timestamp > (ttl || DEFAULT_CACHE_TTL);
@@ -179,7 +179,7 @@ export async function apiRequest<T>(
         if ((response.status >= 500 || response.status === 429) && attempt < MAX_RETRIES) {
             const delay = Math.pow(2, attempt) * 1000;
             console.warn(`[API] ${response.status} for ${endpoint}. Retrying in ${delay}ms... (Attempt ${attempt + 1}/${MAX_RETRIES})`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise<void>(resolve => setTimeout(() => resolve(), delay));
             return apiRequest<T>(endpoint, options, attempt + 1);
         }
 
@@ -195,7 +195,7 @@ export async function apiRequest<T>(
         // Store in cache if requested
         if (method === 'GET' && options.cache && finalData) {
             try {
-                await AsyncStorage.setItem(
+                localStorage.setItem(
                     cacheKey,
                     JSON.stringify({
                         data: finalData,
@@ -227,7 +227,7 @@ export async function apiRequest<T>(
         if (attempt < MAX_RETRIES) {
             const delay = Math.pow(2, attempt) * 1000;
             console.warn(`[API] Network error for ${endpoint}. Retrying in ${delay}ms... (Attempt ${attempt + 1}/${MAX_RETRIES})`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise<void>(resolve => setTimeout(() => resolve(), delay));
             return apiRequest<T>(endpoint, options, attempt + 1);
         }
 

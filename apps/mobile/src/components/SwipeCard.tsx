@@ -12,12 +12,12 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { 
-    colors, 
-    spacing, 
-    fontSize, 
-    fontWeight, 
+import { BlurView } from 'expo-blur';
+import {
+    colors,
+    spacing,
+    fontSize,
+    fontWeight,
     borderRadius,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
@@ -67,10 +67,11 @@ export function SwipeCard({ profile, onLike, onPass, onSuperLike, onInfo }: Swip
                     </View>
                 )}
 
-                {/* Gradient overlay */}
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.8)']}
-                    style={styles.gradient}
+                {/* BlurView overlay - native iOS blur effect */}
+                <BlurView
+                    tint="systemUltraThinMaterial"
+                    intensity={85}
+                    style={styles.blurOverlay}
                 />
 
                 {/* Profile Info Overlay */}
@@ -102,9 +103,14 @@ export function SwipeCard({ profile, onLike, onPass, onSuperLike, onInfo }: Swip
                     {interests && interests.length > 0 && (
                         <View style={styles.interestsRow}>
                             {interests.slice(0, 3).map((interest: string, index: number) => (
-                                <View key={index} style={styles.interestTag}>
+                                <BlurView
+                                    key={index}
+                                    tint="systemMaterial"
+                                    intensity={60}
+                                    style={styles.interestTag}
+                                >
                                     <Text style={styles.interestText}>{interest}</Text>
-                                </View>
+                                </BlurView>
                             ))}
                             {interests.length > 3 && (
                                 <Text style={styles.moreInterests}>+{interests.length - 3}</Text>
@@ -114,41 +120,77 @@ export function SwipeCard({ profile, onLike, onPass, onSuperLike, onInfo }: Swip
                 </View>
             </View>
 
-            {/* Action Buttons */}
+            {/* Action Buttons with glass effect */}
             <View style={styles.actionButtons}>
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.passButton]}
+                <GlassActionButton
+                    icon="✕"
+                    color={colors.error}
                     onPress={onPass}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.passIcon}>✕</Text>
-                </TouchableOpacity>
+                />
 
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.superLikeButton]}
+                <GlassActionButton
+                    icon="⭐"
+                    color={colors.info}
                     onPress={onSuperLike}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.superLikeIcon}>⭐</Text>
-                </TouchableOpacity>
+                    size={SMALL_BUTTON_SIZE}
+                />
 
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.likeButton]}
+                <GlassActionButton
+                    icon="♥"
+                    color={colors.success}
                     onPress={onLike}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.likeIcon}>♥</Text>
-                </TouchableOpacity>
+                />
 
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.infoButton]}
+                <GlassActionButton
+                    icon="ℹ"
+                    color={colors.info}
                     onPress={onInfo}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.infoIcon}>ℹ</Text>
-                </TouchableOpacity>
+                    size={SMALL_BUTTON_SIZE}
+                    outlined
+                />
             </View>
         </View>
+    );
+}
+
+interface GlassActionButtonProps {
+    icon: string;
+    color: string;
+    onPress?: () => void;
+    size?: number;
+    outlined?: boolean;
+}
+
+function GlassActionButton({ icon, color, onPress, size = ACTION_BUTTON_SIZE, outlined = false }: GlassActionButtonProps) {
+    return (
+        <BlurView
+            tint="systemMaterial"
+            intensity={90}
+            style={[
+                styles.glassActionButton,
+                {
+                    width: size,
+                    height: size,
+                    borderRadius: size / 2,
+                },
+            ]}
+        >
+            <TouchableOpacity
+                style={[
+                    styles.actionButtonInner,
+                    outlined && {
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderColor: color,
+                    },
+                    !outlined && { backgroundColor: '#FFFFFF' },
+                ]}
+                onPress={onPress || (() => {})}
+                activeOpacity={0.8}
+            >
+                <Text style={[styles.actionButtonIcon, { color }]}>{icon}</Text>
+            </TouchableOpacity>
+        </BlurView>
     );
 }
 
@@ -178,12 +220,12 @@ const styles = StyleSheet.create({
     placeholderEmoji: {
         fontSize: moderateScale(80),
     },
-    gradient: {
+    blurOverlay: {
         position: 'absolute',
         left: 0,
         right: 0,
         bottom: 0,
-        height: '50%',
+        height: '55%',
     },
     infoOverlay: {
         position: 'absolute',
@@ -202,12 +244,15 @@ const styles = StyleSheet.create({
         fontSize: isSmallDevice ? responsiveFontSizes.xl : responsiveFontSizes['2xl'],
         fontWeight: fontWeight.bold,
         color: '#FFFFFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     verified: {
         marginLeft: moderateScale(8),
         fontSize: responsiveFontSizes.lg,
         color: colors.info,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255,255,255,0.25)',
         paddingHorizontal: moderateScale(8),
         paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
@@ -224,27 +269,33 @@ const styles = StyleSheet.create({
     location: {
         fontSize: responsiveFontSizes.sm,
         color: 'rgba(255,255,255,0.9)',
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
     bio: {
         fontSize: responsiveFontSizes.sm,
         color: 'rgba(255,255,255,0.85)',
         marginBottom: moderateScale(8),
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
     interestsRow: {
         flexDirection: 'row',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: moderateScale(4),
+        gap: moderateScale(6),
     },
     interestTag: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
         paddingHorizontal: moderateScale(12),
-        paddingVertical: moderateScale(4),
+        paddingVertical: moderateScale(6),
         borderRadius: borderRadius.full,
     },
     interestText: {
         fontSize: responsiveFontSizes.xs,
         color: '#FFFFFF',
+        fontWeight: '500',
     },
     moreInterests: {
         fontSize: responsiveFontSizes.xs,
@@ -258,55 +309,17 @@ const styles = StyleSheet.create({
         paddingVertical: moderateScale(16),
         gap: isSmallDevice ? moderateScale(8) : moderateScale(12),
     },
-    actionButton: {
-        width: ACTION_BUTTON_SIZE,
-        height: ACTION_BUTTON_SIZE,
-        borderRadius: ACTION_BUTTON_SIZE / 2,
+    glassActionButton: {
+        overflow: 'hidden',
+    },
+    actionButtonInner: {
+        width: '100%',
+        height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 4,
+        borderRadius: ACTION_BUTTON_SIZE / 2,
     },
-    passButton: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 2,
-        borderColor: colors.error,
-    },
-    passIcon: {
-        fontSize: moderateScale(24),
-        color: colors.error,
+    actionButtonIcon: {
         fontWeight: '700',
-    },
-    superLikeButton: {
-        backgroundColor: colors.info,
-        width: SMALL_BUTTON_SIZE,
-        height: SMALL_BUTTON_SIZE,
-        borderRadius: SMALL_BUTTON_SIZE / 2,
-    },
-    superLikeIcon: {
-        fontSize: moderateScale(20),
-        color: '#FFFFFF',
-    },
-    likeButton: {
-        backgroundColor: colors.success,
-    },
-    likeIcon: {
-        fontSize: moderateScale(28),
-        color: '#FFFFFF',
-    },
-    infoButton: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 2,
-        borderColor: colors.info,
-        width: SMALL_BUTTON_SIZE,
-        height: SMALL_BUTTON_SIZE,
-        borderRadius: SMALL_BUTTON_SIZE / 2,
-    },
-    infoIcon: {
-        fontSize: moderateScale(20),
-        color: colors.info,
     },
 });

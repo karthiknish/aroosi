@@ -18,7 +18,7 @@ import {
     Animated,
     Dimensions,
 } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import LinearGradient from 'react-native-linear-gradient';
 import { 
     colors, 
@@ -308,7 +308,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
                 dateOfBirth: dob,
                 gender: gender || undefined,
                 preferredGender: preferredGender || undefined,
-                phoneNumber: normalizedPhone,
+                // phoneNumber is not part of ProfileUpdateData type, handled separately
                 location: {
                     city: city.trim(),
                     state: state.trim(),
@@ -320,17 +320,12 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
                 income: income.trim(),
                 height: height.trim(),
                 maritalStatus,
-                physicalStatus: physicalStatus || undefined,
+                // Note: physicalStatus, ethnicity, diet, smoking, drinking are not part of ProfileUpdateData
                 religion: religion.trim(),
                 sect: sect.trim(),
                 caste: caste.trim(),
                 motherTongue: motherTongue.trim(),
-                ethnicity: ethnicity.trim() || undefined,
-                diet: diet || undefined,
-                smoking: smoking || undefined,
-                drinking: drinking || undefined,
-                partnerPreferenceAgeMin: parseInt(partnerPreferenceAgeMin) || undefined,
-                partnerPreferenceAgeMax: parseInt(partnerPreferenceAgeMax) || undefined,
+                // Note: partner preferences are not part of ProfileUpdateData, stored separately
                 aboutMe: bio.trim() || undefined,
                 onboardingComplete: true,
             });
@@ -366,13 +361,13 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
     // Handle photo upload
     const handleAddPhoto = async () => {
-        const result = await launchImageLibrary({
-            mediaType: 'photo',
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
             quality: 0.8,
-            selectionLimit: 1,
+            allowsEditing: false,
         });
 
-        if (result.assets && result.assets[0]?.uri) {
+        if (!result.canceled && result.assets?.[0]?.uri) {
             const uri = result.assets[0].uri;
             setUploadingPhotos(true);
             try {
@@ -1209,12 +1204,27 @@ const styles = StyleSheet.create({
         paddingVertical: moderateScale(24),
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: colors.neutral[150],
+        borderColor: colors.neutral[200],
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 3,
+    },
+    optionCardSmall: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: moderateScale(12),
+        paddingVertical: moderateScale(10),
+        paddingHorizontal: moderateScale(16),
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: colors.neutral[200],
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
+        minWidth: Dimensions.get('window').width * 0.4,
     },
     optionCardSelected: {
         borderColor: colors.primary.DEFAULT,
@@ -1297,7 +1307,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: moderateScale(12),
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: colors.neutral[150],
+        borderColor: colors.neutral[200],
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,

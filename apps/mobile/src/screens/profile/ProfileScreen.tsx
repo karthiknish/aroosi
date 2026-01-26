@@ -77,12 +77,12 @@ export default function ProfileScreen() {
                 const { getReceivedInterests } = await import('../../services/api/interests');
                 const { getMatches } = await import('../../services/api/matches');
                 const { getProfileViewCount } = await import('../../services/api/profileViewers');
-                
+
                 // Get user ID for profile view count
                 const userId = user?.id;
-                
+
                 const [interestsRes, matchesRes, viewsRes] = await Promise.all([
-                    getReceivedInterests(),
+                    userId ? getReceivedInterests(userId) : Promise.resolve({ data: null }),
                     getMatches(),
                     userId ? getProfileViewCount(userId) : Promise.resolve({ data: null }),
                 ]);

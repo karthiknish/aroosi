@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.aroosi.mobile</string>
+	<string>com.aroosi.app</string>
 	<key>PROJECT_ID</key>
 	<string>aroosi-ios</string>
 	<key>STORAGE_BUCKET</key>
@@ -26,5 +26,9 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:320943801797:ios:9698384f0913adeaf6b7ac</string>
+	<key>REVERSE_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.320943801797-9698384f0913adeaf6b7ac</string>
+	<key>DATABASE_URL</key>
+	<string>https://aroosi-ios.firebaseio.com</string>
 </dict>
 </plist>

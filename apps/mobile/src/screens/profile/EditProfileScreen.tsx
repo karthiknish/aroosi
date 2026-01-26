@@ -17,7 +17,7 @@ import {
     Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { launchCamera, launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { 
     colors, 
     spacing, 
@@ -236,35 +236,33 @@ export default function EditProfileScreen({ onBack, onSave }: EditProfileScreenP
 
     // Open camera
     const openCamera = async (index: number) => {
-        const result = await launchCamera({
-            mediaType: 'photo',
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
             quality: 0.8,
-            maxWidth: 1080,
-            maxHeight: 1080,
+            allowsEditing: false,
         });
         handleImageResult(result, index);
     };
 
     // Open gallery
     const openGallery = async (index: number) => {
-        const result = await launchImageLibrary({
-            mediaType: 'photo',
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
             quality: 0.8,
-            maxWidth: 1080,
-            maxHeight: 1080,
+            allowsEditing: false,
         });
         handleImageResult(result, index);
     };
 
     // Handle image picker result
-    const handleImageResult = async (result: ImagePickerResponse, index: number) => {
-        if (result.didCancel || result.errorCode || !result.assets?.[0]?.uri) {
+    const handleImageResult = async (result: ImagePicker.ImagePickerResult, index: number) => {
+        if (result.canceled || !result.assets?.[0]?.uri) {
             return;
         }
 
         const imageUri = result.assets[0].uri;
         if (!checkNetworkOrAlert()) return;
-        
+
         actions.execute.uploadPhoto({ uri: imageUri, index });
     };
 

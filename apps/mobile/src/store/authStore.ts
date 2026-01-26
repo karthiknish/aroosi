@@ -2,9 +2,9 @@
  * Auth Store - Zustand store for authentication state
  */
 
+import 'expo-sqlite/localStorage/install';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
     id: string;
@@ -73,8 +73,8 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'aroosi-auth-storage',
-            storage: createJSONStorage(() => AsyncStorage),
-            partialize: (state) => ({ 
+            storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
                 needsOnboarding: state.needsOnboarding,
             }),
         }

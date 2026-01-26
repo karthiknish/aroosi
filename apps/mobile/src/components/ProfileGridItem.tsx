@@ -12,12 +12,12 @@ import {
     Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { 
-    colors, 
-    spacing, 
-    fontSize, 
-    fontWeight, 
+import { BlurView } from 'expo-blur';
+import {
+    colors,
+    spacing,
+    fontSize,
+    fontWeight,
     borderRadius,
     SCREEN_WIDTH,
     moderateScale,
@@ -67,24 +67,33 @@ export function ProfileGridItem({ profile, onPress }: ProfileGridItemProps) {
                     </View>
                 )}
 
-                {/* Gradient overlay */}
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.7)']}
-                    style={styles.gradient}
+                {/* BlurView overlay - native iOS blur effect */}
+                <BlurView
+                    tint="systemUltraThinMaterial"
+                    intensity={80}
+                    style={styles.blurOverlay}
                 />
 
-                {/* Verified badge */}
+                {/* Verified badge with blur background */}
                 {isVerified && (
-                    <View style={styles.verifiedBadge}>
+                    <BlurView
+                        tint="systemThinMaterial"
+                        intensity={90}
+                        style={styles.verifiedBadge}
+                    >
                         <Text style={styles.verifiedIcon}>✓</Text>
-                    </View>
+                    </BlurView>
                 )}
 
-                {/* Compatibility score */}
+                {/* Compatibility score with blur background */}
                 {compatibility !== undefined && (
-                    <View style={styles.compatibilityBadge}>
+                    <BlurView
+                        tint="systemThinMaterial"
+                        intensity={90}
+                        style={styles.compatibilityBadge}
+                    >
                         <Text style={styles.compatibilityText}>{compatibility}%</Text>
-                    </View>
+                    </BlurView>
                 )}
 
                 {/* Profile Info Overlay */}
@@ -131,41 +140,51 @@ const styles = StyleSheet.create({
     placeholderEmoji: {
         fontSize: moderateScale(40),
     },
-    gradient: {
+    blurOverlay: {
         position: 'absolute',
         left: 0,
         right: 0,
         bottom: 0,
-        height: '50%',
+        height: '45%',
+        borderTopColor: 'rgba(255,255,255,0.15)',
+        borderTopWidth: 1,
     },
     verifiedBadge: {
         position: 'absolute',
         top: moderateScale(8),
         right: moderateScale(8),
-        backgroundColor: colors.info,
         width: BADGE_SIZE,
         height: BADGE_SIZE,
         borderRadius: BADGE_SIZE / 2,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
     },
     verifiedIcon: {
         fontSize: moderateScale(14),
-        color: '#FFFFFF',
+        color: colors.info,
         fontWeight: '700',
     },
     compatibilityBadge: {
         position: 'absolute',
         top: moderateScale(8),
         left: moderateScale(8),
-        backgroundColor: colors.success,
         paddingHorizontal: moderateScale(8),
         paddingVertical: moderateScale(4),
         borderRadius: borderRadius.full,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
     },
     compatibilityText: {
         fontSize: responsiveFontSizes.xs,
-        color: '#FFFFFF',
+        color: colors.success,
         fontWeight: '600',
     },
     infoOverlay: {
@@ -179,10 +198,16 @@ const styles = StyleSheet.create({
         fontSize: isSmallDevice ? responsiveFontSizes.sm : responsiveFontSizes.base,
         fontWeight: fontWeight.semibold,
         color: '#FFFFFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     location: {
         fontSize: responsiveFontSizes.xs,
-        color: 'rgba(255,255,255,0.85)',
+        color: 'rgba(255,255,255,0.9)',
         marginTop: moderateScale(4),
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
 });

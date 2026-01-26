@@ -1,0 +1,787 @@
+/**
+ * Discover Screen - Browse and search profiles with native toolbar
+ * iOS-only Stack.Toolbar with native iOS search and filter buttons
+ */
+
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    FlatList,
+    TouchableOpacity,
+    RefreshControl,
+    Modal,
+} from 'react-native';
+import { Stack, router } from 'expo-router';
+import {
+    colors,
+    spacing,
+    fontSize,
+    fontWeight,
+    borderRadius,
+    moderateScale,
+    responsiveValues,
+    responsiveFontSizes,
+} from '@/theme';
+import { ProfileGridItem } from '@/components/ProfileGridItem';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { EmptyState } from '@/components/EmptyState';
+import {
+    getRecommendations,
+    type RecommendedProfile,
+    type SearchFilters,
+} from '@/services/api/recommendations';
+import { searchProfiles } from '@/services/api/search';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { useOffline } from '@/hooks/useOffline';
+
+const FILTER_OPTIONS = {
+    ageRanges: [
+        { label: '18-25', min: 18, max: 25 },
+        { label: '26-35', min: 26, max: 35 },
+        { label: '36-45', min: 36, max: 45 },
+        { label: '46+', min: 46, max: 100 },
+    ],
+    distances: [
+        { label: '10 km', value: 10 },
+        { label: '25 km', value: 25 },
+        { label: '50 km', value: 50 },
+        { label: '100 km', value: 100 },
+        { label: 'Any', value: undefined },
+    ],
+    ethnicities: [
+        { label: 'Any', value: undefined },
+        { label: 'South Asian', value: 'south_asian' },
+        { label: 'Middle Eastern', value: 'middle_eastern' },
+        { label: 'East Asian', value: 'east_asian' },
+        { label: 'African', value: 'african' },
+        { label: 'European', value: 'european' },
+        { label: 'Latin American', value: 'latin_american' },
+        { label: 'Other', value: 'other' },
+    ],
+    motherTongues: [
+        { label: 'Any', value: undefined },
+        { label: 'English', value: 'english' },
+        { label: 'Hindi', value: 'hindi' },
+        { label: 'Urdu', value: 'urdu' },
+        { label: 'Punjabi', value: 'punjabi' },
+        { label: 'Tamil', value: 'tamil' },
+        { label: 'Telugu', value: 'telugu' },
+        { label: 'Bengali', value: 'bengali' },
+        { label: 'Gujarati', value: 'gujarati' },
+        { label: 'Arabic', value: 'arabic' },
+        { label: 'Other', value: 'other' },
+    ],
+    languages: [
+        { label: 'Any', value: undefined },
+        { label: 'English', value: 'english' },
+        { label: 'Hindi', value: 'hindi' },
+        { label: 'Urdu', value: 'urdu' },
+        { label: 'Arabic', value: 'arabic' },
+        { label: 'French', value: 'french' },
+        { label: 'Spanish', value: 'spanish' },
+        { label: 'Other', value: 'other' },
+    ],
+    religions: [
+        { label: 'Any', value: undefined },
+        { label: 'Islam', value: 'Islam' },
+        { label: 'Hinduism', value: 'Hinduism' },
+        { label: 'Sikhism', value: 'Sikhism' },
+        { label: 'Christianity', value: 'Christianity' },
+        { label: 'Other', value: 'Other' },
+    ],
+    maritalStatuses: [
+        { label: 'Any', value: undefined },
+        { label: 'Never Married', value: 'Never Married' },
+        { label: 'Divorced', value: 'Divorced' },
+        { label: 'Widowed', value: 'Widowed' },
+        { label: 'Awaiting Divorce', value: 'Awaiting Divorce' },
+    ],
+};
+
+export default function DiscoverScreen() {
+    const [profiles, setProfiles] = useState<RecommendedProfile[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState<SearchFilters>({});
+    const [isPremium, setIsPremium] = useState(false);
+
+    const { checkNetworkOrAlert } = useOffline();
+
+    // Load profiles
+    const loadAction = useAsyncAction(async (params?: { isRefresh?: boolean, query?: string }) => {
+        const query = params?.query;
+        let response;
+
+        if (query || Object.keys(filters).length > 0) {
+            const searchFilters = {
+                ...filters,
+                city: query || filters.city,
+                ageMin: filters.ageRange?.min,
+                ageMax: filters.ageRange?.max,
+            };
+            response = await searchProfiles(searchFilters);
+        } else {
+            response = await getRecommendations(50);
+        }
+
+        if (response.error) throw new Error(response.error);
+
+        if (response.data) {
+            const data = response.data as any;
+            const newProfiles = Array.isArray(data) ? data : (data.profiles || []);
+            setProfiles(newProfiles);
+            return newProfiles;
+        }
+        return [];
+    }, { errorMode: 'inline' });
+
+    // Check subscription status on mount
+    useEffect(() => {
+        const checkPremium = async () => {
+            try {
+                const { getSubscriptionStatus } = await import('@/services/api/subscription');
+                const response = await getSubscriptionStatus();
+                if (response.data) {
+                    const plan = response.data.plan?.toLowerCase() || 'free';
+                    setIsPremium(plan === 'premium' || plan === 'premiumplus');
+                }
+            } catch {
+                // Default to non-premium
+            }
+        };
+        checkPremium();
+    }, []);
+
+    useEffect(() => {
+        loadAction.execute();
+    }, [filters]);
+
+    // Handle search
+    const handleSearch = useCallback(() => {
+        if (!checkNetworkOrAlert(() => handleSearch())) return;
+        loadAction.execute({ query: searchQuery });
+    }, [loadAction.execute, searchQuery, checkNetworkOrAlert]);
+
+    // Handle refresh
+    const handleRefresh = useCallback(() => {
+        if (!checkNetworkOrAlert()) return;
+        loadAction.execute({ isRefresh: true, query: searchQuery });
+    }, [loadAction.execute, searchQuery, checkNetworkOrAlert]);
+
+    // Handle profile press - navigate to shared profile-detail
+    const handleProfilePress = useCallback((profile: RecommendedProfile) => {
+        const profileId = profile.id || profile.userId;
+        if (profileId) {
+            router.push(`/profile-detail?userId=${profileId}`);
+        }
+    }, []);
+
+    // Apply filters
+    const applyFilters = useCallback(() => {
+        setShowFilters(false);
+        if (!checkNetworkOrAlert(() => applyFilters())) return;
+        loadAction.execute({ query: searchQuery });
+    }, [loadAction.execute, searchQuery, checkNetworkOrAlert]);
+
+    // Clear filters
+    const clearFilters = useCallback(() => {
+        setFilters({});
+        setSearchQuery('');
+    }, []);
+
+    // Render profile item
+    const renderItem = useCallback(({ item }: { item: RecommendedProfile }) => (
+        <ProfileGridItem
+            profile={item}
+            onPress={() => handleProfilePress(item)}
+        />
+    ), [handleProfilePress]);
+
+    // Render loading state
+    if (loadAction.loading && profiles.length === 0) {
+        return (
+            <>
+                <Stack.Screen options={{ title: 'Discover' }} />
+                <LoadingSpinner message="Finding people near you..." />
+            </>
+        );
+    }
+
+    return (
+        <>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            {/* Native iOS large title */}
+            <Stack.Screen.Title large>Discover</Stack.Screen.Title>
+
+            {/* Native iOS search bar */}
+            <Stack.SearchBar
+                placeholder="Search by name or interests..."
+                onChangeText={(e: any) => setSearchQuery(e.nativeEvent.text)}
+                onSubmitEditing={handleSearch}
+                hideWhenScrolling={false}
+            />
+
+            {/* Native iOS toolbar - right side with filter button */}
+            <Stack.Toolbar placement="right">
+                <Stack.Toolbar.Button
+                    icon="slider.horizontal.3"
+                    onPress={() => setShowFilters(true)}
+                />
+            </Stack.Toolbar>
+
+            {/* Active Filters */}
+            {Object.keys(filters).length > 0 && (
+                <View style={styles.activeFilters}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        {filters.ageRange && (
+                            <View style={styles.filterTag}>
+                                <Text style={styles.filterTagText}>
+                                    Age: {filters.ageRange.min}-{filters.ageRange.max}
+                                </Text>
+                            </View>
+                        )}
+                        {filters.distance && (
+                            <View style={styles.filterTag}>
+                                <Text style={styles.filterTagText}>
+                                    {filters.distance} km
+                                </Text>
+                            </View>
+                        )}
+                        {filters.verified && (
+                            <View style={styles.filterTag}>
+                                <Text style={styles.filterTagText}>Verified only</Text>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.clearFiltersButton}
+                            onPress={clearFilters}
+                        >
+                            <Text style={styles.clearFiltersText}>Clear</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            )}
+
+            {/* Error State */}
+            {loadAction.error && (
+                <View style={styles.errorContainer}>
+                    <EmptyState
+                        emoji="😕"
+                        title="Something went wrong"
+                        message={loadAction.error}
+                        actionLabel="Try Again"
+                        onAction={() => loadAction.execute()}
+                    />
+                </View>
+            )}
+
+            {/* Profile Grid */}
+            {!loadAction.error && (
+                <FlatList
+                    data={profiles}
+                    renderItem={renderItem}
+                    keyExtractor={(item, index) => item.id || item.userId || `profile-${index}`}
+                    numColumns={2}
+                    contentContainerStyle={styles.gridContent}
+                    columnWrapperStyle={styles.gridRow}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={loadAction.loading && profiles.length > 0}
+                            onRefresh={handleRefresh}
+                            tintColor={colors.primary.DEFAULT}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <EmptyState
+                            emoji="🔍"
+                            title="No profiles found"
+                            message="Try adjusting your search or filters"
+                            actionLabel="Clear Filters"
+                            onAction={clearFilters}
+                        />
+                    }
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
+
+            {/* Filter Modal */}
+            <Modal
+                visible={showFilters}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowFilters(false)}
+            >
+                <Stack.Screen
+                    options={{
+                        title: 'Filters',
+                        headerLeft: () => (
+                            <TouchableOpacity onPress={() => setShowFilters(false)}>
+                                <Text style={styles.modalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        ),
+                        headerRight: () => (
+                            <TouchableOpacity onPress={applyFilters}>
+                                <Text style={styles.modalButtonTextApply}>Apply</Text>
+                            </TouchableOpacity>
+                        ),
+                    }}
+                />
+
+                <ScrollView style={styles.modalContent}>
+                    {/* Age Range */}
+                    <View style={styles.filterSection}>
+                        <Text style={styles.filterSectionTitle}>Age Range</Text>
+                        <View style={styles.filterOptions}>
+                            {FILTER_OPTIONS.ageRanges.map((option) => (
+                                <TouchableOpacity
+                                    key={option.label}
+                                    style={[
+                                        styles.filterOption,
+                                        filters.ageRange?.min === option.min &&
+                                        styles.filterOptionActive
+                                    ]}
+                                    onPress={() => setFilters(prev => ({
+                                        ...prev,
+                                        ageRange: { min: option.min, max: option.max }
+                                    }))}
+                                >
+                                    <Text style={[
+                                        styles.filterOptionText,
+                                        filters.ageRange?.min === option.min &&
+                                        styles.filterOptionTextActive
+                                    ]}>
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Distance */}
+                    <View style={styles.filterSection}>
+                        <Text style={styles.filterSectionTitle}>Maximum Distance</Text>
+                        <View style={styles.filterOptions}>
+                            {FILTER_OPTIONS.distances.map((option) => (
+                                <TouchableOpacity
+                                    key={option.label}
+                                    style={[
+                                        styles.filterOption,
+                                        filters.distance === option.value &&
+                                        styles.filterOptionActive
+                                    ]}
+                                    onPress={() => setFilters(prev => ({
+                                        ...prev,
+                                        distance: option.value
+                                    }))}
+                                >
+                                    <Text style={[
+                                        styles.filterOptionText,
+                                        filters.distance === option.value &&
+                                        styles.filterOptionTextActive
+                                    ]}>
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Verified Only */}
+                    <View style={styles.filterSection}>
+                        <TouchableOpacity
+                            style={styles.toggleRow}
+                            onPress={() => setFilters(prev => ({
+                                ...prev,
+                                verified: !prev.verified
+                            }))}
+                        >
+                            <Text style={styles.filterSectionTitle}>Verified profiles only</Text>
+                            <View style={[
+                                styles.toggle,
+                                filters.verified && styles.toggleActive
+                            ]}>
+                                <View style={[
+                                    styles.toggleKnob,
+                                    filters.verified && styles.toggleKnobActive
+                                ]} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Premium Filters Section */}
+                    <View style={styles.filterSection}>
+                        <View style={styles.premiumHeader}>
+                            <Text style={styles.filterSectionTitle}>Advanced Filters</Text>
+                            {!isPremium && (
+                                <View style={styles.premiumBadge}>
+                                    <Text style={styles.premiumBadgeText}>⭐ Premium</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Ethnicity Filter */}
+                        <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                            <Text style={styles.premiumFilterLabel}>
+                                Ethnicity {!isPremium && '🔒'}
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={styles.filterOptions}>
+                                    {FILTER_OPTIONS.ethnicities.map((option) => (
+                                        <TouchableOpacity
+                                            key={option.label}
+                                            style={[
+                                                styles.filterOption,
+                                                (filters as any).ethnicity === option.value &&
+                                                styles.filterOptionActive,
+                                                !isPremium && styles.filterOptionDisabled
+                                            ]}
+                                            onPress={() => {
+                                                if (isPremium) {
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        ethnicity: option.value
+                                                    } as SearchFilters));
+                                                }
+                                            }}
+                                            disabled={!isPremium}
+                                        >
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                (filters as any).ethnicity === option.value &&
+                                                styles.filterOptionTextActive
+                                            ]}>
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Mother Tongue Filter */}
+                        <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                            <Text style={styles.premiumFilterLabel}>
+                                Mother Tongue {!isPremium && '🔒'}
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={styles.filterOptions}>
+                                    {FILTER_OPTIONS.motherTongues.map((option) => (
+                                        <TouchableOpacity
+                                            key={option.label}
+                                            style={[
+                                                styles.filterOption,
+                                                (filters as any).motherTongue === option.value &&
+                                                styles.filterOptionActive,
+                                                !isPremium && styles.filterOptionDisabled
+                                            ]}
+                                            onPress={() => {
+                                                if (isPremium) {
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        motherTongue: option.value
+                                                    } as SearchFilters));
+                                                }
+                                            }}
+                                            disabled={!isPremium}
+                                        >
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                (filters as any).motherTongue === option.value &&
+                                                styles.filterOptionTextActive
+                                            ]}>
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Language Filter */}
+                        <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                            <Text style={styles.premiumFilterLabel}>
+                                Language {!isPremium && '🔒'}
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={styles.filterOptions}>
+                                    {FILTER_OPTIONS.languages.map((option) => (
+                                        <TouchableOpacity
+                                            key={option.label}
+                                            style={[
+                                                styles.filterOption,
+                                                (filters as any).language === option.value &&
+                                                styles.filterOptionActive,
+                                                !isPremium && styles.filterOptionDisabled
+                                            ]}
+                                            onPress={() => {
+                                                if (isPremium) {
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        language: option.value
+                                                    } as SearchFilters));
+                                                }
+                                            }}
+                                            disabled={!isPremium}
+                                        >
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                (filters as any).language === option.value &&
+                                                styles.filterOptionTextActive
+                                            ]}>
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Religion Filter */}
+                        <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                            <Text style={styles.premiumFilterLabel}>
+                                Religion {!isPremium && '🔒'}
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={styles.filterOptions}>
+                                    {FILTER_OPTIONS.religions.map((option) => (
+                                        <TouchableOpacity
+                                            key={option.label}
+                                            style={[
+                                                styles.filterOption,
+                                                (filters as any).religion === option.value &&
+                                                styles.filterOptionActive,
+                                                !isPremium && styles.filterOptionDisabled
+                                            ]}
+                                            onPress={() => {
+                                                if (isPremium) {
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        religion: option.value
+                                                    } as SearchFilters));
+                                                }
+                                            }}
+                                            disabled={!isPremium}
+                                        >
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                (filters as any).religion === option.value &&
+                                                styles.filterOptionTextActive
+                                            ]}>
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Marital Status Filter */}
+                        <View style={[styles.premiumFilterGroup, !isPremium && styles.premiumFilterLocked]}>
+                            <Text style={styles.premiumFilterLabel}>
+                                Marital Status {!isPremium && '🔒'}
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={styles.filterOptions}>
+                                    {FILTER_OPTIONS.maritalStatuses.map((option) => (
+                                        <TouchableOpacity
+                                            key={option.label}
+                                            style={[
+                                                styles.filterOption,
+                                                (filters as any).maritalStatus === option.value &&
+                                                styles.filterOptionActive,
+                                                !isPremium && styles.filterOptionDisabled
+                                            ]}
+                                            onPress={() => {
+                                                if (isPremium) {
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        maritalStatus: option.value
+                                                    } as SearchFilters));
+                                                }
+                                            }}
+                                            disabled={!isPremium}
+                                        >
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                (filters as any).maritalStatus === option.value &&
+                                                styles.filterOptionTextActive
+                                            ]}>
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+                    </View>
+
+                    {/* Clear All */}
+                    <TouchableOpacity
+                        style={styles.clearAllButton}
+                        onPress={() => setFilters({})}
+                    >
+                        <Text style={styles.clearAllText}>Clear All Filters</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </Modal>
+        </>
+    );
+}
+
+// Responsive filter button size
+const TOGGLE_WIDTH = moderateScale(50);
+const TOGGLE_HEIGHT = moderateScale(30);
+const TOGGLE_KNOB_SIZE = moderateScale(26);
+
+const styles = StyleSheet.create({
+    activeFilters: {
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingVertical: moderateScale(12),
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.light,
+    },
+    filterTag: {
+        backgroundColor: colors.primary[100],
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
+        borderRadius: borderRadius.full,
+        marginRight: moderateScale(8),
+    },
+    filterTagText: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.primary.DEFAULT,
+    },
+    clearFiltersButton: {
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(4),
+    },
+    clearFiltersText: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[500],
+    },
+    gridContent: {
+        paddingHorizontal: responsiveValues.screenPadding,
+        paddingTop: moderateScale(8),
+        paddingBottom: moderateScale(24),
+    },
+    gridRow: {
+        justifyContent: 'space-between',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    modalButtonText: {
+        fontSize: responsiveFontSizes.base,
+        color: colors.neutral[500],
+        paddingHorizontal: moderateScale(8),
+    },
+    modalButtonTextApply: {
+        fontSize: responsiveFontSizes.base,
+        fontWeight: fontWeight.semibold,
+        color: colors.primary.DEFAULT,
+        paddingHorizontal: moderateScale(8),
+    },
+    modalContent: {
+        flex: 1,
+        padding: responsiveValues.screenPadding,
+    },
+    filterSection: {
+        marginBottom: moderateScale(24),
+    },
+    filterSectionTitle: {
+        fontSize: responsiveFontSizes.base,
+        fontWeight: fontWeight.semibold,
+        color: colors.neutral[800],
+        marginBottom: moderateScale(12),
+    },
+    filterOptions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: moderateScale(8),
+    },
+    filterOption: {
+        paddingHorizontal: moderateScale(16),
+        paddingVertical: moderateScale(8),
+        backgroundColor: colors.neutral[100],
+        borderRadius: borderRadius.full,
+    },
+    filterOptionActive: {
+        backgroundColor: colors.primary.DEFAULT,
+    },
+    filterOptionText: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[600],
+    },
+    filterOptionTextActive: {
+        color: '#FFFFFF',
+    },
+    toggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    toggle: {
+        width: TOGGLE_WIDTH,
+        height: TOGGLE_HEIGHT,
+        backgroundColor: colors.neutral[200],
+        borderRadius: TOGGLE_HEIGHT / 2,
+        padding: 2,
+    },
+    toggleActive: {
+        backgroundColor: colors.primary.DEFAULT,
+    },
+    toggleKnob: {
+        width: TOGGLE_KNOB_SIZE,
+        height: TOGGLE_KNOB_SIZE,
+        backgroundColor: '#FFFFFF',
+        borderRadius: TOGGLE_KNOB_SIZE / 2,
+    },
+    toggleKnobActive: {
+        transform: [{ translateX: TOGGLE_WIDTH - TOGGLE_KNOB_SIZE - 4 }],
+    },
+    clearAllButton: {
+        alignItems: 'center',
+        paddingVertical: moderateScale(16),
+        marginTop: moderateScale(16),
+    },
+    clearAllText: {
+        fontSize: responsiveFontSizes.base,
+        color: colors.error,
+    },
+    premiumHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: moderateScale(16),
+    },
+    premiumBadge: {
+        backgroundColor: colors.warning + '20',
+        paddingHorizontal: moderateScale(8),
+        paddingVertical: moderateScale(4),
+        borderRadius: borderRadius.md,
+    },
+    premiumBadgeText: {
+        fontSize: responsiveFontSizes.xs,
+        color: colors.warning,
+        fontWeight: fontWeight.medium,
+    },
+    premiumFilterGroup: {
+        marginBottom: moderateScale(16),
+    },
+    premiumFilterLocked: {
+        opacity: 0.6,
+    },
+    premiumFilterLabel: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[600],
+        marginBottom: moderateScale(8),
+    },
+    filterOptionDisabled: {
+        backgroundColor: colors.neutral[100],
+    },
+});

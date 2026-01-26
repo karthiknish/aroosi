@@ -16,24 +16,31 @@ import {
     Alert,
     ActivityIndicator,
 } from 'react-native';
-import type { AuthStackScreenProps } from '../../navigation/types';
-import { 
-    colors, 
-    spacing, 
-    fontSize, 
-    fontWeight, 
+import { router } from 'expo-router';
+import Animated, {
+    FadeIn,
+    FadeInUp,
+    FadeInDown,
+} from 'react-native-reanimated';
+import {
+    colors,
+    spacing,
+    fontSize,
+    fontWeight,
     borderRadius,
     moderateScale,
     responsiveValues,
     responsiveFontSizes,
-} from '../../theme';
-import { useAuthStore } from '../../store';
-import { loginWithEmail, loginWithGoogle } from '../../services/api/auth';
-import { loginWithApple, isAppleSignInAvailable } from '../../services/api/appleAuth';
-import { useOffline } from '../../hooks/useOffline';
-import { useAsyncActions } from '../../hooks/useAsyncAction';
+} from '@/theme';
+import { useAuthStore } from '@/store';
+import { loginWithEmail, loginWithGoogle } from '@/services/api/auth';
+import { loginWithApple, isAppleSignInAvailable } from '@/services/api/appleAuth';
+import { useOffline } from '@/hooks/useOffline';
+import { useAsyncActions } from '@/hooks/useAsyncAction';
 
-export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'>) {
+const AnimatedView = Animated.View;
+
+export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
@@ -63,7 +70,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
             }
             return result;
         },
-    }, { 
+    }, {
         errorMode: 'alert',
         errorTitle: 'Login Failed',
         networkAware: true,
@@ -108,21 +115,31 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                     contentInsetAdjustmentBehavior="automatic"
                 >
                     {/* Header */}
-                    <View style={styles.header}>
+                    <AnimatedView
+                        style={styles.header}
+                        entering={FadeInDown.duration(600)}
+                    >
                         <TouchableOpacity
-                            onPress={() => navigation.goBack()}
+                            onPress={() => router.back()}
                             style={styles.backButton}
                             disabled={isLoading}
                         >
                             <Text style={styles.backButtonText}>←</Text>
                         </TouchableOpacity>
-                        <Text style={styles.title}>Welcome Back</Text>
-                        <Text style={styles.subtitle}>Sign in to continue</Text>
-                    </View>
+                        <Animated.Text style={styles.title} entering={FadeInUp.duration(500).delay(100)}>
+                            Welcome Back
+                        </Animated.Text>
+                        <Animated.Text style={styles.subtitle} entering={FadeInUp.duration(500).delay(200)}>
+                            Sign in to continue
+                        </Animated.Text>
+                    </AnimatedView>
 
                     {/* Form */}
                     <View style={styles.form}>
-                        <View style={styles.inputContainer}>
+                        <AnimatedView
+                            style={styles.inputContainer}
+                            entering={FadeInUp.duration(500).delay(300)}
+                        >
                             <Text style={styles.label}>Email</Text>
                             <TextInput
                                 style={styles.input}
@@ -135,9 +152,12 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                                 autoComplete="email"
                                 editable={!isLoading}
                             />
-                        </View>
+                        </AnimatedView>
 
-                        <View style={styles.inputContainer}>
+                        <AnimatedView
+                            style={styles.inputContainer}
+                            entering={FadeInUp.duration(500).delay(350)}
+                        >
                             <Text style={styles.label}>Password</Text>
                             <TextInput
                                 style={styles.input}
@@ -148,41 +168,55 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                                 secureTextEntry
                                 editable={!isLoading}
                             />
-                        </View>
+                        </AnimatedView>
 
-                        <TouchableOpacity
+                        <AnimatedView
                             style={styles.forgotPassword}
-                            onPress={() => navigation.navigate('ForgotPassword')}
-                            disabled={isLoading}
+                            entering={FadeIn.duration(500).delay(400)}
                         >
-                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => router.push('/(auth)/forgot-password')}
+                                disabled={isLoading}
+                            >
+                                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                            </TouchableOpacity>
+                        </AnimatedView>
 
-                        <TouchableOpacity
-                            style={[styles.loginButton, isLoading && styles.buttonDisabled]}
-                            onPress={handleLogin}
-                            activeOpacity={0.8}
-                            disabled={isLoading}
+                        <AnimatedView
+                            entering={FadeInUp.duration(500).delay(450)}
                         >
-                            {isLoading ? (
-                                <ActivityIndicator color="#FFFFFF" />
-                            ) : (
-                                <Text style={styles.loginButtonText}>Sign In</Text>
-                            )}
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+                                onPress={handleLogin}
+                                activeOpacity={0.8}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.loginButtonText}>Sign In</Text>
+                                )}
+                            </TouchableOpacity>
+                        </AnimatedView>
 
                         {/* Divider */}
-                        <View style={styles.divider}>
+                        <AnimatedView
+                            style={styles.divider}
+                            entering={FadeIn.duration(500).delay(500)}
+                        >
                             <View style={styles.dividerLine} />
                             <Text style={styles.dividerText}>or continue with</Text>
                             <View style={styles.dividerLine} />
-                        </View>
+                        </AnimatedView>
 
                         {/* Social Login */}
-                        <View style={styles.socialButtons}>
+                        <AnimatedView
+                            style={styles.socialButtons}
+                            entering={FadeInUp.duration(500).delay(550)}
+                        >
                             {appleSignInAvailable && (
-                                <TouchableOpacity 
-                                    style={styles.socialButton} 
+                                <TouchableOpacity
+                                    style={styles.socialButton}
                                     activeOpacity={0.8}
                                     onPress={handleAppleLogin}
                                     disabled={isLoading}
@@ -190,27 +224,30 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
                                     <Text style={styles.socialButtonText}>🍎 Apple</Text>
                                 </TouchableOpacity>
                             )}
-                            <TouchableOpacity 
-                                style={styles.socialButton} 
+                            <TouchableOpacity
+                                style={styles.socialButton}
                                 activeOpacity={0.8}
                                 onPress={handleGoogleLogin}
                                 disabled={isLoading}
                             >
                                 <Text style={styles.socialButtonText}>G Google</Text>
                             </TouchableOpacity>
-                        </View>
+                        </AnimatedView>
                     </View>
 
                     {/* Footer */}
-                    <View style={styles.footer}>
+                    <AnimatedView
+                        style={styles.footer}
+                        entering={FadeIn.duration(500).delay(600)}
+                    >
                         <Text style={styles.footerText}>Don't have an account? </Text>
-                        <TouchableOpacity 
-                            onPress={() => navigation.navigate('Register')}
+                        <TouchableOpacity
+                            onPress={() => router.push('/(auth)/register')}
                             disabled={isLoading}
                         >
                             <Text style={styles.footerLink}>Sign Up</Text>
                         </TouchableOpacity>
-                    </View>
+                    </AnimatedView>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

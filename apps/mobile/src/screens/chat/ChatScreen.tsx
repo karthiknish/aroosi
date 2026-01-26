@@ -18,7 +18,7 @@ import {
     Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { 
     colors, 
     spacing, 
@@ -169,12 +169,13 @@ export default function ChatScreen({
     const handleAttach = useCallback(async () => {
         if (sending || !user?.id) return;
 
-        const result = await ImagePicker.launchImageLibrary({
-            mediaType: 'photo',
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
             quality: 0.8,
+            allowsEditing: false,
         });
 
-        if (result.didCancel || !result.assets || result.assets.length === 0) {
+        if (result.canceled || !result.assets || result.assets.length === 0) {
             return;
         }
 

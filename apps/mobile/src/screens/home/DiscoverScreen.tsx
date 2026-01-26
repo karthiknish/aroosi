@@ -33,11 +33,11 @@ import { ProfileGridItem } from '../../components/ProfileGridItem';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { EmptyState } from '../../components/EmptyState';
 import {
-    searchProfiles,
     getRecommendations,
     type RecommendedProfile,
     type SearchFilters,
 } from '../../services/api/recommendations';
+import { searchProfiles } from '../../services/api/search';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
 import { useOffline } from '../../hooks/useOffline';
 

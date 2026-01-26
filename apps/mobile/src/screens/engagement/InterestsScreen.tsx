@@ -15,13 +15,14 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
+import auth from '@react-native-firebase/auth';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { 
-    colors, 
-    spacing, 
-    fontSize, 
-    fontWeight, 
+import {
+    colors,
+    spacing,
+    fontSize,
+    fontWeight,
     borderRadius,
     moderateScale,
     responsiveValues,
@@ -53,8 +54,17 @@ export default function InterestsScreen() {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Get current user ID
+    const userId = auth().currentUser?.uid;
+
     // Load interests
     const loadInterests = useCallback(async (isRefresh = false) => {
+        if (!userId) {
+            setError('User not authenticated');
+            setLoading(false);
+            return;
+        }
+
         try {
             if (isRefresh) {
                 setRefreshing(true);
@@ -64,7 +74,7 @@ export default function InterestsScreen() {
             setError(null);
 
             const [receivedRes, sentRes] = await Promise.all([
-                getReceivedInterests(),
+                getReceivedInterests(userId),
                 getSentInterests(),
             ]);
 
@@ -85,7 +95,7 @@ export default function InterestsScreen() {
 
     useEffect(() => {
         loadInterests();
-    }, [loadInterests]);
+    }, [loadInterests, userId]);
 
     // Handle accept interest
     const handleAccept = useCallback(async (interestId: string) => {
