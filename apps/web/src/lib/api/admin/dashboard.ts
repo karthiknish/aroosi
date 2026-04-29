@@ -2,18 +2,22 @@
  * Admin Dashboard API - Handles admin dashboard operations
  */
 
+type JsonRecord = Record<string, unknown>;
+
 export interface DashboardStats {
   totalUsers: number;
   activeUsers: number;
-  newUsersToday: number;
   totalMatches: number;
-  totalMessages: number;
-  premiumUsers: number;
-  bannedUsers: number;
+  messagesCount: number;
+  newRegistrations: number;
+  contactMessages: number;
+  blogPosts: number;
+  approvalsPending: number;
+  isApproximate?: boolean;
 }
 
 class AdminDashboardAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest(endpoint: string, options?: RequestInit): Promise<unknown> {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -36,7 +40,7 @@ class AdminDashboardAPI {
 
     if (!res.ok) {
       const msg =
-        (isJson && payload && (payload as any).error) ||
+        (isJson && payload && (payload as JsonRecord).error) ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
@@ -44,7 +48,7 @@ class AdminDashboardAPI {
 
     // Unwrap standardized { success, data } envelope from API handler
     if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
+      const maybe = payload as JsonRecord;
       if ("success" in maybe) {
         if (maybe.success === false) {
           throw new Error(String(maybe.message || maybe.error || "Request failed"));
@@ -63,7 +67,7 @@ class AdminDashboardAPI {
    */
   async getStats(): Promise<DashboardStats> {
     const res = await this.makeRequest("/api/admin/dashboard");
-    return res.data || res;
+    return res as DashboardStats;
   }
 }
 

@@ -18,8 +18,13 @@ export default function AdminPage() {
           Welcome back, Admin
         </h1>
         <p className="text-neutral text-lg max-w-2xl">
-          Here's what's happening on your platform today. You have {stats?.approvalsPending || 0} pending approvals and {stats?.contactMessages || 0} new messages.
+          Here's what's happening on your platform today. You have {stats?.approvalsPending || 0} profiles flagged for review and {stats?.contactMessages || 0} contact submissions.
         </p>
+        {stats?.isApproximate ? (
+          <p className="text-sm text-neutral-light mt-3">
+            Some counts are approximate because the admin API still falls back to capped scans for large datasets.
+          </p>
+        ) : null}
       </div>
 
       {/* Statistics Grid */}

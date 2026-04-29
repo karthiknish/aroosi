@@ -78,7 +78,7 @@ export default function AdminCreateProfilePage() {
                     : [],
               };
               const createdProfile = await adminProfilesAPI.create({
-                ...submitValues,
+                ...(submitValues as Partial<import("@aroosi/shared/types").Profile>),
                 userId:
                   typeof values.userId === "string" && values.userId.trim()
                     ? values.userId.trim()

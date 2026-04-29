@@ -54,6 +54,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
     // Active users: distinct fromUserId in messages last 30 days
     const THIRTY_DAYS = nowTimestamp() - 30 * 24 * 60 * 60 * 1000;
     let activeUsers = 0;
+    let activeUsersApproximate = false;
     try {
       const activitySnap = await db
         .collection("messages")
@@ -67,10 +68,12 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
         if (data?.fromUserId) ids.add(String(data.fromUserId));
       });
       activeUsers = ids.size;
+      activeUsersApproximate = activitySnap.size === 5000;
     } catch {}
 
     // New registrations last 7 days (users collection)
     let newRegistrations = 0;
+    let newRegistrationsApproximate = false;
     try {
       const sevenDays = nowTimestamp() - 7 * 24 * 60 * 60 * 1000;
       const newSnap = await db
@@ -80,10 +83,12 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
         .limit(5000)
         .get();
       newRegistrations = newSnap.size;
+      newRegistrationsApproximate = newSnap.size === 5000;
     } catch {}
 
     // Pending approvals: users where needsApproval == true (if field exists)
     let approvalsPending = 0;
+    let approvalsApproximate = false;
     try {
       const pendingSnap = await db
         .collection("users")
@@ -91,7 +96,13 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
         .limit(5000)
         .get();
       approvalsPending = pendingSnap.size;
+      approvalsApproximate = pendingSnap.size === 5000;
     } catch {}
+
+    const isApproximate =
+      activeUsersApproximate ||
+      newRegistrationsApproximate ||
+      approvalsApproximate;
 
     const payload = {
       totalUsers,
@@ -102,6 +113,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
       contactMessages,
       blogPosts,
       approvalsPending,
+      isApproximate,
       generatedAt: nowTimestamp(),
       durationMs: nowTimestamp() - startedAt,
     };

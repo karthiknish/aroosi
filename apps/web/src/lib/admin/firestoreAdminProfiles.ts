@@ -131,6 +131,7 @@ export async function getProfileById(id: string): Promise<(Profile & { _id: stri
 export async function createProfile(
   input: Partial<Profile> & { userId?: string }
 ): Promise<Profile & { _id: string }> {
+  const { _id: _ignoredId, userId: _ignoredUserId, ...profileInput } = input;
   const requestedUserId =
     typeof input.userId === "string" && input.userId.trim()
       ? input.userId.trim()
@@ -159,7 +160,7 @@ export async function createProfile(
       : [];
 
   const profileDoc = {
-    ...input,
+    ...profileInput,
     userId: docRef.id,
     email,
     fullName,
@@ -179,8 +180,8 @@ export async function createProfile(
   await docRef.set(profileDoc);
 
   return {
+    ...(profileDoc as Omit<Profile, "_id">),
     _id: docRef.id,
-    ...(profileDoc as Profile),
   };
 }
 

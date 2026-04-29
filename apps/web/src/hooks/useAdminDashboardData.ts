@@ -15,6 +15,7 @@ export interface DashboardStatsPayload {
   contactMessages: number;
   blogPosts: number;
   approvalsPending: number;
+  isApproximate?: boolean;
 }
 
 export interface ActivityItem {
@@ -23,6 +24,7 @@ export interface ActivityItem {
   title: string;
   description: string;
   timestamp: Date;
+  href?: string;
   user?: { name: string };
   status?: "pending" | "approved" | "rejected";
 }
@@ -68,7 +70,7 @@ function parseTimestamp(value: unknown): Date {
 export function useAdminDashboardData() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-dashboard-stats"],
-    queryFn: () => adminDashboardAPI.getStats() as unknown as Promise<DashboardStatsPayload>,
+    queryFn: () => adminDashboardAPI.getStats(),
     staleTime: 60_000,
   });
 
@@ -113,6 +115,7 @@ export function useAdminDashboardData() {
             title: "New Registration",
             description: p.fullName || p.email || profileId,
             timestamp: parseTimestamp(p.createdAt),
+            href: `/admin/profile/${profileId}`,
             user: { name: p.fullName || p.email || profileId },
             status: "pending",
           });
@@ -138,6 +141,7 @@ export function useAdminDashboardData() {
               title: "New Match",
               description: `${nameA} & ${nameB}`,
               timestamp: parseTimestamp(item.createdAt || partner.createdAt),
+              href: "/admin/matches",
             });
           } else if (item?.user1Id && item?.user2Id) {
             const id = item?.id || `${item.user1Id}_${item.user2Id}`;
@@ -149,6 +153,7 @@ export function useAdminDashboardData() {
               title: "New Match",
               description: `${nameA} & ${nameB}`,
               timestamp: parseTimestamp(item?.createdAt),
+              href: "/admin/matches",
             });
           }
         });
@@ -165,6 +170,7 @@ export function useAdminDashboardData() {
             title: "Contact Message",
             description: c.subject || c.email,
             timestamp: parseTimestamp(c.createdAt),
+            href: "/admin/contact",
             user: { name: c.name || c.email },
             status: "pending",
           })
@@ -183,6 +189,7 @@ export function useAdminDashboardData() {
             title: "Blog Post",
             description: b.title,
             timestamp: parseTimestamp(b.createdAt || b.publishedAt),
+            href: "/admin/blog",
           })
         );
       } catch (err) {

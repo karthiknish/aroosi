@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface ActivityItem {
   title: string;
   description: string;
   timestamp: Date;
+  href?: string;
   user?: {
     name: string;
     avatar?: string;
@@ -107,14 +109,11 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
 
   return (
     <Card className="border-neutral/10 shadow-sm h-full">
-      <CardHeader className="flex flex-row items-center justify-between border-b border-neutral/5 pb-4">
+      <CardHeader className="border-b border-neutral/5 pb-4">
         <div className="space-y-1">
           <CardTitle className="text-lg font-semibold text-neutral-dark">Recent Activity</CardTitle>
           <p className="text-sm text-neutral-light">Latest actions across the platform</p>
         </div>
-        <Button variant="outline" size="sm" className="text-neutral">
-          View All
-        </Button>
       </CardHeader>
       <CardContent className="pt-6">
         {activityList.length === 0 ? (
@@ -158,13 +157,18 @@ export function RecentActivity({ activities, loading }: RecentActivityProps) {
                         {getStatusBadge(activity.status)}
                       </div>
                       
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mr-2"
-                      >
-                        <ExternalLink className="h-3 w-3 text-neutral-light hover:text-neutral" />
-                      </Button>
+                      {activity.href ? (
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mr-2"
+                        >
+                          <Link href={activity.href} aria-label={`Open ${activity.title}`}>
+                            <ExternalLink className="h-3 w-3 text-neutral-light hover:text-neutral" />
+                          </Link>
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

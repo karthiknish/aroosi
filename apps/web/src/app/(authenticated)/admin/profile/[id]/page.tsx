@@ -107,7 +107,7 @@ export default function AdminProfileDetailPage() {
   // Many user docs use _id equal to userId; fall back safely when userId absent
   const userId =
     profile?.userId || (profile?._id ? String(profile._id) : undefined);
-  const { data: images = [] } = useQuery<ProfileImageInfo[]>({
+  const { data: images = [], refetch: refetchImages } = useQuery<ProfileImageInfo[]>({
     queryKey: ["profileImages", userId, "admin"],
     queryFn: async () => {
       if (!userId) return [];
@@ -226,16 +226,18 @@ export default function AdminProfileDetailPage() {
   }
 
   const handleDeleteImage = async () => {
-    if (!profile?.userId || !imageToDelete) return;
+    if (!userId || !imageToDelete) return;
     const { storageId } = imageToDelete;
 
     try {
       setIsDeleting(true);
-      if (!profile?.userId) throw new Error("Missing userId for deletion");
-      await adminProfilesAPI.deleteImage(profile.userId, storageId);
+      await adminProfilesAPI.deleteImage(userId, storageId);
+      sessionStorage.removeItem(`adminProfileImages_${userId}`);
+      sessionStorage.removeItem(`adminProfileImages_${userId}_timestamp`);
       showSuccessToast("Image deleted successfully");
       setImageToDelete(null);
       setIsDeleteModalOpen(false);
+      void refetchImages();
       void refetchProfile();
     } catch (error) {
       showErrorToast(

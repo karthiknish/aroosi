@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -21,11 +22,12 @@ interface StatCardProps {
   description?: string;
   trend?: string;
   colorClass?: string;
+  href?: string;
 }
 
-function StatCard({ title, value, icon, description, trend, colorClass = "text-neutral" }: StatCardProps) {
-  return (
-    <Card className="hover:shadow-md transition-all duration-200 border-neutral/10 overflow-hidden group">
+function StatCard({ title, value, icon, description, trend, colorClass = "text-neutral", href }: StatCardProps) {
+  const card = (
+    <Card className="hover:shadow-md transition-all duration-200 border-neutral/10 overflow-hidden group h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-neutral-light">
           {title}
@@ -55,6 +57,16 @@ function StatCard({ title, value, icon, description, trend, colorClass = "text-n
         )}
       </CardContent>
     </Card>
+  );
+
+  if (!href) {
+    return card;
+  }
+
+  return (
+    <Link href={href} className="block h-full">
+      {card}
+    </Link>
   );
 }
 
@@ -100,6 +112,7 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
     contactMessages: 0,
     blogPosts: 0,
     approvalsPending: 0,
+    isApproximate: false,
     ...stats,
   };
 
@@ -111,6 +124,7 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
         icon={<Users className="h-5 w-5" />}
         description="Registered members"
         colorClass="text-info bg-info/10"
+        href="/admin/profile"
       />
       
       <StatCard
@@ -127,6 +141,7 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
         icon={<Heart className="h-5 w-5" />}
         description="Successful connections"
         colorClass="text-primary bg-primary/10"
+        href="/admin/matches"
       />
       
       <StatCard
@@ -149,8 +164,9 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
         title="Contact Messages"
         value={defaultStats.contactMessages.toLocaleString()}
         icon={<Mail className="h-5 w-5" />}
-        description="Pending responses"
+        description="Total contact submissions"
         colorClass="text-warning bg-warning/10"
+        href="/admin/contact"
       />
       
       <StatCard
@@ -159,14 +175,16 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
         icon={<FileText className="h-5 w-5" />}
         description="Published articles"
         colorClass="text-info bg-info/10"
+        href="/admin/blog"
       />
       
       <StatCard
         title="Pending Approvals"
         value={defaultStats.approvalsPending.toLocaleString()}
         icon={<TrendingUp className="h-5 w-5" />}
-        description="Profiles awaiting review"
+        description="Profiles flagged for review"
         colorClass="text-danger bg-danger/10"
+        href="/admin/profile"
       />
     </div>
   );

@@ -58,6 +58,22 @@ const statusOptions = [
   { label: "Banned", value: "banned" },
 ] as const;
 
+const pageSizeOptions = [12, 24, 48] as const;
+
+const sortOptions = [
+  { label: "Newest", value: "createdAt:desc" },
+  { label: "Oldest", value: "createdAt:asc" },
+  { label: "Banned First", value: "banned:desc" },
+  { label: "Plan A-Z", value: "subscriptionPlan:asc" },
+] as const;
+
+const planOptions = [
+  { label: "All Plans", value: "all" },
+  { label: "Free", value: "free" },
+  { label: "Premium", value: "premium" },
+  { label: "Premium Plus", value: "premiumPlus" },
+] as const;
+
 function getAge(dateOfBirth?: string) {
   if (!dateOfBirth) return "-";
   const dob = new Date(dateOfBirth);
@@ -67,6 +83,33 @@ function getAge(dateOfBirth?: string) {
   const m = today.getMonth() - dob.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) years--;
   return years;
+}
+
+function normalizeTimestamp(timestamp?: number) {
+  if (typeof timestamp !== "number" || Number.isNaN(timestamp)) return null;
+  return timestamp > 1e12 ? timestamp : timestamp * 1000;
+}
+
+function formatExpiryDate(timestamp?: number) {
+  const normalized = normalizeTimestamp(timestamp);
+  if (!normalized) return null;
+  return new Date(normalized).toLocaleDateString();
+}
+
+function formatExpiryRemaining(timestamp?: number) {
+  const normalized = normalizeTimestamp(timestamp);
+  if (!normalized) return null;
+
+  const ms = normalized - Date.now();
+  if (ms <= 0) return "Expired";
+
+  const days = Math.floor(ms / 86400000);
+  if (days >= 1) return `${days}d remaining`;
+
+  const hours = Math.floor(ms / 3600000);
+  if (hours >= 1) return `${hours}h remaining`;
+
+  return `${Math.max(1, Math.floor(ms / 60000))}m remaining`;
 }
 
 function getPrimaryImageUrl(
@@ -89,17 +132,18 @@ export default function AdminProfilePage() {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingBanId, setPendingBanId] = useState<string | null>(null);
   // view modal removed; using dedicated route /admin/profile/[id]
   const router = useRouter();
 
-  // Server-driven params (internal only; no UI controls yet)
   const [page, setPage] = useState<number>(1);
-  const [pageSize, _setPageSize] = useState<number>(12);
-  const [sortBy] = useState<"createdAt" | "banned" | "subscriptionPlan">(
+  const [pageSize, setPageSize] = useState<number>(12);
+  const [sortBy, setSortBy] = useState<"createdAt" | "banned" | "subscriptionPlan">(
     "createdAt"
   );
-  const [sortDir] = useState<"asc" | "desc">("desc");
-  const [planFilter] = useState<"all" | "free" | "premium" | "premiumPlus">(
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [planFilter, setPlanFilter] = useState<"all" | "free" | "premium" | "premiumPlus">(
     "all"
   );
 
@@ -115,7 +159,7 @@ export default function AdminProfilePage() {
   // Reset page on status change
   useEffect(() => {
     setPage(1);
-  }, [status]);
+  }, [status, pageSize, sortBy, sortDir, planFilter]);
 
   const {
     data,
@@ -245,7 +289,7 @@ export default function AdminProfilePage() {
           <span className="text-sm font-medium text-neutral-700">{profile.subscriptionPlan || "Free"}</span>
           {profile.subscriptionExpiresAt && (
             <span className="text-[10px] text-neutral-400">
-              Expires: {new Date(profile.subscriptionExpiresAt * 1000).toLocaleDateString()}
+              Expires: {formatExpiryDate(profile.subscriptionExpiresAt)}
             </span>
           )}
         </div>
@@ -285,6 +329,7 @@ export default function AdminProfilePage() {
               "h-8 w-8",
               profile.banned ? "text-emerald-600" : "text-amber-600"
             )}
+            disabled={pendingBanId === profile._id || pendingDeleteId === profile._id}
             onClick={(e) => {
               e.stopPropagation();
               setConfirmBanId(profile._id);
@@ -296,6 +341,7 @@ export default function AdminProfilePage() {
             size="icon"
             variant="ghost"
             className="h-8 w-8 text-red-600"
+            disabled={pendingBanId === profile._id || pendingDeleteId === profile._id}
             onClick={(e) => {
               e.stopPropagation();
               setConfirmDeleteId(profile._id);
@@ -310,20 +356,34 @@ export default function AdminProfilePage() {
 
   // Handlers
   const onDelete = async (id: string) => {
-    await adminProfilesAPI.delete(id);
-    setConfirmDeleteId(null);
-    void loadProfiles();
-    showSuccessToast("Profile deleted");
+    if (pendingDeleteId) return;
+
+    setPendingDeleteId(id);
+    try {
+      await adminProfilesAPI.delete(id);
+      setConfirmDeleteId(null);
+      void loadProfiles();
+      showSuccessToast("Profile deleted");
+    } catch (error) {
+      showErrorToast(error instanceof Error ? error : null, "Failed to delete profile");
+    } finally {
+      setPendingDeleteId(null);
+    }
   };
 
   const onToggleBan = async (id: string, isBanned: boolean) => {
+    if (pendingBanId) return;
+
+    setPendingBanId(id);
     try {
       await adminProfilesAPI.setBannedStatus(id, !isBanned);
       setConfirmBanId(null);
       void loadProfiles();
       showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
-    } catch (e: any) {
-      showErrorToast(e.message || "Failed to update ban status");
+    } catch (error) {
+      showErrorToast(error instanceof Error ? error : null, "Failed to update ban status");
+    } finally {
+      setPendingBanId(null);
     }
   };
 
@@ -388,6 +448,63 @@ export default function AdminProfilePage() {
 
             {/* Status Filter */}
             <div className="flex items-center gap-3">
+              <Select
+                value={planFilter}
+                onValueChange={(value) =>
+                  setPlanFilter(value as "all" | "free" | "premium" | "premiumPlus")
+                }
+              >
+                <SelectTrigger className="w-[150px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                  <SelectValue placeholder="Plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {planOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={`${sortBy}:${sortDir}`}
+                onValueChange={(value) => {
+                  const [nextSortBy, nextSortDir] = value.split(":") as [
+                    "createdAt" | "banned" | "subscriptionPlan",
+                    "asc" | "desc"
+                  ];
+                  setSortBy(nextSortBy);
+                  setSortDir(nextSortDir);
+                }}
+              >
+                <SelectTrigger className="w-[170px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => setPageSize(Number(value))}
+              >
+                <SelectTrigger className="w-[120px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizeOptions.map((opt) => (
+                    <SelectItem key={opt} value={String(opt)}>
+                      {opt} / page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <ToggleGroup 
                 type="single" 
                 value={viewMode} 
@@ -602,8 +719,9 @@ export default function AdminProfilePage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-white hover:shadow-md transition-all opacity-0 group-hover:opacity-100 border border-neutral-100 h-8 w-8"
+                  className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-white hover:shadow-md transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 border border-neutral-100 h-8 w-8"
                   title="Edit Profile"
+                  disabled={pendingBanId === profile._id || pendingDeleteId === profile._id}
                   onClick={() =>
                     router.push(`/admin/profile/${profile._id}/edit`)
                   }
@@ -681,20 +799,7 @@ export default function AdminProfilePage() {
                         </span>
                         {typeof profile.subscriptionExpiresAt === "number" && (
                           <div className="text-[10px] text-neutral-500 mt-1 font-medium">
-                            {(() => {
-                              const ms =
-                                profile.subscriptionExpiresAt! * 1 - Date.now();
-                              if (ms <= 0) return "Expired";
-                              const days = Math.floor(ms / 86400000);
-                              if (days >= 1) return `${days}d remaining`;
-                              const hours = Math.floor(ms / 3600000);
-                              if (hours >= 1) return `${hours}h remaining`;
-                              const minutes = Math.max(
-                                1,
-                                Math.floor(ms / 60000)
-                              );
-                              return `${minutes}m remaining`;
-                            })()}
+                            {formatExpiryRemaining(profile.subscriptionExpiresAt)}
                           </div>
                         )}
                       </div>
@@ -715,11 +820,23 @@ export default function AdminProfilePage() {
                       View
                     </Button>
 
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/admin/profile/${profile._id}/edit`)}
+                      className="h-9 text-xs font-semibold"
+                      disabled={pendingBanId === profile._id || pendingDeleteId === profile._id}
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+
                     <div className="flex gap-1">
                       <Button
                         size="icon"
                         variant="ghost"
                         title={profile.banned ? "Unban User" : "Ban User"}
+                        disabled={pendingBanId === profile._id || pendingDeleteId === profile._id}
                         onClick={() => setConfirmBanId(profile._id)}
                         className={cn(
                           "h-9 w-9",
@@ -735,6 +852,7 @@ export default function AdminProfilePage() {
                         size="icon"
                         variant="ghost"
                         title="Delete Profile"
+                        disabled={pendingBanId === profile._id || pendingDeleteId === profile._id}
                         onClick={() => setConfirmDeleteId(profile._id)}
                         className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
@@ -797,6 +915,7 @@ export default function AdminProfilePage() {
                   variant="outline"
                   onClick={() => setConfirmDeleteId(null)}
                   className="bg-white"
+                  disabled={pendingDeleteId === confirmDeleteId}
                 >
                   Cancel
                 </Button>
@@ -804,8 +923,11 @@ export default function AdminProfilePage() {
                   variant="destructive"
                   onClick={() => onDelete(confirmDeleteId)}
                   className="shadow-sm"
+                  disabled={pendingDeleteId === confirmDeleteId}
                 >
-                  Delete Permanently
+                  {pendingDeleteId === confirmDeleteId
+                    ? "Deleting..."
+                    : "Delete Permanently"}
                 </Button>
               </div>
             </DialogContent>
@@ -833,11 +955,16 @@ export default function AdminProfilePage() {
                 this profile?
               </DialogDescription>
               <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" onClick={() => setConfirmBanId(null)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmBanId(null)}
+                  disabled={pendingBanId === confirmBanId}
+                >
                   Cancel
                 </Button>
                 <Button
                   variant="destructive"
+                  disabled={pendingBanId === confirmBanId}
                   onClick={() =>
                     onToggleBan(
                       confirmBanId,
@@ -845,9 +972,11 @@ export default function AdminProfilePage() {
                     )
                   }
                 >
-                  {profiles.find((p) => p._id === confirmBanId)?.banned
-                    ? "Unban"
-                    : "Ban"}
+                  {pendingBanId === confirmBanId
+                    ? "Saving..."
+                    : profiles.find((p) => p._id === confirmBanId)?.banned
+                      ? "Unban"
+                      : "Ban"}
                 </Button>
               </div>
             </DialogContent>

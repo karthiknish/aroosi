@@ -162,6 +162,8 @@
     "backfill:profile-image-urls": "ts-node --transpile-only scripts/backfillProfileImageUrls.ts",
     "dev": "NODE_PATH=./node_modules:../../node_modules ../../node_modules/.bin/next dev --experimental-https=false 2>/dev/null || NODE_PATH=./node_modules:../../node_modules ../../node_modules/.bin/next dev",
     "build": "NODE_PATH=./node_modules:../../node_modules ../../node_modules/.bin/next build",
+    "build:raw": "NODE_PATH=./node_modules:../../node_modules ../../node_modules/.bin/next build",
+    "build:vercel": "node ./scripts/vercel-build.mjs",
     "build:analyze": "ANALYZE=true NODE_PATH=./node_modules:../../node_modules ../../node_modules/.bin/next build --webpack",
     "build:with-lint": "npm run lint && npm run type-check && npm run build",
     "start": "NODE_PATH=./node_modules:../../node_modules ../../node_modules/.bin/next start",

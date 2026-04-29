@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
@@ -24,7 +25,39 @@ import { usePushNotificationTest } from "@/hooks/usePushNotificationTest";
 export default function PushNotificationAdminPage() {
   // Cookie-auth: no token in context
   useAuthContext();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"compose" | "devices" | "test" | "templates">("compose");
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (
+      requestedTab === "compose" ||
+      requestedTab === "devices" ||
+      requestedTab === "test" ||
+      requestedTab === "templates"
+    ) {
+      setActiveTab(requestedTab);
+      return;
+    }
+
+    setActiveTab("compose");
+  }, [searchParams]);
+
+  const handleTabChange = (nextTab: "compose" | "devices" | "test" | "templates") => {
+    setActiveTab(nextTab);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextTab === "compose") {
+      params.delete("tab");
+    } else {
+      params.set("tab", nextTab);
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   const {
     devices,
@@ -102,7 +135,7 @@ export default function PushNotificationAdminPage() {
         <AnalyticsDashboard analytics={analytics} />
 
         <div className="bg-base-light rounded-2xl shadow-sm border border-neutral/20 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as "compose" | "devices" | "test" | "templates")} className="w-full">
             <PushTabsNavigation />
 
             <TabsContent value="compose" className="p-6">
