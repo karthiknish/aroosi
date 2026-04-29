@@ -88,8 +88,8 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Card key={i} className="animate-pulse border-neutral/5">
+        {["stat-1", "stat-2", "stat-3", "stat-4", "stat-5", "stat-6", "stat-7", "stat-8"].map((key) => (
+          <Card key={key} className="animate-pulse border-neutral/5">
             <CardHeader className="space-y-0 pb-2">
               <div className="h-4 bg-neutral/5 rounded w-24"></div>
             </CardHeader>

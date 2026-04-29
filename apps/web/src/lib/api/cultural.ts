@@ -41,8 +41,35 @@ export interface SupervisedConversation {
   createdAt: string;
 }
 
+type ApiEnvelope<T> = {
+  success?: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+};
+
+type CulturalProfileResponse = {
+  data?: { profile?: CulturalProfile | null };
+  profile?: CulturalProfile | null;
+};
+
+type FamilyApprovalResponse = {
+  request?: FamilyApprovalRequest;
+};
+
+type FamilyApprovalListResponse = {
+  data?: { requests?: FamilyApprovalRequest[] };
+  requests?: FamilyApprovalRequest[];
+};
+
+type SupervisedConversationResponse = {
+  data?: { conversation?: SupervisedConversation; conversations?: SupervisedConversation[] };
+  conversation?: SupervisedConversation;
+  conversations?: SupervisedConversation[];
+};
+
 class CulturalAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -64,8 +91,12 @@ class CulturalAPI {
     const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
 
     if (!res.ok) {
+      const payloadError =
+        isJson && payload && typeof payload === "object"
+          ? (payload as ApiEnvelope<T>).error
+          : undefined;
       const msg =
-        (isJson && payload && (payload as any).error) ||
+        payloadError ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
@@ -73,18 +104,18 @@ class CulturalAPI {
 
     // Unwrap standardized { success, data } envelope from API handler
     if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
+      const maybe = payload as ApiEnvelope<T>;
       if ("success" in maybe) {
         if (maybe.success === false) {
           throw new Error(String(maybe.message || maybe.error || "Request failed"));
         }
         if ("data" in maybe) {
-          return maybe.data;
+          return maybe.data as T;
         }
       }
     }
 
-    return payload;
+    return payload as T;
   }
 
   // === Cultural Profile ===
@@ -94,7 +125,7 @@ class CulturalAPI {
    */
   async getProfile(userId: string): Promise<CulturalProfile | null> {
     try {
-      const res = await this.makeRequest(`/api/cultural/profile/${userId}`);
+      const res = await this.makeRequest<CulturalProfileResponse>(`/api/cultural/profile/${userId}`);
       return res.data?.profile || res.profile || null;
     } catch {
       return null;
@@ -111,8 +142,11 @@ class CulturalAPI {
   /**
    * Get culturally matched recommendations
    */
-  async getRecommendations(limit = 10): Promise<any[]> {
-    const res = await this.makeRequest(`/api/cultural/recommendations?limit=${limit}`);
+  async getRecommendations(limit = 10): Promise<Record<string, unknown>[]> {
+    const res = await this.makeRequest<{
+      data?: { recommendations?: Record<string, unknown>[] };
+      recommendations?: Record<string, unknown>[];
+    }>(`/api/cultural/recommendations?limit=${limit}`);
     return res.data?.recommendations || res.recommendations || [];
   }
 
@@ -126,11 +160,12 @@ class CulturalAPI {
     relationship: string,
     message?: string
   ): Promise<FamilyApprovalRequest> {
-    const res = await this.makeRequest("/api/cultural/family-approval/request", {
+    const res = await this.makeRequest<FamilyApprovalResponse>("/api/cultural/family-approval/request", {
       method: "POST",
       body: JSON.stringify({ familyMemberId, relationship, message }),
     });
-    return res.request || res;
+    if (res.request) return res.request;
+    throw new Error("Invalid family approval response");
   }
 
   /**
@@ -141,18 +176,19 @@ class CulturalAPI {
     action: "approved" | "rejected",
     responseMessage?: string
   ): Promise<FamilyApprovalRequest> {
-    const res = await this.makeRequest("/api/cultural/family-approval/respond", {
+    const res = await this.makeRequest<FamilyApprovalResponse>("/api/cultural/family-approval/respond", {
       method: "POST",
       body: JSON.stringify({ requestId, action, responseMessage }),
     });
-    return res.request || res;
+    if (res.request) return res.request;
+    throw new Error("Invalid family approval response");
   }
 
   /**
    * Get pending family approval requests (as requester)
    */
   async getSentApprovalRequests(): Promise<FamilyApprovalRequest[]> {
-    const res = await this.makeRequest("/api/cultural/family-approval/requests");
+    const res = await this.makeRequest<FamilyApprovalListResponse>("/api/cultural/family-approval/requests");
     return res.data?.requests || res.requests || [];
   }
 
@@ -160,7 +196,7 @@ class CulturalAPI {
    * Get received family approval requests (as family member)
    */
   async getReceivedApprovalRequests(): Promise<FamilyApprovalRequest[]> {
-    const res = await this.makeRequest("/api/cultural/family-approval/received");
+    const res = await this.makeRequest<FamilyApprovalListResponse>("/api/cultural/family-approval/received");
     return res.data?.requests || res.requests || [];
   }
 
@@ -186,18 +222,20 @@ class CulturalAPI {
       conversationId?: string;
     }
   ): Promise<SupervisedConversation> {
-    const res = await this.makeRequest(`/api/cultural/supervised-conversation/${conversationId}`, {
+    const res = await this.makeRequest<SupervisedConversationResponse>(`/api/cultural/supervised-conversation/${conversationId}`, {
       method: "PUT",
       body: JSON.stringify(updates),
     });
-    return res.data?.conversation || res.conversation;
+    const conversation = res.data?.conversation || res.conversation;
+    if (conversation) return conversation;
+    throw new Error("Invalid supervised conversation response");
   }
 
   /**
    * List supervised conversations
    */
   async listSupervisedConversations(): Promise<SupervisedConversation[]> {
-    const res = await this.makeRequest("/api/cultural/supervised-conversation/list");
+    const res = await this.makeRequest<SupervisedConversationResponse>("/api/cultural/supervised-conversation/list");
     return res.data?.conversations || res.conversations || [];
   }
 }

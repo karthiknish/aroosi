@@ -1,10 +1,9 @@
-import { NextRequest } from "next/server";
 import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  AuthenticatedApiContext,
 } from "@/lib/api/handler";
+import type { AuthenticatedApiContext } from "@/lib/api/handler";
 import {
   createProfile,
   listProfiles,
@@ -20,6 +19,10 @@ const ensureAdminRole = (ctx: AuthenticatedApiContext) => {
     throw Object.assign(new Error("Admin privileges required"), { status: 403, code: "FORBIDDEN" });
   }
 };
+
+type AdminProfileCreateBody = Partial<Profile> & { userId?: string };
+type AdminProfileDeleteBody = { id?: string };
+type AdminProfileUpdateBody = { id?: string; updates?: Record<string, unknown> };
 
 export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext) => {
   ensureAdminRole(ctx);
@@ -70,7 +73,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
   rateLimit: { identifier: "admin_profiles_get", maxRequests: 100 }
 });
 
-export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: AdminProfileCreateBody) => {
   ensureAdminRole(ctx);
   const { correlationId } = ctx;
 
@@ -108,7 +111,7 @@ export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiConte
   rateLimit: { identifier: "admin_profiles_create", maxRequests: 20 }
 });
 
-export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: AdminProfileDeleteBody) => {
   ensureAdminRole(ctx);
   const { correlationId } = ctx;
   
@@ -129,7 +132,7 @@ export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiCon
   rateLimit: { identifier: "admin_profiles_delete", maxRequests: 10 }
 });
 
-export const PUT = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+export const PUT = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: AdminProfileUpdateBody) => {
   ensureAdminRole(ctx);
   const { correlationId } = ctx;
   

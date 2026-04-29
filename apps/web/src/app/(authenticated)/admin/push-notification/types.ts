@@ -50,7 +50,7 @@ export interface PushNotificationTemplate {
   id: string;
   name: string;
   description?: string;
-  payload: any;
+  payload: Record<string, unknown>;
   createdAt?: number;
   lastUsedAt?: number;
 }

@@ -4,7 +4,7 @@ import ModernChatHeader from "@/components/chat/ModernChatHeader";
 import MessagesList from "@/components/chat/MessagesList";
 import Composer from "@/components/chat/Composer";
 import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
-import { useModernChat, type ReportReason } from "@/hooks/useModernChat";
+import { useModernChat } from "@/hooks/useModernChat";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +20,15 @@ import { canSendVoiceMessage } from "@/lib/utils/messageUtils";
 import { MessageCircle } from "lucide-react";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 
+type UsageTrackEvent = Parameters<ReturnType<typeof useUsageTracking>["trackUsage"]>[0];
+
 export type ModernChatProps = {
   conversationId: string;
   currentUserId: string;
   matchUserId: string;
   matchUserName?: string;
   matchUserAvatarUrl?: string;
-  matchProfile?: any;
+  matchProfile?: unknown;
   className?: string;
 };
 
@@ -92,7 +94,6 @@ function ModernChat({
     handleInputChange,
     handleKeyPress,
     handleBlockUser,
-    handleReportUser,
     onFetchOlder,
     onScrollToBottom,
     setReplyTo,
@@ -187,7 +188,7 @@ function ModernChat({
             setText(text);
             // Focus the input after selecting a starter
             if (inputRef.current) {
-              (inputRef.current as any).focus();
+              inputRef.current.focus();
             }
           }}
         />
@@ -196,14 +197,14 @@ function ModernChat({
       {/* Refined Input Section with subtle gradient - always visible at bottom */}
       <div className="relative z-10 flex-shrink-0 bg-gradient-to-t from-white via-[#FEFCFA] to-white/95 border-t border-neutral/10">
         <Composer
-          inputRef={inputRef as any}
+          inputRef={inputRef}
           text={text}
           setText={setText}
           isSending={isSending}
           isBlocked={isBlocked}
           showPicker={showPicker}
           setShowPicker={setShowPicker}
-          toggleBtnRef={toggleBtnRef as any}
+          toggleBtnRef={toggleBtnRef}
           onSend={handleSendMessage}
           onInputChange={handleInputChange}
           onKeyPress={handleKeyPress}
@@ -240,16 +241,18 @@ function ModernChat({
         userId={matchUserId}
         userName={matchUserName}
         onReportSuccess={() => {
-          trackUsage({
-            feature: "user_report" as any,
+          const event: UsageTrackEvent = {
+            feature: "user_report",
             metadata: { targetUserId: matchUserId },
-          });
+          };
+          trackUsage(event);
         }}
         onBlockSuccess={() => {
-          trackUsage({
-            feature: "user_block" as any,
+          const event: UsageTrackEvent = {
+            feature: "user_block",
             metadata: { targetUserId: matchUserId },
-          });
+          };
+          trackUsage(event);
         }}
       />
 

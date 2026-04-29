@@ -1,8 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminPushAPI } from "@/lib/api/admin/push";
-import { TemplateUI, PushNotificationTemplate } from "../app/(authenticated)/admin/push-notification/types";
+import type { TemplateUI, PushNotificationTemplate } from "../app/(authenticated)/admin/push-notification/types";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+
+const getString = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
 
 export function usePushNotificationTemplates() {
   const queryClient = useQueryClient();
@@ -22,11 +25,11 @@ export function usePushNotificationTemplates() {
       id: item.id,
       name: item.name,
       description: item.description,
-      title: item.payload?.title || "",
-      message: item.payload?.message || "",
-      imageUrl: item.payload?.imageUrl,
-      category: item.payload?.category,
-      url: item.payload?.url,
+      title: getString(item.payload?.title) || "",
+      message: getString(item.payload?.message) || "",
+      imageUrl: getString(item.payload?.imageUrl),
+      category: getString(item.payload?.category),
+      url: getString(item.payload?.url),
       dataJson: item.payload?.data ? JSON.stringify(item.payload.data, null, 2) : undefined,
       buttonsJson: item.payload?.buttons ? JSON.stringify(item.payload.buttons, null, 2) : undefined,
     }));
@@ -38,7 +41,7 @@ export function usePushNotificationTemplates() {
       showSuccessToast("Template deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["admin", "push", "templates"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showErrorToast(error, "Failed to delete template");
     },
   });

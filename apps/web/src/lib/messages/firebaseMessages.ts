@@ -14,17 +14,72 @@ export interface FirebaseMessage {
   fileSize?: number;
   mimeType?: string;
   peaks?: number[];
+  replyToMessageId?: string;
+  replyToText?: string;
+  replyToType?: MessageType;
+  replyToFromUserId?: string;
   createdAt: number;
   readAt?: number;
 }
 
 const COLLECTION = "messages";
 
+async function syncMessageState(message: FirebaseMessage) {
+  const participants = [message.fromUserId, message.toUserId];
+  const lastMessage = {
+    id: message.id,
+    fromUserId: message.fromUserId,
+    toUserId: message.toUserId,
+    text: message.text || "",
+    type: message.type,
+    createdAt: message.createdAt,
+  };
+
+  await db.collection("conversations").doc(message.conversationId).set(
+    {
+      participants,
+      lastMessage,
+      updatedAt: message.createdAt,
+    },
+    { merge: true }
+  );
+
+  const [firstUserId, secondUserId] = [...participants].sort();
+  const matchesCollection = db.collection("matches");
+  let matchSnapshot = await matchesCollection
+    .where("user1Id", "==", firstUserId)
+    .where("user2Id", "==", secondUserId)
+    .where("status", "==", "matched")
+    .limit(1)
+    .get();
+
+  if (matchSnapshot.empty) {
+    matchSnapshot = await matchesCollection
+      .where("user1Id", "==", secondUserId)
+      .where("user2Id", "==", firstUserId)
+      .where("status", "==", "matched")
+      .limit(1)
+      .get();
+  }
+
+  if (!matchSnapshot.empty) {
+    await matchesCollection.doc(matchSnapshot.docs[0].id).set(
+      {
+        conversationId: message.conversationId,
+        lastMessage,
+        updatedAt: message.createdAt,
+      },
+      { merge: true }
+    );
+  }
+}
+
 export async function sendFirebaseMessage(data: Omit<FirebaseMessage, "id" | "createdAt"> & { text?: string }) {
   const now = Date.now();
   const docRef = db.collection(COLLECTION).doc();
   const payload: FirebaseMessage = { id: docRef.id, createdAt: now, ...data } as FirebaseMessage;
   await docRef.set(payload);
+  await syncMessageState(payload);
   return payload;
 }
 
@@ -33,17 +88,27 @@ export async function listConversationMessages(conversationId: string, limit?: n
   if (before) q = q.where("createdAt", "<", before);
   if (limit) q = q.limit(limit);
   const snap = await q.get();
-  const items: FirebaseMessage[] = snap.docs.map((d: any) => d.data() as FirebaseMessage);
-  return items.sort((a,b) => a.createdAt - b.createdAt);
+  const items: FirebaseMessage[] = snap.docs.map(
+    (doc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) =>
+      doc.data() as FirebaseMessage
+  );
+  return items.sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export async function markMessagesRead(conversationId: string, userId: string) {
   const snap = await db.collection(COLLECTION).where("conversationId", "==", conversationId).where("toUserId", "==", userId).get();
-  const unread = snap.docs.filter((d: any) => !(d.data() as any).readAt);
+  const unread = snap.docs.filter(
+    (doc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) =>
+      !(doc.data() as { readAt?: number }).readAt
+  );
   if (unread.length === 0) return { updated: 0, readAt: Date.now() };
   const batch = db.batch();
   const ts = Date.now();
-  unread.forEach((docRef: any) => batch.update(docRef.ref, { readAt: ts }));
+  unread.forEach(
+    (docRef: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => {
+      batch.update(docRef.ref, { readAt: ts });
+    }
+  );
   await batch.commit();
   return { updated: unread.length, readAt: ts };
 }
@@ -54,7 +119,7 @@ export async function uploadMessageImage(params: { conversationId: string; fileN
   // Resolve bucket defensively: adminStorage.bucket() may throw if no default bucket
   // was configured during firebase-admin initialization. Fall back to env-derived
   // bucket name if necessary, matching logic used in other image routes.
-  let bucket: any;
+  let bucket: ReturnType<typeof adminStorage.bucket>;
   try {
     bucket = adminStorage.bucket();
   } catch (e) {

@@ -24,8 +24,9 @@ export default function MatchChatPage() {
   const { id: otherUserId } = useParams<{ id: string }>();
   // Cookie-auth: remove token from context; server reads HttpOnly cookies
   const { user, profile } = useAuthContext();
+  const authProfile = profile as { _id?: string; userId?: string } | null;
   const userId =
-    user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
+    user?.uid || authProfile?._id || authProfile?.userId || "";
   const router = useRouter();
   const [loadError, setLoadError] = useState<string | null>(null);
 

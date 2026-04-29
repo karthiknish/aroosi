@@ -9,8 +9,36 @@ export type { Match };
 
 export type UnreadCounts = Record<string, number>;
 
+type MatchListResponse = {
+  data?: MatchListItem[];
+  matches?: MatchListItem[];
+};
+
+type UnreadCountsResponse = {
+  data?: { counts?: UnreadCounts };
+  counts?: UnreadCounts;
+};
+
+export interface MatchListItem extends Match {
+  user1Id: string | null;
+  user2Id: string | null;
+  userIds: string[];
+  conversationId: string;
+  matchedProfile?: {
+    userId: string;
+    fullName: string | null;
+    city?: string | null;
+    country?: string | null;
+    occupation?: string | null;
+    education?: string | null;
+    aboutMe?: string | null;
+    gender?: string | null;
+    profileImageUrls?: string[];
+  };
+}
+
 class MatchesAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest(endpoint: string, options?: RequestInit): Promise<unknown> {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -38,13 +66,13 @@ class MatchesAPI {
   /**
    * Get all matches for current user
    */
-  async getMatches(): Promise<Match[]> {
-    const res = await this.makeRequest("/api/matches");
+  async getMatches(): Promise<MatchListItem[]> {
+    const res = await this.makeRequest("/api/matches") as MatchListResponse | MatchListItem[];
     // Standard handler returns successResponse(dataArray)
-    if (Array.isArray(res?.data)) return res.data as Match[];
+    if (Array.isArray(res)) return res as MatchListItem[];
+    if (Array.isArray(res.data)) return res.data as MatchListItem[];
     // Fallbacks for any legacy shapes
-    if (Array.isArray(res?.matches)) return res.matches as Match[];
-    if (Array.isArray(res)) return res as Match[];
+    if (Array.isArray(res.matches)) return res.matches as MatchListItem[];
     return [];
   }
 
@@ -52,7 +80,7 @@ class MatchesAPI {
    * Get unread counts per user (fromUserId -> unread)
    */
   async getUnreadCounts(): Promise<UnreadCounts> {
-    const res = await this.makeRequest("/api/matches/unread");
+    const res = await this.makeRequest("/api/matches/unread") as UnreadCountsResponse;
     const counts = res?.data?.counts;
     if (counts && typeof counts === "object") return counts as UnreadCounts;
     if (res?.counts && typeof res.counts === "object") return res.counts as UnreadCounts;
@@ -71,9 +99,8 @@ class MatchesAPI {
    * Unmatch with a user
    */
   async unmatch(matchId: string): Promise<void> {
-    return this.makeRequest("/api/matches", {
+    await this.makeRequest(`/api/matches/${encodeURIComponent(matchId)}`, {
       method: "DELETE",
-      body: JSON.stringify({ matchId }),
     });
   }
 }

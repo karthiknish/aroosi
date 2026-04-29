@@ -10,6 +10,10 @@ export const messageSendSchema = z.object({
   duration: z.number().optional(),
   fileSize: z.number().optional(),
   mimeType: z.string().optional(),
+  replyToMessageId: z.string().optional(),
+  replyToText: z.string().optional(),
+  replyToType: z.enum(["text", "voice", "image", "icebreaker"]).optional(),
+  replyToFromUserId: z.string().optional(),
 });
 
 export const messageMarkReadSchema = z.object({

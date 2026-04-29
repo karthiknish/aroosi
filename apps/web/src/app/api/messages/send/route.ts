@@ -2,8 +2,8 @@ import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
 } from "@/lib/api/handler";
+import type { ApiContext } from "@/lib/api/handler";
 import { nowTimestamp } from "@/lib/utils/timestamp";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { sendFirebaseMessage } from "@/lib/messages/firebaseMessages";
@@ -20,8 +20,13 @@ import { messageSendSchema } from "@/lib/validation/apiSchemas/messages";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext, body: import("zod").infer<typeof messageSendSchema>) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const authUser = ctx.user as { userId?: string; id?: string };
+    const userId = authUser.userId || authUser.id;
     const startedAt = nowTimestamp();
+
+    if (!userId) {
+      return errorResponse("Unauthorized", 401, { correlationId: ctx.correlationId });
+    }
     
     try {
       // Subscription-based rate limiting
@@ -38,7 +43,27 @@ export const POST = createAuthenticatedHandler(
         });
       }
 
-      const { conversationId, fromUserId, toUserId, text, type, audioStorageId, duration, fileSize, mimeType } = body;
+      const {
+        conversationId,
+        fromUserId,
+        toUserId,
+        text,
+        type,
+        audioStorageId,
+        duration,
+        fileSize,
+        mimeType,
+        replyToMessageId,
+        replyToText,
+        replyToType,
+        replyToFromUserId,
+      } = body;
+
+      if (fromUserId !== userId) {
+        return errorResponse("Unauthorized sender", 403, {
+          correlationId: ctx.correlationId,
+        });
+      }
 
       // Validate conversation
       const convValidation = validateConversationId(conversationId);
@@ -107,7 +132,9 @@ export const POST = createAuthenticatedHandler(
         const usageDocId = `${userId}_${feature}_${monthKey}`;
         const usageRef = db.collection("usageEvents").doc(usageDocId);
         const usageSnap = await usageRef.get();
-        const currentCount = usageSnap.exists ? (usageSnap.data() as any).count || 0 : 0;
+        const currentCount = usageSnap.exists
+          ? ((usageSnap.data() as { count?: number } | undefined)?.count || 0)
+          : 0;
         const limits = getPlanLimits(rate.plan || "free");
         const limit = limits[feature] ?? -1;
         if (limit !== -1 && currentCount >= limit) {
@@ -134,6 +161,10 @@ export const POST = createAuthenticatedHandler(
         duration,
         fileSize,
         mimeType,
+        replyToMessageId,
+        replyToText,
+        replyToType,
+        replyToFromUserId,
       });
 
       return successResponse(message, 200, ctx.correlationId);

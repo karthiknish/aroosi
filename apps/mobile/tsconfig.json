@@ -12,6 +12,7 @@
     "resolveJsonModule": true,
     "jsx": "react-native",
     "noEmit": true,
+    "ignoreDeprecations": "5.0",
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "typeRoots": [
@@ -39,6 +40,5 @@
     "ios",
     "android",
     ".expo"
-  ],
-  "extends": "expo/tsconfig.base"
+  ]
 }

@@ -2,8 +2,8 @@ import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
 } from "@/lib/api/handler";
+import type { ApiContext } from "@/lib/api/handler";
 import { validateConversationId as legacyConversationIdValidator } from "@/lib/utils/messageValidation";
 import { validateVoiceMessage, validateConversationId } from "@/lib/validation/message";
 import { moderateProfanity } from "@/lib/moderation/profanity";
@@ -14,12 +14,18 @@ import { buildVoiceMessage, COL_VOICE_MESSAGES, COL_BLOCKS } from "@/lib/firesto
 import { normalisePlan, getPlanLimits } from "@/lib/subscription/planLimits";
 import { v4 as uuidv4 } from "uuid";
 import { emitConversationEvent } from "@/lib/realtime/conversationEvents";
+import { sendFirebaseMessage } from "@/lib/messages/firebaseMessages";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const authUser = ctx.user as { userId?: string; id?: string };
+    const userId = authUser.userId || authUser.id;
 
-    let formData;
+    if (!userId) {
+      return errorResponse("Unauthorized", 401, { correlationId: ctx.correlationId });
+    }
+
+    let formData: FormData;
     try {
       formData = await ctx.request.formData();
     } catch {
@@ -36,8 +42,11 @@ export const POST = createAuthenticatedHandler(
     let peaks: number[] | undefined = undefined;
     if (typeof peaksRaw === "string" && peaksRaw.length) {
       try {
-        const parsed = JSON.parse(peaksRaw);
-        if (Array.isArray(parsed) && parsed.every((n: any) => typeof n === "number" && n >= 0 && n <= 1)) {
+        const parsed: unknown = JSON.parse(peaksRaw);
+        if (
+          Array.isArray(parsed) &&
+          parsed.every((n): n is number => typeof n === "number" && n >= 0 && n <= 1)
+        ) {
           peaks = parsed.slice(0, 256);
         }
       } catch {}
@@ -60,7 +69,10 @@ export const POST = createAuthenticatedHandler(
     try {
       // Voice validation (plan aware)
       const profileSnap = await db.collection("users").doc(userId).get();
-      const planRaw = profileSnap.exists ? (profileSnap.data() as any)?.subscriptionPlan : "free";
+      const profileData = profileSnap.exists
+        ? (profileSnap.data() as { subscriptionPlan?: string } | undefined)
+        : undefined;
+      const planRaw = profileData?.subscriptionPlan || "free";
       const plan = normalisePlan(planRaw || "free");
 
       const voiceValidation = validateVoiceMessage({
@@ -118,14 +130,12 @@ export const POST = createAuthenticatedHandler(
         mimeType: audioFile.type,
         peaks,
       });
-      const docRef = await db.collection(COL_VOICE_MESSAGES).add(vm);
+      await db.collection(COL_VOICE_MESSAGES).add(vm);
 
       const placeholder = `Voice message (${formatVoiceDuration(duration)})`;
       const moderated = moderateProfanity(placeholder);
       const safeText = moderated.clean ? placeholder : moderated.sanitized;
-      const message = {
-        _id: docRef.id,
-        id: docRef.id,
+      const message = await sendFirebaseMessage({
         conversationId,
         fromUserId: userId,
         toUserId,
@@ -135,10 +145,8 @@ export const POST = createAuthenticatedHandler(
         duration,
         fileSize: audioFile.size,
         mimeType: audioFile.type,
-        createdAt: vm.createdAt,
-      };
-
-      await db.collection("messages").doc(docRef.id).set(message, { merge: true });
+        peaks,
+      });
 
       // Emit SSE-compatible conversation event (stored in Firestore for multi-instance)
       try {
@@ -152,7 +160,7 @@ export const POST = createAuthenticatedHandler(
       return successResponse({
         status: "Voice message uploaded successfully",
         message,
-        messageId: message._id,
+        messageId: message.id,
         duration,
         storageId: storagePath,
         audioUrl: signedUrl,

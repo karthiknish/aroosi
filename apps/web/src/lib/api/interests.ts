@@ -2,6 +2,13 @@
  * Unified Interests API wrapper (token-based auth).
  * Mirrors the style of subscriptionAPI with a small makeRequest helper.
  */
+type ApiEnvelope<T> = {
+  success?: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+};
+
 class InterestsAPI {
   private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
@@ -25,8 +32,12 @@ class InterestsAPI {
     const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
 
     if (!res.ok) {
+      const payloadMessage =
+        isJson && payload && typeof payload === "object"
+          ? ((payload as ApiEnvelope<T>).message || (payload as ApiEnvelope<T>).error)
+          : undefined;
       const msg =
-        (isJson && payload && ((payload as any).message || (payload as any).error)) ||
+        payloadMessage ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
@@ -34,7 +45,7 @@ class InterestsAPI {
 
     // Unwrap standardized { success, data } envelope from API handler
     if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
+      const maybe = payload as ApiEnvelope<T>;
       if ("success" in maybe) {
         if (maybe.success === false) {
           throw new Error(String(maybe.message || maybe.error || "Request failed"));
@@ -51,7 +62,7 @@ class InterestsAPI {
   /**
    * Send interest to a user
    */
-  async send(toUserId: string): Promise<any> {
+  async send(toUserId: string): Promise<unknown> {
     return this.makeRequest("/api/interests", {
       method: "POST",
       body: JSON.stringify({ action: "send", toUserId }),
@@ -61,7 +72,7 @@ class InterestsAPI {
   /**
    * Remove a previously sent interest
    */
-  async remove(toUserId: string): Promise<any> {
+  async remove(toUserId: string): Promise<unknown> {
     return this.makeRequest("/api/interests", {
       method: "POST",
       body: JSON.stringify({ action: "remove", toUserId }),
@@ -71,21 +82,21 @@ class InterestsAPI {
   /**
    * Get interests sent by the current user
    */
-  async getSent(): Promise<any> {
+  async getSent(): Promise<unknown> {
     return this.makeRequest("/api/interests", { method: "GET" });
   }
 
   /**
    * Get interests received by the current user
    */
-  async getReceived(): Promise<any> {
-    return this.makeRequest("/api/interests/received", { method: "GET" });
+  async getReceived(): Promise<unknown> {
+    return this.makeRequest("/api/interests?mode=received", { method: "GET" });
   }
 
   /**
    * Get interest status with respect to a target user (e.g., sent/received/mutual)
    */
-  async getStatus(otherUserId: string): Promise<any> {
+  async getStatus(otherUserId: string): Promise<unknown> {
     const qs = new URLSearchParams({ targetUserId: otherUserId }).toString();
     return this.makeRequest(`/api/interests/status?${qs}`, { method: "GET" });
   }
@@ -93,10 +104,10 @@ class InterestsAPI {
   /**
    * Respond to an interest (accept or reject)
    */
-  async respond(interestId: string, status: "accepted" | "rejected"): Promise<any> {
-    return this.makeRequest("/api/interests", {
+  async respond(interestId: string, status: "accepted" | "rejected"): Promise<unknown> {
+    return this.makeRequest(`/api/interests/${encodeURIComponent(interestId)}/respond`, {
       method: "POST",
-      body: JSON.stringify({ action: "respond", interestId, status }),
+      body: JSON.stringify({ status }),
     });
   }
 }

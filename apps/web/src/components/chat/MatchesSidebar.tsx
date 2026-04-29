@@ -4,7 +4,6 @@ import React from "react";
 import { useMatches } from "@/lib/hooks/useMatches";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
-import { Profile } from "@aroosi/shared";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -12,10 +11,12 @@ import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserCircle, MessageCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import type { MatchListView } from "@/lib/hooks/useMatches";
 
 export function MatchesSidebar() {
   const { user, profile } = useAuthContext();
-  const userId = user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
+  const authProfile = profile as { _id?: string; userId?: string } | null;
+  const userId = user?.uid || authProfile?._id || authProfile?.userId || "";
   const { id: activeMatchId } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
 
@@ -43,8 +44,8 @@ export function MatchesSidebar() {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="p-4 space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
+            {Array.from({ length: 5 }, (_unused, index) => `match-skeleton-${index + 1}`).map((skeletonKey) => (
+              <div key={skeletonKey} className="flex items-center gap-3">
                 <Skeleton className="w-12 h-12 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-24" />
@@ -74,7 +75,7 @@ export function MatchesSidebar() {
   );
 }
 
-function MatchItemComponent({ match, isActive }: { match: Profile & { unread: number }; isActive: boolean }) {
+function MatchItemComponent({ match, isActive }: { match: MatchListView; isActive: boolean }) {
   const { imageUrl: avatar } = useProfileImage(match.userId, "");
 
   return (

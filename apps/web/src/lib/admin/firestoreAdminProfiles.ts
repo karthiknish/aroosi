@@ -16,13 +16,21 @@ export interface ListProfilesResult {
   total: number;
 }
 
+type FirestoreUserProfile = Profile & {
+  _id: string;
+  email?: string;
+  fullName?: string;
+  profileImageUrls?: string[];
+  images?: string[];
+};
+
 // Firestore doesn't support arbitrary offset pagination efficiently; we use cursor-based pagination fallback.
 // For now keep simple offset approach for small admin datasets (<5k). If larger, add cursor implementation.
 export async function listProfiles(
   opts: ListProfilesOptions
 ): Promise<ListProfilesResult> {
   const { page, pageSize, search, sortBy, sortDir, banned, plan } = opts;
-  let query: FirebaseFirestore.Query = db.collection("users");
+  let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection("users");
 
   // Basic filters
   if (banned !== "all") {
@@ -64,27 +72,28 @@ export async function listProfiles(
   const offset = (page - 1) * pageSize;
   // Firestore has no native offset in admin SDK older versions; use .offset if available or manual skip.
   let snapshot: FirebaseFirestore.QuerySnapshot;
-  if (typeof (query as any).offset === "function") {
-    snapshot = await (query as any).offset(offset).limit(pageSize).get();
+  const offsetQuery = query as FirebaseFirestore.Query<FirebaseFirestore.DocumentData> & {
+    offset?: (value: number) => FirebaseFirestore.Query<FirebaseFirestore.DocumentData>;
+    count?: () => { get: () => Promise<{ data: () => { count?: number } }> };
+  };
+  if (typeof offsetQuery.offset === "function") {
+    snapshot = await offsetQuery.offset(offset).limit(pageSize).get();
   } else {
     const preSnap = await query.limit(offset + pageSize).get();
     const docs = preSnap.docs.slice(offset, offset + pageSize);
     snapshot = { docs } as unknown as FirebaseFirestore.QuerySnapshot;
   }
 
-  const profiles = snapshot.docs.map((d: any) => ({
+  const profiles = snapshot.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => ({
     _id: d.id,
-    ...(d.data() as any),
-  })) as (Profile & { _id: string })[];
+    ...(d.data() as Omit<FirestoreUserProfile, "_id">),
+  })) as FirestoreUserProfile[];
 
   // Total count (expensive). For now count via aggregate if available; fallback to separate fetch capped at 10k.
   let total = profiles.length;
   try {
-    if (
-      typeof (db as any).collectionGroup === "function" &&
-      (query as any).count
-    ) {
-      const agg = await (query as any).count().get();
+    if (typeof offsetQuery.count === "function") {
+      const agg = await offsetQuery.count().get();
       total = agg.data().count || total;
     } else {
       // fallback approximate
@@ -107,9 +116,9 @@ export async function listProfiles(
     const all = altSnap.docs.map(
       (d: FirebaseFirestore.QueryDocumentSnapshot) => ({
         _id: d.id,
-        ...(d.data() as any),
+        ...(d.data() as Omit<FirestoreUserProfile, "_id">),
       })
-    ) as any[];
+    ) as FirestoreUserProfile[];
     const lower = search.toLowerCase();
     const filtered = all.filter(
       (p) =>
@@ -125,7 +134,7 @@ export async function listProfiles(
 export async function getProfileById(id: string): Promise<(Profile & { _id: string }) | null> {
   const doc = await db.collection("users").doc(id).get();
   if (!doc.exists) return null;
-  return { _id: doc.id, ...(doc.data() as any) } as any;
+  return { _id: doc.id, ...(doc.data() as Omit<FirestoreUserProfile, "_id">) };
 }
 
 export async function createProfile(
@@ -201,7 +210,7 @@ export async function deleteProfileById(id: string): Promise<boolean> {
   // 2. Delete matches
   const matches1 = await db.collection("matches").where("user1Id", "==", id).get();
   const matches2 = await db.collection("matches").where("user2Id", "==", id).get();
-  const matchDeletes = [...matches1.docs, ...matches2.docs].map((d: any) =>
+  const matchDeletes = [...matches1.docs, ...matches2.docs].map((d) =>
     d.ref.delete()
   );
   await Promise.all(matchDeletes);
@@ -216,7 +225,7 @@ export async function deleteProfileById(id: string): Promise<boolean> {
     .where("toUserId", "==", id)
     .get();
   const interestDeletes = [...interests1.docs, ...interests2.docs].map(
-    (d: any) => d.ref.delete()
+    (d) => d.ref.delete()
   );
   await Promise.all(interestDeletes);
 
@@ -229,7 +238,7 @@ export async function deleteProfileById(id: string): Promise<boolean> {
     .collection("messages")
     .where("toUserId", "==", id)
     .get();
-  const messageDeletes = [...messages1.docs, ...messages2.docs].map((d: any) =>
+  const messageDeletes = [...messages1.docs, ...messages2.docs].map((d) =>
     d.ref.delete()
   );
   await Promise.all(messageDeletes);
@@ -244,7 +253,7 @@ export async function deleteProfileById(id: string): Promise<boolean> {
       // Extract path from URL if it's a Firebase Storage URL
       // Example: https://firebasestorage.googleapis.com/v0/b/[BUCKET]/o/[PATH]?alt=media
       const match = url.match(/\/o\/(.+)\?alt=media/);
-      if (match && match[1]) {
+      if (match?.[1]) {
         const path = decodeURIComponent(match[1]);
         await adminStorage.bucket().file(path).delete();
       }

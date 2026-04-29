@@ -26,6 +26,13 @@ export interface AuthUser {
   emailVerified?: boolean;
 }
 
+type ApiEnvelope = {
+  success?: boolean;
+  data?: unknown;
+  message?: string;
+  error?: string;
+};
+
 class AuthAPI {
   private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
@@ -49,8 +56,12 @@ class AuthAPI {
     const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
 
     if (!res.ok) {
+      const payloadMessage =
+        isJson && payload && typeof payload === "object"
+          ? ((payload as ApiEnvelope).message || (payload as ApiEnvelope).error)
+          : undefined;
       const msg =
-        (isJson && payload && ((payload as any).message || (payload as any).error)) ||
+        payloadMessage ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
@@ -58,7 +69,7 @@ class AuthAPI {
 
     // Unwrap standardized { success, data } envelope from API handler
     if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
+      const maybe = payload as ApiEnvelope;
       if ("success" in maybe) {
         if (maybe.success === false) {
           throw new Error(String(maybe.message || maybe.error || "Request failed"));

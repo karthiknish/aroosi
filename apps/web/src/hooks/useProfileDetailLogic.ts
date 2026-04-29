@@ -13,9 +13,28 @@ import { useOffline } from "@/hooks/useOffline";
 import { buildProfileImageUrl } from "@/lib/images/profileImageUtils";
 import { profileAPI } from "@/lib/api/profile";
 import { getJson } from "@/lib/http/client";
-import { unblockUserUtil, blockUserUtil, handleErrorUtil } from "@/lib/chat/utils";
+import { unblockUserUtil, blockUserUtil } from "@/lib/chat/utils";
 import { showSuccessToast, showErrorToast, showUndoToast } from "@/lib/ui/toast";
 import type { Profile } from "@aroosi/shared/types";
+
+type UsageTrackEvent = Parameters<ReturnType<typeof useUsageTracking>["trackUsage"]>[0];
+
+type AuthProfile = Profile & {
+  uid?: string;
+  id?: string;
+  profileImageIds?: string[];
+};
+
+type ProfileQueryResponse =
+  | { success: true; data: Profile | null }
+  | { success: false; error: { message?: string } }
+  | null;
+
+type ProfileApiEnvelope = {
+  success?: boolean;
+  data?: Profile | null;
+  error?: { message?: string };
+} | null;
 
 export function useProfileDetailLogic() {
   const params = useParams();
@@ -27,7 +46,7 @@ export function useProfileDetailLogic() {
   const id = params?.id as string;
   const userId = id as string;
 
-  const currentUserProfile = rawCurrentUserProfile as any;
+  const currentUserProfile = rawCurrentUserProfile as AuthProfile | null;
   const fromUserId = currentUserProfile?.uid || currentUserProfile?.id;
   const toUserId = userId;
 
@@ -46,20 +65,22 @@ export function useProfileDetailLogic() {
     isFetching: fetchingProfile,
     error: profileError,
     refetch: refetchProfile,
-  } = useQuery({
+  } = useQuery<ProfileQueryResponse>({
     queryKey: ["profileData", userId],
     queryFn: async () => {
       if (!userId) return null;
       try {
         const data = await profileAPI.getProfileForUser(userId);
         return { success: true, data };
-      } catch (error: any) {
-        if (error?.message?.includes("401") || error?.message?.includes("AUTH_REQUIRED")) {
-          const err = new Error(error.message || "Authentication not ready");
-          (err as any).code = "AUTH_REQUIRED";
+      } catch (error: unknown) {
+        if (error instanceof Error && (error.message.includes("401") || error.message.includes("AUTH_REQUIRED"))) {
+          const err = Object.assign(
+            new Error(error.message || "Authentication not ready"),
+            { code: "AUTH_REQUIRED" }
+          ) as Error & { code: string };
           throw err;
         }
-        return { success: false, error: { message: error.message } };
+        return { success: false, error: { message: error instanceof Error ? error.message : "Failed to load profile" } };
       }
     },
     enabled: !!userId && isLoaded && isAuthenticated && !skipRemoteProfile,
@@ -71,9 +92,9 @@ export function useProfileDetailLogic() {
   });
 
   const loadingProfile = skipRemoteProfile ? false : (loadingProfileRemote || fetchingProfile);
-  const profileApiResponse = profileData as { success?: boolean; data?: any; error?: any } | null;
+  const profileApiResponse = profileData as ProfileApiEnvelope;
   const profileRaw = skipRemoteProfile
-    ? (currentUserProfile as any)
+    ? currentUserProfile
     : profileApiResponse?.success ? profileApiResponse.data : null;
   const profile: Profile | null = profileRaw ?? null;
   const profileApiError = profileApiResponse?.success === false ? profileApiResponse.error : null;
@@ -83,14 +104,14 @@ export function useProfileDetailLogic() {
     userId,
     enabled: isLoaded && isAuthenticated,
     preferInlineUrls: Array.isArray(profile?.profileImageUrls)
-      ? profile!.profileImageUrls.map((u) => buildProfileImageUrl(String(u)))
+      ? profile.profileImageUrls.map((u) => buildProfileImageUrl(String(u)))
       : profile?.profileImageUrls,
   });
 
   const localCurrentUserImageOrder: string[] = useMemo(() => {
-    if (isOwnProfile && profile) return (profile as any).profileImageIds || [];
+    if (isOwnProfile && currentUserProfile) return currentUserProfile.profileImageIds || [];
     return [];
-  }, [isOwnProfile, profile]);
+  }, [currentUserProfile, isOwnProfile]);
 
   const imagesToShow: string[] = useMemo(() => {
     if (profile?.profileImageUrls?.length) {
@@ -123,8 +144,20 @@ export function useProfileDetailLogic() {
   }, [imagesToShow.length]);
 
   // Interest handling
-  const trackWrapper = useCallback((evt: { feature: string; metadata?: Record<string, any> }) => {
-    trackUsage({ feature: evt.feature as any, metadata: evt.metadata });
+  const trackWrapper = useCallback((evt: { feature: string; metadata?: Record<string, unknown> }) => {
+    if (
+      evt.feature === "message_sent" ||
+      evt.feature === "profile_view" ||
+      evt.feature === "search_performed" ||
+      evt.feature === "interest_sent" ||
+      evt.feature === "profile_boost_used" ||
+      evt.feature === "voice_message_sent" ||
+      evt.feature === "user_block" ||
+      evt.feature === "user_unblock" ||
+      evt.feature === "user_report"
+    ) {
+      trackUsage(evt as UsageTrackEvent);
+    }
   }, [trackUsage]);
 
   const interestState = useInterestStatus({
@@ -143,17 +176,17 @@ export function useProfileDetailLogic() {
   const handleUnblockUser = async () => {
     try {
       await unblockUserUtil({ matchUserId: userId, setIsBlocked: () => {}, setShowReportModal });
-      trackUsage({ feature: "user_unblock" as any, metadata: { targetUserId: userId } });
+      trackUsage({ feature: "user_unblock", metadata: { targetUserId: userId } });
       showUndoToast("User unblocked", async () => {
         try {
           await blockUserUtil({ matchUserId: userId, setIsBlocked: () => {}, setShowReportModal });
-          trackUsage({ feature: "user_block" as any, metadata: { targetUserId: userId } });
+          trackUsage({ feature: "user_block", metadata: { targetUserId: userId } });
           showSuccessToast("User re-blocked");
-        } catch (e) {
+        } catch {
           showErrorToast(null, "Failed to re-block user");
         }
       });
-    } catch (err) {
+    } catch {
       showErrorToast(null, "Failed to unblock user");
     }
   };

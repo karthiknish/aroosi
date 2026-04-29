@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,13 +24,13 @@ interface SubscriptionCardProps {
   effectivePlan?: PlanKey;
 }
 
-export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
+export function SubscriptionCard({
   onUpgrade,
   onCancel,
   className,
   isTransitioning,
   effectivePlan,
-}) => {
+}: SubscriptionCardProps) {
   // Query subscription status
   const {
     data: status,
@@ -165,9 +164,9 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       <div className="mb-6">
         <h4 className="font-medium mb-2 text-neutral-dark">Features:</h4>
         <ul className="space-y-1">
-          {config.features.map((feature, index) => (
+          {config.features.map((feature) => (
             <li
-              key={index}
+              key={feature.text}
               className="text-sm text-neutral-light flex items-center gap-2"
             >
               <Check className="h-4 w-4 text-success flex-shrink-0" aria-hidden="true" />
@@ -223,4 +222,4 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       </div>
     </Card>
   );
-};
+}

@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { errorResponse, successResponse } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   if (!id) return errorResponse("Missing template id", 400);
 
-  let body: any = {};
+  let body: Record<string, unknown> = {};
   try {
     body = await request.json();
   } catch {}
@@ -34,13 +34,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   if (body.payload !== undefined) {
-    if (!body.payload || typeof body.payload !== "object") {
+    const payload = body.payload;
+    if (!payload || typeof payload !== "object") {
       return errorResponse("Valid payload object is required", 400);
     }
-    if (!body.payload.title || !body.payload.message) {
+    const typedPayload = payload as { title?: string; message?: string };
+    if (!typedPayload.title || !typedPayload.message) {
       return errorResponse("Payload must include title and message", 400);
     }
-    updates.payload = body.payload;
+    updates.payload = payload;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -54,7 +56,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     await ref.set({ ...updates, updatedAt: nowTimestamp() }, { merge: true });
     const updated = await ref.get();
-    return successResponse({ id, ...(updated.data() as any) });
+    return successResponse({ id, ...((updated.data() as Record<string, unknown> | undefined) || {}) });
   } catch (err) {
     console.error("template update error", err);
     return errorResponse("Failed to update template", 500);

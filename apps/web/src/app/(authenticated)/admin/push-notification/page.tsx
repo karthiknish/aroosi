@@ -77,12 +77,10 @@ export default function PushNotificationAdminPage() {
 
   const {
     templates,
-    templatesLoading,
     newTemplateName, setNewTemplateName,
     newTemplateDesc, setNewTemplateDesc,
     templateSearch, setTemplateSearch,
     selectedTemplate, setSelectedTemplate,
-    loadTemplates,
     deleteTemplate,
   } = usePushNotificationTemplates();
 
@@ -227,7 +225,7 @@ export default function PushNotificationAdminPage() {
                     selectedTemplate?.id
                   )
                 }
-                handleDeleteTemplate={(tpl: any) => deleteTemplate(tpl.id)}
+                handleDeleteTemplate={(tpl) => (tpl.id ? deleteTemplate(tpl.id) : Promise.resolve())}
                 handleApplyTemplate={applyTemplate}
               />
             </TabsContent>

@@ -6,7 +6,6 @@ import {
   Eye,
   MapPin,
   UserCircle,
-  Heart,
   Phone,
   GraduationCap,
   Briefcase,
@@ -41,10 +40,15 @@ import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { Ban, Users as UsersIcon } from "lucide-react";
 
-import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
-interface MatchType {
-  [key: string]: unknown;
-}
+import type { ProfileImageInfo } from "@aroosi/shared/types";
+
+type MatchType = {
+  _id?: string | number;
+  fullName?: string;
+  city?: string;
+  profileImageIds?: string[];
+  profileImageUrls?: string[];
+} & Record<string, unknown>;
 
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -346,8 +350,8 @@ export default function AdminProfileDetailPage() {
           let matchImageUrl: string | null = null;
           if (profileImageIds.length > 0) {
             const firstId = String(profileImageIds[0]);
-            const urls = Array.isArray((m as any).profileImageUrls)
-              ? (m as any).profileImageUrls
+            const urls = Array.isArray(m.profileImageUrls)
+              ? m.profileImageUrls
               : [];
             if (urls[0] && typeof urls[0] === "string") {
               matchImageUrl = urls[0];
@@ -423,6 +427,7 @@ export default function AdminProfileDetailPage() {
                 {Array.isArray(orderedImages) && orderedImages.length > 1 && (
                   <>
                     <button
+                      type="button"
                       onClick={handlePrev}
                       className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-md hover:bg-white transition-all z-10 opacity-0 group-hover:opacity-100"
                       aria-label="Previous image"
@@ -430,6 +435,7 @@ export default function AdminProfileDetailPage() {
                       <ChevronLeft className="w-6 h-6 text-neutral-900" />
                     </button>
                     <button
+                      type="button"
                       onClick={handleNext}
                       className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-md hover:bg-white transition-all z-10 opacity-0 group-hover:opacity-100"
                       aria-label="Next image"
@@ -479,6 +485,7 @@ export default function AdminProfileDetailPage() {
                 {orderedImages.map((img, idx) => (
                   <button
                     key={img.storageId || idx}
+                    type="button"
                     className={cn(
                       "relative shrink-0 w-16 h-16 md:w-full md:h-24 rounded-lg overflow-hidden border-2 transition-all",
                       idx === currentImageIdx
@@ -662,7 +669,7 @@ export default function AdminProfileDetailPage() {
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: any }) {
+function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{label}</div>

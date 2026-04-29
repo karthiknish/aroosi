@@ -15,8 +15,20 @@ interface UseInterestOptions {
   fromUserId?: string | null;
   toUserId?: string | null;
   enabled?: boolean;
-  track?: (evt: { feature: string; metadata?: Record<string, any> }) => void;
+  track?: (evt: { feature: string; metadata?: Record<string, unknown> }) => void;
 }
+
+type InterestStatusResponse = {
+  data?: { status?: InterestLightStatus | null };
+  status?: InterestLightStatus | null;
+};
+
+type InterestDebugWindow = Window & {
+  __interestDebugLastFetch?: unknown;
+  __interestDebugLastFetchError?: unknown;
+  __interestDebugLifecycle?: Array<Record<string, unknown>>;
+  __interestDebugLastAction?: unknown;
+};
 
 export function useInterestStatus({
   fromUserId,
@@ -41,7 +53,7 @@ export function useInterestStatus({
     queryFn: async () => {
       if (!fromUserId || !toUserId) return null;
       try {
-        const response = await interestsAPI.getStatus(String(toUserId));
+        const response = await interestsAPI.getStatus(String(toUserId)) as InterestStatusResponse;
         
         // Handle both { success, data: { status } } and { status } patterns
         const status = response?.data?.status ?? response?.status;
@@ -51,7 +63,7 @@ export function useInterestStatus({
         };
 
         if (typeof window !== "undefined") {
-          (window as any).__interestDebugLastFetch = {
+          (window as InterestDebugWindow).__interestDebugLastFetch = {
             ts: Date.now(),
             fromUserId,
             toUserId,
@@ -62,11 +74,11 @@ export function useInterestStatus({
         return normalized;
       } catch (e) {
         if (typeof window !== "undefined") {
-          (window as any).__interestDebugLastFetchError = {
+          (window as Window & { __interestDebugLastFetchError?: unknown }).__interestDebugLastFetchError = {
             ts: Date.now(),
             fromUserId,
             toUserId,
-            error: (e as any)?.message,
+            error: e instanceof Error ? e.message : String(e),
           };
         }
         return null;
@@ -109,10 +121,11 @@ export function useInterestStatus({
       !initializedFromRemote.current
     ) {
       if (typeof window !== "undefined") {
-        (window as any).__interestDebugLifecycle = (
-          (window as any).__interestDebugLifecycle || []
+        const debugWindow = window as InterestDebugWindow;
+        debugWindow.__interestDebugLifecycle = (
+          debugWindow.__interestDebugLifecycle || []
         ).slice(-20);
-        (window as any).__interestDebugLifecycle.push({
+        debugWindow.__interestDebugLifecycle.push({
           ts: Date.now(),
           phase: "schedule_refetch_due_to_null_status",
           fromUserId,
@@ -144,7 +157,7 @@ export function useInterestStatus({
     const wasSentBeforeClick = alreadySentInterest; // capture pre-click state
     // Debug snapshot
     if (typeof window !== "undefined") {
-      (window as any).__interestDebugLastAction = {
+      (window as InterestDebugWindow).__interestDebugLastAction = {
         ts: Date.now(),
         fromUserId,
         toUserId,
@@ -185,10 +198,7 @@ export function useInterestStatus({
       // Maintain optimistic state until server confirms expected transition to avoid UI flicker
       if (!wasSentBeforeClick) {
         // We just sent an interest; if server hasn't materialized doc yet, keep optimistic true
-        const serverStatus = (refetchResult.data as any)?.status as
-          | InterestLightStatus
-          | null
-          | undefined;
+        const serverStatus = refetchResult.data?.status;
         if (serverStatus == null) {
           // schedule another silent refetch shortly
           setTimeout(() => {
@@ -201,10 +211,7 @@ export function useInterestStatus({
         setTimeout(() => setShowHeartPop(false), 600);
       } else {
         // We withdrew interest; if server still reports a status, retry once then clear optimistic flag
-        const serverStatus = (refetchResult.data as any)?.status as
-          | InterestLightStatus
-          | null
-          | undefined;
+        const serverStatus = refetchResult.data?.status;
         if (serverStatus && serverStatus !== "none" && serverStatus !== null) {
           setTimeout(() => {
             void refetchInterestStatus();
@@ -213,8 +220,11 @@ export function useInterestStatus({
         setLocalInterest(null);
         setShowHeartPop(false);
       }
-    } catch (e: any) {
-      const status = (e as any)?.status;
+    } catch (error: unknown) {
+      const status =
+        typeof error === "object" && error !== null && "status" in error
+          ? (error as { status?: number }).status
+          : undefined;
       // Gracefully treat duplicate send (409) as success: keep optimistic state
       if (!wasSentBeforeClick && status === 409) {
         // Ensure cache shows pending (already sent)
@@ -233,7 +243,7 @@ export function useInterestStatus({
       setLocalInterest(null);
       await refetchInterestStatus();
       const msg =
-        e?.message ||
+        (error instanceof Error ? error.message : undefined) ||
         (wasSentBeforeClick
           ? "Failed to remove interest"
           : "Failed to send interest");

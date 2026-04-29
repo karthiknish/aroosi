@@ -1,24 +1,23 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { db } from "@/lib/firebase";
 import {
   collection,
-  addDoc,
-  doc,
-  setDoc,
-  updateDoc,
   getDocs,
   query,
   where,
   orderBy,
   limit as fsLimit,
-  writeBatch,
-  getDoc,
   Timestamp,
 } from "firebase/firestore";
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
 import type { Message, MessageType } from "@aroosi/shared/types";
+import {
+  sendMessage as sendMessageRequest,
+  markConversationRead,
+  deleteMessage as deleteMessageRequest,
+} from "@/lib/api/messages";
 
 interface UseMessageActionsProps {
   userId: string | undefined;
@@ -45,8 +44,6 @@ export function useMessageActions({
   setError,
   pageSize,
 }: UseMessageActionsProps) {
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const sendMessage = useCallback(
     async (
       text: string,
@@ -95,27 +92,12 @@ export function useMessageActions({
           },
         ]);
 
-        try {
-          const convRef = doc(db, "conversations", normalizedConvId);
-          await setDoc(
-            convRef,
-            {
-              participants: [userId, toUserId],
-              updatedAt: createdAtTime,
-            },
-            { merge: true }
-          );
-        } catch (e) {
-          console.warn("Conversation upsert failed (continuing)", e);
-        }
-
-        const docRef = await addDoc(collection(db, "messages"), {
+        await sendMessageRequest({
           conversationId: normalizedConvId,
           fromUserId: userId,
           toUserId,
           text: trimmed,
           type: "text",
-          createdAt: createdAtTime,
           ...(replyMeta
             ? {
                 replyToMessageId: replyMeta.messageId,
@@ -125,78 +107,12 @@ export function useMessageActions({
               }
             : {}),
         });
-
-        try {
-          const convRef = doc(db, "conversations", normalizedConvId);
-          await setDoc(
-            convRef,
-            {
-              participants: [userId, toUserId],
-              lastMessage: {
-                id: docRef.id,
-                fromUserId: userId,
-                toUserId,
-                text: trimmed,
-                type: "text",
-                createdAt: createdAtTime,
-              },
-              updatedAt: createdAtTime,
-            },
-            { merge: true }
-          );
-        } catch {
-          /* non-fatal */
-        }
-
-        try {
-          const a = [userId, toUserId].sort();
-          const a1 = a[0];
-          const a2 = a[1];
-          const matchesColl = collection(db, "matches");
-          let matchDocId: string | null = null;
-          const q1 = query(
-            matchesColl,
-            where("user1Id", "==", a1),
-            where("user2Id", "==", a2),
-            where("status", "==", "matched"),
-            fsLimit(1)
-          );
-          const snap1 = await getDocs(q1);
-          if (!snap1.empty) {
-            matchDocId = snap1.docs[0].id;
-          } else {
-            const q2 = query(
-              matchesColl,
-              where("user1Id", "==", a2),
-              where("user2Id", "==", a1),
-              where("status", "==", "matched"),
-              fsLimit(1)
-            );
-            const snap2 = await getDocs(q2);
-            if (!snap2.empty) matchDocId = snap2.docs[0].id;
-          }
-          if (matchDocId) {
-            const matchRef = doc(db, "matches", matchDocId);
-            await updateDoc(matchRef, {
-              lastMessage: {
-                id: docRef.id,
-                fromUserId: userId,
-                toUserId,
-                text: trimmed,
-                type: "text",
-                createdAt: createdAtTime,
-              },
-              updatedAt: createdAtTime,
-            });
-          }
-        } catch {
-          /* ignore */
-        }
-      } catch (err: any) {
-        console.error("Failed to send message via Firestore", err);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to send message";
+        console.error("Failed to send message via API", err);
         // Revert optimistic update
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
-        setError(err.message || "Failed to send message");
+        setError(message);
         throw err;
       }
     },
@@ -214,7 +130,7 @@ export function useMessageActions({
           toUserId,
           blob,
           duration,
-        } as any);
+        });
 
         setMessages((prev) => [
           ...prev,
@@ -232,9 +148,10 @@ export function useMessageActions({
             _creationTime: Date.now(),
           },
         ]);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to send voice message";
         console.error("Failed to send voice message", err);
-        setError(err.message || "Failed to send voice message");
+        setError(message);
       }
     },
     [userId, setError, setMessages]
@@ -280,20 +197,14 @@ export function useMessageActions({
 
   const markAsRead = useCallback(
     async (messageIds: string[]) => {
-      if (!userId || messageIds.length === 0) return;
+      if (!userId || messageIds.length === 0 || !convKey) return;
       try {
-        const batch = writeBatch(db);
-        const now = Date.now();
-        messageIds.forEach((id) => {
-          const ref = doc(db, "messages", id);
-          batch.update(ref, { readAt: now });
-        });
-        await batch.commit();
+        await markConversationRead(convKey);
       } catch (err) {
         console.warn("Failed to mark messages as read", err);
       }
     },
-    [userId]
+    [userId, convKey]
   );
 
   const fetchOlder = useCallback(async () => {
@@ -319,7 +230,7 @@ export function useMessageActions({
       const snap = await getDocs(q);
       const fetched: Message[] = [];
       snap.forEach((docSnap) => {
-        const d: any = docSnap.data();
+        const d = docSnap.data() as Partial<Message> & { readAt?: number };
         const createdAt =
           d.createdAt instanceof Timestamp
             ? d.createdAt.toMillis()
@@ -354,8 +265,7 @@ export function useMessageActions({
     async (messageId: string) => {
       if (!userId) return;
       try {
-        const ref = doc(db, "messages", messageId);
-        await updateDoc(ref, { deleted: true, text: "[Message deleted]" });
+        await deleteMessageRequest(messageId);
       } catch (err) {
         console.error("Failed to delete message", err);
       }

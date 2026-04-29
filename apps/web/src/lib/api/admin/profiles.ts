@@ -5,7 +5,7 @@ export interface AdminProfile extends Profile {
 }
 
 class AdminProfilesAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -27,11 +27,12 @@ class AdminProfilesAPI {
 
     const ct = res.headers.get("content-type") || "";
     const isJson = ct.toLowerCase().includes("application/json");
-    const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
+    const payload: unknown = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
 
     if (!res.ok) {
+      const payloadObject = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
       const msg =
-        (isJson && payload && (payload as any).error) ||
+        (isJson && payloadObject && payloadObject.error) ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
@@ -39,18 +40,18 @@ class AdminProfilesAPI {
 
     // Unwrap standardized { success, data } envelope from API handler
     if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
+      const maybe = payload as Record<string, unknown>;
       if ("success" in maybe) {
         if (maybe.success === false) {
           throw new Error(String(maybe.message || maybe.error || "Request failed"));
         }
         if ("data" in maybe) {
-          return maybe.data;
+          return maybe.data as T;
         }
       }
     }
 
-    return payload;
+    return payload as T;
   }
 
   /**
@@ -80,7 +81,12 @@ class AdminProfilesAPI {
     if (params.plan) qs.set("plan", params.plan);
     qs.set("v", String(Date.now()));
 
-    const res = await this.makeRequest(`/api/admin/profiles?${qs.toString()}`);
+    const res = await this.makeRequest<{
+      profiles: AdminProfile[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }>(`/api/admin/profiles?${qs.toString()}`);
 
     return res;
   }
@@ -90,9 +96,11 @@ class AdminProfilesAPI {
    */
   async get(id: string): Promise<AdminProfile | null> {
     try {
-      const res = await this.makeRequest(`/api/admin/profiles/${id}?nocache=true&v=${Date.now()}`);
-      if (res?.profile) return res.profile;
-      if (res._id || res.userId) return res;
+      const res = await this.makeRequest<AdminProfile | { profile?: AdminProfile }>(`/api/admin/profiles/${id}?nocache=true&v=${Date.now()}`);
+      if (typeof res === "object" && res !== null && "profile" in res && res.profile) {
+        return res.profile;
+      }
+      if ("_id" in res || "userId" in res) return res as AdminProfile;
       return null;
     } catch {
       return null;
@@ -127,7 +135,7 @@ class AdminProfilesAPI {
       return await this.makeRequest(`/api/admin/profiles/${id}`, {
         method: "DELETE",
       });
-    } catch (e) {
+    } catch {
       // Fallback to index route if needed
       return this.makeRequest("/api/admin/profiles", {
         method: "DELETE",
@@ -178,8 +186,10 @@ class AdminProfilesAPI {
    * Get user's matches
    */
   async getMatches(id: string): Promise<Profile[]> {
-    const res = await this.makeRequest(`/api/admin/profiles/${id}?matches=true&v=${Date.now()}`);
-    if (Array.isArray(res.matches)) return res.matches;
+    const res = await this.makeRequest<Profile[] | { matches?: Profile[] }>(`/api/admin/profiles/${id}?matches=true&v=${Date.now()}`);
+    if (typeof res === "object" && res !== null && "matches" in res && Array.isArray(res.matches)) {
+      return res.matches;
+    }
     if (Array.isArray(res)) return res;
     return [];
   }
@@ -245,7 +255,7 @@ class AdminProfilesAPI {
   /**
    * Update spotlight badge for a profile
    */
-  async updateSpotlight(profileId: string, request: { hasSpotlightBadge: boolean; durationDays?: number }): Promise<any> {
+  async updateSpotlight(profileId: string, request: { hasSpotlightBadge: boolean; durationDays?: number }): Promise<{ success: boolean }> {
     return this.makeRequest(`/api/admin/profiles/${profileId}/spotlight`, {
       method: "PUT",
       body: JSON.stringify(request),

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { adminProfilesAPI, AdminProfile } from "@/lib/api/admin/profiles";
+import { adminProfilesAPI, type AdminProfile } from "@/lib/api/admin/profiles";
 import {
   Plus,
   Search,
@@ -50,7 +50,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
+import type { ProfileImageInfo } from "@aroosi/shared/types";
 
 const statusOptions = [
   { label: "All", value: "all" },
@@ -77,7 +77,7 @@ const planOptions = [
 function getAge(dateOfBirth?: string) {
   if (!dateOfBirth) return "-";
   const dob = new Date(dateOfBirth);
-  if (isNaN(dob.getTime())) return "-";
+  if (Number.isNaN(dob.getTime())) return "-";
   const today = new Date();
   let years = today.getFullYear() - dob.getFullYear();
   const m = today.getMonth() - dob.getMonth();
@@ -156,11 +156,6 @@ export default function AdminProfilePage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Reset page on status change
-  useEffect(() => {
-    setPage(1);
-  }, [status, pageSize, sortBy, sortDir, planFilter]);
-
   const {
     data,
     isLoading: loading,
@@ -195,7 +190,7 @@ export default function AdminProfilePage() {
         plan: planFilter,
       });
 
-      const profilesForImages = profiles.map((p: any) => ({
+      const profilesForImages = profiles.map((p: AdminProfile) => ({
         _id: p._id,
         userId: p.userId || p._id,
       }));
@@ -215,8 +210,8 @@ export default function AdminProfilePage() {
     staleTime: 20000,
   });
 
-  const profiles: any[] = React.useMemo(
-    () => (data?.profiles as any[]) || [],
+  const profiles = React.useMemo<AdminProfile[]>(
+    () => (data?.profiles as AdminProfile[] | undefined) || [],
     [data]
   );
   const profileImages: Record<string, ProfileImageInfo[]> =
@@ -451,7 +446,10 @@ export default function AdminProfilePage() {
               <Select
                 value={planFilter}
                 onValueChange={(value) =>
-                  setPlanFilter(value as "all" | "free" | "premium" | "premiumPlus")
+                  {
+                    setPlanFilter(value as "all" | "free" | "premium" | "premiumPlus");
+                    setPage(1);
+                  }
                 }
               >
                 <SelectTrigger className="w-[150px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
@@ -475,6 +473,7 @@ export default function AdminProfilePage() {
                   ];
                   setSortBy(nextSortBy);
                   setSortDir(nextSortDir);
+                  setPage(1);
                 }}
               >
                 <SelectTrigger className="w-[170px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
@@ -491,7 +490,10 @@ export default function AdminProfilePage() {
 
               <Select
                 value={String(pageSize)}
-                onValueChange={(value) => setPageSize(Number(value))}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(1);
+                }}
               >
                 <SelectTrigger className="w-[120px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
                   <SelectValue placeholder="Page size" />
@@ -527,9 +529,10 @@ export default function AdminProfilePage() {
               </label>
               <Select
                 value={status}
-                onValueChange={(value) =>
-                  setStatus(value as "all" | "active" | "banned")
-                }
+                onValueChange={(value) => {
+                  setStatus(value as "all" | "active" | "banned");
+                  setPage(1);
+                }}
               >
                 <SelectTrigger id="profile-status-select" className="w-[120px] border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
                   <SelectValue placeholder="Select status" />
@@ -637,9 +640,9 @@ export default function AdminProfilePage() {
         {/* Profiles Grid or Empty State */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
+            {Array.from({ length: 8 }, (_unused, index) => `profile-skeleton-${index + 1}`).map((skeletonKey) => (
               <div
-                key={i}
+                key={skeletonKey}
                 className="bg-white rounded-xl shadow-md border p-4 flex flex-col gap-3 min-h-[320px]"
               >
                 <Skeleton className="h-20 w-20 rounded-xl mx-auto mb-2" />
@@ -886,6 +889,7 @@ export default function AdminProfilePage() {
                       stroke="currentColor"
                       className="h-7 w-7 text-red-600"
                     >
+                      <title>Delete profile</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"

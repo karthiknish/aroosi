@@ -29,6 +29,45 @@ export interface ActivityItem {
   status?: "pending" | "approved" | "rejected";
 }
 
+type DashboardProfile = {
+  id?: string;
+  _id?: string;
+  uid?: string;
+  fullName?: string;
+  email?: string;
+  createdAt?: unknown;
+};
+
+type DashboardMatch = {
+  id?: string;
+  user1Id?: string;
+  user2Id?: string;
+  user1Name?: string;
+  user2Name?: string;
+  createdAt?: unknown;
+  profileId?: string;
+  rootName?: string;
+  matches?: Array<Record<string, unknown>>;
+};
+
+type DashboardContact = {
+  _id?: string;
+  id?: string;
+  subject?: string;
+  email?: string;
+  name?: string;
+  createdAt?: unknown;
+};
+
+type DashboardBlogPost = {
+  _id?: string;
+  id?: string;
+  slug?: string;
+  title?: string;
+  createdAt?: unknown;
+  publishedAt?: unknown;
+};
+
 /**
  * Parse various timestamp formats into a Date object
  * Handles: Firestore Timestamp objects, ISO strings, Unix timestamps (ms and seconds)
@@ -45,14 +84,14 @@ function parseTimestamp(value: unknown): Date {
     }
     // It might be a Date object already
     if (value instanceof Date) {
-      return isNaN(value.getTime()) ? new Date() : value;
+      return Number.isNaN(value.getTime()) ? new Date() : value;
     }
   }
 
   // ISO string
   if (typeof value === "string") {
     const d = new Date(value);
-    return isNaN(d.getTime()) ? new Date() : d;
+    return Number.isNaN(d.getTime()) ? new Date() : d;
   }
 
   // Unix timestamp (number)
@@ -61,7 +100,7 @@ function parseTimestamp(value: unknown): Date {
     const d = value < 4102444800000 && value > 1e12
       ? new Date(value)  // Already in ms
       : new Date(value * 1000);  // In seconds
-    return isNaN(d.getTime()) ? new Date() : d;
+    return Number.isNaN(d.getTime()) ? new Date() : d;
   }
 
   return new Date();
@@ -106,8 +145,8 @@ export function useAdminDashboardData() {
 
       // Process Profiles (Registrations)
       try {
-        const profiles = profilesData?.profiles || [];
-        profiles.slice(0, 5).forEach((p: any, idx: number) => {
+        const profiles = (profilesData?.profiles || []) as DashboardProfile[];
+        profiles.slice(0, 5).forEach((p, idx) => {
           const profileId = p.id || p._id || p.uid || `idx_${idx}_${Date.now()}`;
           activities.push({
             id: `reg_${profileId}`,
@@ -126,14 +165,14 @@ export function useAdminDashboardData() {
 
       // Process Matches
       try {
-        const raw = matchesData?.matches || [];
-        raw.slice(0, 5).forEach((item: any) => {
+        const raw = (matchesData?.matches || []) as DashboardMatch[];
+        raw.slice(0, 5).forEach((item) => {
           if (item && Array.isArray(item.matches) && item.profileId) {
-            const partner = item.matches[0] || {};
+            const partner = (item.matches[0] || {}) as Record<string, unknown>;
             const left = item.profileId;
-            const right = partner._id || partner.id || "unknown";
-            const nameA = partner._rootName || item.rootName || left?.slice?.(-6) || "User A";
-            const nameB = partner.fullName || partner.name || right?.slice?.(-6) || "User B";
+            const right = String(partner._id || partner.id || "unknown");
+            const nameA = String(partner._rootName || item.rootName || left?.slice?.(-6) || "User A");
+            const nameB = String(partner.fullName || partner.name || right.slice(-6) || "User B");
             const id = `match_${left}_${right}`;
             activities.push({
               id,
@@ -163,35 +202,37 @@ export function useAdminDashboardData() {
 
       // Process Contact Messages
       try {
-        (Array.isArray(contacts) ? contacts : []).slice(0, 5).forEach((c: any) =>
-          activities.push({
+        ((Array.isArray(contacts) ? contacts : []) as DashboardContact[])
+          .slice(0, 5)
+          .forEach((c) => {
+            activities.push({
             id: `contact_${c._id || c.id}`,
             type: "message",
             title: "Contact Message",
-            description: c.subject || c.email,
+            description: c.subject || c.email || "New contact message",
             timestamp: parseTimestamp(c.createdAt),
             href: "/admin/contact",
-            user: { name: c.name || c.email },
+            user: { name: c.name || c.email || "Unknown sender" },
             status: "pending",
-          })
-        );
+            });
+          });
       } catch (err) {
         handleError(err, { scope: "useAdminDashboardData", action: "process_contacts" }, { showToast: false });
       }
 
       // Process Blog Posts
       try {
-        const posts = blogData?.posts || [];
-        posts.slice(0, 5).forEach((b: any) =>
+        const posts = (blogData?.posts || []) as DashboardBlogPost[];
+        posts.slice(0, 5).forEach((b) => {
           activities.push({
             id: `blog_${b._id || b.id || b.slug}`,
             type: "blog",
             title: "Blog Post",
-            description: b.title,
+            description: b.title || "Untitled post",
             timestamp: parseTimestamp(b.createdAt || b.publishedAt),
             href: "/admin/blog",
-          })
-        );
+          });
+        });
       } catch (err) {
         handleError(err, { scope: "useAdminDashboardData", action: "process_blog" }, { showToast: false });
       }

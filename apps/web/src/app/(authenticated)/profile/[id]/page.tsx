@@ -1,11 +1,9 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
 import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
 import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
 import { ProfileActions } from "@/components/profile/ProfileActions";
@@ -17,6 +15,8 @@ import { ProfileHeader } from "@/components/profile/detail/ProfileHeader";
 import { ProfileInfoSections } from "@/components/profile/detail/ProfileInfoSections";
 import { ProfileInteraction } from "@/components/profile/detail/ProfileInteraction";
 import { PageLoader } from "@/components/ui/PageLoader";
+
+type UsageTrackEvent = Parameters<ReturnType<typeof useProfileDetailLogic>["trackUsage"]>[0];
 
 const cardVariants = {
   hidden: { opacity: 0, y: 40 },
@@ -60,7 +60,11 @@ export default function ProfileDetailPage() {
     );
   }
 
-  const isAuthError = (profileError as any)?.code === "AUTH_REQUIRED";
+  const isAuthError =
+    typeof profileError === "object" &&
+    profileError !== null &&
+    "code" in profileError &&
+    (profileError as { code?: string }).code === "AUTH_REQUIRED";
   if (profileError && !isAuthError) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -74,7 +78,7 @@ export default function ProfileDetailPage() {
   }
 
   if (!profile) {
-    const errorMessage = profileApiError?.message || profileApiError?.code || "Profile not found.";
+    const errorMessage = profileApiError?.message || "Profile not found.";
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <ErrorState message={errorMessage} onRetry={() => window.location.reload()} />
@@ -92,16 +96,18 @@ export default function ProfileDetailPage() {
         userId={userId}
         userName={profile?.fullName}
         onReportSuccess={() => {
-          trackUsage({
-            feature: "user_report" as any,
+          const event: UsageTrackEvent = {
+            feature: "user_report",
             metadata: { targetUserId: userId },
-          });
+          };
+          trackUsage(event);
         }}
         onBlockSuccess={() => {
-          trackUsage({
-            feature: "user_block" as any,
+          const event: UsageTrackEvent = {
+            feature: "user_block",
             metadata: { targetUserId: userId },
-          });
+          };
+          trackUsage(event);
         }}
       />
 

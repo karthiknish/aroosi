@@ -2,9 +2,8 @@ import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
 } from "@/lib/api/handler";
-import { nowTimestamp } from "@/lib/utils/timestamp";
+import type { ApiContext } from "@/lib/api/handler";
 import {
   uploadMessageImage,
   sendFirebaseMessage,
@@ -14,11 +13,14 @@ import {
   sanitizeFileName,
   sliceHead,
 } from "@/lib/validation/image";
-import { db } from "@/lib/firebaseAdmin";
 
 export const POST = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
-    const userId = (ctx.user as any).userId || (ctx.user as any).id;
+    const user = ctx.user;
+    if (!user) {
+      return errorResponse("Unauthorized", 401, { correlationId: ctx.correlationId });
+    }
+    const userId = user.userId || user.id;
 
     let formData: FormData;
     try {
@@ -43,6 +45,11 @@ export const POST = createAuthenticatedHandler(
         details: { fields: { conversationId: !!conversationId, fromUserId: !!fromUserId, toUserId: !!toUserId } },
       });
     }
+    if (fromUserId !== userId) {
+      return errorResponse("Unauthorized sender", 403, {
+        correlationId: ctx.correlationId,
+      });
+    }
 
     // Participant check
     const userIds = conversationId.split("_");
@@ -58,7 +65,7 @@ export const POST = createAuthenticatedHandler(
       const validation = validateImageUpload({
         fileSize: image.size,
         providedMime: contentType,
-        plan: "free" as any,
+        plan: "free",
         headBytes: head,
       });
       if (!validation.ok) {
@@ -79,56 +86,11 @@ export const POST = createAuthenticatedHandler(
         ...(typeof validation.width === "number" && validation.width > 0 ? { width: validation.width } : {}),
         ...(typeof validation.height === "number" && validation.height > 0 ? { height: validation.height } : {}),
       });
-
-      // Denormalize lastMessage
-      try {
-        const now = nowTimestamp();
-        const convRef = db.collection("conversations").doc(conversationId);
-        await convRef.set(
-          {
-            participants: [fromUserId, toUserId],
-            lastMessage: {
-              id: (message as any)?.id || (message as any)?._id,
-              fromUserId,
-              toUserId,
-              text: "",
-              type: "image",
-              createdAt: (message as any)?.createdAt || now,
-            },
-            updatedAt: (message as any)?.createdAt || now,
-          },
-          { merge: true }
-        );
-
-        const a = [fromUserId, toUserId].sort();
-        const q1 = await db.collection("matches")
-          .where("user1Id", "==", a[0])
-          .where("user2Id", "==", a[1])
-          .where("status", "==", "matched")
-          .limit(1)
-          .get();
-        const matchDoc = !q1.empty ? q1.docs[0] : null;
-        if (matchDoc) {
-          await db.collection("matches").doc(matchDoc.id).set(
-            {
-              lastMessage: {
-                id: (message as any)?.id || (message as any)?._id,
-                fromUserId,
-                toUserId,
-                text: "",
-                type: "image",
-                createdAt: (message as any)?.createdAt || now,
-              },
-              updatedAt: (message as any)?.createdAt || now,
-            },
-            { merge: true }
-          );
-        }
-      } catch {}
+      const messageMeta = message as { id?: string; _id?: string };
 
       return successResponse({
         message: "Image message uploaded successfully",
-        messageId: (message as any)?._id,
+        messageId: messageMeta.id || messageMeta._id,
         storageId,
         size: image.size,
         mime: contentType,

@@ -1,8 +1,72 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminPushAPI } from "@/lib/api/admin/push";
-import { FilterItem } from "../app/(authenticated)/admin/push-notification/types";
+import type { FilterItem } from "../app/(authenticated)/admin/push-notification/types";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+
+type ParsedJson = Record<string, unknown> | Array<Record<string, unknown>> | undefined;
+
+type PushTemplatePayload = {
+  title?: string;
+  message?: string;
+  url?: string;
+  imageUrl?: string;
+  category?: string;
+  audience?: string[];
+  excludedSegments?: string[];
+  includePlayerIds?: string[];
+  includeExternalUserIds?: string[];
+  data?: ParsedJson;
+  buttons?: ParsedJson;
+  androidChannelId?: string;
+  priority?: "normal" | "high" | number;
+  ttl?: number;
+  collapseId?: string;
+  iosBadgeType?: "None" | "SetTo" | "Increase";
+  iosBadgeCount?: number;
+  iosSound?: string;
+  androidSound?: string;
+  iosInterruptionLevel?: "active" | "passive" | "time-sensitive" | "critical" | "";
+  mutableContent?: boolean;
+  contentAvailable?: boolean;
+  delayedOption?: "immediate" | "timezone" | "last-active";
+  sendAfter?: string;
+  deliveryTimeOfDay?: string;
+  throttlePerMinute?: number;
+  filters?: FilterItem[];
+};
+
+type PushSendPayload = PushTemplatePayload & {
+  title: string;
+  message: string;
+  dryRun: boolean;
+  confirm: boolean;
+  templateId?: string;
+  maxAudience: number;
+};
+
+type AppliedTemplate = {
+  id?: string | null;
+  payload?: PushTemplatePayload;
+  title?: string;
+  message?: string;
+  url?: string;
+  imageUrl?: string;
+  dataJson?: string;
+  buttonsJson?: string;
+  category?: string;
+};
+
+function safeParseJSON(text: string): ParsedJson {
+  try {
+    const t = (text || "").trim();
+    if (!t) return undefined;
+    return JSON.parse(t) as ParsedJson;
+  } catch {
+    showErrorToast(null, "Invalid JSON in custom data/buttons");
+    return undefined;
+  }
+}
 
 export function usePushNotificationForm() {
   const queryClient = useQueryClient();
@@ -39,21 +103,10 @@ export function usePushNotificationForm() {
   const [includeExternalUserIds, setIncludeExternalUserIds] = useState<string>("");
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterItem[]>([]);
-  const [previewData, setPreviewData] = useState<any>(null);
-
-  const safeParseJSON = (text: string): any => {
-    try {
-      const t = (text || "").trim();
-      if (!t) return undefined;
-      return JSON.parse(t);
-    } catch {
-      showErrorToast(null, "Invalid JSON in custom data/buttons");
-      return undefined;
-    }
-  };
+  const [previewData, setPreviewData] = useState<unknown>(null);
 
   const sendMutation = useMutation({
-    mutationFn: (payload: any) => adminPushAPI.send(payload),
+    mutationFn: (payload: PushSendPayload) => adminPushAPI.send(payload),
     onSuccess: (result) => {
       if (dryRun) {
         setPreviewData(result);
@@ -69,7 +122,7 @@ export function usePushNotificationForm() {
         setAppliedTemplateId(null);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showErrorToast(error, `Failed to ${dryRun ? "preview" : "send"} notification`);
     },
   });
@@ -78,7 +131,7 @@ export function usePushNotificationForm() {
     if (!title.trim() || !message.trim()) return;
     if (!dryRun && !confirmLive) return;
 
-    const payload: any = {
+    const payload: PushSendPayload = {
       title: title.trim(),
       message: message.trim(),
       url: url.trim() || undefined,
@@ -130,9 +183,9 @@ export function usePushNotificationForm() {
     mutableContent, contentAvailable, appliedTemplateId, sendMutation
   ]);
 
-  const applyTemplate = useCallback((tpl: any) => {
+  const applyTemplate = useCallback((tpl: AppliedTemplate) => {
     try {
-      const p = tpl?.payload || {
+      const p: PushTemplatePayload = tpl?.payload || {
         title: tpl?.title,
         message: tpl?.message,
         url: tpl?.url,
@@ -163,14 +216,14 @@ export function usePushNotificationForm() {
       }
       setTtl(p.ttl || 0);
       setCollapseId(p.collapseId || "");
-      setIosBadgeType((p.iosBadgeType as any) || "None");
+      setIosBadgeType(p.iosBadgeType || "None");
       setIosBadgeCount(p.iosBadgeCount || 0);
       setIosSound(p.iosSound || "");
       setAndroidSound(p.androidSound || "");
-      setIosInterruptionLevel((p.iosInterruptionLevel as any) || "");
+      setIosInterruptionLevel(p.iosInterruptionLevel || "");
       setMutableContent(!!p.mutableContent);
       setContentAvailable(!!p.contentAvailable);
-      setDelayedOption((p.delayedOption as any) || "immediate");
+      setDelayedOption(p.delayedOption || "immediate");
       setScheduledTime(p.sendAfter || "");
       setIsScheduled(!!p.sendAfter);
       setDeliveryTimeOfDay(p.deliveryTimeOfDay || "");
@@ -185,7 +238,7 @@ export function usePushNotificationForm() {
   }, []);
 
   const saveTemplateMutation = useMutation({
-    mutationFn: (data: { templateId?: string; name: string; description?: string; payload: any }) =>
+    mutationFn: (data: { templateId?: string; name: string; description?: string; payload: PushTemplatePayload }) =>
       data.templateId
         ? adminPushAPI.updateTemplate(data.templateId, {
             name: data.name,
@@ -201,7 +254,7 @@ export function usePushNotificationForm() {
       showSuccessToast(variables.templateId ? "Template updated" : "Template saved");
       queryClient.invalidateQueries({ queryKey: ["admin", "push", "templates"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showErrorToast(error, "Failed to save template");
     },
   });
@@ -211,7 +264,7 @@ export function usePushNotificationForm() {
       showErrorToast(null, "Template name required");
       return;
     }
-    const payload: any = {
+    const payload: PushTemplatePayload = {
       title: title.trim(),
       message: message.trim(),
       url: url.trim() || undefined,

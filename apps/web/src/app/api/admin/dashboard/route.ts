@@ -2,7 +2,7 @@ import {
   createAuthenticatedHandler, 
   successResponse, 
   errorResponse,
-  AuthenticatedApiContext
+  type AuthenticatedApiContext,
 } from "@/lib/api/handler";
 import { db } from "@/lib/firebaseAdmin";
 import { nowTimestamp } from "@/lib/utils/timestamp";
@@ -10,7 +10,10 @@ import { nowTimestamp } from "@/lib/utils/timestamp";
 async function countCollection(col: string): Promise<number> {
   try {
     // Try aggregation count API if available
-    const snap: any = await (db as any).collection(col).count?.().get?.();
+    const collectionRef = db.collection(col) as FirebaseFirestore.CollectionReference<FirebaseFirestore.DocumentData> & {
+      count?: () => { get?: () => Promise<{ data: () => { count?: number } }> };
+    };
+    const snap = await collectionRef.count?.().get?.();
     if (snap && typeof snap.data === "function") {
       const data = snap.data();
       if (data && typeof data.count === "number") return data.count;
@@ -63,7 +66,7 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
         .limit(5000)
         .get();
       const ids = new Set<string>();
-      activitySnap.forEach((d: any) => {
+      activitySnap.forEach((d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => {
         const data = d.data();
         if (data?.fromUserId) ids.add(String(data.fromUserId));
       });

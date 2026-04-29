@@ -1,5 +1,5 @@
 // Import centralized types
-import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
+import type { ApiResponse } from "@/lib/utils/apiResponse";
 import type { Message, MessageType } from "@aroosi/shared/types";
 
 // Local aliases for shared types if needed, or just use shared types directly
@@ -15,6 +15,10 @@ interface SendMessageParams {
   duration?: number;
   fileSize?: number;
   mimeType?: string;
+  replyToMessageId?: string;
+  replyToText?: string;
+  replyToType?: MessageType;
+  replyToFromUserId?: string;
 }
 
 interface GetMessagesParams {

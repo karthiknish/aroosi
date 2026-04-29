@@ -2,12 +2,17 @@
  * Thin wrappers over matchMessages API to avoid duplication.
  * Keeps backward compatibility for existing imports.
  */
-import { matchMessagesAPI, type MatchMessage, type ApiResponse } from "@/lib/api/matchMessages";
+import { matchMessagesAPI, type MatchMessage } from "@/lib/api/matchMessages";
 import type { MessageType } from "@aroosi/shared/types";
 import { fetchJson, postJson, getJson } from "@/lib/http/client";
 import { showErrorToast } from "@/lib/ui/toast";
 
 export type Message = MatchMessage;
+
+type FetchLikeError = Error & {
+  status?: number;
+  response?: Response;
+};
 
 export const getMessages = async (
   conversationId: string,
@@ -38,6 +43,10 @@ export const sendMessage = async (message: {
   duration?: number;
   fileSize?: number;
   mimeType?: string;
+  replyToMessageId?: string;
+  replyToText?: string;
+  replyToType?: MessageType;
+  replyToFromUserId?: string;
 }): Promise<Message | null> => {
   const res = await matchMessagesAPI.sendMessage({
     conversationId: message.conversationId,
@@ -49,6 +58,10 @@ export const sendMessage = async (message: {
     duration: message.duration,
     fileSize: message.fileSize,
     mimeType: message.mimeType,
+    replyToMessageId: message.replyToMessageId,
+    replyToText: message.replyToText,
+    replyToType: message.replyToType,
+    replyToFromUserId: message.replyToFromUserId,
   });
 
   if (!res.success) {
@@ -99,7 +112,7 @@ export const deleteMessage = async (
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Failed to delete message";
     showErrorToast(null, msg);
@@ -128,7 +141,7 @@ export const editMessage = async (
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Failed to edit message";
     showErrorToast(null, msg);
@@ -185,22 +198,23 @@ export const uploadMessageImage = async (
       success: true,
       messageId: result.messageId,
     };
-  } catch (error: any) {
-    let errMsg = `HTTP ${error.status || 500}`;
+  } catch (error: unknown) {
+    const requestError = error as FetchLikeError;
+    let errMsg = `HTTP ${requestError.status || 500}`;
     let resetTime: number | undefined;
 
     try {
-      const data = error.response ? await error.response.clone().json() : {};
+      const data = requestError.response ? await requestError.response.clone().json() : {};
       errMsg = data?.error || data?.message || errMsg;
-      if (error.status === 429 && data?.resetTime) {
+      if (requestError.status === 429 && data?.resetTime) {
         const ms = new Date(data.resetTime).getTime() - Date.now();
         resetTime = Math.max(0, Math.ceil(ms / 1000));
         errMsg = `Rate limit exceeded. Try again in ${resetTime}s`;
-      } else if (error.status === 429) {
+      } else if (requestError.status === 429) {
         errMsg = errMsg || "Rate limit exceeded";
       }
     } catch {
-      const txt = error.response ? await error.response.text() : "";
+      const txt = requestError.response ? await requestError.response.text() : "";
       errMsg = txt || errMsg;
     }
 
@@ -245,10 +259,11 @@ export const getMessageImageUrl = async (
       success: true,
       imageUrl,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const requestError = error as FetchLikeError;
     let errMsg = "Failed to get image URL";
     try {
-      const data = error.response ? await error.response.json() : {};
+      const data = requestError.response ? await requestError.response.json() : {};
       errMsg = data?.error || data?.message || errMsg;
     } catch {
       // ignore

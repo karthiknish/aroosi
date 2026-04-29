@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Copy,
   Plus,
   Save,
   Trash2,
@@ -16,7 +15,7 @@ import {
   LayoutTemplate,
 } from "lucide-react";
 
-import { TemplateUI } from "../types";
+import type { TemplateUI } from "../types";
 
 interface TemplateManagerProps {
   // Template state
@@ -131,27 +130,19 @@ export function TemplateManager({
                       ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-500"
                       : "border-slate-200 hover:border-purple-300 hover:bg-slate-50"
                   }`}
-                  onClick={() => {
-                    setSelectedTemplate(template);
-                    handleApplyTemplate(template);
-                    setTemplateName(template.name);
-                    setTemplateDescription(template.description || "");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedTemplate(template);
-                      handleApplyTemplate(template);
-                      setTemplateName(template.name);
-                      setTemplateDescription(template.description || "");
-                    }
-                  }}
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`Select template: ${template.name}`}
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      className="flex-1 min-w-0 text-left"
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        handleApplyTemplate(template);
+                        setTemplateName(template.name);
+                        setTemplateDescription(template.description || "");
+                      }}
+                      aria-label={`Select template: ${template.name}`}
+                    >
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-slate-900 truncate">
                           {template.name}
@@ -170,7 +161,7 @@ export function TemplateManager({
                           {template.description}
                         </p>
                       ) : null}
-                    </div>
+                    </button>
                     <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         size="icon"

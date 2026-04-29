@@ -10,7 +10,7 @@ export interface TestResult {
   testName: string;
   passed: boolean;
   error?: string;
-  details?: any;
+  details?: unknown;
 }
 
 export interface TestSuiteResults {
@@ -22,33 +22,266 @@ export interface TestSuiteResults {
   };
 }
 
-export class SubscriptionTestSuite {
-  private static readonly TEST_USER_TOKEN = "test-token";
-  private static readonly TEST_PLANS = ["premium", "premiumPlus"];
+const TEST_USER_TOKEN = "test-token";
 
-  static async runAllTests(): Promise<TestSuiteResults> {
+async function testGetSubscriptionStatus(): Promise<TestResult> {
+  try {
+    const status = await subscriptionAPI.getStatus(TEST_USER_TOKEN);
+
+    if (!status || typeof status !== "object") {
+      return {
+        testName: "Get Subscription Status",
+        passed: false,
+        error: "Invalid response format",
+        details: status,
+      };
+    }
+
+    const requiredFields = ["plan", "isActive", "expiresAt"];
+    const missingFields = requiredFields.filter(
+      (field) => !(field in status)
+    );
+
+    if (missingFields.length > 0) {
+      return {
+        testName: "Get Subscription Status",
+        passed: false,
+        error: `Missing required fields: ${missingFields.join(", ")}`,
+        details: status,
+      };
+    }
+
+    return {
+      testName: "Get Subscription Status",
+      passed: true,
+      details: status,
+    };
+  } catch (error) {
+    return {
+      testName: "Get Subscription Status",
+      passed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function testGetUsageStats(): Promise<TestResult> {
+  try {
+    const usage = await subscriptionAPI.getUsage();
+
+    if (!usage || typeof usage !== "object") {
+      return {
+        testName: "Get Usage Stats",
+        passed: false,
+        error: "Invalid response format",
+        details: usage,
+      };
+    }
+
+    return {
+      testName: "Get Usage Stats",
+      passed: true,
+      details: usage,
+    };
+  } catch (error) {
+    return {
+      testName: "Get Usage Stats",
+      passed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function testFeatureAccess(): Promise<TestResult> {
+  try {
+    const features = [
+      "unlimited_messaging",
+      "advanced_filters",
+      "profile_boost",
+    ];
+    const results = await Promise.all(
+      features.map((feature) =>
+        subscriptionAPI.checkFeatureAccess(feature)
+      )
+    );
+
+    const allValid = results.every(
+      (result) =>
+        typeof result === "object" &&
+        "hasAccess" in result &&
+        typeof result.hasAccess === "boolean"
+    );
+
+    if (!allValid) {
+      return {
+        testName: "Feature Access Check",
+        passed: false,
+        error: "Invalid response format for feature access",
+        details: results,
+      };
+    }
+
+    return {
+      testName: "Feature Access Check",
+      passed: true,
+      details: results,
+    };
+  } catch (error) {
+    return {
+      testName: "Feature Access Check",
+      passed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function testErrorHandling(): Promise<TestResult> {
+  try {
+    try {
+      await subscriptionAPI.getStatus("invalid-token");
+      return {
+        testName: "Error Handling",
+        passed: false,
+        error: "Should have thrown error for invalid token",
+      };
+    } catch (error) {
+      const handledError = SubscriptionErrorHandler.handle(error, "test");
+      if (!handledError.type || !handledError.message) {
+        return {
+          testName: "Error Handling",
+          passed: false,
+          error: "Error not properly handled",
+          details: handledError,
+        };
+      }
+    }
+
+    return {
+      testName: "Error Handling",
+      passed: true,
+    };
+  } catch (error) {
+    return {
+      testName: "Error Handling",
+      passed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function testPlanUpgrade(): Promise<TestResult> {
+  try {
+    const result = await subscriptionAPI.upgrade(
+      "premium",
+      {
+        successUrl: "http://localhost:3000/subscription?checkout=success",
+        cancelUrl: "http://localhost:3000/plans",
+      }
+    );
+
+    if (!result || typeof result !== "object") {
+      return {
+        testName: "Plan Upgrade",
+        passed: false,
+        error: "Invalid response format",
+        details: result,
+      };
+    }
+
+    return {
+      testName: "Plan Upgrade",
+      passed: true,
+      details: result,
+    };
+  } catch (error) {
+    const handledError = SubscriptionErrorHandler.handle(error, "upgrade");
+    return {
+      testName: "Plan Upgrade",
+      passed: true,
+      details: { expectedError: handledError },
+    };
+  }
+}
+
+async function testPlanCancellation(): Promise<TestResult> {
+  try {
+    const result = await subscriptionAPI.cancel();
+
+    if (!result || typeof result !== "object") {
+      return {
+        testName: "Plan Cancellation",
+        passed: false,
+        error: "Invalid response format",
+        details: result,
+      };
+    }
+
+    return {
+      testName: "Plan Cancellation",
+      passed: true,
+      details: result,
+    };
+  } catch (error) {
+    const handledError = SubscriptionErrorHandler.handle(error, "cancel");
+    return {
+      testName: "Plan Cancellation",
+      passed: true,
+      details: { expectedError: handledError },
+    };
+  }
+}
+
+async function testRestorePurchases(): Promise<TestResult> {
+  try {
+    const result = await subscriptionAPI.restorePurchases();
+
+    if (!result || typeof result !== "object") {
+      return {
+        testName: "Restore Purchases",
+        passed: false,
+        error: "Invalid response format",
+        details: result,
+      };
+    }
+
+    return {
+      testName: "Restore Purchases",
+      passed: true,
+      details: result,
+    };
+  } catch (error) {
+    const handledError = SubscriptionErrorHandler.handle(error, "restore");
+    return {
+      testName: "Restore Purchases",
+      passed: true,
+      details: { expectedError: handledError },
+    };
+  }
+}
+
+async function runAllTests(): Promise<TestSuiteResults> {
     const tests: TestResult[] = [];
 
     // Test subscription status retrieval
-    tests.push(await this.testGetSubscriptionStatus());
+    tests.push(await testGetSubscriptionStatus());
 
     // Test usage stats retrieval
-    tests.push(await this.testGetUsageStats());
+    tests.push(await testGetUsageStats());
 
     // Test feature access checks
-    tests.push(await this.testFeatureAccess());
+    tests.push(await testFeatureAccess());
 
     // Test error handling
-    tests.push(await this.testErrorHandling());
+    tests.push(await testErrorHandling());
 
     // Test plan upgrade flow
-    tests.push(await this.testPlanUpgrade());
+    tests.push(await testPlanUpgrade());
 
     // Test plan cancellation
-    tests.push(await this.testPlanCancellation());
+    tests.push(await testPlanCancellation());
 
     // Test purchase restoration
-    tests.push(await this.testRestorePurchases());
+    tests.push(await testRestorePurchases());
 
     const summary = {
       total: tests.length,
@@ -59,247 +292,7 @@ export class SubscriptionTestSuite {
     return { tests, summary };
   }
 
-  private static async testGetSubscriptionStatus(): Promise<TestResult> {
-    try {
-      const status = await subscriptionAPI.getStatus(this.TEST_USER_TOKEN);
-
-      if (!status || typeof status !== "object") {
-        return {
-          testName: "Get Subscription Status",
-          passed: false,
-          error: "Invalid response format",
-          details: status,
-        };
-      }
-
-      const requiredFields = ["plan", "isActive", "expiresAt"];
-      const missingFields = requiredFields.filter(
-        (field) => !(field in status)
-      );
-
-      if (missingFields.length > 0) {
-        return {
-          testName: "Get Subscription Status",
-          passed: false,
-          error: `Missing required fields: ${missingFields.join(", ")}`,
-          details: status,
-        };
-      }
-
-      return {
-        testName: "Get Subscription Status",
-        passed: true,
-        details: status,
-      };
-    } catch (error) {
-      return {
-        testName: "Get Subscription Status",
-        passed: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  }
-
-  private static async testGetUsageStats(): Promise<TestResult> {
-    try {
-      const usage = await subscriptionAPI.getUsage();
-
-      if (!usage || typeof usage !== "object") {
-        return {
-          testName: "Get Usage Stats",
-          passed: false,
-          error: "Invalid response format",
-          details: usage,
-        };
-      }
-
-      return {
-        testName: "Get Usage Stats",
-        passed: true,
-        details: usage,
-      };
-    } catch (error) {
-      return {
-        testName: "Get Usage Stats",
-        passed: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  }
-
-  private static async testFeatureAccess(): Promise<TestResult> {
-    try {
-      const features = [
-        "unlimited_messaging",
-        "advanced_filters",
-        "profile_boost",
-      ];
-      const results = await Promise.all(
-        features.map((feature) =>
-          subscriptionAPI.checkFeatureAccess(feature)
-        )
-      );
-
-      const allValid = results.every(
-        (result) =>
-          typeof result === "object" &&
-          "hasAccess" in result &&
-          typeof result.hasAccess === "boolean"
-      );
-
-      if (!allValid) {
-        return {
-          testName: "Feature Access Check",
-          passed: false,
-          error: "Invalid response format for feature access",
-          details: results,
-        };
-      }
-
-      return {
-        testName: "Feature Access Check",
-        passed: true,
-        details: results,
-      };
-    } catch (error) {
-      return {
-        testName: "Feature Access Check",
-        passed: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  }
-
-  private static async testErrorHandling(): Promise<TestResult> {
-    try {
-      // Test with invalid token
-      try {
-        await subscriptionAPI.getStatus("invalid-token");
-        return {
-          testName: "Error Handling",
-          passed: false,
-          error: "Should have thrown error for invalid token",
-        };
-      } catch (error) {
-        const handledError = SubscriptionErrorHandler.handle(error, "test");
-        if (!handledError.type || !handledError.message) {
-          return {
-            testName: "Error Handling",
-            passed: false,
-            error: "Error not properly handled",
-            details: handledError,
-          };
-        }
-      }
-
-      return {
-        testName: "Error Handling",
-        passed: true,
-      };
-    } catch (error) {
-      return {
-        testName: "Error Handling",
-        passed: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  }
-
-  private static async testPlanUpgrade(): Promise<TestResult> {
-    try {
-      // This is a mock test - in real implementation, use test environment
-      const result = await subscriptionAPI.upgrade(
-        "premium",
-        {
-          successUrl: "http://localhost:3000/subscription?checkout=success",
-          cancelUrl: "http://localhost:3000/plans",
-        }
-      );
-
-      if (!result || typeof result !== "object") {
-        return {
-          testName: "Plan Upgrade",
-          passed: false,
-          error: "Invalid response format",
-          details: result,
-        };
-      }
-
-      return {
-        testName: "Plan Upgrade",
-        passed: true,
-        details: result,
-      };
-    } catch (error) {
-      // Expected to fail in test environment
-      const handledError = SubscriptionErrorHandler.handle(error, "upgrade");
-      return {
-        testName: "Plan Upgrade",
-        passed: true,
-        details: { expectedError: handledError },
-      };
-    }
-  }
-
-  private static async testPlanCancellation(): Promise<TestResult> {
-    try {
-      const result = await subscriptionAPI.cancel();
-
-      if (!result || typeof result !== "object") {
-        return {
-          testName: "Plan Cancellation",
-          passed: false,
-          error: "Invalid response format",
-          details: result,
-        };
-      }
-
-      return {
-        testName: "Plan Cancellation",
-        passed: true,
-        details: result,
-      };
-    } catch (error) {
-      // Expected to fail in test environment
-      const handledError = SubscriptionErrorHandler.handle(error, "cancel");
-      return {
-        testName: "Plan Cancellation",
-        passed: true,
-        details: { expectedError: handledError },
-      };
-    }
-  }
-
-  private static async testRestorePurchases(): Promise<TestResult> {
-    try {
-      const result = await subscriptionAPI.restorePurchases();
-
-      if (!result || typeof result !== "object") {
-        return {
-          testName: "Restore Purchases",
-          passed: false,
-          error: "Invalid response format",
-          details: result,
-        };
-      }
-
-      return {
-        testName: "Restore Purchases",
-        passed: true,
-        details: result,
-      };
-    } catch (error) {
-      // Expected to fail in test environment
-      const handledError = SubscriptionErrorHandler.handle(error, "restore");
-      return {
-        testName: "Restore Purchases",
-        passed: true,
-        details: { expectedError: handledError },
-      };
-    }
-  }
-
-  static async runHealthCheck(): Promise<{
+async function runHealthCheck(): Promise<{
     apiHealth: boolean;
     errorHandlerHealth: boolean;
     overallHealth: boolean;
@@ -312,7 +305,7 @@ export class SubscriptionTestSuite {
 
     try {
       // Test API connectivity
-      await subscriptionAPI.getStatus(this.TEST_USER_TOKEN);
+      await subscriptionAPI.getStatus(TEST_USER_TOKEN);
       results.apiHealth = true;
     } catch {
       // API might be down or token invalid - this is expected in test
@@ -337,7 +330,7 @@ export class SubscriptionTestSuite {
     return results;
   }
 
-  static generateTestReport(results: TestSuiteResults): string {
+function generateTestReport(results: TestSuiteResults): string {
     const report = `
 # Subscription Test Suite Report
 
@@ -365,4 +358,9 @@ ${
 
     return report;
   }
-}
+
+export const SubscriptionTestSuite = {
+  runAllTests,
+  runHealthCheck,
+  generateTestReport,
+};

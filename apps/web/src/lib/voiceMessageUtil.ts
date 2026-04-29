@@ -5,8 +5,8 @@ import {
   query,
   where,
   orderBy,
-  DocumentData,
 } from "firebase/firestore";
+import type { DocumentData } from "firebase/firestore";
 import { uploadVoiceMessage as uploadVoiceMessageRequest } from "@/lib/api/voiceMessages";
 
 export interface VoiceMessage {
@@ -22,6 +22,10 @@ export interface VoiceMessage {
   createdAt: number;
   readAt?: number;
 }
+
+type VoiceMessageRecord = Omit<VoiceMessage, "_id"> & {
+  audioUrl?: string | null;
+};
 
 /**
  * Upload a recorded voice blob and create the corresponding message record.
@@ -102,14 +106,19 @@ export async function fetchVoiceMessages(
   );
   const snap = await getDocs(q);
   return snap.docs.map((doc: DocumentData) => {
-    const data = doc.data();
+    const data = doc.data() as Partial<VoiceMessageRecord>;
+    const normalized: VoiceMessageRecord = {
+      conversationId: data.conversationId || conversationId,
+      fromUserId: data.fromUserId || "",
+      toUserId: data.toUserId || "",
+      type: "voice",
+      audioStorageId: data.audioStorageId || "",
+      ...data,
+      audioUrl: data.audioUrl ?? null,
+      duration: data.duration ?? 0,
+      createdAt: data.createdAt || Date.now(),
+    };
     // Placeholder handling: ensure audioUrl/duration keys exist for UI even if backend hasn't populated them yet
-    if (!("audioUrl" in data)) {
-      (data as any).audioUrl = null; // caller can show loading or fetch on-demand
-    }
-    if (!("duration" in data)) {
-      (data as any).duration = 0;
-    }
-    return { _id: doc.id, ...data } as VoiceMessage;
+    return { _id: doc.id, ...normalized };
   });
 }

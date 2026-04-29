@@ -23,7 +23,6 @@ import { useMatches } from "@/lib/hooks/useMatches";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import Link from "next/link";
 import Image from "next/image";
-import type { Profile } from "@aroosi/shared/types";
 import { ErrorState } from "@/components/ui/error-state";
 import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { useOffline } from "@/hooks/useOffline";
@@ -46,7 +45,6 @@ import {
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -58,7 +56,6 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -66,7 +63,6 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 import {
   ContextMenu,
@@ -78,15 +74,20 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchesAPI } from "@/lib/api/matches";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import type { MatchListView } from "@/lib/hooks/useMatches";
 
 type SortOption = "recent" | "newest" | "unread" | "name";
+type AuthProfileSummary = {
+  _id?: string;
+  userId?: string;
+};
 
 function MatchCard({
   match,
   index,
   viewMode = "list",
 }: {
-  match: Partial<Profile> & { userId: string; unread: number };
+  match: MatchListView;
   index: number;
   viewMode?: "grid" | "list";
 }) {
@@ -264,7 +265,7 @@ function MatchCard({
               className="rounded-xl px-3 py-2.5 focus:bg-danger/5 focus:text-danger text-danger cursor-pointer gap-2.5 font-medium"
               onClick={() => {
                 if (confirm(`Are you sure you want to unmatch with ${match.fullName}?`)) {
-                  unmatchMutation.mutate(match.userId);
+                  unmatchMutation.mutate(match.id);
                 }
               }}
             >
@@ -452,7 +453,7 @@ function MatchCard({
             className="rounded-xl px-3 py-2.5 focus:bg-danger/5 focus:text-danger text-danger cursor-pointer gap-2.5 font-medium"
             onClick={() => {
               if (confirm(`Are you sure you want to unmatch with ${match.fullName}?`)) {
-                unmatchMutation.mutate(match.userId);
+                unmatchMutation.mutate(match.id);
               }
             }}
           >
@@ -468,8 +469,8 @@ function MatchCard({
 function MatchesLoadingSkeleton() {
   return (
     <div className="space-y-4">
-      {[...Array(3)].map((_, i) => (
-        <Card key={i} className="overflow-hidden">
+      {["match-skeleton-1", "match-skeleton-2", "match-skeleton-3"].map((key) => (
+        <Card key={key} className="overflow-hidden">
           <CardContent className="p-0">
             <div className="flex">
               <div className="p-4">
@@ -493,8 +494,9 @@ function MatchesLoadingSkeleton() {
 
 export default function MatchesPage() {
   const { user, profile } = useAuthContext();
+  const authProfile = profile as AuthProfileSummary | null | undefined;
   const userId =
-    user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
+    user?.uid || authProfile?._id || authProfile?.userId || "";
   const networkStatus = useOffline();
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
@@ -571,24 +573,21 @@ export default function MatchesPage() {
   return (
     <>
       {/* Schema.org structured data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebPage",
-            name: "Aroosi Matches",
-            url: "https://aroosi.app/matches",
-            description:
-              "View and connect with your matches on Aroosi Afghan matrimony platform",
-            isPartOf: {
-              "@type": "WebSite",
-              name: "Aroosi",
-              url: "https://aroosi.app",
-            },
-          }),
-        }}
-      />
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Aroosi Matches",
+          url: "https://aroosi.app/matches",
+          description:
+            "View and connect with your matches on Aroosi Afghan matrimony platform",
+          isPartOf: {
+            "@type": "WebSite",
+            name: "Aroosi",
+            url: "https://aroosi.app",
+          },
+        })}
+      </script>
       <SubscriptionGuard feature="canChatWithMatches">
         <div className="w-full overflow-x-hidden overflow-y-hidden bg-base-light pt-24 pb-12 relative">
         {/* Decorative circles */}
@@ -813,14 +812,14 @@ export default function MatchesPage() {
                           />
                         </PaginationItem>
                         
-                        {Array.from({ length: totalPages }).map((_, i) => (
-                          <PaginationItem key={i}>
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                          <PaginationItem key={pageNumber}>
                             <PaginationLink 
-                              onClick={() => setCurrentPage(i + 1)}
-                              isActive={currentPage === i + 1}
+                              onClick={() => setCurrentPage(pageNumber)}
+                              isActive={currentPage === pageNumber}
                               className="cursor-pointer"
                             >
-                              {i + 1}
+                              {pageNumber}
                             </PaginationLink>
                           </PaginationItem>
                         ))}

@@ -14,6 +14,13 @@ export type Note = SharedUserNote;
 export type QuickPick = SharedQuickPick;
 export type EngagementProfile = RecommendedProfile;
 
+type ApiEnvelope<T> = {
+  success?: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+};
+
 class EngagementAPI {
   private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
@@ -37,8 +44,12 @@ class EngagementAPI {
     const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
 
     if (!res.ok) {
+      const payloadMessage =
+        isJson && payload && typeof payload === "object"
+          ? ((payload as ApiEnvelope<T>).message || (payload as ApiEnvelope<T>).error)
+          : undefined;
       const msg =
-        (isJson && payload && ((payload as any).message || (payload as any).error)) ||
+        payloadMessage ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
       throw new Error(String(msg));
@@ -46,7 +57,7 @@ class EngagementAPI {
 
     // Unwrap standardized { success, data } envelope from API handler
     if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
+      const maybe = payload as ApiEnvelope<T>;
       if ("success" in maybe) {
         if (maybe.success === false) {
           throw new Error(String(maybe.message || maybe.error || "Request failed"));

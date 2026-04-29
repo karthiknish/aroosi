@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback, useLayoutEffect, RefObject } from "react";
+import { useState, useCallback, useLayoutEffect, type RefObject } from "react";
 
 export function useComposerState(
-  initialText: string,
-  setText: (v: string) => void,
+  _initialText: string,
+  _setText: (v: string) => void,
   inputRef: RefObject<HTMLTextAreaElement>
 ) {
   const [showPicker, setShowPicker] = useState(false);
@@ -34,7 +34,7 @@ export function useComposerState(
     if (inputRef?.current) {
       resize(inputRef.current);
     }
-  }, [initialText, resize, inputRef]);
+  }, [resize, inputRef]);
 
   return {
     showPicker,

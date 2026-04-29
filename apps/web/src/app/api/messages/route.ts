@@ -2,14 +2,21 @@ import {
   createAuthenticatedHandler,
   successResponse,
   errorResponse,
-  ApiContext
 } from "@/lib/api/handler";
+import type { ApiContext } from "@/lib/api/handler";
 import { listConversationMessages } from "@/lib/messages/firebaseMessages";
 
 // Note: GET routes don't use bodySchema - use query params validation instead
 
 export const GET = createAuthenticatedHandler(
   async (ctx: ApiContext) => {
+    const authUser = ctx.user as { userId?: string; id?: string };
+    const userId = authUser.userId || authUser.id;
+
+    if (!userId) {
+      return errorResponse("Unauthorized", 401, { correlationId: ctx.correlationId });
+    }
+
     const { searchParams } = new URL(ctx.request.url);
     const conversationId = searchParams.get("conversationId");
     const limitParam = searchParams.get("limit");
@@ -17,6 +24,13 @@ export const GET = createAuthenticatedHandler(
 
     if (!conversationId) {
       return errorResponse("Missing conversationId", 400, { correlationId: ctx.correlationId });
+    }
+
+    const participants = conversationId.split("_").filter(Boolean);
+    if (!participants.includes(userId)) {
+      return errorResponse("Unauthorized access to conversation", 403, {
+        correlationId: ctx.correlationId,
+      });
     }
 
     let limit: number | undefined;

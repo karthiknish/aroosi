@@ -24,7 +24,7 @@ export interface ConfirmUploadParams {
 }
 
 class ProfileImagesAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
@@ -51,14 +51,14 @@ class ProfileImagesAPI {
         timeoutMs: 20_000,
         cache: { ttlMs: 5 * 60_000 },
       }
-    );
+    ) as Promise<T>;
   }
 
   /**
    * Get all profile images for current user
    */
   async getImages(): Promise<ProfileImage[]> {
-    const res = await this.makeRequest("/api/profile-images");
+    const res = await this.makeRequest<{ data?: { images?: ProfileImage[] }; images?: ProfileImage[] }>("/api/profile-images");
     return res.data?.images || res.images || [];
   }
 

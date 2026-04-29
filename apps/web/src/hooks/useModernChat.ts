@@ -14,7 +14,7 @@ import {
   showWarningToast,
   showInfoToast,
 } from "@/lib/ui/toast";
-import type { Message, MessageType } from "@aroosi/shared/types";
+import type { MessageType } from "@aroosi/shared/types";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   handleScrollUtil,
@@ -26,8 +26,8 @@ import {
   blockUserUtil,
   reportUserUtil,
   unblockUserUtil,
-  ReportReason,
 } from "@/lib/chat/utils";
+import type { ReportReason } from "@/lib/chat/utils";
 
 type UseModernChatArgs = {
   conversationId: string;
@@ -48,10 +48,6 @@ export function useModernChat({
     messages,
     isConnected: connectionStatusBool,
     sendMessage: sendMessageFs,
-    sendTypingStart,
-    sendTypingStop,
-    markAsRead,
-    refreshMessages,
     fetchOlder,
     hasMore,
     loadingOlder,
@@ -64,7 +60,7 @@ export function useModernChat({
   // Show loading skeleton while not connected AND no messages yet
   const loading = !connectionStatusBool && messages.length === 0;
 
-  const getLastReadAtForOther = (otherId: string) => {
+  const getLastReadAtForOther = () => {
     const sentMessages = messages.filter(
       (m) => m.fromUserId === currentUserId && m.isRead
     );
@@ -84,7 +80,6 @@ export function useModernChat({
     getMessageDeliveryStatus,
     markMessageAsPending,
     markMessageAsSent,
-    markMessageAsRead,
     markMessageAsDelivered,
   } = useDeliveryReceipts({
     conversationId,
@@ -126,7 +121,7 @@ export function useModernChat({
   // Refs for UI elements
   const pickerRef = useRef<HTMLDivElement>(null);
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
 
@@ -219,7 +214,7 @@ export function useModernChat({
       clearTimeout(initialPresenceTimer);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [matchUserId]);
+  }, [isVisible, matchUserId]);
 
   // Optimistic delivered on SSE connect: mark last incoming as delivered
   useEffect(() => {
@@ -276,9 +271,9 @@ export function useModernChat({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let timeoutId: any;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const debounced = () => {
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         handleScroll();
       }, 50);
@@ -286,8 +281,8 @@ export function useModernChat({
     el.addEventListener("scroll", debounced, { passive: true });
     debounced();
     return () => {
-      el.removeEventListener("scroll", debounced as any);
-      clearTimeout(timeoutId);
+      el.removeEventListener("scroll", debounced);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [handleScroll]);
 
@@ -313,9 +308,10 @@ export function useModernChat({
   const hasSentMessage = messages.some((m) => m.fromUserId === currentUserId);
   const hasReceivedMessage = messages.some((m) => m.fromUserId === matchUserId);
   const _isInitiating = !hasSentMessage && !hasReceivedMessage;
+  const sentMessageCount = messages.filter((m) => m.fromUserId === currentUserId).length;
 
   // Messaging permissions are expected to be done higher-level; keep minimal gating here
-  const canSendText = () => ({ allowed: true, reason: "" });
+  const canSendText = useCallback(() => ({ allowed: true, reason: "" }), []);
 
   // Handlers
   const handleSendMessage = useCallback(
@@ -333,7 +329,7 @@ export function useModernChat({
 
       try {
         // If editing an existing message, update it and exit
-        if (editing && editing.messageId) {
+        if (editing?.messageId) {
           try {
             const { editMessage } = await import("@/lib/api/messages");
             await editMessage(editing.messageId, messageText.trim());
@@ -357,7 +353,6 @@ export function useModernChat({
         const tempId = `tmp-${Date.now()}`;
         markMessageAsPending(tempId);
 
-        let lastError: unknown;
         try {
           await withRetry(
             () =>
@@ -371,7 +366,6 @@ export function useModernChat({
               }),
             3,
             (err, attempt) => {
-              lastError = err;
               const msg =
                 err instanceof Error ? err.message : String(err ?? "Unknown");
               console.warn(`Message send attempt ${attempt} failed:`, msg);
@@ -405,14 +399,10 @@ export function useModernChat({
 
         // Proactive soft warning when approaching 80% of quota for free users
         try {
-          const plan = subscriptionStatus.data?.plan || "free";
-          if (plan === "free") {
+          if ((subscriptionStatus.data?.plan ?? "free") === "free") {
             // We don't have immediate usage count here without another fetch; rely on heuristic: message_sent increments from server.
             // Optionally we could fetch usage endpoint after every 5 sends; keep lightweight: warn on 15th message (75%) of new 20 limit).
-            const sentCount = messages.filter(
-              (m) => m.fromUserId === currentUserId
-            ).length;
-            if (sentCount === 15) {
+            if (sentMessageCount === 15) {
               showInfoToast(
                 "You're nearing the free message limit. Upgrade to keep the conversation going."
               );
@@ -459,6 +449,10 @@ export function useModernChat({
       markMessageAsSent,
       trackUsage,
       editing,
+      replyTo,
+      canSendText,
+      sentMessageCount,
+      subscriptionStatus.data?.plan,
     ]
   );
 
@@ -560,7 +554,7 @@ export function useModernChat({
         showErrorToast(null, "Failed to submit report");
       }
     },
-    [matchUserId, setShowReportModal, trackUsage]
+    [matchUserId, trackUsage]
   );
 
   // Reactions state: map messageId -> emoji -> Set<userId>
@@ -578,9 +572,12 @@ export function useModernChat({
         const map: ReactionMap = new Map();
         for (const r of res.data.reactions) {
           if (!map.has(r.messageId)) map.set(r.messageId, new Map());
-          const inner = map.get(r.messageId)!;
+          const inner = map.get(r.messageId) || new Map<string, Set<string>>();
           if (!inner.has(r.emoji)) inner.set(r.emoji, new Set());
-          inner.get(r.emoji)!.add(r.userId);
+          const users = inner.get(r.emoji) || new Set<string>();
+          users.add(r.userId);
+          inner.set(r.emoji, users);
+          map.set(r.messageId, inner);
         }
         setReactions(map);
       } catch (error) {
@@ -633,7 +630,7 @@ export function useModernChat({
         );
         const res = await apiToggle(messageId, emoji);
         if (!res.success) throw new Error(getErrorMessage(res.error));
-      } catch (err) {
+      } catch {
         // revert on failure
         setReactions((prev) => {
           const map = new Map(prev);
@@ -696,7 +693,7 @@ export function useModernChat({
       typingUsers,
       getMessageDeliveryStatus,
       showScrollToBottom,
-      otherLastReadAt: getLastReadAtForOther(matchUserId),
+      otherLastReadAt: getLastReadAtForOther(),
       getReactionsForMessage,
     },
     handlers: {

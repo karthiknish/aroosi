@@ -3,13 +3,25 @@ import {
   createAuthenticatedHandler, 
   errorResponse, 
   successResponse,
-  AuthenticatedApiContext
 } from "@/lib/api/handler";
-import { NextRequest } from "next/server";
+import type { AuthenticatedApiContext } from "@/lib/api/handler";
+import type { NextRequest } from "next/server";
 import { nowTimestamp } from "@/lib/utils/timestamp";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+function getParticipantIds(match: Record<string, unknown>) {
+  if (Array.isArray(match.userIds)) {
+    return match.userIds.filter(
+      (value): value is string => typeof value === "string" && value.length > 0
+    );
+  }
+
+  return [match.user1Id, match.user2Id].filter(
+    (value): value is string => typeof value === "string" && value.length > 0
+  );
 }
 
 // GET: Fetch a specific match
@@ -25,23 +37,59 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
       return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
     }
 
-    const match = matchSnap.data() as any;
+    const match = matchSnap.data() as Record<string, unknown>;
+    const participantIds = getParticipantIds(match);
 
-    if (!match.userIds.includes(userId)) {
+    if (!participantIds.includes(userId)) {
       return errorResponse("Unauthorized access to match", 403, { correlationId: ctx.correlationId });
     }
 
-    const otherUserId = match.userIds.find((uid: string) => uid !== userId);
+    const otherUserId = participantIds.find((uid) => uid !== userId);
     const profileSnap = await db.collection("users").doc(otherUserId).get();
     const profile = profileSnap.exists ? profileSnap.data() : null;
 
     return successResponse({
       id: matchSnap.id,
-      userId: otherUserId,
-      fullName: profile?.fullName ?? null,
-      profileImageUrls: profile?.profileImageUrls ?? [],
-      createdAt: match.createdAt ?? nowTimestamp(),
-      status: match.status,
+      user1Id:
+        typeof match.user1Id === "string" ? match.user1Id : participantIds[0] ?? null,
+      user2Id:
+        typeof match.user2Id === "string" ? match.user2Id : participantIds[1] ?? null,
+      userIds: participantIds,
+      conversationId:
+        typeof match.conversationId === "string" && match.conversationId.length > 0
+          ? match.conversationId
+          : [...participantIds].sort().join("_"),
+      status: typeof match.status === "string" ? match.status : "matched",
+      createdAt:
+        typeof match.createdAt === "number" ? match.createdAt : nowTimestamp(),
+      updatedAt:
+        typeof match.updatedAt === "number"
+          ? match.updatedAt
+          : typeof match.createdAt === "number"
+            ? match.createdAt
+            : nowTimestamp(),
+      lastMessage:
+        match.lastMessage && typeof match.lastMessage === "object"
+          ? match.lastMessage
+          : null,
+      matchedUser: {
+        id: otherUserId,
+        displayName: profile?.fullName ?? null,
+        photoURL: Array.isArray(profile?.profileImageUrls)
+          ? profile.profileImageUrls[0] ?? null
+          : null,
+        bio: profile?.aboutMe ?? null,
+        lastActive: profile?.updatedAt,
+      },
+      matchedProfile: {
+        userId: otherUserId,
+        fullName: profile?.fullName ?? null,
+        profileImageUrls: Array.isArray(profile?.profileImageUrls)
+          ? profile.profileImageUrls
+          : [],
+        city: profile?.city ?? null,
+        country: profile?.country ?? null,
+      },
     }, 200, ctx.correlationId);
   } catch (e) {
     console.error("matches/[id] GET error", e);
@@ -63,9 +111,10 @@ export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiCon
       return errorResponse("Match not found", 404, { correlationId: ctx.correlationId });
     }
 
-    const match = matchSnap.data() as any;
+    const match = matchSnap.data() as Record<string, unknown>;
+    const participantIds = getParticipantIds(match);
 
-    if (!match.userIds.includes(userId)) {
+    if (!participantIds.includes(userId)) {
       return errorResponse("Unauthorized to unmatch", 403, { correlationId: ctx.correlationId });
     }
 

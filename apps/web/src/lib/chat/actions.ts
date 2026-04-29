@@ -12,7 +12,7 @@ export async function sendTextMessageAction(
   text: string,
   matchUserId: string,
   opts: {
-    sendMessage: (payload: { toUserId: string; text: string }) => Promise<string | void>;
+    sendMessage: (payload: { toUserId: string; text: string }) => Promise<string | undefined>;
     markMessageAsPending?: (id: string) => void;
     markMessageAsSent?: (id: string) => void;
   }
@@ -29,7 +29,7 @@ export async function sendTextMessageAction(
   }
 
   try {
-    const serverId = (await sendMessage({ toUserId: matchUserId, text })) as string | void;
+    const serverId = await sendMessage({ toUserId: matchUserId, text });
     if (serverId && typeof serverId === "string") {
       markMessageAsSent?.(serverId);
     } else {
@@ -50,26 +50,24 @@ export async function sendVoiceMessageAction(
   matchUserId: string,
   durationSec: number,
   opts: {
-    sendMessage: (payload: { toUserId: string; text?: string; audioStorageId?: string; duration?: number }) => Promise<string | void>;
+    sendMessage: (payload: { toUserId: string; text?: string; audioStorageId?: string; duration?: number }) => Promise<string | undefined>;
     // optional fields to satisfy upload requirements if needed by your implementation
     conversationId?: string;
-    fromUserId?: string;
     mimeType?: string;
   }
 ) {
-  const { sendMessage, conversationId = "", fromUserId = "", mimeType } = opts;
+  const { sendMessage, conversationId = "", mimeType } = opts;
 
   // Upload to storage (adapt to expected payload shape)
   const uploaded = await uploadVoiceMessage({
     conversationId,
-    fromUserId,
     toUserId: matchUserId,
     blob,
     mimeType,
     duration: durationSec,
-  } as any);
+  });
 
-  const storageId = (uploaded as any)?.storageId || (uploaded as any)?.id || (uploaded as any)?.audioStorageId;
+  const storageId = uploaded.audioStorageId;
   if (!storageId) {
     throw new Error("Voice upload failed");
   }
@@ -93,9 +91,9 @@ export async function reportUserAction(
 ) {
   await safetyAPI.reportUser({
     reportedUserId: matchUserId,
-    reason: reason as any,
+    reason,
     description,
-  } as any);
+  });
 }
 
 /**

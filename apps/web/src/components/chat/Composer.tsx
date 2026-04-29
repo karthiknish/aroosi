@@ -1,12 +1,13 @@
 "use client";
 
-import React, { RefObject, useMemo, useState } from "react";
+import type { RefObject } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Smile, X } from "lucide-react";
+import { Smile } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import EmojiPicker, { type EmojiClickData } from "emoji-picker-react";
 import { MessageFeedback } from "@/components/ui/MessageFeedback";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
@@ -25,21 +26,21 @@ import { useVoiceComposer } from "@/hooks/useVoiceComposer";
 import { useImageComposer } from "@/hooks/useImageComposer";
 
 type ComposerProps = {
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   text: string;
   setText: (v: string) => void;
   isSending: boolean;
   isBlocked: boolean;
   showPicker: boolean;
   setShowPicker: (v: boolean) => void;
-  toggleBtnRef: RefObject<HTMLButtonElement>;
+  toggleBtnRef: RefObject<HTMLButtonElement | null>;
   onSend: (messageText: string) => Promise<void> | void;
   onInputChange: (value: string) => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
   canSendVoice: boolean;
   onSendVoice?: (blob: Blob, duration: number) => Promise<void> | void;
   onVoiceUpgradeRequired: () => void;
-  onVoiceError: (error: any) => void;
+  onVoiceError: (error: unknown) => void;
   messageFeedback: {
     type: "success" | "error" | "warning" | "loading";
     message: string;
@@ -91,7 +92,7 @@ export default function Composer(props: ComposerProps) {
 
   const { profile: authProfile } = useAuthContext();
   const needsVoiceUpgrade = useMemo(() => {
-    const plan = (authProfile as any)?.subscriptionPlan as string | undefined;
+    const plan = (authProfile as { subscriptionPlan?: string } | null)?.subscriptionPlan;
     return !!authProfile && !isPremium(plan);
   }, [authProfile]);
 
@@ -101,7 +102,7 @@ export default function Composer(props: ComposerProps) {
     showFeedback,
     hideFeedback,
     resize,
-  } = useComposerState(text, setText, inputRef as any);
+  } = useComposerState(text, setText, inputRef as RefObject<HTMLTextAreaElement>);
 
   const voice = useVoiceComposer({
     conversationId,
@@ -138,7 +139,7 @@ export default function Composer(props: ComposerProps) {
   const remaining = maxChars - text.length;
 
   return (
-    <div className="p-4 sm:p-5" aria-label="Message composer" role="group">
+    <fieldset className="p-4 sm:p-5" aria-label="Message composer">
       {props.editing && (
         <div className="mb-3 p-3 rounded-xl border border-warning/20 bg-warning/5 text-xs text-warning flex items-center justify-between shadow-sm">
           <div className="truncate mr-2 font-medium">Editing message</div>
@@ -165,7 +166,7 @@ export default function Composer(props: ComposerProps) {
             await navigator.mediaDevices.getUserMedia({ audio: true });
             setMicHelpOpen(false);
             await voice.start();
-          } catch (e) {}
+          } catch {}
         }}
       />
 
@@ -180,7 +181,7 @@ export default function Composer(props: ComposerProps) {
 
         <div className="flex-1 relative bg-neutral/5 rounded-2xl border border-neutral/20 focus-within:border-primary/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 transition-all duration-300">
           <Textarea
-            ref={inputRef as any}
+            ref={inputRef as RefObject<HTMLTextAreaElement>}
             value={text}
             onChange={(e) => {
               onInputChange(e.target.value);
@@ -321,6 +322,6 @@ export default function Composer(props: ComposerProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </fieldset>
   );
 }
