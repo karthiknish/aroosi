@@ -1,394 +1,169 @@
-// Cultural and Religious Matching API Utilities
-// Follows the same pattern as other utility files in the codebase
-
+import { culturalAPI } from "@/lib/api/cultural";
 import type {
   CulturalProfile,
-  CulturalProfileResponse,
   FamilyApprovalRequest,
-  FamilyApprovalResponse,
   SupervisedConversation,
-  SupervisedConversationResponse,
   CulturalCompatibilityScore,
-  CompatibilityResponse,
   CulturalMatchRecommendation,
-  RecommendationsResponse,
   FamilyApprovalStatus,
   SupervisedConversationStatus,
 } from "@aroosi/shared/types";
 
-// API Response type following the pattern
 type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: string;
 };
 
-// Cultural Profile APIs
+function ok<T>(data: T): ApiResponse<T> {
+  return { success: true, data };
+}
+
+function fail<T>(error: unknown, fallback: string): ApiResponse<T> {
+  return {
+    success: false,
+    error: error instanceof Error ? error.message : fallback,
+  };
+}
+
 export async function getCulturalProfile(
-  token: string,
+  _token: string,
   userId: string
-): Promise<ApiResponse<CulturalProfile>> {
+): Promise<ApiResponse<CulturalProfile | null>> {
   try {
-    const response = await fetch(`/api/cultural/profile/${userId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: CulturalProfileResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch cultural profile");
-    }
-
-    return { success: true, data: result.profile };
+    return ok((await culturalAPI.getProfile(userId)) as unknown as CulturalProfile | null);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch cultural profile";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to fetch cultural profile");
   }
 }
 
 export async function saveCulturalProfile(
-  token: string,
-  userId: string,
-  profileData: Partial<CulturalProfile>
+  _token: string,
+  _userId: string,
+  _profileData: Partial<CulturalProfile>
 ): Promise<ApiResponse<CulturalProfile>> {
-  try {
-    const response = await fetch(`/api/cultural/profile/${userId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(profileData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: CulturalProfileResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to save cultural profile");
-    }
-
-    return { success: true, data: result.profile };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to save cultural profile";
-    return { success: false, error: errorMessage };
-  }
+  return fail(new Error("Use the canonical culturalAPI client for profile writes"), "Failed to save cultural profile");
 }
 
-// Family Approval APIs
 export async function getFamilyApprovalRequests(
-  token: string
+  _token: string
 ): Promise<ApiResponse<FamilyApprovalRequest[]>> {
   try {
-    const response = await fetch("/api/cultural/family-approval/requests", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: FamilyApprovalResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch family approval requests");
-    }
-
-    return { success: true, data: result.requests || [] };
+    return ok((await culturalAPI.getSentApprovalRequests()) as unknown as FamilyApprovalRequest[]);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch family approval requests";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to fetch family approval requests");
   }
 }
 
 export async function getReceivedFamilyApprovalRequests(
-  token: string
+  _token: string
 ): Promise<ApiResponse<FamilyApprovalRequest[]>> {
   try {
-    const response = await fetch("/api/cultural/family-approval/received", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: FamilyApprovalResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch received family approval requests");
-    }
-
-    return { success: true, data: result.requests || [] };
+    return ok((await culturalAPI.getReceivedApprovalRequests()) as unknown as FamilyApprovalRequest[]);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch received family approval requests";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to fetch received family approval requests");
   }
 }
 
 export async function createFamilyApprovalRequest(
-  token: string,
+  _token: string,
   familyMemberId: string,
   relationship: string,
   message: string
 ): Promise<ApiResponse<FamilyApprovalRequest>> {
   try {
-    const response = await fetch("/api/cultural/family-approval/request", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        familyMemberId,
-        relationship,
-        message,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: FamilyApprovalResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to create family approval request");
-    }
-
-    return { success: true, data: result.request };
+    return ok((await culturalAPI.requestFamilyApproval(familyMemberId, relationship, message)) as unknown as FamilyApprovalRequest);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to create family approval request";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to create family approval request");
   }
 }
 
 export async function respondToFamilyApprovalRequest(
-  token: string,
+  _token: string,
   requestId: string,
   action: FamilyApprovalStatus,
   responseMessage?: string
 ): Promise<ApiResponse<FamilyApprovalRequest>> {
+  const normalizedAction = action === "denied" ? "rejected" : action;
+
+  if (normalizedAction !== "approved" && normalizedAction !== "rejected") {
+    return fail(new Error("Invalid family approval action"), "Failed to respond to family approval request");
+  }
+
   try {
-    const response = await fetch("/api/cultural/family-approval/respond", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        requestId,
-        action,
-        responseMessage,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: FamilyApprovalResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to respond to family approval request");
-    }
-
-    return { success: true, data: result.request };
+    return ok((await culturalAPI.respondToFamilyApproval(requestId, normalizedAction, responseMessage)) as unknown as FamilyApprovalRequest);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to respond to family approval request";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to respond to family approval request");
   }
 }
 
-// Supervised Communication APIs
 export async function initiateSupervisedConversation(
-  token: string,
+  _token: string,
   targetUserId: string,
-  supervisorId: string,
-  guidelines?: string[]
+  supervisorId: string
 ): Promise<ApiResponse<SupervisedConversation>> {
   try {
-    const response = await fetch("/api/cultural/supervised-conversation/initiate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        targetUserId,
-        supervisorId,
-        guidelines,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: SupervisedConversationResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to initiate supervised conversation");
-    }
-
-    return { success: true, data: result.conversation };
+    return ok((await culturalAPI.initiateSupervisedConversation(targetUserId, supervisorId)) as unknown as SupervisedConversation);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to initiate supervised conversation";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to initiate supervised conversation");
   }
 }
 
 export async function getSupervisedConversations(
-  token: string
+  _token: string
 ): Promise<ApiResponse<SupervisedConversation[]>> {
   try {
-    const response = await fetch("/api/cultural/supervised-conversation/list", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: SupervisedConversationResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch supervised conversations");
-    }
-
-    return { success: true, data: result.conversations || [] };
+    return ok((await culturalAPI.listSupervisedConversations()) as unknown as SupervisedConversation[]);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch supervised conversations";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to fetch supervised conversations");
   }
 }
 
 export async function updateSupervisedConversation(
-  token: string,
+  _token: string,
   conversationId: string,
   updates: {
     status?: SupervisedConversationStatus;
     conversationId?: string;
   }
 ): Promise<ApiResponse<SupervisedConversation>> {
+  if (
+    updates.status &&
+    !["pending", "approved", "rejected", "active", "ended"].includes(updates.status)
+  ) {
+    return fail(new Error("Invalid supervised conversation status"), "Failed to update supervised conversation");
+  }
+
   try {
-    const response = await fetch(`/api/cultural/supervised-conversation/${conversationId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: SupervisedConversationResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to update supervised conversation");
-    }
-
-    return { success: true, data: result.conversation };
+    return ok(
+      (await culturalAPI.updateSupervisedConversation(conversationId, {
+        conversationId: updates.conversationId,
+        status: updates.status as "pending" | "approved" | "rejected" | "active" | "ended" | undefined,
+      })) as unknown as SupervisedConversation
+    );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to update supervised conversation";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to update supervised conversation");
   }
 }
 
-// Compatibility Analysis APIs
 export async function getCulturalCompatibility(
-  token: string,
+  _token: string,
   userId1: string,
   userId2: string
 ): Promise<ApiResponse<CulturalCompatibilityScore>> {
   try {
-    const response = await fetch(`/api/cultural/compatibility/${userId1}/${userId2}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: CompatibilityResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to calculate cultural compatibility");
-    }
-
-    return { success: true, data: result.compatibility };
+    return ok((await culturalAPI.getCompatibility(userId1, userId2)) as unknown as CulturalCompatibilityScore);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to calculate cultural compatibility";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to calculate cultural compatibility");
   }
 }
 
 export async function getCulturalRecommendations(
-  token: string
+  _token: string
 ): Promise<ApiResponse<CulturalMatchRecommendation[]>> {
   try {
-    const response = await fetch("/api/cultural/recommendations", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result: RecommendationsResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch cultural recommendations");
-    }
-
-    return { success: true, data: result.recommendations || [] };
+    return ok((await culturalAPI.getRecommendations()) as unknown as CulturalMatchRecommendation[]);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch cultural recommendations";
-    return { success: false, error: errorMessage };
+    return fail(error, "Failed to fetch cultural recommendations");
   }
 }

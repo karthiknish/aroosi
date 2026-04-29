@@ -8,8 +8,10 @@ import {
   Mail,
   BarChart3,
   Heart,
+  Bell,
+  Megaphone,
+  Monitor,
 } from "lucide-react";
-import React from "react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -37,6 +39,9 @@ export function AdminSidebar({
   const { signOut } = useAuthContext();
   const collapsed = state === "collapsed";
 
+  const isActivePath = (href: string) =>
+    currentPath === href || currentPath.startsWith(`${href}/`);
+
   const navigationItems = [
     {
       id: "dashboard",
@@ -46,53 +51,95 @@ export function AdminSidebar({
       isActive: currentPath === "/admin",
     },
     {
+      id: "analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      href: "/admin/analytics",
+      isActive: isActivePath("/admin/analytics"),
+    },
+    {
       id: "profiles",
       label: "Profiles",
       icon: Users,
       href: "/admin/profile",
-      isActive: currentPath.startsWith("/admin/profile"),
+      isActive: isActivePath("/admin/profile"),
     },
     {
       id: "matches",
       label: "Matches",
       icon: Heart,
       href: "/admin/matches",
-      isActive: currentPath.startsWith("/admin/matches"),
+      isActive: isActivePath("/admin/matches"),
     },
     {
       id: "contact",
       label: "Contact",
       icon: Mail,
       href: "/admin/contact",
-      isActive: currentPath.startsWith("/admin/contact"),
+      isActive: isActivePath("/admin/contact"),
+    },
+    {
+      id: "email",
+      label: "Email",
+      icon: Mail,
+      href: "/admin/email",
+      isActive: isActivePath("/admin/email"),
+    },
+    {
+      id: "transactional-preview",
+      label: "Transactional Preview",
+      icon: Monitor,
+      href: "/admin/transactional-email/preview",
+      isActive: isActivePath("/admin/transactional-email/preview"),
     },
     {
       id: "blog",
       label: "Blog",
       icon: FileText,
       href: "/admin/blog",
-      isActive: currentPath.startsWith("/admin/blog"),
+      isActive: isActivePath("/admin/blog"),
     },
     {
       id: "icebreakers",
       label: "Icebreakers",
       icon: FileText,
       href: "/admin/icebreakers",
-      isActive: currentPath.startsWith("/admin/icebreakers"),
+      isActive: isActivePath("/admin/icebreakers"),
     },
     {
       id: "push",
       label: "Push Notifications",
-      icon: BarChart3,
+      icon: Bell,
       href: "/admin/push-notification",
-      isActive: currentPath === "/admin/push-notification",
+      isActive: isActivePath("/admin/push-notification"),
+    },
+    {
+      id: "push-devices",
+      label: "Push Devices",
+      icon: Monitor,
+      href: "/admin/push-notification/devices",
+      isActive: isActivePath("/admin/push-notification/devices"),
     },
     {
       id: "marketing-email",
       label: "Email Marketing",
-      icon: Mail,
+      icon: Megaphone,
       href: "/admin/marketing-email",
-      isActive: currentPath.startsWith("/admin/marketing-email"),
+      isActive: isActivePath("/admin/marketing-email"),
+    },
+    {
+      id: "marketing-templates",
+      label: "Marketing Templates",
+      icon: FileText,
+      href: "/admin/marketing-email/templates",
+      isActive: isActivePath("/admin/marketing-email/templates"),
+    },
+    {
+      id: "marketing-builder",
+      label: "Marketing Builder",
+      icon: FileText,
+      href: "/admin/marketing-email/builder",
+      isActive: isActivePath("/admin/marketing-email/builder"),
     },
   ];
 

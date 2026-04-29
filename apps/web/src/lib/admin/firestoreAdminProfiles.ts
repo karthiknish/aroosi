@@ -128,6 +128,62 @@ export async function getProfileById(id: string): Promise<(Profile & { _id: stri
   return { _id: doc.id, ...(doc.data() as any) } as any;
 }
 
+export async function createProfile(
+  input: Partial<Profile> & { userId?: string }
+): Promise<Profile & { _id: string }> {
+  const requestedUserId =
+    typeof input.userId === "string" && input.userId.trim()
+      ? input.userId.trim()
+      : undefined;
+  const docRef = requestedUserId
+    ? db.collection("users").doc(requestedUserId)
+    : db.collection("users").doc();
+
+  const existing = await docRef.get();
+  if (existing.exists) {
+    const error = new Error("A profile already exists for that user");
+    (error as Error & { status?: number }).status = 409;
+    throw error;
+  }
+
+  const now = Date.now();
+  const fullName = typeof input.fullName === "string" ? input.fullName.trim() : "";
+  const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+  const partnerPreferenceCity = Array.isArray(input.partnerPreferenceCity)
+    ? input.partnerPreferenceCity
+    : typeof input.partnerPreferenceCity === "string"
+      ? input.partnerPreferenceCity
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : [];
+
+  const profileDoc = {
+    ...input,
+    userId: docRef.id,
+    email,
+    fullName,
+    fullNameLower: fullName.toLowerCase(),
+    profileFor: input.profileFor || "self",
+    role: typeof input.role === "string" ? input.role : "user",
+    banned: input.banned ?? false,
+    isApproved: input.isApproved ?? true,
+    partnerPreferenceCity,
+    profileImageIds: Array.isArray(input.profileImageIds) ? input.profileImageIds : [],
+    profileImageUrls: Array.isArray(input.profileImageUrls) ? input.profileImageUrls : [],
+    subscriptionPlan: input.subscriptionPlan || "free",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await docRef.set(profileDoc);
+
+  return {
+    _id: docRef.id,
+    ...(profileDoc as Profile),
+  };
+}
+
 export async function updateProfileById(id: string, updates: Partial<Profile>): Promise<(Profile & { _id: string }) | null> {
   updates.updatedAt = Date.now();
   await db.collection("users").doc(id).set(updates, { merge: true });

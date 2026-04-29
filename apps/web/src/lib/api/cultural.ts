@@ -121,21 +121,31 @@ class CulturalAPI {
   /**
    * Request family approval for a match
    */
-  async requestFamilyApproval(familyMemberId: string, targetUserId: string, message?: string): Promise<FamilyApprovalRequest> {
-    return this.makeRequest("/api/cultural/family-approval/request", {
+  async requestFamilyApproval(
+    familyMemberId: string,
+    relationship: string,
+    message?: string
+  ): Promise<FamilyApprovalRequest> {
+    const res = await this.makeRequest("/api/cultural/family-approval/request", {
       method: "POST",
-      body: JSON.stringify({ familyMemberId, targetUserId, message }),
+      body: JSON.stringify({ familyMemberId, relationship, message }),
     });
+    return res.request || res;
   }
 
   /**
    * Respond to a family approval request
    */
-  async respondToFamilyApproval(requestId: string, status: "approved" | "rejected", message?: string): Promise<void> {
-    return this.makeRequest("/api/cultural/family-approval/respond", {
+  async respondToFamilyApproval(
+    requestId: string,
+    action: "approved" | "rejected",
+    responseMessage?: string
+  ): Promise<FamilyApprovalRequest> {
+    const res = await this.makeRequest("/api/cultural/family-approval/respond", {
       method: "POST",
-      body: JSON.stringify({ requestId, status, message }),
+      body: JSON.stringify({ requestId, action, responseMessage }),
     });
+    return res.request || res;
   }
 
   /**

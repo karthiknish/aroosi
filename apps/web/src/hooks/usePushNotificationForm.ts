@@ -132,11 +132,20 @@ export function usePushNotificationForm() {
 
   const applyTemplate = useCallback((tpl: any) => {
     try {
-      const p = tpl?.payload || {};
+      const p = tpl?.payload || {
+        title: tpl?.title,
+        message: tpl?.message,
+        url: tpl?.url,
+        imageUrl: tpl?.imageUrl,
+        data: tpl?.dataJson ? safeParseJSON(tpl.dataJson) : undefined,
+        buttons: tpl?.buttonsJson ? safeParseJSON(tpl.buttonsJson) : undefined,
+        category: tpl?.category,
+      };
       setTitle(p.title || "");
       setMessage(p.message || "");
       setUrl(p.url || "");
       setImageUrl(p.imageUrl || "");
+      setSelectedCategory(p.category || tpl?.category || "Re-engagement");
       setSegments(Array.isArray(p.audience) ? p.audience : ["Subscribed Users"]);
       setExcludedSegments(Array.isArray(p.excludedSegments) ? p.excludedSegments : []);
       setIncludePlayerIds((p.includePlayerIds || []).join(", "));
@@ -176,9 +185,20 @@ export function usePushNotificationForm() {
   }, []);
 
   const saveTemplateMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string; payload: any }) => adminPushAPI.createTemplate(data),
-    onSuccess: () => {
-      showSuccessToast("Template saved");
+    mutationFn: (data: { templateId?: string; name: string; description?: string; payload: any }) =>
+      data.templateId
+        ? adminPushAPI.updateTemplate(data.templateId, {
+            name: data.name,
+            description: data.description,
+            payload: data.payload,
+          })
+        : adminPushAPI.createTemplate({
+            name: data.name,
+            description: data.description,
+            payload: data.payload,
+          }),
+    onSuccess: (_result, variables) => {
+      showSuccessToast(variables.templateId ? "Template updated" : "Template saved");
       queryClient.invalidateQueries({ queryKey: ["admin", "push", "templates"] });
     },
     onError: (error: any) => {
@@ -186,7 +206,7 @@ export function usePushNotificationForm() {
     },
   });
 
-  const saveCurrentAsTemplate = useCallback(async (name: string, description: string) => {
+  const saveCurrentAsTemplate = useCallback(async (name: string, description: string, templateId?: string | null) => {
     if (!name.trim()) {
       showErrorToast(null, "Template name required");
       return;
@@ -221,6 +241,7 @@ export function usePushNotificationForm() {
     };
     
     saveTemplateMutation.mutate({
+      templateId: templateId || undefined,
       name: name.trim(),
       description: description.trim() || undefined,
       payload,

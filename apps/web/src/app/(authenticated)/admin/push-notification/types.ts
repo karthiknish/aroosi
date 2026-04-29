@@ -36,6 +36,7 @@ export interface PushNotificationAnalytics {
 export interface TemplateUI {
   id?: string;
   name: string;
+  description?: string;
   title: string;
   message: string;
   imageUrl?: string;

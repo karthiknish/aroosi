@@ -81,8 +81,8 @@ export const POST = createAuthenticatedHandler(
 
       // Check if either user has blocked the other
       const [blockedForward, blockedReverse] = await Promise.all([
-        db.collection(COL_BLOCKS).where("blockerId", "==", userId).where("blockedId", "==", toUserId).limit(1).get(),
-        db.collection(COL_BLOCKS).where("blockerId", "==", toUserId).where("blockedId", "==", userId).limit(1).get(),
+        db.collection(COL_BLOCKS).where("blockerId", "==", userId).where("blockedUserId", "==", toUserId).limit(1).get(),
+        db.collection(COL_BLOCKS).where("blockerId", "==", toUserId).where("blockedUserId", "==", userId).limit(1).get(),
       ]);
       if (blockedForward.size > 0 || blockedReverse.size > 0) {
         return errorResponse("Cannot send voice message to this user", 403, { correlationId: ctx.correlationId });
@@ -125,6 +125,7 @@ export const POST = createAuthenticatedHandler(
       const safeText = moderated.clean ? placeholder : moderated.sanitized;
       const message = {
         _id: docRef.id,
+        id: docRef.id,
         conversationId,
         fromUserId: userId,
         toUserId,
@@ -137,6 +138,8 @@ export const POST = createAuthenticatedHandler(
         createdAt: vm.createdAt,
       };
 
+      await db.collection("messages").doc(docRef.id).set(message, { merge: true });
+
       // Emit SSE-compatible conversation event (stored in Firestore for multi-instance)
       try {
         await emitConversationEvent(conversationId, {
@@ -147,7 +150,8 @@ export const POST = createAuthenticatedHandler(
       } catch {}
 
       return successResponse({
-        message: "Voice message uploaded successfully",
+        status: "Voice message uploaded successfully",
+        message,
         messageId: message._id,
         duration,
         storageId: storagePath,

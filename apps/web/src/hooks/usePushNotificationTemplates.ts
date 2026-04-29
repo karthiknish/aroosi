@@ -21,6 +21,7 @@ export function usePushNotificationTemplates() {
     return items.map((item) => ({
       id: item.id,
       name: item.name,
+      description: item.description,
       title: item.payload?.title || "",
       message: item.payload?.message || "",
       imageUrl: item.payload?.imageUrl,

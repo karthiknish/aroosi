@@ -1,4 +1,4 @@
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import {
   collection,
   getDocs,
@@ -7,6 +7,7 @@ import {
   orderBy,
   DocumentData,
 } from "firebase/firestore";
+import { uploadVoiceMessage as uploadVoiceMessageRequest } from "@/lib/api/voiceMessages";
 
 export interface VoiceMessage {
   _id: string;
@@ -49,12 +50,7 @@ export async function uploadVoiceMessage({
   mimeType?: string;
   duration: number;
 }): Promise<VoiceMessage> {
-  const user = auth.currentUser;
-  if (!user) throw new Error("Not authenticated");
   if (!blob) throw new Error("No audio blob provided");
-
-  // Get auth token for API call
-  const token = await user.getIdToken();
 
   // Build FormData for the API endpoint
   const formData = new FormData();
@@ -68,31 +64,24 @@ export async function uploadVoiceMessage({
   formData.append("toUserId", toUserId);
   formData.append("duration", String(duration));
 
-  // Call the backend API endpoint
-  const response = await fetch("/api/voice-messages/upload", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Upload failed: ${response.status}`);
+  const result = await uploadVoiceMessageRequest(formData);
+  if (!result.success) {
+    throw new Error(result.error || "Upload failed");
   }
 
-  const result = await response.json();
+  if (result.message) {
+    return result.message;
+  }
 
   // Return a VoiceMessage-compatible object
   return {
-    _id: result.data?.messageId || result.messageId || "",
+    _id: result.messageId || "",
     conversationId,
-    fromUserId: user.uid,
+    fromUserId: conversationId.split("_").find((id) => id !== toUserId) || "",
     toUserId,
     type: "voice",
-    audioStorageId: result.data?.storageId || result.storageId || "",
-    duration,
+    audioStorageId: result.storageId || "",
+    duration: result.duration || duration,
     fileSize: blob.size,
     mimeType,
     createdAt: Date.now(),

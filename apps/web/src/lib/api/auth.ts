@@ -13,6 +13,11 @@ export interface RegisterData {
   displayName?: string;
 }
 
+export interface DeleteAccountRequest {
+  confirmed: true;
+  reason?: string;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -160,10 +165,10 @@ class AuthAPI {
   /**
    * Delete user account
    */
-  async deleteAccount(password?: string): Promise<void> {
+  async deleteAccount(request: DeleteAccountRequest): Promise<void> {
     return this.makeRequest("/api/auth/delete-account", {
       method: "POST",
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(request),
     });
   }
 }

@@ -85,7 +85,7 @@ class EngagementAPI {
    */
   async removeFromShortlist(toUserId: string): Promise<void> {
     return this.makeRequest("/api/engagement/shortlist", {
-      method: "DELETE",
+      method: "POST",
       body: JSON.stringify({ toUserId }),
     });
   }
@@ -114,10 +114,10 @@ class EngagementAPI {
   /**
    * Create or update a note
    */
-  async saveNote(toUserId: string, content: string): Promise<Note> {
+  async saveNote(toUserId: string, note: string): Promise<Note> {
     return this.makeRequest("/api/engagement/notes", {
       method: "POST",
-      body: JSON.stringify({ toUserId, content }),
+      body: JSON.stringify({ toUserId, note }),
     });
   }
 
@@ -150,10 +150,10 @@ class EngagementAPI {
   /**
    * Skip a quick pick
    */
-  async skipQuickPick(pickId: string): Promise<void> {
+  async skipQuickPick(toUserId: string): Promise<void> {
     return this.makeRequest("/api/engagement/quick-picks", {
       method: "POST",
-      body: JSON.stringify({ pickId, action: "skip" }),
+      body: JSON.stringify({ toUserId, action: "skip" }),
     });
   }
 

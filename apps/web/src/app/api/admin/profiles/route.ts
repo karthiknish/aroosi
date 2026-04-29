@@ -6,6 +6,7 @@ import {
   AuthenticatedApiContext,
 } from "@/lib/api/handler";
 import {
+  createProfile,
   listProfiles,
   updateProfileById,
   deleteProfileById,
@@ -67,6 +68,44 @@ export const GET = createAuthenticatedHandler(async (ctx: AuthenticatedApiContex
   }
 }, {
   rateLimit: { identifier: "admin_profiles_get", maxRequests: 100 }
+});
+
+export const POST = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {
+  ensureAdminRole(ctx);
+  const { correlationId } = ctx;
+
+  try {
+    if (!body || typeof body !== "object") {
+      return errorResponse("Missing profile payload", 400, { correlationId });
+    }
+
+    if (typeof body.fullName !== "string" || !body.fullName.trim()) {
+      return errorResponse("Full name is required", 400, { correlationId });
+    }
+
+    if (body.userId !== undefined && (typeof body.userId !== "string" || !body.userId.trim())) {
+      return errorResponse("Invalid user ID", 400, { correlationId });
+    }
+
+    const sanitized = Object.fromEntries(
+      Object.entries(body).map(([key, value]) => [
+        key,
+        typeof value === "string" ? value.trim().replace(/[<>'"&]/g, "") : value,
+      ])
+    );
+
+    const created = await createProfile(sanitized as Partial<Profile> & { userId?: string });
+    return successResponse(created, 201, correlationId);
+  } catch (error) {
+    const status =
+      typeof error === "object" && error !== null && "status" in error
+        ? Number((error as { status?: number }).status) || 500
+        : 500;
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return errorResponse(message, status, { correlationId });
+  }
+}, {
+  rateLimit: { identifier: "admin_profiles_create", maxRequests: 20 }
 });
 
 export const DELETE = createAuthenticatedHandler(async (ctx: AuthenticatedApiContext, body: any) => {

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdminInit";
-import { DocumentSnapshot } from "firebase-admin/firestore";
 
 export type AuthPayload = {
   userId: string;
@@ -54,18 +54,18 @@ export function authErrorResponse(
  * 
  * Performance: Re-uses decoded tokens when possible and handles Firestore lookups efficiently.
  */
-export async function requireAuth(req: NextRequest): Promise<AuthPayload & { isProfileComplete?: boolean }> {
+export async function requireAuth(req?: NextRequest): Promise<AuthPayload & { isProfileComplete?: boolean }> {
   let idToken: string | undefined;
 
   // 1. Check Authorization Header (Highest priority)
-  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  const authHeader = req?.headers.get("authorization") || req?.headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
     idToken = authHeader.slice(7).trim();
   }
 
   // 2. Check Request Cookies
   if (!idToken) {
-    idToken = req.cookies.get("firebaseAuthToken")?.value;
+    idToken = req?.cookies.get("firebaseAuthToken")?.value;
   }
 
   // 3. Fallback to global cookies (for server components or nested calls)
@@ -84,11 +84,17 @@ export async function requireAuth(req: NextRequest): Promise<AuthPayload & { isP
   }
 
   // Verify Firebase ID Token
-  let decoded;
+  let decoded: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>;
   try {
     decoded = await adminAuth.verifyIdToken(idToken, true);
-  } catch (e: any) {
-    const code = e?.code === "auth/id-token-expired" ? "TOKEN_EXPIRED" : "TOKEN_INVALID";
+  } catch (error: unknown) {
+    const code =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "auth/id-token-expired"
+        ? "TOKEN_EXPIRED"
+        : "TOKEN_INVALID";
     throw new AuthError("Invalid authentication token", 401, code);
   }
 

@@ -8,7 +8,7 @@ import ProfileCreateWizard from "@/components/profile/ProfileCreateWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { submitProfile } from "@/lib/profile/userProfileApi";
+import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 
 export default function AdminCreateProfilePage() {
   const router = useRouter();
@@ -16,9 +16,7 @@ export default function AdminCreateProfilePage() {
     isLoaded: authIsLoaded,
     isSignedIn,
     isAdmin,
-    user, // firebase user object
-    userId: currentUserId,
-  } = useAuthContext() as any;
+  } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if not admin or not loaded yet
@@ -43,9 +41,8 @@ export default function AdminCreateProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8 flex items-center justify-between">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={() => router.back()}
@@ -55,7 +52,7 @@ export default function AdminCreateProfilePage() {
             Back to Management
           </Button>
           <h1 className="text-xl font-bold text-neutral-900">Create New Profile</h1>
-        </div>
+      </div>
         
         <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
           <ProfileCreateWizard
@@ -80,25 +77,19 @@ export default function AdminCreateProfilePage() {
                         .filter(Boolean)
                     : [],
               };
-              const { ...restValues } = submitValues;
-              // Cookie-auth: server reads HttpOnly cookies
-              // Admin-created profile: use a generated userId or require one in values
-              // Expect values.userId or fallback to user.uid
-              const targetUserId =
-                (values as any).userId ||
-                currentUserId ||
-                user?.uid ||
-                user?.id;
-              const response = await submitProfile(
-                targetUserId,
-                restValues,
-                "create"
-              );
-              if (response.success) {
+              const createdProfile = await adminProfilesAPI.create({
+                ...submitValues,
+                userId:
+                  typeof values.userId === "string" && values.userId.trim()
+                    ? values.userId.trim()
+                    : undefined,
+              });
+
+              if (createdProfile?._id) {
                 showSuccessToast("Profile created successfully");
-                router.push("/admin");
+                router.push(`/admin/profile/${createdProfile._id}`);
               } else {
-                showErrorToast(response.error, "Failed to create profile");
+                showErrorToast(null, "Profile was created but no profile ID was returned");
               }
             } catch (error) {
               console.error("Profile creation error:", error);
@@ -111,6 +102,5 @@ export default function AdminCreateProfilePage() {
         />
       </div>
     </div>
-  </div>
   );
 }

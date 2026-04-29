@@ -102,7 +102,7 @@ class AdminProfilesAPI {
   /**
    * Create a new profile
    */
-  async create(profile: Partial<Profile>): Promise<AdminProfile> {
+  async create(profile: Partial<Profile> & { userId?: string }): Promise<AdminProfile> {
     return this.makeRequest("/api/admin/profiles", {
       method: "POST",
       body: JSON.stringify(profile),
@@ -218,10 +218,13 @@ class AdminProfilesAPI {
    * Delete a profile image
    */
   async deleteImage(profileId: string, imageId: string): Promise<void> {
-    const res = await fetch(`/api/admin/profiles/${profileId}/images/${imageId}`, {
+    const res = await fetch(
+      `/api/admin/profiles/${encodeURIComponent(profileId)}/images/${encodeURIComponent(imageId)}`,
+      {
       method: "DELETE",
       credentials: "include",
-    });
+      }
+    );
 
     if (!res.ok) {
       const errorText = await res.text();

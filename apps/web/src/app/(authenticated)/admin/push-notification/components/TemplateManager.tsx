@@ -29,6 +29,8 @@ interface TemplateManagerProps {
   // Form state
   templateName: string;
   setTemplateName: (value: string) => void;
+  templateDescription: string;
+  setTemplateDescription: (value: string) => void;
   templateTitle: string;
   setTemplateTitle: (value: string) => void;
   templateMessage: string;
@@ -54,6 +56,8 @@ export function TemplateManager({
   setSelectedTemplate,
   templateName,
   setTemplateName,
+  templateDescription,
+  setTemplateDescription,
   templateTitle,
   setTemplateTitle,
   templateMessage,
@@ -84,6 +88,7 @@ export function TemplateManager({
               onClick={() => {
                 setSelectedTemplate(null);
                 setTemplateName("");
+                setTemplateDescription("");
                 setTemplateTitle("");
                 setTemplateMessage("");
                 setTemplateImageUrl("");
@@ -120,17 +125,25 @@ export function TemplateManager({
               )
               .map((template) => (
                 <div
-                  key={template.name}
+                  key={template.id || template.name}
                   className={`p-4 border rounded-xl cursor-pointer transition-all hover:shadow-md group ${
                     selectedTemplate?.name === template.name
                       ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-500"
                       : "border-slate-200 hover:border-purple-300 hover:bg-slate-50"
                   }`}
-                  onClick={() => setSelectedTemplate(template)}
+                  onClick={() => {
+                    setSelectedTemplate(template);
+                    handleApplyTemplate(template);
+                    setTemplateName(template.name);
+                    setTemplateDescription(template.description || "");
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       setSelectedTemplate(template);
+                      handleApplyTemplate(template);
+                      setTemplateName(template.name);
+                      setTemplateDescription(template.description || "");
                     }
                   }}
                   tabIndex={0}
@@ -152,6 +165,11 @@ export function TemplateManager({
                       <p className="text-sm text-slate-600 line-clamp-2">
                         {template.title}
                       </p>
+                      {template.description ? (
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                          {template.description}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
@@ -219,6 +237,20 @@ export function TemplateManager({
                 onChange={(e) => setTemplateName(e.target.value)}
                 placeholder="e.g., Welcome Message, Sale Alert"
                 className="border-slate-200 focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-description" className="text-sm font-semibold text-slate-700">
+                Description
+              </Label>
+              <Textarea
+                id="template-description"
+                value={templateDescription}
+                onChange={(e) => setTemplateDescription(e.target.value)}
+                rows={2}
+                className="border-slate-200 focus:ring-2 focus:ring-purple-500 transition-all resize-none"
+                placeholder="Optional internal notes for this template"
               />
             </div>
 
@@ -312,10 +344,9 @@ export function TemplateManager({
               <Button
                 variant="outline"
                 onClick={() => {
-                  const newTemplate = { ...selectedTemplate };
-                  newTemplate.name = `${newTemplate.name} Copy`;
-                  setSelectedTemplate(newTemplate);
+                  setSelectedTemplate(null);
                   setTemplateName(`${templateName} Copy`);
+                  setTemplateDescription(templateDescription);
                 }}
                 className="border-slate-200 hover:bg-slate-50"
               >

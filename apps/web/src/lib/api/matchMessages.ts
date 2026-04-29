@@ -1,10 +1,9 @@
 // Import centralized types
 import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
-import type { Message, Conversation, MessageType } from "@aroosi/shared/types";
+import type { Message, MessageType } from "@aroosi/shared/types";
 
 // Local aliases for shared types if needed, or just use shared types directly
 type MatchMessage = Message;
-type ConversationData = Conversation;
 
 interface SendMessageParams {
   conversationId: string;
@@ -27,38 +26,6 @@ interface GetMessagesParams {
 interface MarkReadParams {
   conversationId: string;
   userId: string;
-}
-
-// Deprecated upload-url types removed (multipart upload is used instead)
-
-interface GetVoiceMessageUrlParams {
-  storageId: string;
-}
-
-interface StorageUploadParams {
-  userId: string;
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-  storageId: string;
-}
-
-interface StorageDeleteParams {
-  storageId: string;
-  userId: string;
-}
-
-interface StorageListParams {
-  userId: string;
-}
-
-interface StorageItem {
-  _id: string;
-  url: string;
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-  createdAt: number;
 }
 
 class MatchMessagesAPI {
@@ -144,9 +111,23 @@ class MatchMessagesAPI {
       ...(params.before && { before: params.before.toString() }),
     });
 
-    return this.makeRequest<MatchMessage[]>(
-      `/messages?${queryParams.toString()}`
+    const response = await this.makeRequest<{ messages?: MatchMessage[] }>(
+      `?${queryParams.toString()}`
     );
+
+    if (!response.success) {
+      return {
+        success: false,
+        error: response.error,
+      };
+    }
+
+    return {
+      success: true,
+      data: Array.isArray(response.data?.messages)
+        ? response.data.messages
+        : [],
+    };
   }
 
   async markConversationAsRead(
@@ -157,54 +138,14 @@ class MatchMessagesAPI {
       body: JSON.stringify(params),
     });
   }
-
-  async getUnreadCounts(userId: string): Promise<ApiResponse<number>> {
-    return this.makeRequest<number>(`/unread-count/${userId}`);
-  }
-
-  // generateUploadUrl removed: multipart uploads are now used directly via /api/messages/upload-image
-
-  async getVoiceMessageUrl(
-    params: GetVoiceMessageUrlParams
-  ): Promise<ApiResponse<string>> {
-    return this.makeRequest<string>(`/voice-url/${params.storageId}`);
-  }
-
-  async uploadImage(params: StorageUploadParams): Promise<ApiResponse<void>> {
-    return this.makeRequest<void>("/upload-image", {
-      method: "POST",
-      body: JSON.stringify(params),
-    });
-  }
-
-  async deleteImage(params: StorageDeleteParams): Promise<ApiResponse<void>> {
-    return this.makeRequest<void>("/delete-image", {
-      method: "POST",
-      body: JSON.stringify(params),
-    });
-  }
-
-  async listImages(userId: string): Promise<ApiResponse<StorageItem[]>> {
-    return this.makeRequest<StorageItem[]>(`/list-images/${userId}`);
-  }
-
-  async getConversations(userId: string): Promise<ApiResponse<ConversationData[]>> {
-    return this.makeRequest<ConversationData[]>(`/conversations/${userId}`);
-  }
 }
 
 export const matchMessagesAPI = new MatchMessagesAPI();
 export type {
   MatchMessage,
-  ConversationData as Conversation,
   SendMessageParams,
   GetMessagesParams,
   MarkReadParams,
-  GetVoiceMessageUrlParams,
-  StorageUploadParams,
-  StorageDeleteParams,
-  StorageListParams,
-  StorageItem,
   ApiResponse,
 };
 
@@ -216,16 +157,6 @@ export const matchMessages = {
     matchMessagesAPI.getMessages(params),
   markConversationAsRead: (params: MarkReadParams) =>
     matchMessagesAPI.markConversationAsRead(params),
-  getUnreadCounts: (userId: string) => matchMessagesAPI.getUnreadCounts(userId),
-  getVoiceMessageUrl: (params: GetVoiceMessageUrlParams) =>
-    matchMessagesAPI.getVoiceMessageUrl(params),
-  uploadImage: (params: StorageUploadParams) =>
-    matchMessagesAPI.uploadImage(params),
-  deleteImage: (params: StorageDeleteParams) =>
-    matchMessagesAPI.deleteImage(params),
-  listImages: (userId: string) => matchMessagesAPI.listImages(userId),
-  getConversations: (userId: string) =>
-    matchMessagesAPI.getConversations(userId),
 };
 
 export default matchMessages;

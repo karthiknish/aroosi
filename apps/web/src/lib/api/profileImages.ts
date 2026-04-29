@@ -18,6 +18,11 @@ export interface UploadResponse {
   uploadUrl?: string;
 }
 
+export interface ConfirmUploadParams {
+  fileName: string;
+  uploadId: string;
+}
+
 class ProfileImagesAPI {
   private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
     const headers: Record<string, string> = {
@@ -76,10 +81,10 @@ class ProfileImagesAPI {
   /**
    * Confirm an uploaded image
    */
-  async confirm(imageId: string): Promise<void> {
+  async confirm(params: ConfirmUploadParams): Promise<void> {
     return this.makeRequest("/api/profile-images/confirm", {
       method: "POST",
-      body: JSON.stringify({ imageId }),
+      body: JSON.stringify(params),
     });
   }
 
@@ -108,7 +113,7 @@ class ProfileImagesAPI {
    */
   async setMain(imageId: string): Promise<void> {
     return this.makeRequest("/api/profile-images/main", {
-      method: "POST",
+      method: "PUT",
       body: JSON.stringify({ imageId }),
     });
   }
