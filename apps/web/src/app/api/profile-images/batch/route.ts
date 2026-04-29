@@ -129,7 +129,7 @@ export const GET = createAuthenticatedHandler(
                   const match = rawUrl.match(
                     /storage\.googleapis\.com\/[^/]+\/(.+)/
                   );
-                  if (match && match[1]) {
+                  if (match?.[1]) {
                     url = await getSignedUrl(decodeURIComponent(match[1]));
                   }
                 }
@@ -143,6 +143,19 @@ export const GET = createAuthenticatedHandler(
               })
             );
             result[uid] = images;
+            return;
+          }
+
+          const photoURL = typeof data.photoURL === "string" ? data.photoURL.trim() : "";
+          if (photoURL) {
+            result[uid] = [
+              {
+                _id: `${uid}_photoURL`,
+                id: `${uid}_photoURL`,
+                storageId: photoURL,
+                url: photoURL.startsWith("users/") ? await getSignedUrl(photoURL) : photoURL,
+              },
+            ];
             return;
           }
 

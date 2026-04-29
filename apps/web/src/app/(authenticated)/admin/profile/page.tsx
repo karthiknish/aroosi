@@ -69,6 +69,17 @@ function getAge(dateOfBirth?: string) {
   return years;
 }
 
+function getPrimaryImageUrl(
+  profile: AdminProfile,
+  profileImages: Record<string, ProfileImageInfo[]>
+) {
+  return (
+    profileImages[profile._id]?.[0]?.url ||
+    (Array.isArray(profile.profileImageUrls) ? profile.profileImageUrls[0] : undefined) ||
+    null
+  );
+}
+
 export default function AdminProfilePage() {
   // Cookie-auth; ensure auth context is initialized (no token usage)
   useAuthContext();
@@ -178,30 +189,34 @@ export default function AdminProfilePage() {
   const columns = [
     {
       header: "User",
-      cell: (profile: AdminProfile) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
-            {profileImages[profile._id]?.[0]?.url ? (
-              <Image
-                src={profileImages[profile._id][0].url}
-                alt={profile.fullName || ""}
-                width={40}
-                height={40}
-                className="w-full h-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-neutral-400">
-                <UserX className="w-5 h-5" />
-              </div>
-            )}
+      cell: (profile: AdminProfile) => {
+        const imageUrl = getPrimaryImageUrl(profile, profileImages);
+
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
+              {imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={profile.fullName || ""}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                  <UserX className="w-5 h-5" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-neutral-900 truncate">{profile.fullName || "Unknown"}</div>
+              <div className="text-xs text-neutral-500 truncate">{profile.city || "No location"}</div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="font-bold text-neutral-900 truncate">{profile.fullName || "Unknown"}</div>
-            <div className="text-xs text-neutral-500 truncate">{profile.city || "No location"}</div>
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: "Age",
@@ -599,23 +614,28 @@ export default function AdminProfilePage() {
                 <div className="p-5 flex flex-col h-full">
                   {/* Profile Image */}
                   <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-neutral-50 mx-auto mb-4 bg-neutral-50 flex items-center justify-center shadow-inner">
-                    {profileImages[profile._id] === undefined ? (
-                      <Skeleton className="w-full h-full rounded-2xl" />
-                    ) : profileImages[profile._id].length > 0 ? (
-                      <Image
-                        src={
-                          profileImages[profile._id][0].url ||
-                          "/images/placeholder.png"
-                        }
-                        alt={profile.fullName || "Profile image"}
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <UserX className="w-10 h-10 text-neutral-300" />
-                    )}
+                    {(() => {
+                      const imageUrl = getPrimaryImageUrl(profile, profileImages);
+
+                      if (profileImages[profile._id] === undefined && !imageUrl) {
+                        return <Skeleton className="w-full h-full rounded-2xl" />;
+                      }
+
+                      if (imageUrl) {
+                        return (
+                          <Image
+                            src={imageUrl}
+                            alt={profile.fullName || "Profile image"}
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        );
+                      }
+
+                      return <UserX className="w-10 h-10 text-neutral-300" />;
+                    })()}
                   </div>
 
                   {/* Profile Info */}

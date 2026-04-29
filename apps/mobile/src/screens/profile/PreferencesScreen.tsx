@@ -2,7 +2,7 @@
  * Preferences Screen - Match preferences settings
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -14,8 +14,6 @@ import {
 } from 'react-native';
 import { 
     colors, 
-    spacing, 
-    fontSize, 
     fontWeight, 
     borderRadius,
     moderateScale,
@@ -23,6 +21,7 @@ import {
     responsiveFontSizes,
 } from '../../theme';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { EmptyState } from '../../components/EmptyState';
 import {
     getProfile,
     updatePreferences,
@@ -37,6 +36,7 @@ interface PreferencesScreenProps {
 export default function PreferencesScreen({ onBack, onSave }: PreferencesScreenProps) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     // Preferences state
     const [ageMin, setAgeMin] = useState(18);
@@ -55,7 +55,13 @@ export default function PreferencesScreen({ onBack, onSave }: PreferencesScreenP
     const loadPreferences = useCallback(async () => {
         try {
             setLoading(true);
+            setLoadError(null);
             const response = await getProfile();
+
+            if (response.error) {
+                setLoadError(response.error);
+                return;
+            }
 
             if (response.data?.preferences) {
                 const prefs = response.data.preferences;
@@ -75,6 +81,7 @@ export default function PreferencesScreen({ onBack, onSave }: PreferencesScreenP
             }
         } catch (err) {
             console.error('Failed to load preferences:', err);
+            setLoadError(err instanceof Error ? err.message : 'Failed to load preferences');
         } finally {
             setLoading(false);
         }
@@ -105,7 +112,7 @@ export default function PreferencesScreen({ onBack, onSave }: PreferencesScreenP
 
             Alert.alert('Success', 'Preferences saved successfully');
             onSave?.();
-        } catch (err) {
+        } catch {
             Alert.alert('Error', 'Failed to save preferences');
         } finally {
             setSaving(false);
@@ -123,6 +130,27 @@ export default function PreferencesScreen({ onBack, onSave }: PreferencesScreenP
                     <View style={styles.headerRight} />
                 </View>
                 <LoadingSpinner message="Loading preferences..." />
+            </SafeAreaView>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Text style={styles.backIcon}>←</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Match Preferences</Text>
+                    <View style={styles.headerRight} />
+                </View>
+                <EmptyState
+                    emoji="😕"
+                    title="Couldn't load preferences"
+                    message={loadError}
+                    actionLabel="Try Again"
+                    onAction={() => loadPreferences()}
+                />
             </SafeAreaView>
         );
     }

@@ -10,13 +10,12 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
 import { ProfileImageReorder } from "./ProfileImageReorder";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter, usePathname } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
-import { profileAPI } from "@/lib/api/profile";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
 import type { NormalizedProfileImage } from "@/lib/images/profileImageUtils";
@@ -67,7 +66,6 @@ export function ProfileImageUpload({
   isAdmin,
 }: ProfileImageUploadProps) {
   // Hooks must be called unconditionally at the top level
-  const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { refreshProfile, isAdmin: authIsAdmin, user } = useAuthContext();
@@ -123,20 +121,6 @@ export function ProfileImageUpload({
     }
   }, [adminImagesQuery, refreshProfile, queryClient, userId, authIsAdmin]);
 
-  const { data: currentUserProfile } = useQuery({
-    queryKey: ["currentUserWithProfile"],
-    queryFn: async () => {
-      const id = derivedUserId || userId || "";
-      if (!id) return null;
-      try {
-        return await profileAPI.getProfileForUser(id);
-      } catch (error) {
-        console.error("Failed to fetch current user profile:", error);
-        return null;
-      }
-    },
-  });
-
   // Memoize the ordered images with proper typing first
   const memoizedOrderedImages = useMemo(() => {
     // Base set depending on mode and admin/user context
@@ -158,7 +142,7 @@ export function ProfileImageUpload({
     }
     // Normalize to ensure consistent url/id/storageId shapes
     const normalized = normalizeProfileImages({
-      rawImages: base as any[],
+      rawImages: base,
       profileImageUrls: undefined,
       profileImageIds: undefined,
     });
@@ -167,7 +151,7 @@ export function ProfileImageUpload({
       id: o.id,
       _id: o.id,
       url: o.url,
-      storageId: (o as any).storageId || o.id,
+      storageId: o.storageId || o.id,
     }));
     return [...normalized, ...optimistic];
   }, [
@@ -233,7 +217,7 @@ export function ProfileImageUpload({
         prev.filter(
           (optimistic) =>
             !(authIsAdmin ? adminImages : userImages).some(
-              (server: any) => server.id === optimistic.id
+              (server) => server.storageId === optimistic.storageId
             )
         )
       );
@@ -278,8 +262,20 @@ export function ProfileImageUpload({
         await adminProfilesAPI.deleteImage(profileId, imageId);
         return imageId;
       }
-      // Default user delete path currently lacks a client util; perform optimistic removal only.
-      // Optionally, implement a DELETE /api/profile-images/:id route and call it here.
+
+      const response = await fetch("/api/profile-images", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ storageId: imageId }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.message || "Failed to delete image");
+      }
+
       return imageId;
     },
     onSuccess: async () => {
@@ -296,8 +292,8 @@ export function ProfileImageUpload({
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
     },
-    onError: () => {
-      showErrorToast(null, "Failed to delete image");
+    onError: (error) => {
+      showErrorToast(error, "Failed to delete image");
       setIsUploading(false);
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
@@ -361,6 +357,7 @@ export function ProfileImageUpload({
             viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
           >
+            <title>Upload image</title>
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

@@ -162,9 +162,17 @@ class EngagementAPI {
   /**
    * Get recommended engagement profiles
    */
-  async getProfiles(limit = 10): Promise<EngagementProfile[]> {
+  async getProfiles(userIds: string[]): Promise<EngagementProfile[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+
     const res = await this.makeRequest<EngagementProfile[] | { profiles: EngagementProfile[] }>(
-      `/api/engagement/profiles?limit=${limit}`
+      "/api/engagement/profiles",
+      {
+        method: "POST",
+        body: JSON.stringify({ userIds }),
+      }
     );
     // Handle both array and wrapped { profiles: [] } formats
     if (Array.isArray(res)) return res;

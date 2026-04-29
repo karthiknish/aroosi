@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import firestore from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage';
 import { useAuthStore } from '../store';
@@ -41,6 +41,7 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   const PAGE_SIZE = 50;
 
@@ -54,6 +55,9 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
   useEffect(() => {
     if (!userId || !convKey) return;
 
+    const attemptKey = `${convKey}:${retryNonce}`;
+    if (!attemptKey) return;
+
     setIsConnected(false);
     setError(null);
 
@@ -65,6 +69,8 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
       .onSnapshot(
         (snap) => {
           setIsConnected(true);
+          setError(null);
+
           const list: MessageData[] = [];
           snap.forEach((docSnap) => {
             const d = docSnap.data();
@@ -92,8 +98,7 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
               editedAt: d.editedAt,
             });
           });
-          
-          // Reverse to ascending for UI
+
           setMessages(list.reverse());
           setHasMore(snap.docs.length === PAGE_SIZE);
         },
@@ -105,7 +110,13 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
       );
 
     return () => unsubscribe();
-  }, [userId, convKey]);
+  }, [userId, convKey, retryNonce]);
+
+  const retryConnection = useCallback(() => {
+    setError(null);
+    setIsConnected(false);
+    setRetryNonce((prev) => prev + 1);
+  }, []);
 
   const sendMessage = useCallback(
     async (text: string, toUserId: string) => {
@@ -185,7 +196,6 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
           },
           updatedAt: createdAt,
         }, { merge: true });
-
       } catch (err) {
         console.error('Failed to send image message', err);
         throw err;
@@ -269,5 +279,6 @@ export function useRealTimeMessages({ conversationId }: UseRealTimeMessagesProps
     loadingOlder,
     error,
     markAsRead,
+    retryConnection,
   };
 }

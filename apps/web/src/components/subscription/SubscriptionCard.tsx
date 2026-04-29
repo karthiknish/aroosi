@@ -19,7 +19,6 @@ interface SubscriptionCardProps {
   onUpgrade?: (tier: "premium" | "premiumPlus") => void;
   onCancel?: () => void;
   className?: string;
-  token?: string;
   /** Force a transitional UI state (e.g. parent knows an upgrade just fired) */
   isTransitioning?: boolean;
   /** Override effective plan for display (e.g. admin elevated view) */
@@ -30,7 +29,6 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   onUpgrade,
   onCancel,
   className,
-  token,
   isTransitioning,
   effectivePlan,
 }) => {
@@ -40,7 +38,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     isLoading,
     error,
     isFetching,
-  } = useSubscriptionStatus(token);
+  } = useSubscriptionStatus();
   // Get admin flag (admins get implicit premium plus access)
   const { isAdmin } = useSubscriptionGuard();
 

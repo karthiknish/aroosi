@@ -167,15 +167,20 @@ class CulturalAPI {
   }
 
   /**
-   * Get supervised conversation details
+   * Update a supervised conversation.
    */
-  async getSupervisedConversation(conversationId: string): Promise<SupervisedConversation | null> {
-    try {
-      const res = await this.makeRequest(`/api/cultural/supervised-conversation/${conversationId}`);
-      return res.data?.conversation || res.conversation || null;
-    } catch {
-      return null;
+  async updateSupervisedConversation(
+    conversationId: string,
+    updates: {
+      status?: "pending" | "approved" | "active" | "ended" | "rejected";
+      conversationId?: string;
     }
+  ): Promise<SupervisedConversation> {
+    const res = await this.makeRequest(`/api/cultural/supervised-conversation/${conversationId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
+    return res.data?.conversation || res.conversation;
   }
 
   /**

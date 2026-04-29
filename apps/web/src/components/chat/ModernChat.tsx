@@ -59,7 +59,7 @@ function ModernChat({
     matchUserId,
   });
 
-  const { trackUsage } = useUsageTracking(undefined);
+  const { trackUsage } = useUsageTracking();
 
   const {
     text,

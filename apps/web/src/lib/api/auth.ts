@@ -138,16 +138,6 @@ class AuthAPI {
   }
 
   /**
-   * Verify email with token
-   */
-  async verifyEmail(token: string): Promise<void> {
-    return this.makeRequest("/api/auth/verify-email", {
-      method: "POST",
-      body: JSON.stringify({ token }),
-    });
-  }
-
-  /**
    * Request email verification resend
    */
   async requestVerificationEmail(email: string): Promise<void> {

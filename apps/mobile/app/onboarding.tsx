@@ -3,7 +3,7 @@
  * Multi-step wizard for collecting essential profile information
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -90,7 +90,7 @@ export default function OnboardingScreen() {
                 useNativeDriver: false,
             }),
         ]).start();
-    }, [step, stepIndex]);
+    }, [fadeAnim, progressAnim, slideAnim, stepIndex]);
 
     // Form data
     const [profileFor, setProfileFor] = useState<'self' | 'friend' | 'family'>('self');
@@ -149,7 +149,7 @@ export default function OnboardingScreen() {
             case 'profileFor':
                 setStep('basicInfo');
                 break;
-            case 'basicInfo':
+            case 'basicInfo': {
                 const nameResult = validateName(fullName);
                 if (!nameResult.valid) {
                     Alert.alert('Invalid Name', nameResult.error || 'Please enter a valid name');
@@ -175,7 +175,8 @@ export default function OnboardingScreen() {
                 }
                 setStep('location');
                 break;
-            case 'location':
+            }
+            case 'location': {
                 const cityResult = validateCity(city);
                 if (!cityResult.valid) {
                     Alert.alert('Invalid City', cityResult.error || 'Please enter a valid city');
@@ -183,6 +184,7 @@ export default function OnboardingScreen() {
                 }
                 setStep('professional');
                 break;
+            }
             case 'professional':
                 setStep('physical');
                 break;
@@ -199,6 +201,14 @@ export default function OnboardingScreen() {
                 setStep('photos');
                 break;
             case 'photos':
+                if (uploadingPhotos) {
+                    Alert.alert('Please wait', 'Your photos are still uploading.');
+                    return;
+                }
+                if (photos.length === 0) {
+                    Alert.alert('Required', 'Please upload at least one photo before continuing.');
+                    return;
+                }
                 setStep('bio');
                 break;
             case 'bio':
@@ -235,7 +245,7 @@ export default function OnboardingScreen() {
                 const urls = await Promise.all(uploadPromises);
                 setPhotos([...photos, ...urls.filter((url): url is string => url !== undefined)]);
             }
-        } catch (error) {
+        } catch {
             Alert.alert('Error', 'Failed to upload photos');
         } finally {
             setUploadingPhotos(false);
@@ -273,7 +283,7 @@ export default function OnboardingScreen() {
 
             setOnboardingComplete();
             router.replace('/(tabs)');
-        } catch (error) {
+        } catch {
             Alert.alert('Error', 'Failed to save profile. Please try again.');
         } finally {
             setIsLoading(false);
@@ -687,7 +697,7 @@ export default function OnboardingScreen() {
 
                         <View style={styles.photosContainer}>
                             {photos.map((photo, index) => (
-                                <View key={index} style={styles.photoWrapper}>
+                                <View key={photo} style={styles.photoWrapper}>
                                     <Image source={{ uri: photo }} style={styles.photo} />
                                     <TouchableOpacity
                                         style={styles.removePhotoButton}

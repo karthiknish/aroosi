@@ -2,7 +2,7 @@
  * Chat Screen - Real-time messaging with a match
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -14,12 +14,12 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, router } from 'expo-router';
 import Animated, {
-    FadeIn,
     FadeInUp,
     FadeInDown,
     SlideInRight,
@@ -27,8 +27,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import {
     colors,
-    spacing,
-    fontSize,
     fontWeight,
     borderRadius,
     moderateScale,
@@ -65,40 +63,45 @@ export default function ChatScreen() {
     const {
         messages,
         isConnected,
+        error: chatError,
         sendMessage: sendMessageFs,
         sendImageMessage: sendImageFs,
         fetchOlder,
         hasMore,
         loadingOlder,
+        retryConnection,
     } = useRealTimeMessages({ conversationId: matchId });
 
-    // Extract recipient userId from matchId (format: "userA_userB" sorted)
-    const recipientId = matchId.split('_').find(id => id !== user?.id) || matchId;
+    const conversationId = String(matchId || '');
+    const displayName = String(recipientName || 'Member');
+    const recipientImage = typeof recipientPhoto === 'string' ? recipientPhoto : undefined;
+    const recipientId = conversationId.split('_').find((id) => id !== user?.id) || conversationId;
 
-    const actions = useAsyncActions({
-        sendMessage: async () => {
-            if (!inputText.trim()) return;
-            const text = inputText.trim();
-            setInputText('');
-            await sendMessageFs(text, recipientId);
-        },
-        sendImage: async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                quality: 0.8,
-                allowsEditing: false,
-            });
+    const actions = useAsyncActions(
+        {
+            sendMessage: async () => {
+                if (!inputText.trim()) return;
+                const text = inputText.trim();
+                await sendMessageFs(text, recipientId);
+                setInputText('');
+            },
+            sendImage: async () => {
+                const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    quality: 0.8,
+                    allowsEditing: false,
+                });
 
-            if (!result.canceled && result.assets?.[0]) {
-                const asset = result.assets[0];
-                if (asset.uri) {
-                    await sendImageFs(asset.uri, recipientId);
+                if (!result.canceled && result.assets?.[0]?.uri) {
+                    await sendImageFs(result.assets[0].uri, recipientId);
                 }
-            }
+            },
         },
-    }, { errorMode: 'silent', networkAware: true });
+        { errorMode: 'inline', networkAware: true }
+    );
 
-    // Scroll to bottom when new messages arrive
+    const composerError = actions.errors.sendMessage || actions.errors.sendImage;
+
     useEffect(() => {
         if (messages.length > 0) {
             setTimeout(() => {
@@ -107,82 +110,97 @@ export default function ChatScreen() {
         }
     }, [messages.length]);
 
-    // Mark messages as read
     useEffect(() => {
         const unreadIds = messages
-            .filter(m => m.fromUserId !== user?.id && !m.isRead)
-            .map(m => m.id);
+            .filter((message) => message.fromUserId !== user?.id && !message.isRead)
+            .map((message) => message.id);
 
-        if (unreadIds.length > 0) {
-            unreadIds.forEach(id => pendingReadIdsRef.current.add(id));
-
-            if (markAsReadTimeoutRef.current) {
-                clearTimeout(markAsReadTimeoutRef.current);
-            }
-
-            markAsReadTimeoutRef.current = setTimeout(async () => {
-                const idsToMark = Array.from(pendingReadIdsRef.current);
-                if (idsToMark.length > 0) {
-                    try {
-                        const { markMessagesAsRead } = await import('@/services/api/messages');
-                        await markMessagesAsRead(matchId);
-                        lastSyncedIdsRef.current = new Set([...lastSyncedIdsRef.current, ...idsToMark]);
-                        idsToMark.forEach(id => pendingReadIdsRef.current.delete(id));
-                    } catch (err) {
-                        console.error('Failed to mark messages as read:', err);
-                    }
-                }
-            }, 500);
+        if (unreadIds.length === 0) {
+            return undefined;
         }
+
+        unreadIds.forEach((id) => {
+            pendingReadIdsRef.current.add(id);
+        });
+
+        if (markAsReadTimeoutRef.current) {
+            clearTimeout(markAsReadTimeoutRef.current);
+        }
+
+        markAsReadTimeoutRef.current = setTimeout(async () => {
+            const idsToMark = Array.from(pendingReadIdsRef.current);
+            if (idsToMark.length > 0) {
+                try {
+                    const { markMessagesAsRead } = await import('@/services/api/messages');
+                    await markMessagesAsRead(conversationId);
+                    lastSyncedIdsRef.current = new Set([
+                        ...lastSyncedIdsRef.current,
+                        ...idsToMark,
+                    ]);
+                    idsToMark.forEach((id) => {
+                        pendingReadIdsRef.current.delete(id);
+                    });
+                } catch (err) {
+                    console.error('Failed to mark messages as read:', err);
+                }
+            }
+        }, 500);
 
         return () => {
             if (markAsReadTimeoutRef.current) {
                 clearTimeout(markAsReadTimeoutRef.current);
             }
         };
-    }, [messages, matchId, user?.id]);
+    }, [messages, conversationId, user?.id]);
 
     const handleBack = useCallback(() => {
         router.back();
     }, []);
 
     const handleSend = useCallback(() => {
-        if (!checkNetworkOrAlert(() => handleSend())) return;
-        actions.execute.sendMessage();
-    }, [inputText, checkNetworkOrAlert, actions.execute]);
+        const retrySend = () => {
+            void actions.execute.sendMessage();
+        };
+
+        if (!checkNetworkOrAlert(retrySend)) return;
+        retrySend();
+    }, [checkNetworkOrAlert, actions.execute]);
 
     const handleImage = useCallback(() => {
-        if (!checkNetworkOrAlert(() => handleImage())) return;
-        actions.execute.sendImage();
+        const retryImage = () => {
+            void actions.execute.sendImage();
+        };
+
+        if (!checkNetworkOrAlert(retryImage)) return;
+        retryImage();
     }, [checkNetworkOrAlert, actions.execute]);
 
     const handleLoadOlder = useCallback(() => {
         if (!loadingOlder && hasMore) {
-            fetchOlder();
+            void fetchOlder();
         }
     }, [fetchOlder, hasMore, loadingOlder]);
 
     const renderMessage = useCallback(({ item, index }: { item: MessageData; index: number }) => {
         const isMe = item.fromUserId === user?.id;
-        const showAvatar = !isMe && item.fromUserId === messages[messages.indexOf(item) - 1]?.fromUserId;
-        // Use a small delay based on index for staggered animation
         const delay = Math.min(index * 50, 300);
 
         return (
             <AnimatedView
                 style={[styles.messageRow, isMe && styles.messageRowMe]}
-                entering={isMe
-                    ? SlideInRight.duration(350).delay(delay)
-                    : SlideInLeft.duration(350).delay(delay)
+                entering={
+                    isMe
+                        ? SlideInRight.duration(350).delay(delay)
+                        : SlideInLeft.duration(350).delay(delay)
                 }
             >
                 {!isMe && (
                     <View style={styles.avatarContainer}>
-                        {recipientPhoto ? (
-                            <Image source={{ uri: recipientPhoto }} style={styles.avatar} contentFit="cover" />
+                        {recipientImage ? (
+                            <Image source={{ uri: recipientImage }} style={styles.avatar} contentFit="cover" />
                         ) : (
                             <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                <Text style={styles.avatarText}>{recipientName?.charAt(0) || '?'}</Text>
+                                <Text style={styles.avatarText}>{displayName.charAt(0) || '?'}</Text>
                             </View>
                         )}
                     </View>
@@ -190,12 +208,17 @@ export default function ChatScreen() {
                 <View style={[styles.messageBubble, isMe && styles.messageBubbleMe]}>
                     <Text style={[styles.messageText, isMe && styles.messageTextMe]}>{item.text}</Text>
                     <Text style={[styles.messageTime, isMe && styles.messageTimeMe]}>
-                        {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        {item.createdAt
+                            ? new Date(item.createdAt).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                              })
+                            : ''}
                     </Text>
                 </View>
             </AnimatedView>
         );
-    }, [user?.id, recipientPhoto, recipientName, messages]);
+    }, [displayName, recipientImage, user?.id]);
 
     const renderListHeader = useCallback(() => {
         if (!hasMore) return null;
@@ -206,37 +229,51 @@ export default function ChatScreen() {
         );
     }, [hasMore]);
 
-    if (!isConnected) {
+    if (!isConnected && !chatError && messages.length === 0) {
         return <LoadingSpinner message="Connecting..." />;
+    }
+
+    if (!isConnected && chatError && messages.length === 0) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.connectionState}>
+                    <Text style={styles.connectionTitle}>Couldn&apos;t open this chat</Text>
+                    <Text style={styles.connectionMessage}>{chatError}</Text>
+                    <Pressable style={styles.retryButton} onPress={retryConnection}>
+                        <Text style={styles.retryButtonText}>Try Again</Text>
+                    </Pressable>
+                    <Pressable style={styles.secondaryButton} onPress={handleBack}>
+                        <Text style={styles.secondaryButtonText}>Go Back</Text>
+                    </Pressable>
+                </View>
+            </SafeAreaView>
+        );
     }
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <AnimatedView
-                style={styles.header}
-                entering={FadeInDown.duration(400)}
-            >
+            <AnimatedView style={styles.header} entering={FadeInDown.duration(400)}>
                 <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                     <Text style={styles.backButtonText}>←</Text>
                 </TouchableOpacity>
-                {recipientPhoto ? (
-                    <Image source={{ uri: recipientPhoto }} style={styles.headerAvatar} contentFit="cover" />
+                {recipientImage ? (
+                    <Image source={{ uri: recipientImage }} style={styles.headerAvatar} contentFit="cover" />
                 ) : (
                     <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
-                        <Text style={styles.avatarText}>{recipientName?.charAt(0) || '?'}</Text>
+                        <Text style={styles.avatarText}>{displayName.charAt(0) || '?'}</Text>
                     </View>
                 )}
                 <View style={styles.headerInfo}>
-                    <Text style={styles.headerName}>{recipientName}</Text>
-                    <Text style={styles.headerStatus}>Online</Text>
+                    <Text style={styles.headerName}>{displayName}</Text>
+                    <Text style={styles.headerStatus}>
+                        {isConnected ? 'Online' : 'Reconnecting...'}
+                    </Text>
                 </View>
                 <TouchableOpacity style={styles.moreButton}>
                     <Text style={styles.moreIcon}>⋯</Text>
                 </TouchableOpacity>
             </AnimatedView>
 
-            {/* Messages */}
             <FlatList
                 ref={flatListRef}
                 data={messages}
@@ -248,20 +285,30 @@ export default function ChatScreen() {
                 ListHeaderComponent={renderListHeader}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>
-                            Say hi to {recipientName}! 👋
-                        </Text>
+                        <Text style={styles.emptyText}>Say hi to {displayName}! 👋</Text>
                     </View>
                 }
                 showsVerticalScrollIndicator={false}
             />
 
-            {/* Input */}
             <AnimatedView entering={FadeInUp.duration(400)}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
                 >
+                    {chatError && (
+                        <View style={styles.inlineErrorCard}>
+                            <Text style={styles.inlineErrorText}>{chatError}</Text>
+                            <Pressable onPress={retryConnection}>
+                                <Text style={styles.inlineErrorAction}>Retry</Text>
+                            </Pressable>
+                        </View>
+                    )}
+                    {composerError && (
+                        <View style={styles.inlineErrorCard}>
+                            <Text style={styles.inlineErrorText}>{composerError}</Text>
+                        </View>
+                    )}
                     <View style={styles.inputContainer}>
                         <TouchableOpacity
                             style={styles.attachButton}
@@ -305,6 +352,46 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.light,
+    },
+    connectionState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: responsiveValues.screenPadding,
+    },
+    connectionTitle: {
+        fontSize: responsiveFontSizes.lg,
+        fontWeight: fontWeight.semibold,
+        color: colors.neutral[900],
+        marginBottom: moderateScale(8),
+        textAlign: 'center',
+    },
+    connectionMessage: {
+        fontSize: responsiveFontSizes.base,
+        color: colors.neutral[600],
+        textAlign: 'center',
+        marginBottom: moderateScale(20),
+    },
+    retryButton: {
+        backgroundColor: colors.primary.DEFAULT,
+        paddingHorizontal: moderateScale(18),
+        paddingVertical: moderateScale(12),
+        borderRadius: borderRadius.full,
+        marginBottom: moderateScale(10),
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: responsiveFontSizes.base,
+        fontWeight: fontWeight.semibold,
+    },
+    secondaryButton: {
+        paddingHorizontal: moderateScale(18),
+        paddingVertical: moderateScale(10),
+    },
+    secondaryButtonText: {
+        color: colors.neutral[600],
+        fontSize: responsiveFontSizes.sm,
+        fontWeight: fontWeight.medium,
     },
     header: {
         flexDirection: 'row',
@@ -420,6 +507,30 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: responsiveFontSizes.base,
         color: colors.neutral[400],
+    },
+    inlineErrorCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginHorizontal: responsiveValues.screenPadding,
+        marginBottom: moderateScale(8),
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(10),
+        borderRadius: borderRadius.md,
+        backgroundColor: '#FEF2F2',
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        gap: moderateScale(12),
+    },
+    inlineErrorText: {
+        flex: 1,
+        fontSize: responsiveFontSizes.sm,
+        color: '#B91C1C',
+    },
+    inlineErrorAction: {
+        fontSize: responsiveFontSizes.sm,
+        fontWeight: fontWeight.semibold,
+        color: '#B91C1C',
     },
     inputContainer: {
         flexDirection: 'row',

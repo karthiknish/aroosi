@@ -102,7 +102,7 @@ export class SubscriptionTestSuite {
 
   private static async testGetUsageStats(): Promise<TestResult> {
     try {
-      const usage = await subscriptionAPI.getUsage(this.TEST_USER_TOKEN);
+      const usage = await subscriptionAPI.getUsage();
 
       if (!usage || typeof usage !== "object") {
         return {
@@ -136,7 +136,7 @@ export class SubscriptionTestSuite {
       ];
       const results = await Promise.all(
         features.map((feature) =>
-          subscriptionAPI.checkFeatureAccess(feature, this.TEST_USER_TOKEN)
+          subscriptionAPI.checkFeatureAccess(feature)
         )
       );
 
@@ -243,7 +243,7 @@ export class SubscriptionTestSuite {
 
   private static async testPlanCancellation(): Promise<TestResult> {
     try {
-      const result = await subscriptionAPI.cancel(this.TEST_USER_TOKEN);
+      const result = await subscriptionAPI.cancel();
 
       if (!result || typeof result !== "object") {
         return {
@@ -272,9 +272,7 @@ export class SubscriptionTestSuite {
 
   private static async testRestorePurchases(): Promise<TestResult> {
     try {
-      const result = await subscriptionAPI.restorePurchases(
-        this.TEST_USER_TOKEN
-      );
+      const result = await subscriptionAPI.restorePurchases();
 
       if (!result || typeof result !== "object") {
         return {

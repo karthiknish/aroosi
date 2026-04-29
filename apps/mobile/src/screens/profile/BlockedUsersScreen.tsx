@@ -2,7 +2,7 @@
  * Blocked Users Screen - Manage blocked users
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -18,8 +18,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
 import { 
     colors, 
-    spacing, 
-    fontSize, 
     fontWeight, 
     borderRadius,
     moderateScale,
@@ -96,12 +94,15 @@ export default function BlockedUsersScreen() {
                             setUnblocking(userId);
                             const response = await unblockUser(userId);
 
-                            if (!response.error) {
-                                setBlockedUsers((prev) =>
-                                    prev.filter((u) => u.blockedUserId !== userId)
-                                );
+                            if (response.error) {
+                                Alert.alert('Error', response.error);
+                                return;
                             }
-                        } catch (err) {
+
+                            setBlockedUsers((prev) =>
+                                prev.filter((u) => u.blockedUserId !== userId)
+                            );
+                        } catch {
                             Alert.alert('Error', 'Failed to unblock user');
                         } finally {
                             setUnblocking(null);
@@ -113,13 +114,13 @@ export default function BlockedUsersScreen() {
     }, []);
 
     // Format date
-    const formatDate = (timestamp: number) => {
+    const formatDate = useCallback((timestamp: number) => {
         return new Date(timestamp).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
         });
-    };
+    }, []);
 
     // Render blocked user item
     const renderItem = useCallback(
@@ -175,7 +176,7 @@ export default function BlockedUsersScreen() {
                 </View>
             );
         },
-        [unblocking, handleUnblock]
+        [formatDate, unblocking, handleUnblock]
     );
 
     if (loading) {

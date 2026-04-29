@@ -91,7 +91,7 @@ export async function reportUserAction(
   reason: ReportReason,
   description: string,
 ) {
-  await safetyAPI.reportUser(null, {
+  await safetyAPI.reportUser({
     reportedUserId: matchUserId,
     reason: reason as any,
     description,
@@ -102,12 +102,12 @@ export async function reportUserAction(
  * Block a user via safety API. Typically (payload, token)
  */
 export async function blockUserAction(matchUserId: string) {
-  await safetyAPI.blockUser(null, matchUserId as any);
+  await safetyAPI.blockUser(matchUserId);
 }
 
 /**
  * Unblock a previously blocked user.
  */
 export async function unblockUserAction(matchUserId: string) {
-  await safetyAPI.unblockUser(null, matchUserId as any);
+  await safetyAPI.unblockUser(matchUserId);
 }

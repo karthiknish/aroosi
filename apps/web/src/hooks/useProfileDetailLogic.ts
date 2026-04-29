@@ -21,7 +21,7 @@ export function useProfileDetailLogic() {
   const params = useParams();
   const { profile: rawCurrentUserProfile, isLoaded, isAuthenticated } = useAuthContext();
   const networkStatus = useOffline();
-  const { trackUsage } = useUsageTracking(undefined);
+  const { trackUsage } = useUsageTracking();
   const { isPremiumPlus } = useSubscriptionGuard();
   
   const id = params?.id as string;
