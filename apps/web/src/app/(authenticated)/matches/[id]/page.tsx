@@ -16,8 +16,8 @@ import { fetchUserProfile } from "@/lib/profile/userProfileApi";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import { markConversationRead } from "@/lib/api/messages";
 import { useState, useEffect } from "react";
-import { showErrorToast } from "@/lib/ui/toast";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
+import { handleError } from "@/lib/utils/errorHandling";
 import { ChevronLeft } from "lucide-react";
 import Image from "next/image";
 export default function MatchChatPage() {
@@ -52,18 +52,24 @@ export default function MatchChatPage() {
   useEffect(() => {
     if (matchError) {
       const msg =
-        (matchError as Error)?.message || "Failed to load match profile";
+        matchError instanceof Error
+          ? matchError.message
+          : "Failed to load match profile";
       // Don't show "Authentication not ready" as a toast - it's usually transient
       if (msg.toLowerCase().includes("authentication not ready")) {
         setLoadError(null);
         return;
       }
       setLoadError(msg);
-      showErrorToast?.(msg);
+      handleError(
+        matchError,
+        { scope: "MatchChatPage", action: "load_match_profile", otherUserId },
+        { customUserMessage: msg }
+      );
     } else {
       setLoadError(null);
     }
-  }, [matchError]);
+  }, [matchError, otherUserId]);
 
   // fetch avatar image (hook should tolerate undefined token)
   const { imageUrl: matchAvatar } = useProfileImage(otherUserId, undefined);

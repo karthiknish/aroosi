@@ -5,7 +5,7 @@
 import { matchMessagesAPI, type MatchMessage } from "@/lib/api/matchMessages";
 import type { MessageType } from "@aroosi/shared/types";
 import { fetchJson, postJson, getJson } from "@/lib/http/client";
-import { showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export type Message = MatchMessage;
 
@@ -26,7 +26,10 @@ export const getMessages = async (
   });
 
   if (!res.success) {
-    showErrorToast(null, res.error?.message || "Failed to fetch messages");
+    handleApiOutcome({
+      success: false,
+      error: res.error?.message || "Failed to fetch messages",
+    });
     return [];
   }
 
@@ -65,7 +68,10 @@ export const sendMessage = async (message: {
   });
 
   if (!res.success) {
-    showErrorToast(null, res.error?.message || "Failed to send message");
+    handleApiOutcome({
+      success: false,
+      error: res.error?.message || "Failed to send message",
+    });
     return null;
   }
 
@@ -82,10 +88,10 @@ export const markConversationRead = async (
   });
 
   if (!res.success) {
-    showErrorToast(
-      null,
-      res.error?.message || "Failed to mark conversation as read"
-    );
+    handleApiOutcome({
+      success: false,
+      error: res.error?.message || "Failed to mark conversation as read",
+    });
     return { success: false };
   }
 
@@ -115,7 +121,11 @@ export const deleteMessage = async (
   } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Failed to delete message";
-    showErrorToast(null, msg);
+    handleError(
+      error,
+      { scope: "api/messages", action: "delete_message", messageId },
+      { customUserMessage: msg }
+    );
     throw error;
   }
 };
@@ -124,29 +134,22 @@ export const editMessage = async (
   messageId: string,
   text: string
 ): Promise<{ success: boolean }> => {
-  try {
-    const result = await postJson<{
-      success?: boolean;
-      error?: string;
-    }>(
-      `/api/messages/${encodeURIComponent(messageId)}`,
-      { text },
-      {
-        method: "PATCH",
-      }
-    );
-
-    if (!result?.success) {
-      throw new Error(result?.error || "Failed to edit message");
+  const result = await postJson<{
+    success?: boolean;
+    error?: string;
+  }>(
+    `/api/messages/${encodeURIComponent(messageId)}`,
+    { text },
+    {
+      method: "PATCH",
     }
+  );
 
-    return { success: true };
-  } catch (error: unknown) {
-    const msg =
-      error instanceof Error ? error.message : "Failed to edit message";
-    showErrorToast(null, msg);
-    throw error;
+  if (!result?.success) {
+    throw new Error(result?.error || "Failed to edit message");
   }
+
+  return { success: true };
 };
 
 /**

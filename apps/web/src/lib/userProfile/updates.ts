@@ -1,6 +1,5 @@
-import { db, COLLECTIONS } from '@/lib/userProfile';
+import { db, COLLECTIONS, type UserProfile } from '@/lib/userProfile';
 import { calculateProfileCompletion } from "@/lib/userProfile/calculations";
-import type { UserProfile } from "@/lib/userProfile";
 
 // Centralized create or update logic for user profiles
 export async function createOrUpdateUserProfile(

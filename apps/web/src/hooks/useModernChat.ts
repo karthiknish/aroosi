@@ -8,26 +8,22 @@ import { getPresence, heartbeat } from "@/lib/api/conversation";
 import { useDeliveryReceipts } from "@/hooks/useDeliveryReceipts";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import {
-  showErrorToast,
-  showSuccessToast,
   showUndoToast,
-  showWarningToast,
   showInfoToast,
 } from "@/lib/ui/toast";
 import type { MessageType } from "@aroosi/shared/types";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
+  blockUserUtil,
   handleScrollUtil,
   scrollToBottomUtil,
   handleErrorUtil,
+  reportUserUtil,
+  type ReportReason,
+  unblockUserUtil,
   withRetry,
 } from "@/lib/chat/utils";
-import {
-  blockUserUtil,
-  reportUserUtil,
-  unblockUserUtil,
-} from "@/lib/chat/utils";
-import type { ReportReason } from "@/lib/chat/utils";
 
 type UseModernChatArgs = {
   conversationId: string;
@@ -320,7 +316,9 @@ export function useModernChat({
 
       const textPermission = canSendText();
       if (!textPermission.allowed) {
-        showErrorToast(null, textPermission.reason || "Cannot send message");
+        handleApiOutcome({
+          warning: textPermission.reason || "Cannot send message",
+        });
         return;
       }
 
@@ -339,7 +337,16 @@ export function useModernChat({
             setTimeout(() => inputRef.current?.focus(), 100);
             return;
           } catch (err) {
-            showErrorToast(err, "Failed to edit message");
+            handleError(err, {
+              scope: "useModernChat",
+              action: "edit_message",
+              conversationId,
+              currentUserId,
+              matchUserId,
+            }, {
+              customUserMessage:
+                err instanceof Error ? err.message : "Failed to edit message",
+            });
             return;
           }
         }
@@ -369,8 +376,11 @@ export function useModernChat({
               const msg =
                 err instanceof Error ? err.message : String(err ?? "Unknown");
               console.warn(`Message send attempt ${attempt} failed:`, msg);
-              if (attempt < 3)
-                showErrorToast(null, `Retrying... (${attempt}/3)`);
+              if (attempt < 3) {
+                handleApiOutcome({
+                  warning: `Retrying... (${attempt}/3)`,
+                });
+              }
             }
           );
         } catch (err) {
@@ -381,16 +391,26 @@ export function useModernChat({
             // If subscription status is known & free plan, tailor message
             const plan = subscriptionStatus.data?.plan || "free";
             if (plan === "free") {
-              showWarningToast(
-                "You've reached your free monthly message limit. Upgrade for unlimited messaging."
-              );
+              handleApiOutcome({
+                warning:
+                  "You've reached your free monthly message limit. Upgrade for unlimited messaging.",
+              });
             } else {
-              showWarningToast(
-                "You've reached your monthly message limit for this plan. Manage your subscription."
-              );
+              handleApiOutcome({
+                warning:
+                  "You've reached your monthly message limit for this plan. Manage your subscription.",
+              });
             }
           } else {
-            showErrorToast(err, "Failed to send message");
+            handleError(err, {
+              scope: "useModernChat",
+              action: "send_message_retry",
+              conversationId,
+              currentUserId,
+              matchUserId,
+            }, {
+              customUserMessage: "Failed to send message",
+            });
           }
           markMessageAsSent(tempId); // remove pending visual even on failure to avoid stuck state
           setIsSending(false);
@@ -427,12 +447,24 @@ export function useModernChat({
         setTimeout(() => inputRef.current?.focus(), 100);
       } catch (error) {
         const mapped = handleErrorUtil(error);
-        showErrorToast(null, mapped.message);
         if (mapped.type === "UNAUTHORIZED" || mapped.type === "TOKEN_EXPIRED") {
           console.warn("Auth error; user may need to re-login");
         }
         if (mapped.type === "RATE_LIMITED") {
-          showErrorToast(null, "Rate limited. We’ll retry and send shortly.");
+          handleApiOutcome({
+            warning: "Rate limited. We'll retry and send shortly.",
+          });
+        } else {
+          handleError(error, {
+            scope: "useModernChat",
+            action: "send_message",
+            conversationId,
+            currentUserId,
+            matchUserId,
+            errorType: mapped.type,
+          }, {
+            customUserMessage: mapped.message,
+          });
         }
       } finally {
         setIsSending(false);
@@ -441,6 +473,7 @@ export function useModernChat({
     [
       isSending,
       isBlocked,
+      conversationId,
       currentUserId,
       matchUserId,
       sendMessageFs,
@@ -479,7 +512,6 @@ export function useModernChat({
   );
 
   // Voice is disabled; keep placeholder for future enablement
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _sendVoiceMessage = useCallback(
     async (_blob: Blob, _toUserId: string, _duration: number) => {
       // Intentionally no-op; voice disabled in this layer
@@ -491,7 +523,7 @@ export function useModernChat({
   const handleBlockUser = useCallback(async () => {
     try {
       await blockUserUtil({ matchUserId, setIsBlocked, setShowReportModal });
-      showSuccessToast("User has been blocked");
+      handleApiOutcome({ success: true, message: "User has been blocked" });
       trackUsage({
         feature: "user_block",
         metadata: { targetUserId: matchUserId },
@@ -499,9 +531,17 @@ export function useModernChat({
     } catch (err) {
       const mapped = handleErrorUtil(err);
       console.error("Error blocking user:", mapped.message);
-      showErrorToast(null, "Failed to block user");
+      handleError(err, {
+        scope: "useModernChat",
+        action: "block_user",
+        conversationId,
+        currentUserId,
+        matchUserId,
+      }, {
+        customUserMessage: "Failed to block user",
+      });
     }
-  }, [matchUserId, trackUsage]);
+  }, [conversationId, currentUserId, matchUserId, trackUsage]);
 
   const handleUnblockUser = useCallback(async () => {
     try {
@@ -521,18 +561,34 @@ export function useModernChat({
             feature: "user_block",
             metadata: { targetUserId: matchUserId },
           });
-          showSuccessToast("User re-blocked");
+          handleApiOutcome({ success: true, message: "User re-blocked" });
         } catch (error) {
           const mapped = handleErrorUtil(error);
-          showErrorToast(null, mapped.message);
+          handleError(error, {
+            scope: "useModernChat",
+            action: "undo_block_user",
+            conversationId,
+            currentUserId,
+            matchUserId,
+          }, {
+            customUserMessage: mapped.message,
+          });
         }
       });
     } catch (err) {
       const mapped = handleErrorUtil(err);
       console.error("Error unblocking user:", mapped.message);
-      showErrorToast(null, "Failed to unblock user");
+      handleError(err, {
+        scope: "useModernChat",
+        action: "unblock_user",
+        conversationId,
+        currentUserId,
+        matchUserId,
+      }, {
+        customUserMessage: "Failed to unblock user",
+      });
     }
-  }, [matchUserId, trackUsage]);
+  }, [conversationId, currentUserId, matchUserId, trackUsage]);
 
   const handleReportUser = useCallback(
     async (reason: ReportReason, description: string) => {
@@ -547,14 +603,26 @@ export function useModernChat({
           feature: "user_report",
           metadata: { targetUserId: matchUserId, reason },
         });
-        showSuccessToast("Report submitted successfully");
+        handleApiOutcome({
+          success: true,
+          message: "Report submitted successfully",
+        });
       } catch (err) {
         const mapped = handleErrorUtil(err);
         console.error("Error reporting user:", mapped.message);
-        showErrorToast(null, "Failed to submit report");
+        handleError(err, {
+          scope: "useModernChat",
+          action: "report_user",
+          conversationId,
+          currentUserId,
+          matchUserId,
+          reason,
+        }, {
+          customUserMessage: "Failed to submit report",
+        });
       }
     },
-    [matchUserId, trackUsage]
+    [conversationId, currentUserId, matchUserId, trackUsage]
   );
 
   // Reactions state: map messageId -> emoji -> Set<userId>

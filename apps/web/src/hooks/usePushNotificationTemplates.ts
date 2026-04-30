@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminPushAPI } from "@/lib/api/admin/push";
 import type { TemplateUI, PushNotificationTemplate } from "../app/(authenticated)/admin/push-notification/types";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 const getString = (value: unknown): string | undefined =>
   typeof value === "string" ? value : undefined;
@@ -38,11 +38,19 @@ export function usePushNotificationTemplates() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminPushAPI.deleteTemplate(id),
     onSuccess: () => {
-      showSuccessToast("Template deleted successfully");
+      handleApiOutcome({
+        success: true,
+        message: "Template deleted successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["admin", "push", "templates"] });
     },
     onError: (error: unknown) => {
-      showErrorToast(error, "Failed to delete template");
+      handleError(error, {
+        scope: "usePushNotificationTemplates",
+        action: "delete_template",
+      }, {
+        customUserMessage: "Failed to delete template",
+      });
     },
   });
 

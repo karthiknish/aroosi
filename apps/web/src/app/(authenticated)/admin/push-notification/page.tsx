@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   AnalyticsDashboard,
   NotificationForm,
@@ -117,9 +117,13 @@ export default function PushNotificationAdminPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      showSuccessToast("Copied to clipboard");
-    } catch (_error) {
-      showErrorToast(null, "Failed to copy to clipboard");
+      handleApiOutcome({ success: true, message: "Copied to clipboard" });
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "PushNotificationAdminPage", action: "copy_to_clipboard" },
+        { customUserMessage: "Failed to copy to clipboard" }
+      );
     }
   };
 
@@ -243,7 +247,10 @@ export default function PushNotificationAdminPage() {
             setIncludeExternalUserIds(pendingExternalIds.join(", "));
             setConfirmSendUsersOpen(false);
             setPendingExternalIds([]);
-            showSuccessToast("Selected users added to Include External User IDs");
+            handleApiOutcome({
+              success: true,
+              message: "Selected users added to Include External User IDs",
+            });
             setActiveTab("compose");
           }}
           userIds={devices
@@ -263,7 +270,10 @@ export default function PushNotificationAdminPage() {
             setIncludePlayerIds(pendingPlayerIds.join(", "));
             setConfirmSendDevicesOpen(false);
             setPendingPlayerIds([]);
-            showSuccessToast("Selected device IDs added to Include Player IDs");
+            handleApiOutcome({
+              success: true,
+              message: "Selected device IDs added to Include Player IDs",
+            });
             setActiveTab("compose");
           }}
           playerIds={devices

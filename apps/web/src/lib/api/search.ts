@@ -26,15 +26,15 @@ export type ProfileSearchResponse = {
 };
 
 class SearchAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
-    const baseHeaders: Record<string, string> = {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers({
       Accept: "application/json",
       "Content-Type": "application/json",
-    };
-    const headers: Record<string, string> =
-      options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
-        ? { ...baseHeaders, ...(options.headers as Record<string, string>) }
-        : baseHeaders;
+    });
+
+    if (options?.headers) {
+      new Headers(options.headers).forEach((value, key) => headers.set(key, value));
+    }
 
     return safeRequest(
       endpoint,
@@ -69,15 +69,14 @@ class SearchAPI {
     if (filters.language && filters.language !== "any") params.set("language", filters.language);
 
     const correlationId =
-      (typeof crypto !== "undefined" && "randomUUID" in crypto && (crypto as any).randomUUID?.()) ||
-      `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    const res = await this.makeRequest(`/api/search?${params.toString()}`, {
+    const envelope = await this.makeRequest<Partial<ProfileSearchResponse>>(`/api/search?${params.toString()}`, {
       headers: { "X-Correlation-ID": correlationId }
     });
-    
-    const envelope = res.data || res;
-    
+
     return {
       profiles: Array.isArray(envelope.profiles) ? envelope.profiles : [],
       total: Number.isFinite(envelope.total) ? Number(envelope.total) : 0,
@@ -91,8 +90,10 @@ class SearchAPI {
    * Get recommended profiles
    */
   async getRecommendations(limit = 10): Promise<RecommendedProfile[]> {
-    const res = await this.makeRequest(`/api/recommendations?limit=${limit}`);
-    return res.data?.recommendations || res.recommendations || [];
+    const res = await this.makeRequest<{ recommendations?: RecommendedProfile[] }>(
+      `/api/recommendations?limit=${limit}`
+    );
+    return res.recommendations ?? [];
   }
 }
 

@@ -5,8 +5,8 @@ import {
   query,
   where,
   orderBy,
+  type DocumentData,
 } from "firebase/firestore";
-import type { DocumentData } from "firebase/firestore";
 import { uploadVoiceMessage as uploadVoiceMessageRequest } from "@/lib/api/voiceMessages";
 
 export interface VoiceMessage {

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { interestsAPI } from "@/lib/api/interests";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export type InterestLightStatus =
   | "none"
@@ -21,6 +21,13 @@ interface UseInterestOptions {
 type InterestStatusResponse = {
   data?: { status?: InterestLightStatus | null };
   status?: InterestLightStatus | null;
+};
+
+type InterestActionResponse = {
+  alreadyMatched?: boolean;
+  alreadyRemoved?: boolean;
+  removed?: number;
+  interestId?: string;
 };
 
 type InterestDebugWindow = Window & {
@@ -148,7 +155,7 @@ export function useInterestStatus({
 
   const handleToggleInterest = async () => {
     if (!fromUserId || !toUserId) {
-      showErrorToast(null, "User IDs not available");
+      handleApiOutcome({ success: false, error: "User IDs not available" });
       return;
     }
     if (mutationPending) return;
@@ -170,16 +177,34 @@ export function useInterestStatus({
         queryClient.setQueryData(["interestStatus", fromUserId, toUserId], {
           status: "none",
         });
-        await interestsAPI.remove(String(toUserId));
-        showSuccessToast("Interest withdrawn successfully!");
+        const removeResult = await interestsAPI.remove(
+          String(toUserId)
+        ) as InterestActionResponse;
+        handleApiOutcome({
+          success: true,
+          message: "Interest withdrawn successfully!",
+          warning: removeResult.alreadyRemoved
+            ? "Interest was already withdrawn."
+            : null,
+        });
       } else {
         setLocalInterest(true);
         setShowHeartPop(true);
         queryClient.setQueryData(["interestStatus", fromUserId, toUserId], {
           status: "pending",
         });
-        await interestsAPI.send(String(toUserId));
-        showSuccessToast("Interest sent successfully!");
+        const sendResult = await interestsAPI.send(
+          String(toUserId)
+        ) as InterestActionResponse;
+        handleApiOutcome({
+          success: true,
+          message: sendResult.alreadyMatched
+            ? "You are already matched with this profile."
+            : "Interest sent successfully!",
+          warning: sendResult.alreadyMatched
+            ? "You are already matched with this profile."
+            : null,
+        });
         track?.({
           feature: "interest_sent",
           metadata: { targetUserId: toUserId },
@@ -236,6 +261,10 @@ export function useInterestStatus({
         setTimeout(() => {
           void refetchInterestStatus();
         }, 250);
+        handleApiOutcome({
+          success: true,
+          warning: "Interest already sent.",
+        });
         setShowHeartPop(false);
         setMutationPending(false);
         return; // Suppress error toast
@@ -247,7 +276,18 @@ export function useInterestStatus({
         (wasSentBeforeClick
           ? "Failed to remove interest"
           : "Failed to send interest");
-      showErrorToast(msg);
+      handleError(
+        error instanceof Error ? error : new Error(msg),
+        {
+          scope: "useInterestStatus",
+          action: wasSentBeforeClick ? "remove_interest" : "send_interest",
+          fromUserId,
+          toUserId,
+        },
+        {
+          customUserMessage: msg,
+        }
+      );
       setInterestError(msg);
       setShowHeartPop(false);
     }

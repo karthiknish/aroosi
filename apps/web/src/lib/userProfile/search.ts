@@ -1,6 +1,5 @@
 // Extracted search functions from monolithic userProfile.ts for maintainability.
-import { db } from '@/lib/userProfile';
-import { COLLECTIONS, UserDocument } from '@/lib/userProfile';
+import { db, COLLECTIONS, type UserDocument } from '@/lib/userProfile';
 
 export interface UserSearchFilters {
   gender?: string;

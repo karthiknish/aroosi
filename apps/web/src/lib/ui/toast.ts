@@ -4,6 +4,26 @@ import { toast } from "sonner";
 // Keep track of recent toast messages to prevent duplicates
 const recentToasts = new Map<string, number>();
 
+function shouldSkipToast(message: string, windowMs = 3000) {
+  const now = Date.now();
+  const normalizedMessage = message.trim();
+  const lastToastTime = recentToasts.get(normalizedMessage);
+
+  if (lastToastTime && now - lastToastTime < windowMs) {
+    return true;
+  }
+
+  recentToasts.set(normalizedMessage, now);
+
+  for (const [storedMessage, time] of recentToasts.entries()) {
+    if (now - time > 5000) {
+      recentToasts.delete(storedMessage);
+    }
+  }
+
+  return false;
+}
+
 /**
  * Show an error toast with a generic message in production.
  * In development, if a detailed error is provided, it will be shown to help debugging.
@@ -145,22 +165,8 @@ export function showErrorToast(
     // ignore sanitize issues
   }
 
-  // Prevent duplicate toasts within a 3-second window
-  const now = Date.now();
-  const lastToastTime = recentToasts.get(message);
-  if (lastToastTime && now - lastToastTime < 3000) {
-    // Skip showing duplicate toast
+  if (shouldSkipToast(message)) {
     return;
-  }
-
-  // Record this toast
-  recentToasts.set(message, now);
-
-  // Clean up old entries (older than 5 seconds) to prevent memory leaks
-  for (const [msg, time] of recentToasts.entries()) {
-    if (now - time > 5000) {
-      recentToasts.delete(msg);
-    }
   }
 
   toast.error(message, {
@@ -188,6 +194,10 @@ export function showErrorToast(
 }
 
 export function showSuccessToast(message: string) {
+  if (shouldSkipToast(message)) {
+    return;
+  }
+
   toast.success(message, {
     className: "aroosi-toast",
     style: {
@@ -211,6 +221,10 @@ export function showUndoToast(
   actionLabel = "Undo",
   duration = 6000
 ) {
+  if (shouldSkipToast(message)) {
+    return;
+  }
+
   toast.success(message, {
     className: "aroosi-toast",
     style: {
@@ -240,6 +254,10 @@ export function showUndoToast(
 
 // Informational toast (e.g., prompts or neutral messages)
 export function showInfoToast(message: string) {
+  if (shouldSkipToast(message)) {
+    return;
+  }
+
   toast.info(message, {
     className: "aroosi-toast",
     style: {
@@ -258,6 +276,10 @@ export function showInfoToast(message: string) {
 
 // Warning toast for important notifications
 export function showWarningToast(message: string) {
+  if (shouldSkipToast(message)) {
+    return;
+  }
+
   toast.warning(message, {
     className: "aroosi-toast",
     style: {
@@ -276,6 +298,10 @@ export function showWarningToast(message: string) {
 
 // Primary branded toast for special announcements
 export function showPrimaryToast(message: string) {
+  if (shouldSkipToast(message)) {
+    return;
+  }
+
   toast(message, {
     className: "aroosi-toast",
     style: {

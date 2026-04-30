@@ -6,12 +6,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchIcebreakers,
   answerIcebreaker,
-  Icebreaker,
 } from "@/lib/engagementUtil";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -43,7 +42,7 @@ export function IcebreakersPanel() {
   >({});
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const { mutateAsync, isPending } = useMutation({
+  const { mutateAsync } = useMutation({
     mutationFn: async ({ id, answer }: { id: string; answer: string }) => {
       const res = await answerIcebreaker(id, answer);
       return res;
@@ -52,19 +51,20 @@ export function IcebreakersPanel() {
       await queryClient.invalidateQueries({
         queryKey: ["icebreakers", "today"],
       });
-      showSuccessToast("Answer saved");
+      handleApiOutcome({ success: true, message: "Answer saved" });
     },
-    onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Failed to save answer";
-      showErrorToast(msg);
+    onError: (error: unknown) => {
+      handleError(
+        error,
+        { scope: "IcebreakersPanel", action: "save_icebreaker_answer" },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : "Failed to save answer",
+        }
+      );
     },
   });
-  const mutationPending = isPending;
-
-  const questions = useMemo(
-    () => (Array.isArray(data) ? (data as Icebreaker[]) : []),
-    [data]
-  );
+  const questions = useMemo(() => (Array.isArray(data) ? data : []), [data]);
   const visibleQuestions = useMemo(
     () => questions.filter((q) => !hidden[q.id]),
     [questions, hidden]
@@ -110,16 +110,16 @@ export function IcebreakersPanel() {
     if (!current) return;
     const t = setTimeout(() => textareaRef.current?.focus(), 60);
     return () => clearTimeout(t);
-  }, [current?.id]);
+  }, [current]);
 
   const handleSubmit = async (qid: string) => {
     const val = (answers[qid] || "").trim();
     if (!val) {
-      showErrorToast("Please enter an answer");
+      handleApiOutcome({ warning: "Please enter an answer" });
       return;
     }
     if (val.length > 500) {
-      showErrorToast("Answer is too long (max 500 characters)");
+      handleApiOutcome({ warning: "Answer is too long (max 500 characters)" });
       return;
     }
     try {
@@ -138,7 +138,7 @@ export function IcebreakersPanel() {
 
   const handleSkip = (qid: string) => {
     setHidden((h) => ({ ...h, [qid]: true }));
-    showSuccessToast("Skipped for now");
+    handleApiOutcome({ success: true, message: "Skipped for now" });
     // If we skip the last one, index might need adjustment, but usually just stays or goes to next available
     // Since visibleQuestions changes, current index might point to next one automatically
   };
@@ -147,9 +147,9 @@ export function IcebreakersPanel() {
     const val = (answers[qid] || "").trim();
     try {
       await navigator.clipboard.writeText(val);
-      showSuccessToast("Copied to clipboard");
+      handleApiOutcome({ success: true, message: "Copied to clipboard" });
     } catch {
-      showErrorToast("Couldn't copy. Please copy manually.");
+      handleApiOutcome({ warning: "Couldn't copy. Please copy manually." });
     }
   };
 
@@ -157,7 +157,8 @@ export function IcebreakersPanel() {
     const currentVal = (answers[qid] || "").trim();
     if (!currentVal || currentVal.length < 3) return;
     if (submitted[qid]) return;
-    if (debounceRefs.current[qid]) clearTimeout(debounceRefs.current[qid]!);
+    const existingTimeout = debounceRefs.current[qid];
+    if (existingTimeout) clearTimeout(existingTimeout);
     debounceRefs.current[qid] = setTimeout(() => {
       void handleSubmit(qid);
     }, 1500); // Increased debounce for better UX

@@ -2,22 +2,28 @@
  * Presence API - Handles online presence operations
  */
 
+import { getResponseMessage, isApiEnvelope } from "@/lib/api/safeRequest";
+
 export interface PresenceStatus {
   userId: string;
   isOnline: boolean;
   lastSeen?: string;
 }
 
+type PresenceListResponse = {
+  presence?: PresenceStatus[];
+};
+
 class PresenceAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
-    const baseHeaders: Record<string, string> = {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers({
       Accept: "application/json",
       "Content-Type": "application/json",
-    };
-    const headers: Record<string, string> =
-      options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
-        ? { ...baseHeaders, ...(options.headers as Record<string, string>) }
-        : baseHeaders;
+    });
+
+    if (options?.headers) {
+      new Headers(options.headers).forEach((value, key) => headers.set(key, value));
+    }
 
     const res = await fetch(endpoint, {
       method: options?.method || "GET",
@@ -28,30 +34,25 @@ class PresenceAPI {
 
     const ct = res.headers.get("content-type") || "";
     const isJson = ct.toLowerCase().includes("application/json");
-    const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
+    const payload: unknown = isJson
+      ? await res.json().catch(() => ({}))
+      : await res.text().catch(() => "");
 
     if (!res.ok) {
-      const msg =
-        (isJson && payload && (payload as any).error) ||
-        (typeof payload === "string" && payload) ||
-        `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      throw new Error(getResponseMessage(payload) ?? `HTTP ${res.status}`);
     }
 
-    // Unwrap standardized { success, data } envelope from API handler
-    if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
-      if ("success" in maybe) {
-        if (maybe.success === false) {
-          throw new Error(String(maybe.message || maybe.error || "Request failed"));
-        }
-        if ("data" in maybe) {
-          return maybe.data;
-        }
+    if (isApiEnvelope<T>(payload)) {
+      if (payload.success === false) {
+        throw new Error(getResponseMessage(payload) ?? "Request failed");
+      }
+
+      if ("data" in payload) {
+        return payload.data as T;
       }
     }
 
-    return payload;
+    return payload as T;
   }
 
   /**
@@ -68,11 +69,11 @@ class PresenceAPI {
    * Get presence status for users
    */
   async getPresence(userIds: string[]): Promise<PresenceStatus[]> {
-    const res = await this.makeRequest("/api/presence", {
+    const res = await this.makeRequest<PresenceListResponse>("/api/presence", {
       method: "POST",
       body: JSON.stringify({ userIds, action: "get" }),
     });
-    return res.data?.presence || res.presence || [];
+    return res.presence ?? [];
   }
 }
 

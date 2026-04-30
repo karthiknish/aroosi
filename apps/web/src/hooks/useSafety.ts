@@ -11,21 +11,24 @@ import {
   type ReportData,
   type ReportReason,
 } from "@/lib/api/safety";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 // Hook for reporting users
 export const useReportUser = () => {
   useAuthContext(); // cookie-based auth
   return useMutation({
     mutationFn: (data: ReportData) => safetyAPI.reportUser(data),
-    onSuccess: () => {
-      showSuccessToast(
-        "User reported successfully. Our team will review this report."
-      );
+    onSuccess: (data) => {
+      handleApiOutcome(data, {
+        successMessage:
+          "User reported successfully. Our team will review this report.",
+      });
     },
-    onError: (error: Error) => {
-      showErrorToast(error, "Failed to report user");
+    onError: (error) => {
+      handleError(error, { scope: "useReportUser", action: "report_user" }, {
+        customUserMessage: "Failed to report user",
+      });
     },
   });
 };
@@ -38,16 +41,20 @@ export const useBlockUser = () => {
   return useMutation({
     mutationFn: (blockedUserId: string) =>
       safetyAPI.blockUser(blockedUserId),
-    onSuccess: (_, blockedUserId) => {
-      showSuccessToast("User blocked successfully");
+    onSuccess: (data, blockedUserId) => {
+      handleApiOutcome(data, {
+        successMessage: "User blocked successfully",
+      });
       void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
       void queryClient.invalidateQueries({
         queryKey: ["blockStatus", blockedUserId],
       });
       void queryClient.invalidateQueries({ queryKey: ["profiles"] });
     },
-    onError: (error: Error) => {
-      showErrorToast(error, "Failed to block user");
+    onError: (error) => {
+      handleError(error, { scope: "useBlockUser", action: "block_user" }, {
+        customUserMessage: "Failed to block user",
+      });
     },
   });
 };
@@ -60,15 +67,19 @@ export const useUnblockUser = () => {
   return useMutation({
     mutationFn: (blockedUserId: string) =>
       safetyAPI.unblockUser(blockedUserId),
-    onSuccess: (_, blockedUserId) => {
-      showSuccessToast("User unblocked successfully");
+    onSuccess: (data, blockedUserId) => {
+      handleApiOutcome(data, {
+        successMessage: "User unblocked successfully",
+      });
       void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
       void queryClient.invalidateQueries({
         queryKey: ["blockStatus", blockedUserId],
       });
     },
-    onError: (error: Error) => {
-      showErrorToast(error, "Failed to unblock user");
+    onError: (error) => {
+      handleError(error, { scope: "useUnblockUser", action: "unblock_user" }, {
+        customUserMessage: "Failed to unblock user",
+      });
     },
   });
 };

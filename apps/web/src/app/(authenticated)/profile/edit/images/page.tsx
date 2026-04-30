@@ -8,15 +8,10 @@ import { profileAPI } from "@/lib/api/profile";
 import { useProfileImages } from "@/hooks/useProfileImages";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import ProfileFormStepImages from "@/components/profile/ProfileFormStepImages";
-import type { ProfileImageInfo } from "@aroosi/shared/types";
+import type { Profile, ProfileImageInfo } from "@aroosi/shared/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Profile } from "@aroosi/shared/types";
-import {
-  showSuccessToast,
-  showErrorToast,
-  showInfoToast,
-} from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   updateImageOrder,
   uploadProfileImageWithProgressCancellable,
@@ -189,7 +184,7 @@ export default function EditProfileImagesPage() {
 
       // If it's a local image, no need to call API
       if (target && isLocal(target)) {
-        showInfoToast("Photo removed");
+        handleApiOutcome({ success: true, message: "Photo removed" });
         return;
       }
 
@@ -197,14 +192,18 @@ export default function EditProfileImagesPage() {
         if (!target) return;
         const storageId = target.storageId;
         await deleteImageById(storageId);
-        showInfoToast("Photo deleted");
+        handleApiOutcome({ success: true, message: "Photo deleted" });
         // Invalidate caches
         queryClient.invalidateQueries({
           queryKey: ["profileImages", profileUserId],
         });
         queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-      } catch (e: any) {
-        showErrorToast(e, "Failed to delete photo");
+      } catch (error) {
+        handleError(
+          error,
+          { scope: "EditProfileImagesPage", action: "delete_profile_photo" },
+          { customUserMessage: "Failed to delete photo" }
+        );
         // Rollback if failure
         if (target) {
           if (isLocal(target)) {
@@ -277,17 +276,22 @@ export default function EditProfileImagesPage() {
         queryClient.invalidateQueries({
           queryKey: ["profileImages", profile._id],
         });
-        showInfoToast("Order auto-saved");
-      } catch (e: any) {
-        let msg = e?.message || "Failed to auto-save order";
+        handleApiOutcome({ success: true, message: "Order auto-saved" });
+      } catch (error) {
+        let msg = error instanceof Error ? error.message : "Failed to auto-save order";
         if (
-          (e instanceof Error && (e as any).code === "INVALID_IMAGE_IDS") ||
-          /Invalid image IDs|processing/.test(String(e?.message || ""))
+          /Invalid image IDs|processing/.test(msg)
         ) {
           msg =
             "Waiting for photo uploads to finish before saving order. It will auto-save once complete.";
+          handleApiOutcome({ warning: msg });
+        } else {
+          handleError(
+            error,
+            { scope: "EditProfileImagesPage", action: "auto_save_image_order" },
+            { customUserMessage: msg }
+          );
         }
-        showErrorToast(msg);
       } finally {
         setIsAutoSaving(false);
       }
@@ -309,7 +313,7 @@ export default function EditProfileImagesPage() {
   const handleSaveChanges = useCallback(async () => {
     if (!profile) return;
     if (!hasChanges) {
-      showInfoToast("No changes to save");
+      handleApiOutcome({ warning: "No changes to save" });
       return;
     }
     setIsUpdating(true);
@@ -437,7 +441,7 @@ export default function EditProfileImagesPage() {
         await Promise.all(workers);
 
         if (batchCanceled) {
-          showInfoToast("Upload batch canceled");
+          handleApiOutcome({ warning: "Upload batch canceled" });
           setIsUpdating(false);
           return;
         }
@@ -449,9 +453,10 @@ export default function EditProfileImagesPage() {
             : {}) as typeof uploadStates
         ).some((s) => s.status === "error");
         if (anyErrors) {
-          showErrorToast(
-            "Some images failed to upload. Press Retry on failed ones or remove them, then Save again."
-          );
+          handleApiOutcome({
+            warning:
+              "Some images failed to upload. Press Retry on failed ones or remove them, then Save again.",
+          });
           setIsUpdating(false);
           return;
         }
@@ -474,7 +479,7 @@ export default function EditProfileImagesPage() {
         if (validEditedIds[0]) {
           try {
             await setMainProfileImage(validEditedIds[0]);
-          } catch (err) {
+          } catch {
             // non-fatal, will still try to update order below
           }
         }
@@ -496,7 +501,7 @@ export default function EditProfileImagesPage() {
         (s) => s.status === "error"
       );
       if (!hadErrors) {
-        showSuccessToast("Profile photos updated");
+        handleApiOutcome({ success: true, message: "Profile photos updated" });
       }
       // Update state with newly persisted images
       setInitialImages(persistedImages.filter((img) => !!img.storageId));
@@ -504,21 +509,26 @@ export default function EditProfileImagesPage() {
       if (!Object.values(uploadStates).some((s) => s.status === "error")) {
         router.push("/profile");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to save image updates:", error);
       // Check for invalid image IDs error from backend
-      const errMsg = error?.message || "";
+      const errMsg = error instanceof Error ? error.message : "";
       if (
         errMsg.includes("Invalid image IDs") ||
-        (error as any)?.code === "INVALID_IMAGE_IDS" ||
         /processing/.test(errMsg)
       ) {
-        showErrorToast(
-          "Some photos are still uploading. Please wait for uploads to complete before saving."
-        );
+        handleApiOutcome({
+          warning:
+            "Some photos are still uploading. Please wait for uploads to complete before saving.",
+        });
       } else {
-        showErrorToast(
-          error instanceof Error ? error.message : "Failed to save changes"
+        handleError(
+          error,
+          { scope: "EditProfileImagesPage", action: "save_profile_photos" },
+          {
+            customUserMessage:
+              error instanceof Error ? error.message : "Failed to save changes",
+          }
         );
       }
     } finally {
@@ -536,6 +546,7 @@ export default function EditProfileImagesPage() {
     router,
     uploadStates,
     batchCanceled,
+    userId,
   ]);
 
   if (profileLoading || imagesLoading) {

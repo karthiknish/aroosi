@@ -4,8 +4,10 @@
  */
 
 import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
-import { profileTTLManagerInstance } from "@/lib/storage/profile-ttl-manager";
-import { profileTTLStorage } from "@/lib/storage/profile-ttl-manager";
+import {
+  profileTTLManagerInstance,
+  profileTTLStorage,
+} from "@/lib/storage/profile-ttl-manager";
 
 /**
  * Integrates TTL caching with signup flow

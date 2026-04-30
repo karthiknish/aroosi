@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import type {
   Profile,
   ProfileFormValues,
-  Gender,
+  ProfileFormValues as ProfileFormComponentValues,
   SmokingDrinking,
   Diet,
   PhysicalStatus,
@@ -19,16 +19,14 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   getCurrentUserWithProfile,
   submitProfile,
 } from "@/lib/profile/userProfileApi";
 import { mapProfileToFormValues } from "@/lib/profile/formMapping";
-import type { ProfileFormValues as ProfileFormComponentValues } from "@aroosi/shared/types";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import React from "react";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -65,57 +63,6 @@ const defaultProfile: Profile = {
   subscriptionPlan: "free",
   boostsRemaining: 0,
 };
-
-// eslint-disable-next-line no-unused-vars
-function convertFormValuesToProfile(
-  formValues: ProfileFormValues,
-  existingProfile: Partial<Profile> = {}
-): Profile {
-  // Remove _creationTime and _id from both formValues and existingProfile
-  const cleanFormValues = Object.fromEntries(
-    Object.entries(formValues).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id"
-    )
-  );
-  const cleanExistingProfile = Object.fromEntries(
-    Object.entries(existingProfile).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id"
-    )
-  );
-  return {
-    ...defaultProfile,
-    ...cleanExistingProfile,
-    ...cleanFormValues,
-    gender: (formValues.gender as Gender) ?? "other",
-    partnerPreferenceAgeMin:
-      typeof formValues.partnerPreferenceAgeMin === "string"
-        ? parseInt(formValues.partnerPreferenceAgeMin, 10) || 18
-        : (formValues.partnerPreferenceAgeMin ?? 18),
-    partnerPreferenceAgeMax:
-      typeof formValues.partnerPreferenceAgeMax === "string"
-        ? parseInt(formValues.partnerPreferenceAgeMax, 10) || 80
-        : (formValues.partnerPreferenceAgeMax ?? 80),
-    maritalStatus: (["single", "divorced", "widowed"].includes(
-      formValues.maritalStatus
-    )
-      ? formValues.maritalStatus
-      : "single") as "single" | "divorced" | "widowed",
-    preferredGender: (["male", "female", "any"].includes(
-      formValues.preferredGender
-    )
-      ? formValues.preferredGender
-      : "any") as "male" | "female" | "any",
-    drinking: (formValues.drinking as SmokingDrinking) || "no",
-    smoking: (formValues.smoking as SmokingDrinking) || "no",
-    diet: (formValues.diet as Diet) || "vegetarian",
-    physicalStatus: (formValues.physicalStatus as PhysicalStatus) || "normal",
-    religiousPractice: formValues.religiousPractice as any,
-    familyValues: formValues.familyValues as any,
-    marriageViews: formValues.marriageViews as any,
-    traditionalValues: formValues.traditionalValues as any,
-    updatedAt: Date.now(),
-  };
-}
 
 // Utility to map ProfileFormComponentValues (with string fields for arrays) back to canonical ProfileFormValues
 function fromProfileFormComponentValues(
@@ -204,7 +151,7 @@ export default function EditProfilePage() {
       }
     };
 
-    const handlePopState = (e: PopStateEvent) => {
+    const handlePopState = () => {
       if (!window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
         window.history.pushState(null, "", window.location.pathname);
       }
@@ -271,7 +218,11 @@ export default function EditProfilePage() {
         profileError instanceof Error
           ? profileError.message
           : "Failed to load profile data";
-      showErrorToast(errMsg);
+      handleError(
+        profileError,
+        { scope: "ProfileEditPage", action: "load_profile_for_edit" },
+        { customUserMessage: errMsg }
+      );
     }
   }, [isProfileError, profileError]);
 
@@ -290,7 +241,6 @@ export default function EditProfilePage() {
   }, [isDirty, isSaving]);
 
   // Memoized profile data for type safety and consistency
-  const profileDataStateString = JSON.stringify(profileDataState);
   const profileData: Profile = useMemo(() => {
     if (!profileDataState) return defaultProfile;
 
@@ -339,15 +289,15 @@ export default function EditProfilePage() {
       marriageViews: (profileDataState.marriageViews as any) || "",
       traditionalValues: (profileDataState.traditionalValues as any) || "",
     };
-  }, [profileDataStateString, profileDataState]); // Compare content of profileDataState
+  }, [profileDataState]);
 
   // Profile update mutation using react-query
   const updateProfileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
       // Remove userId and _id before sending to API
       const {
-        userId: _omitUserId, // eslint-disable-line no-unused-vars
-        _id: _omitId, // eslint-disable-line no-unused-vars
+        userId: _omitUserId,
+        _id: _omitId,
         ...safeValues
       } = values;
       const apiResult = await submitProfile(userId, safeValues, "edit");
@@ -368,7 +318,10 @@ export default function EditProfilePage() {
         queryClient.invalidateQueries({ queryKey: ["auth"] }),
       ]);
       await refetchProfile();
-      showSuccessToast("Profile updated successfully!");
+      handleApiOutcome({
+        success: true,
+        message: "Profile updated successfully!",
+      });
       router.push("/profile");
       setIsSaving(false);
     },
@@ -382,9 +335,13 @@ export default function EditProfilePage() {
         errorMessage.toLowerCase().includes("unauthorized") ||
         errorMessage.includes("401")
       ) {
-        showErrorToast("Session expired. Please sign in again.");
+        handleApiOutcome({ warning: "Session expired. Please sign in again." });
       } else {
-        showErrorToast(errorMessage);
+        handleError(
+          error,
+          { scope: "ProfileEditPage", action: "update_profile" },
+          { customUserMessage: errorMessage }
+        );
       }
       setIsSaving(false);
     },
@@ -418,7 +375,7 @@ export default function EditProfilePage() {
       
       autoSaveMutation.mutate(canonicalValues);
     },
-    [isSaving, autoSaveMutation, userId]
+    [isSaving, autoSaveMutation]
   );
 
   // Form submit handler
@@ -432,13 +389,13 @@ export default function EditProfilePage() {
         const ageMs = Date.now() - dob.getTime();
         const age = new Date(ageMs).getUTCFullYear() - 1970;
         if (isNaN(age) || age < 18) {
-          showErrorToast(
-            "You must be at least 18 years old to edit your profile."
-          );
+          handleApiOutcome({
+            warning: "You must be at least 18 years old to edit your profile.",
+          });
           return;
         }
       } catch {
-        showErrorToast("Please provide a valid date of birth.");
+        handleApiOutcome({ warning: "Please provide a valid date of birth." });
         return;
       }
 

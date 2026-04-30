@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { requestEmailVerification } from "@/lib/auth/clientAuth";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export default function VerifyEmailBanner() {
   const { user, profile, isSignedIn, refreshProfile } = useAuthContext();
@@ -53,15 +53,23 @@ export default function VerifyEmailBanner() {
               try {
                 const result = await requestEmailVerification();
                 if (!result.success) {
-                  showErrorToast(
-                    result.error || "Failed to send verification email"
-                  );
+                  handleApiOutcome({
+                    success: false,
+                    error: result.error || "Failed to send verification email",
+                  });
                 } else {
-                  showSuccessToast("Verification email sent");
+                  handleApiOutcome({
+                    success: true,
+                    message: "Verification email sent",
+                  });
                   setSentAt(Date.now());
                 }
-              } catch (e) {
-                showErrorToast("Network error sending email");
+              } catch (error) {
+                handleError(
+                  error,
+                  { scope: "VerifyEmailBanner", action: "request_email_verification" },
+                  { customUserMessage: "Network error sending email" }
+                );
               } finally {
                 setSending(false);
               }

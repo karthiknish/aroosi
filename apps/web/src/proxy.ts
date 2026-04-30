@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 // IMPORTANT: Do NOT import firebase-admin in middleware (Edge runtime) – it pulls in Node-only modules (fs, net, etc.)
 // that break the build with UnhandledSchemeError. We only perform a lightweight check here.
 // Full token verification (signature, revocation) happens within Node.js API routes / server components.

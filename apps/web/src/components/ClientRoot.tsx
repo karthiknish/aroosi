@@ -55,7 +55,7 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
       {!isAdminRoute && <Footer />}
       <BackToTop />
       <Toaster
-        position="bottom-right"
+        position="top-right"
         toastOptions={{
           className: "aroosi-toast",
           style: {
@@ -72,6 +72,8 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
             backdropFilter: "blur(12px)",
           },
         }}
+        offset={{ top: 88, right: 24, left: 24, bottom: 24 }}
+        mobileOffset={{ top: 80, right: 16, left: 16, bottom: 16 }}
         theme="dark"
         richColors={true}
         closeButton={true}

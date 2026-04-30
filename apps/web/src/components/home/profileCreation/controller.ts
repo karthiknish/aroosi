@@ -4,7 +4,7 @@ import { db } from "@/lib/firebase";
 import { useStepValidation } from "@/hooks/useStepValidation";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   submitProfile,
   getCurrentUserWithProfile,
@@ -262,7 +262,7 @@ export function useProfileCreationController(params: {
         ]);
       } catch {}
       const summary = stepValidation.getValidationSummary();
-      showErrorToast(null, summary.summary);
+      handleApiOutcome({ warning: summary.summary });
       return;
     }
     if (step < 7) {
@@ -334,7 +334,10 @@ export function useProfileCreationController(params: {
           try {
             clearAllOnboardingData();
           } catch {}
-          showSuccessToast("Account created. Finalizing your profile...");
+          handleApiOutcome({
+            success: true,
+            message: "Account created. Finalizing your profile...",
+          });
           handleClose();
           try {
             const ok = await (async () => {
@@ -374,10 +377,9 @@ export function useProfileCreationController(params: {
           requiredFields
         );
         if (missingFields.length > 0) {
-          showErrorToast(
-            null,
-            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
-          );
+          handleApiOutcome({
+            warning: `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`,
+          });
           setHasSubmittedProfile(false);
           setIsSubmitting(false);
           return;
@@ -405,7 +407,13 @@ export function useProfileCreationController(params: {
           "create"
         );
         if (!profileRes.success) {
-          showErrorToast(profileRes.error, "Failed to create profile");
+          const profileErrorMessage =
+            profileRes.error instanceof Error
+              ? profileRes.error.message
+              : typeof profileRes.error === "string" && profileRes.error.trim()
+                ? profileRes.error
+                : "Failed to create profile";
+          handleApiOutcome({ success: false, error: profileErrorMessage });
           setHasSubmittedProfile(false);
           setIsSubmitting(false);
           return;
@@ -422,7 +430,7 @@ export function useProfileCreationController(params: {
               reason: f.reason,
             }));
             const msg = summarizeImageUploadErrors(mapped, 3);
-            showErrorToast(null, msg);
+            handleApiOutcome({ warning: msg });
             __devInfo(
               "Some images failed to upload. You can retry failed items individually from Step 6."
             );
@@ -448,10 +456,9 @@ export function useProfileCreationController(params: {
                 });
               }
             } catch {
-              showErrorToast(
-                null,
-                "Unable to save image order. You can reorder later."
-              );
+              handleApiOutcome({
+                warning: "Unable to save image order. You can reorder later.",
+              });
             }
           }
         }
@@ -478,7 +485,10 @@ export function useProfileCreationController(params: {
           }
         } catch {}
 
-        showSuccessToast("Profile created successfully!");
+        handleApiOutcome({
+          success: true,
+          message: "Profile created successfully!",
+        });
         handleClose();
         try {
           const ok = await (async () => {
@@ -493,9 +503,10 @@ export function useProfileCreationController(params: {
           })();
           if (ok) router.push("/success");
         } catch {}
-      } catch (err: any) {
+      } catch (err: unknown) {
         let errorMessage = "Profile submission failed";
-        const msg = String(err?.message || "").toLowerCase();
+        const rawMessage = err instanceof Error ? err.message : "";
+        const msg = rawMessage.toLowerCase();
         if (msg.includes("network") || msg.includes("fetch"))
           errorMessage =
             "Network error. Please check your connection and try again.";
@@ -512,9 +523,17 @@ export function useProfileCreationController(params: {
         else if (msg.includes("500") || msg.includes("server"))
           errorMessage =
             "Server error while creating profile. Please try again.";
-        else if (err?.message)
-          errorMessage = `Profile submission failed: ${err.message}`;
-        showErrorToast(null, errorMessage);
+        else if (rawMessage)
+          errorMessage = `Profile submission failed: ${rawMessage}`;
+        handleError(
+          err,
+          {
+            scope: "useProfileCreationController",
+            action: "submit_profile_and_images",
+            userId,
+          },
+          { customUserMessage: errorMessage }
+        );
         setHasSubmittedProfile(false);
       } finally {
         setIsSubmitting(false);

@@ -2,8 +2,6 @@ import { z } from "zod";
 import {
   profileSchema,
   createProfileSchema,
-  PROFILE_CONSTANTS,
-  PREFERRED_GENDER_OPTIONS,
 } from "@/lib/validation/profileSchema";
 
 // ============================================================================

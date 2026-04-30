@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useUnreadCounts } from "./useUnreadCounts";
-import { showErrorToast } from "@/lib/ui/toast";
 import { matchesAPI, type MatchListItem } from "@/lib/api/matches";
+import { handleError } from "@/lib/utils/errorHandling";
 
 export interface MatchListView {
   id: string;
@@ -54,7 +54,11 @@ export function useMatches(
           }));
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Failed to fetch matches";
-          showErrorToast?.(msg);
+          handleError(
+            e,
+            { scope: "useMatches", action: "fetch_matches", userId },
+            { customUserMessage: msg }
+          );
           return [];
         }
       },
@@ -77,7 +81,7 @@ export function useMatches(
   // attach unreadCount
   const withUnread = filtered.map((match) => ({
     ...match,
-    unread: (counts as Record<string, number>)[match.userId] || 0,
+    unread: counts[match.userId] || 0,
   }));
 
   return { matches: withUnread, loading };

@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -32,8 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { adminIcebreakersAPI, AdminIcebreaker as IceQ } from "@/lib/api/admin/icebreakers";
+import { adminIcebreakersAPI, type AdminIcebreaker as IceQ } from "@/lib/api/admin/icebreakers";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { 
   Trash2, 
   Plus, 
@@ -44,11 +43,15 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  MessageSquare,
-  CheckCircle2,
-  XCircle
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function getErrorMessage(error: unknown, fallbackMessage: string) {
+  return error instanceof Error && error.message
+    ? error.message
+    : fallbackMessage;
+}
 
 function IcebreakerRow({
   q,
@@ -72,7 +75,7 @@ function IcebreakerRow({
     setWeight(q.weight ?? "");
   }, [q]);
 
-  const handleSave = (field: keyof IceQ, value: any) => {
+  const handleSave = (field: keyof IceQ, value: IceQ[keyof IceQ] | null) => {
     // Only save if changed
     if (value === q[field] || (value === "" && q[field] === null)) return;
     
@@ -198,14 +201,23 @@ export default function AdminIcebreakersPage() {
       weight?: number;
     }) => adminIcebreakersAPI.create(payload),
     onSuccess: () => {
-      showSuccessToast("Icebreaker question created");
+      handleApiOutcome({
+        success: true,
+        message: "Icebreaker question created",
+      });
       void qc.invalidateQueries({ queryKey: ["admin", "icebreakers"] });
       setNewText("");
       setNewCategory("");
       setNewWeight("");
       setIsAddExpanded(false);
     },
-    onError: (e: any) => showErrorToast(e?.message || "Create failed"),
+    onError: (error: unknown) => {
+      handleError(
+        error,
+        { scope: "AdminIcebreakersPage", action: "create_icebreaker" },
+        { customUserMessage: getErrorMessage(error, "Create failed") }
+      );
+    },
   });
 
   const mUpdate = useMutation({
@@ -214,16 +226,28 @@ export default function AdminIcebreakersPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin", "icebreakers"] });
     },
-    onError: (e: any) => showErrorToast(e?.message || "Update failed"),
+    onError: (error: unknown) => {
+      handleError(
+        error,
+        { scope: "AdminIcebreakersPage", action: "update_icebreaker" },
+        { customUserMessage: getErrorMessage(error, "Update failed") }
+      );
+    },
   });
 
   const mDelete = useMutation({
     mutationFn: (id: string) => adminIcebreakersAPI.delete(id),
     onSuccess: () => {
-      showSuccessToast("Deleted");
+      handleApiOutcome({ success: true, message: "Deleted" });
       void qc.invalidateQueries({ queryKey: ["admin", "icebreakers"] });
     },
-    onError: (e: any) => showErrorToast(e?.message || "Delete failed"),
+    onError: (error: unknown) => {
+      handleError(
+        error,
+        { scope: "AdminIcebreakersPage", action: "delete_icebreaker" },
+        { customUserMessage: getErrorMessage(error, "Delete failed") }
+      );
+    },
   });
 
   // Derived data
@@ -370,7 +394,7 @@ export default function AdminIcebreakersPage() {
                 <Input
                   id="new-weight"
                   type="number"
-                  value={newWeight as any}
+                    value={newWeight}
                   onChange={(e) =>
                     setNewWeight(
                       e.target.value === "" ? "" : Number(e.target.value)
@@ -382,7 +406,10 @@ export default function AdminIcebreakersPage() {
               </div>
               <Button
                 onClick={() => {
-                  if (!newText.trim()) return showErrorToast("Enter a question");
+                  if (!newText.trim()) {
+                    handleApiOutcome({ warning: "Enter a question" });
+                    return;
+                  }
                   mCreate.mutate({
                     text: newText.trim(),
                     category: newCategory.trim() || undefined,

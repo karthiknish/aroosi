@@ -2,7 +2,7 @@
  * User API - Handles user-related operations
  */
 
-import { safeRequest } from "@/lib/api/safeRequest";
+import { isJsonObject, safeRequest } from "@/lib/api/safeRequest";
 import { handleError } from "@/lib/utils/errorHandling";
 
 export interface User {
@@ -16,15 +16,15 @@ export interface User {
 }
 
 class UserAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
-    const baseHeaders: Record<string, string> = {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers({
       Accept: "application/json",
       "Content-Type": "application/json",
-    };
-    const headers: Record<string, string> =
-      options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
-        ? { ...baseHeaders, ...(options.headers as Record<string, string>) }
-        : baseHeaders;
+    });
+
+    if (options?.headers) {
+      new Headers(options.headers).forEach((value, key) => headers.set(key, value));
+    }
 
     return safeRequest(
       endpoint,
@@ -47,8 +47,22 @@ class UserAPI {
    */
   async me(): Promise<User | null> {
     try {
-      const res = await this.makeRequest("/api/profile");
-      return res.data || res.profile || res.user || null;
+      const res = await this.makeRequest<unknown>("/api/profile");
+      if (!isJsonObject(res)) {
+        return null;
+      }
+
+      const profile = res.profile;
+      if (isJsonObject(profile)) {
+        return profile as User;
+      }
+
+      const user = res.user;
+      if (isJsonObject(user)) {
+        return user as User;
+      }
+
+      return res as User;
     } catch (err) {
       handleError(err, { scope: "userAPI", action: "me" }, { showToast: false, logError: false });
       return null;
@@ -58,14 +72,14 @@ class UserAPI {
   /**
    * Get user profile
    */
-  async getProfile(): Promise<any> {
+  async getProfile(): Promise<unknown> {
     return this.makeRequest("/api/profile");
   }
 
   /**
    * Update user profile
    */
-  async updateProfile(data: Record<string, any>): Promise<any> {
+  async updateProfile(data: Record<string, unknown>): Promise<unknown> {
     return this.makeRequest("/api/profile", {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -85,8 +99,10 @@ class UserAPI {
    * Search users (admin)
    */
   async search(query: string, limit = 20): Promise<User[]> {
-    const res = await this.makeRequest(`/api/profile/search?q=${encodeURIComponent(query)}&limit=${limit}`);
-    return res.data?.users || res.users || [];
+    const res = await this.makeRequest<{ users?: User[] }>(
+      `/api/profile/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
+    return res.users ?? [];
   }
 }
 

@@ -1,7 +1,14 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { adminPushAPI } from "@/lib/api/admin/push";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+
+type TestSendPayload = {
+  playerId: string;
+  title: string;
+  message: string;
+  url?: string;
+};
 
 export function usePushNotificationTest() {
   const [testPlayerId, setTestPlayerId] = useState("");
@@ -9,23 +16,33 @@ export function usePushNotificationTest() {
   const [testMessage, setTestMessage] = useState("");
   const [testUrl, setTestUrl] = useState("");
   const [testImageUrl, setTestImageUrl] = useState("");
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<unknown>(null);
 
   const testMutation = useMutation({
-    mutationFn: (payload: any) => adminPushAPI.sendTest(payload),
+    mutationFn: (payload: TestSendPayload) => adminPushAPI.sendTest(payload),
     onSuccess: (result) => {
       setTestResult(result);
-      showSuccessToast("Test notification sent successfully");
+      handleApiOutcome({
+        success: true,
+        message: "Test notification sent successfully",
+      });
     },
-    onError: (error: any) => {
-      showErrorToast(error, "Failed to send test notification");
+    onError: (error) => {
+      handleError(error, {
+        scope: "usePushNotificationTest",
+        action: "send_test_notification",
+      }, {
+        customUserMessage: "Failed to send test notification",
+      });
     },
   });
 
   const handleTestSend = useCallback(async (title: string, message: string, url?: string) => {
     const finalPlayerId = testPlayerId.trim();
     if (!finalPlayerId || !title.trim() || !message.trim()) {
-      showErrorToast(null, "Player ID, title, and message are required for test");
+      handleApiOutcome({
+        warning: "Player ID, title, and message are required for test",
+      });
       return;
     }
 

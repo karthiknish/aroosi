@@ -34,7 +34,7 @@ export async function registerPushToken() {
         // Register with backend
         const response = await api.post('/push/register', {
             token,
-            platform: Platform.OS,
+            deviceType: Platform.OS,
         });
 
         return { success: true, token, ...response };

@@ -2,71 +2,77 @@
  * Storage API - Handles file storage operations
  */
 
+import { getResponseMessage, isApiEnvelope } from "@/lib/api/safeRequest";
+
+type SignedUrlResponse = {
+  url?: string;
+};
+
+type SearchImagesResponse = {
+  images?: string[];
+};
+
 class StorageAPI {
-  private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
-    const headers: Record<string, string> = {
+  private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers({
       Accept: "application/json",
-    };
+    });
     
     if (options?.body && !(options.body instanceof FormData)) {
-      headers["Content-Type"] = "application/json";
+      headers.set("Content-Type", "application/json");
     }
 
-    const finalHeaders: Record<string, string> =
-      options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
-        ? { ...headers, ...(options.headers as Record<string, string>) }
-        : headers;
+    if (options?.headers) {
+      new Headers(options.headers).forEach((value, key) => headers.set(key, value));
+    }
 
     const res = await fetch(endpoint, {
       method: options?.method || "GET",
-      headers: finalHeaders,
+      headers,
       body: options?.body,
       credentials: "include",
     });
 
     const ct = res.headers.get("content-type") || "";
     const isJson = ct.toLowerCase().includes("application/json");
-    const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
+    const payload: unknown = isJson
+      ? await res.json().catch(() => ({}))
+      : await res.text().catch(() => "");
 
     if (!res.ok) {
-      const msg =
-        (isJson && payload && (payload as any).error) ||
-        (typeof payload === "string" && payload) ||
-        `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      throw new Error(getResponseMessage(payload) ?? `HTTP ${res.status}`);
     }
 
-    // Unwrap standardized { success, data } envelope from API handler
-    if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
-      if ("success" in maybe) {
-        if (maybe.success === false) {
-          throw new Error(String(maybe.message || maybe.error || "Request failed"));
-        }
-        if ("data" in maybe) {
-          return maybe.data;
-        }
+    if (isApiEnvelope<T>(payload)) {
+      if (payload.success === false) {
+        throw new Error(getResponseMessage(payload) ?? "Request failed");
+      }
+
+      if ("data" in payload) {
+        return payload.data as T;
       }
     }
 
-    return payload;
+    return payload as T;
   }
 
   /**
    * Get a signed URL for a storage path
    */
   async getSignedUrl(path: string): Promise<string> {
-    const res = await this.makeRequest(`/api/storage/${encodeURIComponent(path)}`);
-    return res.data?.url || res.url || "";
+    const res = await this.makeRequest<SignedUrlResponse>(`/api/storage/${encodeURIComponent(path)}`);
+    return res.url ?? "";
   }
 
   /**
    * Search for images (e.g., for blog posts)
    */
   async searchImages(query: string, limit = 10): Promise<{ images: string[] }> {
-    const res = await this.makeRequest(`/api/search-images?q=${encodeURIComponent(query)}&limit=${limit}`);
+    const res = await this.makeRequest<SearchImagesResponse>(
+      `/api/search-images?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
     return {
-      images: res.data?.images || res.images || [],
+      images: res.images ?? [],
     };
   }
 }

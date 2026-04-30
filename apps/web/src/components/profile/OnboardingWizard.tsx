@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, User, MapPin, Camera, Heart, Info, Loader2 } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { CheckCircle2, User, MapPin, Camera, Heart, Info, Loader2 } from "lucide-react";
 import { patchJson, getJson } from "@/lib/http/client";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 const steps = [
   { id: 1, title: "Basic Info", icon: User },
@@ -66,11 +66,15 @@ export function OnboardingWizard() {
         completed
       });
       if (completed) {
-        showSuccessToast("Onboarding complete!");
+        handleApiOutcome({ success: true, message: "Onboarding complete!" });
         router.push("/profile");
       }
-    } catch (e) {
-      showErrorToast(null, "Failed to save progress");
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "OnboardingWizard", action: "save_progress", step, completed },
+        { customUserMessage: "Failed to save progress" }
+      );
     } finally {
       setSaving(false);
     }

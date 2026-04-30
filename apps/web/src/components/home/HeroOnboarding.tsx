@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -15,8 +14,7 @@ import {
 import { Card } from "@/components/ui/card";
 
 import Link from "next/link";
-import { ArrowRight, Users, Shield, Star, CalendarIcon, User, Info, CheckCircle2 } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { ArrowRight, Users, Shield, Star, User, Info, CheckCircle2 } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -33,10 +31,8 @@ import {
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
 import RequiredLabel from "../ui/RequiredLabel";
-import { useAuth } from "@/hooks/useAuth";
-import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 interface OnboardingData {
   profileFor: string;
@@ -70,8 +66,6 @@ const onboardingStepSchemas = [
 
 function HeroOnboardingInner() {
   const { formData, updateFormData } = useProfileWizard();
-  const router = useRouter();
-  const { isAuthenticated, profile } = useAuth();
   const [step, setStep] = useState<number>(() => {
     try {
       if (typeof window !== "undefined") {
@@ -161,7 +155,6 @@ function HeroOnboardingInner() {
     } catch (e) {
       // Non-fatal; surfaces only in dev console
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
         console.warn("HeroOnboarding partial persist failed", e);
       }
     }
@@ -184,9 +177,12 @@ function HeroOnboardingInner() {
     setHeroErrors(nextErrors);
 
     const firstKey = String(firstIssue?.path?.[0] || "");
-    const label = (fieldLabels as any)[firstKey] || firstKey || "Field";
+    const label =
+      firstKey && firstKey in fieldLabels
+        ? fieldLabels[firstKey as keyof OnboardingData]
+        : firstKey || "Field";
     const message = firstIssue?.message || "Please fill in this field";
-    showErrorToast(null, `${label}: ${message}`);
+    handleApiOutcome({ warning: `${label}: ${message}` });
     // Focus the first invalid field if possible
     try {
       const focusId =
@@ -196,7 +192,7 @@ function HeroOnboardingInner() {
             ? "profileFor"
             : firstKey;
       const el = document.getElementById(focusId);
-      if (el) (el as HTMLElement).focus();
+          if (el) el.focus();
     } catch {}
     return false;
   };
@@ -250,7 +246,7 @@ function HeroOnboardingInner() {
           .slice(0, 3)
           .join(", ");
         const more = missing.length > 3 ? " and more" : "";
-        showErrorToast(null, `Missing: ${pretty}${more}.`);
+        handleApiOutcome({ warning: `Missing: ${pretty}${more}.` });
         return;
       }
       // If user already authenticated, persist partial immediately (non-blocking)
@@ -259,7 +255,7 @@ function HeroOnboardingInner() {
       } catch {}
       // Always open modal; Step7 handles sign up / sign in if needed
       setShowProfileModal(true);
-      showSuccessToast("Great! Let’s complete your profile.");
+      handleApiOutcome({ success: true, message: "Great! Let’s complete your profile." });
       try {
         if (typeof window !== "undefined") {
           // Fire-and-forget signal for belt-and-braces clearing listeners
@@ -269,8 +265,12 @@ function HeroOnboardingInner() {
           );
         }
       } catch {}
-    } catch {
-      showErrorToast(null, "Something went wrong. Please try again.");
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "HeroOnboarding", action: "open_profile_creation_modal" },
+        { customUserMessage: "Something went wrong. Please try again." }
+      );
     } finally {
       setLoading(false);
     }

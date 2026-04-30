@@ -19,7 +19,7 @@ import { Step5PartnerPreferences } from "./steps/Step5PartnerPreferences";
 import { Step6Photos } from "./steps/Step6Photos";
 import { Step7AccountCreation } from "./steps/Step7AccountCreation";
 import { COUNTRIES } from "@/lib/constants/countries";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome } from "@/lib/utils/errorHandling";
 import { useProfileCreationController } from "./profileCreation/controller";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { getGlobalRequiredFields } from "./profileCreation/step7";
@@ -242,20 +242,6 @@ export function ProfileCreationModal({
                     formData={formData as any}
                     setStep={setStep}
                     router={router as any}
-                    onComplete={() => {
-                      try {
-                        showSuccessToast(
-                          "Account created. Finalizing your profile..."
-                        );
-                      } catch {}
-                    }}
-                    onError={(msg?: string) => {
-                      const m =
-                        typeof msg === "string" && msg.trim().length > 0
-                          ? msg
-                          : "Sign up failed";
-                      showErrorToast(m);
-                    }}
                   />
                 )}
               </motion.div>
@@ -290,10 +276,9 @@ export function ProfileCreationModal({
                       !(formData as any).maritalStatus ||
                       String((formData as any).maritalStatus).trim() === "";
                     if (precheckMissing) {
-                      showErrorToast(
-                        null,
-                        "Please complete location and physical details"
-                      );
+                      handleApiOutcome({
+                        warning: "Please complete location and physical details",
+                      });
                       await handleNext();
                       return;
                     }

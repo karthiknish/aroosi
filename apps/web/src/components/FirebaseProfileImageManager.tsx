@@ -1,83 +1,31 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { FirebaseImageGallery } from "@/components/FirebaseImageGallery";
 import { FirebaseProfileImageUpload } from "@/components/FirebaseProfileImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { fetchProfileImages, deleteImageById } from "@/lib/utils/imageUtil";
 
 export function FirebaseProfileImageManager() {
   const { user } = useFirebaseAuth();
-  const [images, setImages] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Fetch images from the API
-  const fetchImages = useCallback(async () => {
-    if (!user?.uid) return;
-
-    try {
-      setIsLoading(true);
-      const images = await fetchProfileImages(user.uid);
-      setImages(images);
-    } catch (error) {
-      console.error("Error fetching images:", error);
-      showErrorToast("Failed to load images");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.uid]);
+  const [galleryRefreshToken, setGalleryRefreshToken] = useState(0);
 
   // Refresh images
-  const refreshImages = useCallback(async () => {
+  const refreshImages = useCallback(() => {
     setIsRefreshing(true);
-    await fetchImages();
-    setIsRefreshing(false);
-  }, [fetchImages]);
+    setGalleryRefreshToken((value) => value + 1);
+  }, []);
 
   // Handle image upload
   const handleImageUpload = useCallback(
-    async (imageData: { url: string; storageId: string }) => {
-      // Add the new image to the list
-      setImages((prev) => [
-        ...prev,
-        {
-          url: imageData.url,
-          storageId: imageData.storageId,
-          fileName: imageData.storageId.split("/").pop() || "",
-          uploadedAt: new Date().toISOString(),
-        },
-      ]);
-
-      showSuccessToast("Image uploaded successfully!");
+    async (_imageData: { url: string; storageId: string }) => {
+      setGalleryRefreshToken((value) => value + 1);
     },
     []
   );
-
-  // Handle image delete
-  const handleImageDelete = useCallback(async (storageId: string) => {
-    try {
-      // Call the API to delete the image
-      await deleteImageById(storageId);
-      // Remove the image from the list
-      setImages((prev) => prev.filter((img) => img.storageId !== storageId));
-      showSuccessToast("Image deleted successfully");
-    } catch (error) {
-      console.error("Error deleting image:", error);
-      showErrorToast(
-        error instanceof Error ? error.message : "Failed to delete image"
-      );
-    }
-  }, []);
-
-  // Load images on component mount
-  useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
 
   if (!user) {
     return <div>Please sign in to manage profile images</div>;
@@ -107,7 +55,8 @@ export function FirebaseProfileImageManager() {
         <CardContent>
           <FirebaseImageGallery
             userId={user.uid}
-            onImageDelete={handleImageDelete}
+            refreshToken={galleryRefreshToken}
+            onLoadComplete={() => setIsRefreshing(false)}
           />
         </CardContent>
       </Card>

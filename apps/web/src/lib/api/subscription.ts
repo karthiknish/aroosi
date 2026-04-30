@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { postJson, getJson } from "@/lib/http/client";
 
 export interface PlanFeatureObj {
   text: string;
@@ -77,6 +76,10 @@ export type TrackUsageResult = {
   duplicate?: boolean;
   // server may include additional fields depending on feature
   [key: string]: unknown;
+};
+
+type SubscriptionApiError = Error & {
+  status?: number;
 };
 
 class SubscriptionAPI {
@@ -398,7 +401,9 @@ class SubscriptionAPI {
     const json = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || json?.success === false) {
       const msg = String(json?.error || json?.message || `HTTP ${res.status}`);
-      throw new Error(msg);
+      const error = new Error(msg) as SubscriptionApiError;
+      error.status = res.status;
+      throw error;
     }
 
     const data = (json && typeof json === "object" && "data" in json ? json.data : json) as any;

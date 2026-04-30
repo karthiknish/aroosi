@@ -9,9 +9,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { Eye, EyeOff } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { OtpInput } from "@/components/ui/otp-input";
-import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -95,7 +94,10 @@ export default function CustomSignupForm({
     try {
       const resp = await resendEmailVerification();
       if (!resp.success) {
-        showErrorToast(resp.error || "Unable to resend code");
+        handleApiOutcome({
+          success: false,
+          error: resp.error || "Unable to resend code",
+        });
         return;
       }
       setVerificationCode("");
@@ -133,9 +135,9 @@ export default function CustomSignupForm({
   const finalizeToSuccess = useCallback(async () => {
     const ok = await ensureProfileReady();
     if (!ok) {
-      showErrorToast(
-        "We are finalizing your account. Please try again shortly."
-      );
+      handleApiOutcome({
+        warning: "We are finalizing your account. Please try again shortly.",
+      });
       setIsLoading(false);
       return false;
     }
@@ -178,7 +180,7 @@ export default function CustomSignupForm({
       if (Object.keys(nextErrors).length > 0) {
         const first = nextErrors.verificationCode;
         if (first) {
-          showErrorToast(first);
+          handleApiOutcome({ warning: first });
           onError?.(first);
         }
         return false;
@@ -224,7 +226,7 @@ export default function CustomSignupForm({
       // Attach summary to form-level error for inline display
       setFieldErrors((prev) => ({ ...prev, form: summary }));
       // Also show a toast with the summary for quick visibility
-      showErrorToast(summary);
+      handleApiOutcome({ warning: summary });
       onError?.(summary);
       return false;
     }
@@ -243,7 +245,10 @@ export default function CustomSignupForm({
       if (needsVerification) {
         // For Firebase, email verification is handled differently
         // We'll just show a success message and proceed
-        showSuccessToast("Email verified successfully!");
+        handleApiOutcome({
+          success: true,
+          message: "Email verified successfully!",
+        });
         try {
           sessionStorage.removeItem(PENDING_KEY);
         } catch {}
@@ -330,7 +335,7 @@ export default function CustomSignupForm({
           errorMsg = "Too many signup attempts. Please wait and try again.";
         }
 
-        showErrorToast(errorMsg);
+        handleApiOutcome({ success: false, error: errorMsg });
         onError?.(errorMsg);
         setIsLoading(false);
         return;
@@ -395,12 +400,17 @@ export default function CustomSignupForm({
 
       // Redirect to success page
       await finalizeToSuccess();
-    } catch (err) {
+    } catch (error) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("Signup request failed", err);
+        console.error("Signup request failed", error);
       }
-      showErrorToast("An unexpected error occurred");
-      onError?.("An unexpected error occurred");
+      const message = "An unexpected error occurred";
+      onError?.(message);
+      handleError(
+        error,
+        { scope: "CustomSignupForm", action: "sign_up" },
+        { customUserMessage: message }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -656,7 +666,7 @@ export default function CustomSignupForm({
                 if (!result.success) {
                   const msg = result.error || "Google sign in failed. Please try again.";
                   onError?.(msg);
-                  showErrorToast(msg);
+                  handleApiOutcome({ success: false, error: msg });
                   setIsLoading(false);
                   return;
                 }
@@ -709,7 +719,10 @@ export default function CustomSignupForm({
                       googleProfilePayload as any
                     );
                     if (!compResult.success && compResult.error) {
-                      showErrorToast(compResult.error);
+                      handleApiOutcome({
+                        success: false,
+                        error: compResult.error,
+                      });
                     }
                   }
                 } catch (e) {
@@ -732,12 +745,17 @@ export default function CustomSignupForm({
                 }
 
                 await finalizeToSuccess();
-              } catch (err) {
+              } catch (error) {
                 if (process.env.NODE_ENV !== "production") {
-                  console.error("Google signup failed", err);
+                  console.error("Google signup failed", error);
                 }
-                showErrorToast("An unexpected error occurred");
-                onError?.("An unexpected error occurred");
+                const message = "An unexpected error occurred";
+                onError?.(message);
+                handleError(
+                  error,
+                  { scope: "CustomSignupForm", action: "google_sign_up" },
+                  { customUserMessage: message }
+                );
                 setIsLoading(false);
               }
             }}

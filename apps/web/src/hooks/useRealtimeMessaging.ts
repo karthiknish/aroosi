@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthContext as useAuth } from "@/components/FirebaseAuthProvider";
-import { useSubscriptionStatus } from "./useSubscription";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { matchMessages } from "@/lib/api/matchMessages";
 import type { MessageType } from "@aroosi/shared/types";
 import {
   WebSocketService,
-  RealtimeMessage,
-  ConnectionStatus,
+  type RealtimeMessage,
+  type ConnectionStatus,
 } from "@/lib/api/webSocketService";
 
 interface RealtimeMessagingState {
@@ -18,7 +17,6 @@ interface RealtimeMessagingState {
 
 export function useRealtimeMessaging() {
   const { user } = useAuth();
-  const { data: subscriptionStatus } = useSubscriptionStatus();
   const [state, setState] = useState<RealtimeMessagingState>({
     messages: [],
     typingIndicators: new Map(),
@@ -48,7 +46,10 @@ export function useRealtimeMessaging() {
               messages: [...prev.messages, data.message],
             }));
             if (data.message.fromUserId !== user.uid) {
-              showSuccessToast("New message received");
+              handleApiOutcome({
+                success: true,
+                message: "New message received",
+              });
             }
             break;
 
@@ -146,7 +147,7 @@ export function useRealtimeMessaging() {
       duration?: number;
     }) => {
       if (!wsService.current || !state.connectionStatus.isConnected) {
-        showErrorToast("Not connected to messaging service");
+        handleApiOutcome({ warning: "Not connected to messaging service" });
         return false;
       }
 
@@ -156,8 +157,15 @@ export function useRealtimeMessaging() {
           ...messageData,
         });
         return true;
-      } catch {
-        showErrorToast("Failed to send message");
+      } catch (error) {
+        handleError(error, {
+          scope: "useRealtimeMessaging",
+          action: "send_message",
+          conversationId: messageData.conversationId,
+          toUserId: messageData.toUserId,
+        }, {
+          customUserMessage: "Failed to send message",
+        });
         return false;
       }
     },

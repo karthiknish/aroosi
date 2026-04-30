@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminPushAPI } from "@/lib/api/admin/push";
 import type { FilterItem } from "../app/(authenticated)/admin/push-notification/types";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 type ParsedJson = Record<string, unknown> | Array<Record<string, unknown>> | undefined;
 
@@ -57,15 +57,36 @@ type AppliedTemplate = {
   category?: string;
 };
 
-function safeParseJSON(text: string): ParsedJson {
+const INVALID_JSON = Symbol("INVALID_JSON");
+
+type ParsedJsonResult = ParsedJson | typeof INVALID_JSON;
+
+function safeParseJSON(text: string): ParsedJsonResult {
   try {
     const t = (text || "").trim();
     if (!t) return undefined;
     return JSON.parse(t) as ParsedJson;
   } catch {
-    showErrorToast(null, "Invalid JSON in custom data/buttons");
-    return undefined;
+    handleApiOutcome({ warning: "Invalid JSON in custom data/buttons" });
+    return INVALID_JSON;
   }
+}
+
+function parseJsonFields(
+  dataJson: string,
+  buttonsJson: string
+): { data: ParsedJson; buttons: ParsedJson } | null {
+  const data = safeParseJSON(dataJson);
+  const buttons = safeParseJSON(buttonsJson);
+
+  if (data === INVALID_JSON || buttons === INVALID_JSON) {
+    return null;
+  }
+
+  return {
+    data,
+    buttons,
+  };
 }
 
 export function usePushNotificationForm() {
@@ -110,9 +131,15 @@ export function usePushNotificationForm() {
     onSuccess: (result) => {
       if (dryRun) {
         setPreviewData(result);
-        showSuccessToast("Preview generated successfully");
+        handleApiOutcome({
+          success: true,
+          message: "Preview generated successfully",
+        });
       } else {
-        showSuccessToast("Push notification sent successfully");
+        handleApiOutcome({
+          success: true,
+          message: "Push notification sent successfully",
+        });
         // Reset form
         setTitle("");
         setMessage("");
@@ -123,13 +150,29 @@ export function usePushNotificationForm() {
       }
     },
     onError: (error: unknown) => {
-      showErrorToast(error, `Failed to ${dryRun ? "preview" : "send"} notification`);
+      handleError(error, {
+        scope: "usePushNotificationForm",
+        action: dryRun ? "preview_push_notification" : "send_push_notification",
+      }, {
+        customUserMessage: `Failed to ${dryRun ? "preview" : "send"} notification`,
+      });
     },
   });
 
   const handleSend = useCallback(async () => {
-    if (!title.trim() || !message.trim()) return;
-    if (!dryRun && !confirmLive) return;
+    if (!title.trim() || !message.trim()) {
+      handleApiOutcome({ warning: "Title and message are required" });
+      return;
+    }
+    if (!dryRun && !confirmLive) {
+      handleApiOutcome({ warning: "Confirmation required for live send" });
+      return;
+    }
+
+    const parsedJson = parseJsonFields(dataJson, buttonsJson);
+    if (!parsedJson) {
+      return;
+    }
 
     const payload: PushSendPayload = {
       title: title.trim(),
@@ -148,8 +191,8 @@ export function usePushNotificationForm() {
         .split(/[,\s]+/)
         .map((s) => s.trim())
         .filter(Boolean),
-      data: safeParseJSON(dataJson),
-      buttons: safeParseJSON(buttonsJson),
+      data: parsedJson.data,
+      buttons: parsedJson.buttons,
       filters: filters.length ? filters : undefined,
       maxAudience,
       delayedOption,
@@ -185,13 +228,21 @@ export function usePushNotificationForm() {
 
   const applyTemplate = useCallback((tpl: AppliedTemplate) => {
     try {
+      const parsedJson = parseJsonFields(
+        tpl?.dataJson || "",
+        tpl?.buttonsJson || ""
+      );
+      if ((tpl?.dataJson || tpl?.buttonsJson) && !parsedJson) {
+        throw new Error("Template contains invalid JSON fields");
+      }
+
       const p: PushTemplatePayload = tpl?.payload || {
         title: tpl?.title,
         message: tpl?.message,
         url: tpl?.url,
         imageUrl: tpl?.imageUrl,
-        data: tpl?.dataJson ? safeParseJSON(tpl.dataJson) : undefined,
-        buttons: tpl?.buttonsJson ? safeParseJSON(tpl.buttonsJson) : undefined,
+        data: parsedJson?.data,
+        buttons: parsedJson?.buttons,
         category: tpl?.category,
       };
       setTitle(p.title || "");
@@ -230,10 +281,16 @@ export function usePushNotificationForm() {
       setThrottlePerMinute(p.throttlePerMinute || 0);
       setFilters(Array.isArray(p.filters) ? p.filters : []);
       setAppliedTemplateId(tpl?.id || null);
-      showSuccessToast("Template applied");
-    } catch (_e) {
-      console.error(_e);
-      showErrorToast(null, "Failed to apply template");
+      handleApiOutcome({ success: true, message: "Template applied" });
+    } catch (error) {
+      console.error(error);
+      handleError(error, {
+        scope: "usePushNotificationForm",
+        action: "apply_template",
+        templateId: tpl?.id || null,
+      }, {
+        customUserMessage: "Failed to apply template",
+      });
     }
   }, []);
 
@@ -251,17 +308,30 @@ export function usePushNotificationForm() {
             payload: data.payload,
           }),
     onSuccess: (_result, variables) => {
-      showSuccessToast(variables.templateId ? "Template updated" : "Template saved");
+        handleApiOutcome({
+          success: true,
+          message: variables.templateId ? "Template updated" : "Template saved",
+        });
       queryClient.invalidateQueries({ queryKey: ["admin", "push", "templates"] });
     },
     onError: (error: unknown) => {
-      showErrorToast(error, "Failed to save template");
+        handleError(error, {
+          scope: "usePushNotificationForm",
+          action: "save_push_template",
+        }, {
+          customUserMessage: "Failed to save template",
+        });
     },
   });
 
   const saveCurrentAsTemplate = useCallback(async (name: string, description: string, templateId?: string | null) => {
     if (!name.trim()) {
-      showErrorToast(null, "Template name required");
+        handleApiOutcome({ warning: "Template name required" });
+        return;
+      }
+
+      const parsedJson = parseJsonFields(dataJson, buttonsJson);
+      if (!parsedJson) {
       return;
     }
     const payload: PushTemplatePayload = {
@@ -273,8 +343,8 @@ export function usePushNotificationForm() {
       excludedSegments,
       includePlayerIds: includePlayerIds.split(/[\,\s]+/).map((s) => s.trim()).filter(Boolean),
       includeExternalUserIds: includeExternalUserIds.split(/[\,\s]+/).map((s) => s.trim()).filter(Boolean),
-      data: safeParseJSON(dataJson),
-      buttons: safeParseJSON(buttonsJson),
+      data: parsedJson.data,
+      buttons: parsedJson.buttons,
       androidChannelId: androidChannelId || undefined,
       priority: priority === "custom" ? customPriority : priority === "high" ? "high" : "normal",
       ttl: ttl || undefined,

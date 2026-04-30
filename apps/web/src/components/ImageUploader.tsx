@@ -1,13 +1,12 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useDropzone, FileRejection } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 import { subscriptionAPI } from "@/lib/api/subscription";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Upload, XCircle } from "lucide-react";
+import { Upload, XCircle, RotateCw, RotateCcw } from "lucide-react";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
-import Cropper, { Area } from "react-easy-crop";
-import { RotateCw, RotateCcw } from "lucide-react";
+import Cropper, { type Area } from "react-easy-crop";
 import {
   Dialog,
   DialogContent,
@@ -16,13 +15,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { uploadProfileImageWithProgressCancellable } from "@/lib/utils/imageUtil";
 import {
   computeFileHash,
   DuplicateSession,
 } from "@/lib/utils/imageUploadHelpers";
 import { planDisplayName } from "@/lib/utils/subscriptionRateLimit";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 // Client-side mirror of server limits (bytes) for UX guidance.
 const CLIENT_PLAN_SIZE_LIMITS: Record<string, number> = {
@@ -171,6 +170,18 @@ export function ImageUploader({
     };
   }, []);
 
+  const showUploadWarning = useCallback((message: string) => {
+    handleApiOutcome({ warning: message });
+  }, []);
+
+  const showUploadError = useCallback((message: string) => {
+    handleApiOutcome({ success: false, error: message });
+  }, []);
+
+  const showUploadSuccess = useCallback((message: string) => {
+    handleApiOutcome({ success: true, message });
+  }, []);
+
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -180,8 +191,7 @@ export function ImageUploader({
       const currentImagesCount = orderedImages?.length ?? 0;
       const maxAllowed = maxFiles ?? 5;
       if (currentImagesCount >= maxAllowed) {
-        showErrorToast(
-          null,
+        showUploadWarning(
           `You can only display up to ${maxAllowed} images on your profile`
         );
         return;
@@ -192,10 +202,7 @@ export function ImageUploader({
 
       // Extra guard: ensure MIME starts with image/
       if (!file.type.startsWith("image/")) {
-        showErrorToast(
-          null,
-          "Only image files are allowed (JPG, PNG, WebP, HEIC)"
-        );
+        showUploadWarning("Only image files are allowed (JPG, PNG, WebP, HEIC)");
         return;
       }
 
@@ -206,13 +213,10 @@ export function ImageUploader({
           setIsCropping(true);
         })
         .catch(() => {
-          showErrorToast(
-            null,
-            "Failed to read image. Please try another file."
-          );
+          showUploadError("Failed to read image. Please try another file.");
         });
     },
-    [orderedImages, maxFiles]
+    [orderedImages, maxFiles, showUploadError, showUploadWarning]
   );
 
   const onDropRejected = useCallback((fileRejections: FileRejection[]) => {
@@ -220,24 +224,21 @@ export function ImageUploader({
     const rejection = fileRejections[0];
     const { errors } = rejection;
     if (!errors?.length) {
-      showErrorToast(null, "File cannot be uploaded.");
+      showUploadError("File cannot be uploaded.");
       return;
     }
     const code = errors[0].code;
     switch (code) {
       case "file-too-large":
-        showErrorToast(null, "Image is too large (max 5 MB).");
+        showUploadWarning("Image is too large (max 5 MB).");
         break;
       case "file-invalid-type":
-        showErrorToast(
-          null,
-          "Invalid file type. Only JPG, PNG, or WebP allowed."
-        );
+        showUploadWarning("Invalid file type. Only JPG, PNG, or WebP allowed.");
         break;
       default:
-        showErrorToast(null, errors[0].message || "File cannot be uploaded.");
+        showUploadError(errors[0].message || "File cannot be uploaded.");
     }
-  }, []);
+  }, [showUploadError, showUploadWarning]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -259,16 +260,10 @@ export function ImageUploader({
       let objectUrl: string | null = null;
       try {
         objectUrl = URL.createObjectURL(file);
-        if (typeof (globalThis as any).createImageBitmap === "function") {
-          const bitmap: ImageBitmap = await (
-            globalThis as any
-          ).createImageBitmap(file);
+        if (typeof globalThis.createImageBitmap === "function") {
+          const bitmap = await globalThis.createImageBitmap(file);
           const dims = { width: bitmap.width, height: bitmap.height };
-          if (typeof (bitmap as any).close === "function") {
-            try {
-              (bitmap as any).close();
-            } catch {}
-          }
+          bitmap.close();
           return dims;
         }
         const dims = await new Promise<{ width: number; height: number }>(
@@ -276,16 +271,12 @@ export function ImageUploader({
             const img = document.createElement("img");
             img.onload = () =>
               resolve({
-                width:
-                  (img as HTMLImageElement).naturalWidth ||
-                  (img as HTMLImageElement).width,
-                height:
-                  (img as HTMLImageElement).naturalHeight ||
-                  (img as HTMLImageElement).height,
+                width: img.naturalWidth || img.width,
+                height: img.naturalHeight || img.height,
               });
             img.onerror = () =>
               reject(new Error("Failed to load image for dimension check"));
-            img.src = objectUrl as string;
+            img.src = objectUrl;
           }
         );
         return dims;
@@ -309,8 +300,7 @@ export function ImageUploader({
       const maxProfileImages = maxFiles ?? 5;
       const currentImages = orderedImages || [];
       if (currentImages.length >= maxProfileImages) {
-        showErrorToast(
-          null,
+        showUploadWarning(
           `You can only display up to ${maxProfileImages} images on your profile`
         );
         return;
@@ -319,8 +309,7 @@ export function ImageUploader({
       if (isLocalMode) {
         // Preflight: size and dimension checks, duplicate session detection
         if (file.size > maxSizeBytes) {
-          showErrorToast(
-            null,
+          showUploadWarning(
             `Image is too large (max ${Math.round(maxSizeBytes / 1024 / 1024)}MB)`
           );
           return;
@@ -328,7 +317,7 @@ export function ImageUploader({
         try {
           const hash = await computeFileHash(file);
           if (DuplicateSession.has(hash)) {
-            showErrorToast(null, "Duplicate image skipped");
+            showUploadWarning("Duplicate image skipped");
             return;
           }
           try {
@@ -338,8 +327,7 @@ export function ImageUploader({
 
         const dims = await getImageDimensions(file);
         if (!dims || dims.width < 512 || dims.height < 512) {
-          showErrorToast(
-            null,
+          showUploadWarning(
             `Image too small${dims ? ` (${dims.width}x${dims.height})` : ""}. Minimum 512x512px`
           );
           return;
@@ -352,7 +340,7 @@ export function ImageUploader({
           fileName: file.name,
         };
         if (onOptimisticUpdate) onOptimisticUpdate(localImg);
-        showSuccessToast("Image added");
+        showUploadSuccess("Image added");
         return { success: true, imageId: tempId, message: "local" };
       }
       try {
@@ -363,7 +351,7 @@ export function ImageUploader({
         if (customUploadFile) {
           setUploadProgress(10);
           await customUploadFile(file);
-          showSuccessToast("Image uploaded successfully");
+          showUploadSuccess("Image uploaded successfully");
           await fetchImages();
           return {
             success: true,
@@ -445,16 +433,19 @@ export function ImageUploader({
         }
 
         // Show success message
-        showSuccessToast("Image uploaded successfully");
+        showUploadSuccess("Image uploaded successfully");
         setStatusMessage("Upload complete");
 
         // Return the result so the parent component can handle it
         return mutationResult;
       } catch (error) {
-        console.error("Error uploading image:", error);
         const msg =
           error instanceof Error ? error.message : "Failed to upload image";
-        showErrorToast(msg);
+        handleError(
+          error,
+          { scope: "ImageUploader", action: "upload_image", userId, mode },
+          { customUserMessage: msg }
+        );
         throw error;
       } finally {
         setIsUploading(false);
@@ -473,8 +464,9 @@ export function ImageUploader({
       onOptimisticUpdate,
       mode,
       getImageDimensions,
-      plan,
       maxSizeBytes,
+      showUploadSuccess,
+      showUploadWarning,
     ]
   );
 
@@ -538,7 +530,7 @@ export function ImageUploader({
                       e.stopPropagation();
                       if (cancelUploadRef.current) {
                         cancelUploadRef.current();
-                        showErrorToast("Upload cancelled");
+                        showUploadWarning("Upload cancelled");
                       }
                     }}
                     className="h-6 px-2 text-[10px] text-danger hover:text-danger hover:bg-danger/10"
@@ -741,10 +733,13 @@ export function ImageUploader({
                     setZoom(1);
                     setCroppedAreaPixels(null);
                   } catch (error) {
-                    console.error("Error cropping image:", error);
-                    showErrorToast(
-                      null,
-                      "Failed to crop image. Please try again."
+                    handleError(
+                      error,
+                      { scope: "ImageUploader", action: "crop_image", userId, mode },
+                      {
+                        customUserMessage:
+                          "Failed to crop image. Please try again.",
+                      }
                     );
                   }
                 }}

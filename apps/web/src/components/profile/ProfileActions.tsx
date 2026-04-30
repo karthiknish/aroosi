@@ -3,27 +3,24 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toggleShortlist, fetchShortlists } from "@/lib/engagementUtil";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { showInfoToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export function ProfileActions({ toUserId }: { toUserId: string }) {
   const [loading, setLoading] = useState(false);
   const [isShortlisted, setIsShortlisted] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let mounted = true;
     (async () => {
       try {
         const list = await fetchShortlists();
         const exists = list.some((e) => e.userId === toUserId);
         setIsShortlisted(exists);
-      } catch (e) {
+      } catch {
         // Non-fatal; leave null so button label defaults to add
         // Optionally could log
       }
     })();
-    return () => {
-      mounted = false;
-    };
   }, [toUserId]);
 
   const onToggleShortlist = async () => {
@@ -32,22 +29,30 @@ export function ProfileActions({ toUserId }: { toUserId: string }) {
       const res = await toggleShortlist(toUserId);
       if (res.added) {
         setIsShortlisted(true);
-        showSuccessToast("Added to shortlist");
+        handleApiOutcome({ success: true, message: "Added to shortlist" });
       } else if (res.removed) {
         setIsShortlisted(false);
-        showSuccessToast("Removed from shortlist");
+        handleApiOutcome({ success: true, message: "Removed from shortlist" });
       }
-    } catch (e: any) {
-      const msg = e?.message || "Failed to update shortlist";
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to update shortlist";
       if (
         msg.toLowerCase().includes("shortlist_limit") ||
         msg.toLowerCase().includes("limit")
       ) {
-        showErrorToast(
-          "Shortlist limit reached for your plan. Upgrade to add more."
-        );
+        handleApiOutcome({
+          warning: "Shortlist limit reached for your plan. Upgrade to add more.",
+        });
+        showInfoToast("Upgrade your plan to add more shortlist profiles.");
       } else {
-        showErrorToast(msg);
+        handleError(error, {
+          scope: "ProfileActions",
+          action: "toggle_shortlist",
+          toUserId,
+        }, {
+          customUserMessage: msg,
+        });
       }
     } finally {
       setLoading(false);

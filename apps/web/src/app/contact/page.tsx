@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
 import { contactAPI } from "@/lib/api/contact";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   Mail,
   Send,
@@ -51,17 +52,30 @@ export default function ContactPage() {
     try {
       const result = await contactAPI.submitContact(data);
       if (result.success) {
+        handleApiOutcome(
+          { success: true, message: result.message },
+          {
+            successMessage:
+              "Message sent successfully. We will get back to you within 24 hours.",
+          }
+        );
         setIsSubmitted(true);
         reset();
       } else {
-        setSubmitError(
-          (result as any).error || result.message || "Failed to send message. Please try again."
+        const message = result.message || "Failed to send message. Please try again.";
+        setSubmitError(message);
+        handleApiOutcome(
+          { success: false, error: message },
+          { errorMessage: message }
         );
       }
     } catch (error: unknown) {
-      setSubmitError(
-        error instanceof Error ? error.message : "An unexpected error occurred."
-      );
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred.";
+      setSubmitError(message);
+      handleError(error, { scope: "ContactPage", action: "submitContact" }, {
+        customUserMessage: message,
+      });
     }
   };
 

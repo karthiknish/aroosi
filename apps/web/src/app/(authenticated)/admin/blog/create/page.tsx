@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminBlogAPI } from "@/lib/api/admin/blog";
 import { PostForm } from "@/components/admin/PostForm";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
 import { useBlogAI } from "@/hooks/useBlogAI";
 import { useMutation } from "@tanstack/react-query";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export default function CreateBlogPage() {
   useAuthContext(); // maintain hook order; no token usage in cookie-auth
@@ -82,7 +82,7 @@ export default function CreateBlogPage() {
       });
     },
     onSuccess: () => {
-      showSuccessToast("Post created successfully");
+      handleApiOutcome({ success: true, message: "Post created successfully" });
       // reset
       setTitle("");
       setSlug("");
@@ -95,7 +95,11 @@ export default function CreateBlogPage() {
     },
     onError: (err: Error) => {
       setError(err.message);
-      showErrorToast(err, "Failed to create post");
+      handleError(
+        err,
+        { scope: "CreateBlogPage", action: "create_post", slug },
+        { customUserMessage: "Failed to create post" }
+      );
     },
   });
 

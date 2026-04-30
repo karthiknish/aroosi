@@ -2,6 +2,10 @@
  * Admin Matches API - Handles admin match management
  */
 
+type AdminMatchesApiError = Error & {
+  status?: number;
+};
+
 class AdminMatchesAPI {
   private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
     const baseHeaders: Record<string, string> = {
@@ -29,7 +33,9 @@ class AdminMatchesAPI {
         (isJson && payload && (payload as any).error) ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      const error = new Error(String(msg)) as AdminMatchesApiError;
+      error.status = res.status;
+      throw error;
     }
 
     // Unwrap standardized { success, data } envelope from API handler
@@ -37,7 +43,11 @@ class AdminMatchesAPI {
       const maybe = payload as any;
       if ("success" in maybe) {
         if (maybe.success === false) {
-          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+          const error = new Error(
+            String(maybe.message || maybe.error || "Request failed")
+          ) as AdminMatchesApiError;
+          error.status = res.status;
+          throw error;
         }
         if ("data" in maybe) {
           return maybe.data;

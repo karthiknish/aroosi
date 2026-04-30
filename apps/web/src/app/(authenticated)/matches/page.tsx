@@ -17,9 +17,10 @@ import {
   Users,
   Filter,
   ArrowUpDown,
+  Ban,
 } from "lucide-react";
-import { useState, useMemo } from "react";
-import { useMatches } from "@/lib/hooks/useMatches";
+import React, { useState, useMemo } from "react";
+import { useMatches, type MatchListView } from "@/lib/hooks/useMatches";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,8 +29,6 @@ import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/
 import { useOffline } from "@/hooks/useOffline";
 import { SubscriptionGuard } from "@/components/ui/subscription-guard";
 import { motion } from "framer-motion";
-import React from "react";
-import { Ban } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -73,8 +72,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { matchesAPI } from "@/lib/api/matches";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import type { MatchListView } from "@/lib/hooks/useMatches";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 type SortOption = "recent" | "newest" | "unread" | "name";
 type AuthProfileSummary = {
@@ -97,12 +95,23 @@ function MatchCard({
 
   const unmatchMutation = useMutation({
     mutationFn: (matchId: string) => matchesAPI.unmatch(matchId),
-    onSuccess: () => {
-      showSuccessToast("Unmatched successfully");
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
+    onSuccess: (data) => {
+      handleApiOutcome(
+        data?.alreadyUnmatched
+          ? { warning: "Match already removed" }
+          : { success: true, message: "Unmatched successfully" }
+      );
+      void queryClient.invalidateQueries({ queryKey: ["matches"] });
     },
-    onError: (error: Error) => {
-      showErrorToast(error.message || "Failed to unmatch");
+    onError: (error) => {
+      handleError(
+        error,
+        { scope: "MatchCard", action: "unmatch_user" },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : "Failed to unmatch",
+        }
+      );
     },
   });
 

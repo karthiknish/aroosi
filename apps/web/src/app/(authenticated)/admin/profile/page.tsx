@@ -36,10 +36,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DataTable } from "@/components/admin/DataTable";
 import Link from "next/link";
 import Image from "next/image";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   Pagination,
   PaginationContent,
@@ -211,7 +211,7 @@ export default function AdminProfilePage() {
   });
 
   const profiles = React.useMemo<AdminProfile[]>(
-    () => (data?.profiles as AdminProfile[] | undefined) || [],
+    () => data?.profiles || [],
     [data]
   );
   const profileImages: Record<string, ProfileImageInfo[]> =
@@ -358,9 +358,13 @@ export default function AdminProfilePage() {
       await adminProfilesAPI.delete(id);
       setConfirmDeleteId(null);
       void loadProfiles();
-      showSuccessToast("Profile deleted");
+      handleApiOutcome({ success: true, message: "Profile deleted" });
     } catch (error) {
-      showErrorToast(error instanceof Error ? error : null, "Failed to delete profile");
+      handleError(
+        error,
+        { scope: "AdminProfilePage", action: "delete_profile", profileId: id },
+        { customUserMessage: "Failed to delete profile" }
+      );
     } finally {
       setPendingDeleteId(null);
     }
@@ -374,9 +378,21 @@ export default function AdminProfilePage() {
       await adminProfilesAPI.setBannedStatus(id, !isBanned);
       setConfirmBanId(null);
       void loadProfiles();
-      showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
+      handleApiOutcome({
+        success: true,
+        message: isBanned ? "Profile unbanned" : "Profile banned",
+      });
     } catch (error) {
-      showErrorToast(error instanceof Error ? error : null, "Failed to update ban status");
+      handleError(
+        error,
+        {
+          scope: "AdminProfilePage",
+          action: "toggle_profile_ban",
+          profileId: id,
+          nextBannedState: !isBanned,
+        },
+        { customUserMessage: "Failed to update ban status" }
+      );
     } finally {
       setPendingBanId(null);
     }
@@ -388,7 +404,7 @@ export default function AdminProfilePage() {
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-lg border shadow-sm p-6">
             <ErrorState
-              message={(error as Error)?.message || "An error occurred."}
+              message={error instanceof Error ? error.message : "An error occurred."}
               onRetry={() => loadProfiles()}
               className="min-h-[40vh]"
             />

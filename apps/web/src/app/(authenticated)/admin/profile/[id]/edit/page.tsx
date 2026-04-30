@@ -2,7 +2,6 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -10,10 +9,17 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { adminMatchesAPI } from "@/lib/api/admin/matches";
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
-import type { Profile } from "@aroosi/shared/types";
+import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
 import { useQuery } from "@tanstack/react-query";
-import type { ProfileFormValues } from "@aroosi/shared/types";
 import ProfileEditForm from "@/components/admin/ProfileEditForm";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+
+function isAllowedValue<T extends readonly string[]>(
+  allowed: T,
+  value: unknown
+): value is T[number] {
+  return typeof value === "string" && allowed.includes(value as T[number]);
+}
 
 export default function AdminEditProfilePage() {
   const router = useRouter();
@@ -71,10 +77,8 @@ export default function AdminEditProfilePage() {
       "widowed",
       "annulled",
     ] as const;
-    const maritalStatus = allowedStatuses.includes(
-      values.maritalStatus as string as (typeof allowedStatuses)[number]
-    )
-      ? (values.maritalStatus as (typeof allowedStatuses)[number])
+    const maritalStatus = isAllowedValue(allowedStatuses, values.maritalStatus)
+      ? values.maritalStatus
       : "single";
     // Convert types for backend compatibility
     const partnerPreferenceAgeMin =
@@ -90,18 +94,17 @@ export default function AdminEditProfilePage() {
         ? parseFloat(values.annualIncome)
         : values.annualIncome;
     const allowedGenders = ["male", "female", "any", ""] as const;
-    const preferredGender = allowedGenders.includes(
-      values.preferredGender as string as (typeof allowedGenders)[number]
+    const preferredGender = isAllowedValue(
+      allowedGenders,
+      values.preferredGender
     )
-      ? (values.preferredGender as (typeof allowedGenders)[number])
+      ? values.preferredGender
       : "any";
 
     // Map gender to correct union type
     const allowedGenderTypes = ["male", "female", "other"] as const;
-    const gender = allowedGenderTypes.includes(
-      values.gender as string as (typeof allowedGenderTypes)[number]
-    )
-      ? (values.gender as (typeof allowedGenderTypes)[number])
+    const gender = isAllowedValue(allowedGenderTypes, values.gender)
+      ? values.gender
       : "other";
 
     // Map diet to correct union type
@@ -113,25 +116,19 @@ export default function AdminEditProfilePage() {
       "other",
       "",
     ] as const;
-    const diet = allowedDiets.includes(
-      values.diet as string as (typeof allowedDiets)[number]
-    )
-      ? (values.diet as (typeof allowedDiets)[number])
+    const diet = isAllowedValue(allowedDiets, values.diet)
+      ? values.diet
       : "";
 
     // Map smoking to correct union type
     const allowedSmokingDrinking = ["no", "occasionally", "yes", ""] as const;
-    const smoking = allowedSmokingDrinking.includes(
-      values.smoking as string as (typeof allowedSmokingDrinking)[number]
-    )
-      ? (values.smoking as (typeof allowedSmokingDrinking)[number])
+    const smoking = isAllowedValue(allowedSmokingDrinking, values.smoking)
+      ? values.smoking
       : "";
 
     // Map drinking to correct union type
-    const drinking = allowedSmokingDrinking.includes(
-      values.drinking as string as (typeof allowedSmokingDrinking)[number]
-    )
-      ? (values.drinking as (typeof allowedSmokingDrinking)[number])
+    const drinking = isAllowedValue(allowedSmokingDrinking, values.drinking)
+      ? values.drinking
       : "";
 
     // Map physicalStatus to correct union type
@@ -141,10 +138,11 @@ export default function AdminEditProfilePage() {
       "other",
       "",
     ] as const;
-    const physicalStatus = allowedPhysicalStatus.includes(
-      values.physicalStatus as string as (typeof allowedPhysicalStatus)[number]
+    const physicalStatus = isAllowedValue(
+      allowedPhysicalStatus,
+      values.physicalStatus
     )
-      ? (values.physicalStatus as (typeof allowedPhysicalStatus)[number])
+      ? values.physicalStatus
       : "";
 
     const updates = {
@@ -162,12 +160,21 @@ export default function AdminEditProfilePage() {
     };
     try {
       await adminProfilesAPI.update(id, updates);
-      showSuccessToast("Profile updated successfully!");
+      handleApiOutcome({
+        success: true,
+        message: "Profile updated successfully!",
+      });
       router.push(`/admin/profile/${id}`);
     } catch (error) {
-      showErrorToast(
-        null,
-        (error as Error).message || "Failed to update profile"
+      handleError(
+        error,
+        { scope: "AdminEditProfilePage", action: "update_profile", profileId: id },
+        {
+          customUserMessage:
+            error instanceof Error
+              ? error.message || "Failed to update profile"
+              : "Failed to update profile",
+        }
       );
     }
   };

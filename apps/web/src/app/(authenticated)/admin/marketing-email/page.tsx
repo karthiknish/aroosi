@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { adminEmailAPI } from "@/lib/api/admin/email";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { CampaignForm } from "./components/CampaignForm";
 import { AudienceFilters } from "./components/AudienceFilters";
 import { TestEmailSection } from "./components/TestEmailSection";
@@ -13,14 +13,13 @@ import { CampaignActions } from "./components/CampaignActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, RefreshCw } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type TemplateItem = { key: string; label: string; category: string };
 
 export default function MarketingEmailAdminPage() {
   // Cookie-auth; remove token from context and API
   useAuthContext(); // keep hook for gating if needed
-  const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const initFromQuery = useRef(false);
@@ -55,11 +54,17 @@ export default function MarketingEmailAdminPage() {
   const [pageSize, setPageSize] = useState<number>(500);
   
   // Advanced filters
-  const [lastActiveDays, setLastActiveDays] = useState<number>(NaN as any);
+  const [lastActiveDays, setLastActiveDays] = useState<number | undefined>(
+    undefined,
+  );
   const [createdAtFrom, setCreatedAtFrom] = useState<string>("");
   const [createdAtTo, setCreatedAtTo] = useState<string>("");
-  const [completionMin, setCompletionMin] = useState<number>(NaN as any);
-  const [completionMax, setCompletionMax] = useState<number>(NaN as any);
+  const [completionMin, setCompletionMin] = useState<number | undefined>(
+    undefined,
+  );
+  const [completionMax, setCompletionMax] = useState<number | undefined>(
+    undefined,
+  );
   const [city, setCity] = useState<string>("");
   const [country, setCountry] = useState<string>("");
   
@@ -104,14 +109,13 @@ export default function MarketingEmailAdminPage() {
       setMode("template");
     }
     initFromQuery.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleSend = async () => {
     // Validate form before sending
     const validationErrors = validateEmailForm();
     if (validationErrors.length > 0) {
-      showErrorToast(null, validationErrors.join(", "));
+      handleApiOutcome({ warning: validationErrors.join(", ") });
       return;
     }
 
@@ -123,7 +127,7 @@ export default function MarketingEmailAdminPage() {
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
 
-      const res = await adminEmailAPI.sendMarketingEmail({
+      await adminEmailAPI.sendMarketingEmail({
         templateKey: mode === "template" ? templateKey : undefined,
         subject: mode === "custom" ? customSubject : undefined,
         body: mode === "custom" ? customBody : undefined,
@@ -160,16 +164,24 @@ export default function MarketingEmailAdminPage() {
               }
             : undefined,
       });
-      
-      showSuccessToast(
-        dryRun ? "Preview generated" : "Campaign started successfully"
-      );
+
+      handleApiOutcome({
+        success: true,
+        message: dryRun ? "Preview generated" : "Campaign started successfully",
+      });
       // Refresh campaign history if it's open
       if (showCampaignHistory) {
         void queryClient.invalidateQueries({ queryKey: ["marketingCampaigns"] });
       }
-    } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed to send emails");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to send emails";
+      handleError(error, {
+        scope: "MarketingEmailAdminPage",
+        action: dryRun ? "preview_marketing_campaign" : "send_marketing_campaign",
+      }, {
+        customUserMessage: message,
+      });
     } finally {
       setSending(false);
     }
@@ -190,18 +202,25 @@ export default function MarketingEmailAdminPage() {
         preheader: mode === "custom" ? preheader : undefined,
       });
       
-      if (res?.data?.html || res?.html) {
-        setHtmlPreview(res.data?.html || res.html);
-        showSuccessToast("Preview updated");
+      if (typeof res?.html === "string") {
+        setHtmlPreview(res.html);
+        handleApiOutcome({ success: true, message: "Preview updated" });
+      } else {
+        throw new Error("Failed to generate preview");
       }
-    } catch {
-      showErrorToast(null, "Failed to generate preview");
+    } catch (error) {
+      handleError(error, {
+        scope: "MarketingEmailAdminPage",
+        action: "generate_marketing_preview",
+      }, {
+        customUserMessage: "Failed to generate preview",
+      });
     }
   };
 
   const handleSendTestEmail = async () => {
     if (!testEmail.trim()) {
-      showErrorToast(null, "Please enter a test email address");
+      handleApiOutcome({ warning: "Please enter a test email address" });
       return;
     }
 
@@ -229,11 +248,21 @@ export default function MarketingEmailAdminPage() {
             : undefined,
       });
 
-      showSuccessToast(`Test email sent to ${testEmail}`);
+      handleApiOutcome({
+        success: true,
+        message: `Test email sent to ${testEmail}`,
+      });
       setTestEmail("");
       setShowTestSection(false);
-    } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed to send test email");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to send test email";
+      handleError(error, {
+        scope: "MarketingEmailAdminPage",
+        action: "send_marketing_test_email",
+      }, {
+        customUserMessage: message,
+      });
     } finally {
       setSendingTest(false);
     }
@@ -270,9 +299,17 @@ export default function MarketingEmailAdminPage() {
     setProcessingOutbox(true);
     try {
       await adminEmailAPI.processOutbox();
-      showSuccessToast("Processed email outbox batch");
-    } catch (e) {
-      showErrorToast(null, "Failed to process outbox");
+      handleApiOutcome({
+        success: true,
+        message: "Processed email outbox batch",
+      });
+    } catch (error) {
+      handleError(error, {
+        scope: "MarketingEmailAdminPage",
+        action: "process_email_outbox",
+      }, {
+        customUserMessage: "Failed to process outbox",
+      });
     } finally {
       setProcessingOutbox(false);
     }
@@ -329,8 +366,13 @@ export default function MarketingEmailAdminPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch (e) {
-      showErrorToast(null, "Failed to export CSV");
+    } catch (error) {
+      handleError(error, {
+        scope: "MarketingEmailAdminPage",
+        action: "export_marketing_audience_csv",
+      }, {
+        customUserMessage: "Failed to export CSV",
+      });
     }
   };
 

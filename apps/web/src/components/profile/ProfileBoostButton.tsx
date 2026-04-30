@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 // Use the implemented API helper inside lib/profile
 import { boostProfile } from "@/lib/profile/userProfileApi";
 import { subscriptionAPI } from "@/lib/api/subscription";
@@ -13,6 +12,7 @@ import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 import { FeatureUsageTracker } from "@/components/subscription/FeatureUsageTracker";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 // Removed client month key quota reset guess; rely on server quota endpoint
 
@@ -97,9 +97,11 @@ const ProfileBoostButton = () => {
     try {
       const result = await boostProfile(userId || "");
       if (result.success) {
-        showSuccessToast(
-          `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`
-        );
+        handleApiOutcome({
+          success: true,
+          message:
+            `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`,
+        });
       } else {
         // Show granular server message if present
         const message = result.message || "Boost failed";
@@ -112,11 +114,20 @@ const ProfileBoostButton = () => {
           );
           extra = ` Next reset on ${nextReset.toUTCString()}.`;
         }
-        showErrorToast(`${message}.${extra}`);
+        const fullMessage = `${message}.${extra}`;
+        handleApiOutcome(
+          /requires premium plus|no boosts/i.test(message)
+            ? { warning: fullMessage }
+            : { success: false, error: fullMessage }
+        );
       }
       await refetchProfileStatus?.();
-    } catch (error: unknown) {
-      showErrorToast(error, "Boost failed");
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "ProfileBoostButton", action: "boost_profile" },
+        { customUserMessage: "Boost failed" }
+      );
     } finally {
       setLoading(false);
     }

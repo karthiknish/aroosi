@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, Send, Copy, Trash2, Save, Link2, Link2Off } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { Eye, Send, Trash2, Save, Link2, Link2Off } from "lucide-react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { adminEmailAPI } from "@/lib/api/admin/email";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DOMPurify from "dompurify";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -98,10 +98,14 @@ export default function AdminEmailPage() {
     mutationFn: (id: string) => adminEmailAPI.deleteSavedTemplate(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
-      showSuccessToast("Template deleted");
+      handleApiOutcome({ success: true, message: "Template deleted" });
     },
-    onError: (err: Error) => {
-      showErrorToast(err, "Failed to delete template");
+    onError: (error) => {
+      handleError(
+        error,
+        { scope: "AdminEmailPage", action: "delete_saved_template" },
+        { customUserMessage: "Failed to delete template" }
+      );
     },
   });
 
@@ -111,10 +115,14 @@ export default function AdminEmailPage() {
       void queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
       setNewTemplateName("");
       setNewTemplateDesc("");
-      showSuccessToast("Template saved");
+      handleApiOutcome({ success: true, message: "Template saved" });
     },
-    onError: (err: Error) => {
-      showErrorToast(err, "Failed to save template");
+    onError: (error) => {
+      handleError(
+        error,
+        { scope: "AdminEmailPage", action: "save_email_template" },
+        { customUserMessage: "Failed to save template" }
+      );
     },
   });
 
@@ -145,15 +153,15 @@ export default function AdminEmailPage() {
 
   const handleSend = async () => {
     if (!subject.trim()) {
-      showErrorToast(null, "Subject is required");
+      handleApiOutcome({ warning: "Subject is required" });
       return;
     }
     if (!html.trim() && !text.trim()) {
-      showErrorToast(null, "Provide HTML or text content");
+      handleApiOutcome({ warning: "Provide HTML or text content" });
       return;
     }
     if (!dryRun && !isConfirmed) {
-      showErrorToast(null, "Confirm live send");
+      handleApiOutcome({ warning: "Confirm live send" });
       return;
     }
     setLoading(true);
@@ -175,15 +183,26 @@ export default function AdminEmailPage() {
       });
       
       if (dryRun) {
-        setPreview(res?.data?.preview || null);
-        showSuccessToast("Email preview generated");
+        if (res?.preview) {
+          setPreview(res.preview);
+          handleApiOutcome({ success: true, message: "Email preview generated" });
+        } else {
+          throw new Error("Failed to generate preview");
+        }
       } else {
-        showSuccessToast("Email queued for delivery");
+        handleApiOutcome({ success: true, message: "Email queued for delivery" });
         setIsConfirmed(false);
         setAppliedTemplateId(null);
       }
-    } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed");
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "AdminEmailPage", action: dryRun ? "preview_admin_email" : "send_admin_email" },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : dryRun ? "Failed to generate preview" : "Failed to queue email",
+        }
+      );
     } finally {
       setLoading(false);
     }
@@ -209,8 +228,8 @@ export default function AdminEmailPage() {
       }
       setAppliedTemplateId(tpl?.id || null);
       setActiveTab("compose");
-      showSuccessToast("Template applied");
-    } catch (e) {
+      handleApiOutcome({ success: true, message: "Template applied" });
+    } catch {
       // ignore
     }
   };
@@ -223,11 +242,11 @@ export default function AdminEmailPage() {
 
   const saveCurrentAsTemplate = async () => {
     if (!newTemplateName.trim()) {
-      showErrorToast(null, "Template name required");
+      handleApiOutcome({ warning: "Template name required" });
       return;
     }
     if (!subject.trim()) {
-      showErrorToast(null, "Subject is required to save a template");
+      handleApiOutcome({ warning: "Subject is required to save a template" });
       return;
     }
     
@@ -305,7 +324,6 @@ export default function AdminEmailPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const { state } = editor.view;
                         const hasLink = editor.isActive('link');
                         if (hasLink) {
                           editor.chain().focus().unsetLink().run();

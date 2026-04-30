@@ -18,6 +18,7 @@ import {
   markConversationRead,
   deleteMessage as deleteMessageRequest,
 } from "@/lib/api/messages";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 interface UseMessageActionsProps {
   userId: string | undefined;
@@ -59,6 +60,7 @@ export function useMessageActions({
       if (!userId || !text.trim()) return;
       if (typeof toUserId !== "string" || toUserId.length === 0) {
         setError("Recipient missing");
+        handleApiOutcome({ warning: "Recipient missing" });
         return;
       }
       const trimmed = text.trim();
@@ -113,6 +115,14 @@ export function useMessageActions({
         // Revert optimistic update
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
         setError(message);
+        handleError(err, {
+          scope: "useMessageActions",
+          action: "send_message",
+          conversationId: normalizedConvId,
+          toUserId,
+        }, {
+          customUserMessage: message,
+        });
         throw err;
       }
     },
@@ -152,6 +162,14 @@ export function useMessageActions({
         const message = err instanceof Error ? err.message : "Failed to send voice message";
         console.error("Failed to send voice message", err);
         setError(message);
+        handleError(err, {
+          scope: "useMessageActions",
+          action: "send_voice_message",
+          conversationId: [userId, toUserId].sort().join("_"),
+          toUserId,
+        }, {
+          customUserMessage: message,
+        });
       }
     },
     [userId, setError, setMessages]
@@ -268,6 +286,13 @@ export function useMessageActions({
         await deleteMessageRequest(messageId);
       } catch (err) {
         console.error("Failed to delete message", err);
+        handleError(err, {
+          scope: "useMessageActions",
+          action: "delete_message",
+          messageId,
+        }, {
+          customUserMessage: "Failed to delete message",
+        });
       }
     },
     [userId]

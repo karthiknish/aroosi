@@ -252,6 +252,6 @@ export const api = {
     patch: <T>(endpoint: string, body?: Record<string, unknown> | FormData, options: Omit<RequestOptions, 'method' | 'body'> = {}) =>
         apiRequest<T>(endpoint, { ...options, method: 'PATCH', body }),
 
-    delete: <T>(endpoint: string, options: Omit<RequestOptions, 'method' | 'body'> = {}) =>
-        apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
+    delete: <T>(endpoint: string, body?: Record<string, unknown> | FormData, options: Omit<RequestOptions, 'method' | 'body'> = {}) =>
+        apiRequest<T>(endpoint, { ...options, method: 'DELETE', body }),
 };

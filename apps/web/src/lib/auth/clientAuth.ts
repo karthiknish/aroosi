@@ -1,7 +1,6 @@
 // Client-side authentication utility functions
 
 import { postJson } from "@/lib/http/client";
-import { showErrorToast } from "@/lib/ui/toast";
 
 export interface EmailVerificationResult {
   success: boolean;
@@ -27,7 +26,7 @@ export async function requestEmailVerification(): Promise<EmailVerificationResul
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to send verification email";
     return {
       success: false,

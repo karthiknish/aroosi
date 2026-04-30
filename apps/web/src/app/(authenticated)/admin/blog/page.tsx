@@ -33,7 +33,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Search, Plus, Edit, Trash2, Eye, Grid, List, FileText } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export default function AdminBlogPage() {
   // Cookie-auth only; remove token from context
@@ -65,10 +65,17 @@ export default function AdminBlogPage() {
     mutationFn: (id: string) => adminBlogAPI.delete(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminBlogs"] });
-      showSuccessToast("Blog post deleted successfully");
+      handleApiOutcome({
+        success: true,
+        message: "Blog post deleted successfully",
+      });
     },
     onError: (err: Error) => {
-      showErrorToast(err, "Failed to delete blog post");
+      handleError(
+        err,
+        { scope: "AdminBlogPage", action: "delete_blog_post" },
+        { customUserMessage: "Failed to delete blog post" }
+      );
     },
   });
 
@@ -79,10 +86,17 @@ export default function AdminBlogPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminBlogs"] });
       setSelectedPosts([]);
-      showSuccessToast("Selected blog posts deleted successfully");
+      handleApiOutcome({
+        success: true,
+        message: "Selected blog posts deleted successfully",
+      });
     },
     onError: (err: Error) => {
-      showErrorToast(err, "Failed to delete blog posts");
+      handleError(
+        err,
+        { scope: "AdminBlogPage", action: "bulk_delete_blog_posts" },
+        { customUserMessage: "Failed to delete blog posts" }
+      );
     },
   });
 

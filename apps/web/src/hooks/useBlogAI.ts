@@ -1,8 +1,10 @@
 import { useState, useCallback } from "react";
 import { adminBlogAPI } from "@/lib/api/admin/blog";
-import { showErrorToast } from "@/lib/ui/toast";
+import { handleError } from "@/lib/utils/errorHandling";
 
 export type AiField = "excerpt" | "category" | "title" | "content";
+
+type BlogAiRequestType = Exclude<AiField, "content"> | "blog";
 
 export interface UseBlogAIProps {
   title: string;
@@ -36,10 +38,17 @@ export function useBlogAI({
             .replace(/\s+/g, " ")
             .trim();
 
+        const removePromptEcho = (value: string) =>
+          value
+            .replace(/```[a-zA-Z]*\s*\n?/g, "")
+            .replace(/```/g, "")
+            .replace(/^\s*(Title|Excerpt|Categories)\s*:\s*/gim, "")
+            .trim();
+
         const cleanGeneratedHtml = (html: string): string => {
           if (!html) return html;
           // Remove fenced code blocks markers e.g., ```html ... ```
-          let out = html.replace(/```[a-zA-Z]*\s*\n?/g, "").replace(/```/g, "");
+          let out = removePromptEcho(html);
           // Remove leading prompt echo lines (Title:/Excerpt:/Categories:) if present as plain text
           out = out.replace(
             /^(\s*(Title|Excerpt|Categories)\s*:[^\n]*\n)+/i,
@@ -55,6 +64,32 @@ export function useBlogAI({
             if (out === before) break;
           }
           return out.trim();
+        };
+
+        const cleanPlainText = (value: string): string => {
+          if (!value) return value;
+          const normalized = removePromptEcho(
+            value
+              .replace(/<\s*br\s*\/?>/gi, "\n")
+              .replace(/<\/(p|div|li|h1|h2|h3|blockquote)>/gi, "\n")
+              .replace(/<(p|div|li|h1|h2|h3|blockquote)[^>]*>/gi, " ")
+          );
+
+          return stripTags(normalized);
+        };
+
+        const cleanCategoryText = (value: string): string => {
+          const normalized = cleanPlainText(value)
+            .replace(/\s*[•·]\s*/g, ", ")
+            .replace(/\s*[|;/]\s*/g, ", ")
+            .replace(/\s*,\s*/g, ", ");
+
+          const categories = normalized
+            .split(/\s*,\s*|\n+/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+          return categories.join(", ");
         };
 
         if (field === "content") {
@@ -90,19 +125,32 @@ Requirements:
           context = ctxLines.join("\n\n");
         }
 
-        const res = await adminBlogAPI.convertAiTextToHtml(context, field as any);
-        return res;
+        const res = await adminBlogAPI.convertAiTextToHtml(
+          context,
+          field as BlogAiRequestType
+        );
+
+        if (field === "category") {
+          return cleanCategoryText(res);
+        }
+
+        return cleanPlainText(res);
       } catch (error) {
-        console.error(`Error in AI ${field} generation:`, error);
         const message =
           error instanceof Error ? error.message : "AI processing failed";
-        showErrorToast(null, message);
+        handleError(error, {
+          scope: "useBlogAI",
+          action: "generate_blog_ai_text",
+          field,
+        }, {
+          customUserMessage: message,
+        });
         return "";
       } finally {
         setAiLoading((prev) => ({ ...prev, [field]: false }));
       }
     },
-    [content, title, slug, categories]
+    [content, title, slug, excerpt, categories]
   );
 
   return { aiLoading, aiText };

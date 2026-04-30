@@ -9,14 +9,14 @@ import {
   GraduationCap,
   Briefcase,
   Info,
-  BadgeCheck,
+  BadgeCheck as BadgeCheckIcon,
 } from "lucide-react";
-import { BadgeCheck as BadgeCheckIcon } from "lucide-react";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { ProfileDetailView, DisplaySection } from "./ProfileViewComponents";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 import { activateSpotlight } from "@/lib/profile/userProfileApi";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import type { Profile } from "@aroosi/shared/types";
 
 interface ProfileInfoSectionsProps {
@@ -85,22 +85,29 @@ export const ProfileInfoSections: React.FC<ProfileInfoSectionsProps> = ({
                 className="ml-2 text-[11px] text-accent-dark underline"
                 onClick={async () => {
                   try {
-                    const { showSuccessToast, showErrorToast } =
-                      await import("@/lib/ui/toast");
                     const res = await activateSpotlight();
                     if (res.success) {
-                      showSuccessToast(
-                        "Spotlight activated – you’re highlighted for 30 days"
-                      );
+                      handleApiOutcome({
+                        success: true,
+                        message:
+                          "Spotlight activated – you’re highlighted for 30 days",
+                      });
                       router.refresh?.();
                     } else {
-                      showErrorToast(
-                        res.message,
-                        "Activation failed"
-                      );
+                      handleApiOutcome({
+                        success: false,
+                        error: res.message || "Activation failed",
+                      });
                     }
-                  } catch (e) {
-                    console.warn("activate spotlight failed", e);
+                  } catch (error) {
+                    handleError(
+                      error,
+                      {
+                        scope: "ProfileInfoSections",
+                        action: "activate_spotlight",
+                      },
+                      { customUserMessage: "Activation failed" }
+                    );
                   }
                 }}
                 title="Activate Spotlight to increase profile visibility"

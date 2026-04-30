@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome } from "@/lib/utils/errorHandling";
 
 interface CustomForgotPasswordFormProps {
   onComplete?: () => void;
@@ -42,20 +42,22 @@ export default function CustomForgotPasswordForm({
         
         const msg = "If that email exists, we sent a password reset link.";
         setSuccess(msg);
-        showSuccessToast(msg);
+        handleApiOutcome({ success: true, message: msg });
         if (onComplete) {
           setTimeout(() => onComplete(), 800);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         const msg =
-          err?.message ||
+          err instanceof Error
+            ? err.message
+            :
           "We couldn't process your request right now. Please try again.";
         const finalMsg =
           msg.includes("too_many_requests") || msg.includes("429")
             ? "Too many requests. Please try again later."
             : msg;
         setError(finalMsg);
-        showErrorToast(finalMsg);
+        handleApiOutcome({ success: false, error: finalMsg });
       } finally {
         setSubmitting(false);
       }

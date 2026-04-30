@@ -23,6 +23,48 @@ type CacheEntry = {
   payload: unknown;
 };
 
+export type JsonObject = Record<string, unknown>;
+
+export type ApiEnvelope<T = unknown> = JsonObject & {
+  success?: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+};
+
+export function isJsonObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null;
+}
+
+export function getResponseMessage(payload: unknown): string | null {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload;
+  }
+
+  if (!isJsonObject(payload)) {
+    return null;
+  }
+
+  const message = payload.message;
+  if (typeof message === "string" && message.trim()) {
+    return message;
+  }
+
+  const error = payload.error;
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return null;
+}
+
+export function isApiEnvelope<T = unknown>(payload: unknown): payload is ApiEnvelope<T> {
+  return (
+    isJsonObject(payload) &&
+    ("success" in payload || "data" in payload || "message" in payload || "error" in payload)
+  );
+}
+
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
@@ -132,16 +174,22 @@ export async function safeRequest(
     const ct = res.headers.get("content-type") || "";
     const isJson = ct.toLowerCase().includes("application/json");
 
-    const payload = isJson
-      ? await res.json().catch(() => ({}))
+    const payload: unknown = isJson
+      ? await res.json().catch((): JsonObject => ({}))
       : await res.text().catch(() => "");
 
     if (!res.ok) {
-      const msg =
-        (isJson && payload && (payload as any).error) ||
-        (typeof payload === "string" && payload) ||
-        `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      throw new Error(getResponseMessage(payload) ?? `HTTP ${res.status}`);
+    }
+
+    if (isApiEnvelope(payload)) {
+      if (payload.success === false) {
+        throw new Error(getResponseMessage(payload) ?? "Request failed");
+      }
+
+      if ("data" in payload) {
+        return payload.data;
+      }
     }
 
     if (cacheEnabled) {

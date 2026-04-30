@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -15,6 +15,14 @@ interface CustomSignInFormProps {
   onComplete?: () => void;
   onError?: (message: string) => void;
 }
+
+type HydratedAuthUser = {
+  id?: string;
+  profile?: {
+    id?: string;
+    _id?: string;
+  } | null;
+};
 
 export default function CustomSignInForm({
   onComplete,
@@ -61,17 +69,20 @@ export default function CustomSignInForm({
       if (!result.success) {
         const msg = result.error || "Sign in failed. Please try again.";
         onError?.(msg);
-        showErrorToast(msg);
+        handleApiOutcome({ success: false, error: msg });
         setIsLoading(false);
         return;
       }
 
       // Show success message
-      showSuccessToast("Welcome back! You have been successfully signed in.");
+      handleApiOutcome({
+        success: true,
+        message: "Welcome back! You have been successfully signed in.",
+      });
 
       // 2) Hydration retry loop to cover propagation delay after sign-in
       const backoffs = [0, 150, 300, 750];
-      let hydratedUser: any = null;
+      let hydratedUser: HydratedAuthUser | null = null;
 
       for (let i = 0; i < backoffs.length; i++) {
         if (backoffs[i] > 0) {
@@ -83,7 +94,7 @@ export default function CustomSignInForm({
           // ignore, allow next retry
         }
 
-        hydratedUser = (user as any) ?? null;
+        hydratedUser = (user as HydratedAuthUser | null) ?? null;
         if (
           hydratedUser &&
           (hydratedUser.profile?.id ||
@@ -97,11 +108,15 @@ export default function CustomSignInForm({
       // Proceed regardless; downstream guards handle profile completion
       handleOnboardingComplete();
       setIsLoading(false);
-    } catch {
+    } catch (error) {
       const msg =
         "An unexpected error occurred. Please try again in a few minutes.";
       onError?.(msg);
-      showErrorToast(msg);
+      handleError(
+        error,
+        { scope: "CustomSignInForm", action: "sign_in" },
+        { customUserMessage: msg }
+      );
       setIsLoading(false);
     }
   };
@@ -113,22 +128,29 @@ export default function CustomSignInForm({
       if (!result.success) {
         const msg = result.error || "Google sign in failed. Please try again.";
         onError?.(msg);
-        showErrorToast(msg);
+        handleApiOutcome({ success: false, error: msg });
         setIsLoading(false);
         return;
       }
 
       // Show success message
-      showSuccessToast("Welcome back! You have been successfully signed in.");
+      handleApiOutcome({
+        success: true,
+        message: "Welcome back! You have been successfully signed in.",
+      });
 
       // Proceed to onboarding completion
       handleOnboardingComplete();
       setIsLoading(false);
-    } catch {
+    } catch (error) {
       const msg =
         "An unexpected error occurred. Please try again in a few minutes.";
       onError?.(msg);
-      showErrorToast(msg);
+      handleError(
+        error,
+        { scope: "CustomSignInForm", action: "google_sign_in" },
+        { customUserMessage: msg }
+      );
       setIsLoading(false);
     }
   };

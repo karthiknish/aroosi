@@ -10,7 +10,6 @@ import {
   DragOverlay,
   type DragEndEvent,
   type DragStartEvent,
-  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import {
@@ -20,7 +19,6 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "./FirebaseAuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -31,6 +29,24 @@ import ProfileImageModal from "@/components/ProfileImageModal";
 import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { updateImageOrder } from "@/lib/utils/imageUtil";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+
+type ReorderError = Error & { code?: string };
+type CorrelationWindow = Window & { __lastImageOrderCid?: string };
+
+function hasInvalidImageIds(error: unknown): error is ReorderError {
+  return (
+    error instanceof Error &&
+    (error.code === "INVALID_IMAGE_IDS" ||
+      /Invalid image IDs|processing/.test(error.message))
+  );
+}
+
+function storeLastImageOrderCorrelationId(correlationId: string) {
+  try {
+    (window as CorrelationWindow).__lastImageOrderCid = correlationId;
+  } catch {}
+}
 
 type Props = {
   images: ProfileImageInfo[];
@@ -284,6 +300,14 @@ export function ProfileImageReorder({
   }, []);
   const handleDragCancel = useCallback(() => setActiveId(null), []);
 
+  const showReorderSuccess = useCallback((message: string) => {
+    handleApiOutcome({ success: true, message });
+  }, []);
+
+  const showReorderWarning = useCallback((message: string) => {
+    handleApiOutcome({ warning: message });
+  }, []);
+
   // Build a stable dnd-id per image with collision handling
   const dndIds: string[] = useMemo(() => {
     const seen = new Map<string, number>();
@@ -320,8 +344,8 @@ export function ProfileImageReorder({
       if (!over || !over.id || active.id === over.id) return;
 
       // Normalize IDs: dnd-kit UniqueIdentifier may be string | number | symbol
-      const activeId = String(active.id as UniqueIdentifier);
-      const overId = String(over.id as UniqueIdentifier);
+      const activeId = String(active.id);
+      const overId = String(over.id);
 
       const idxOf = (id: string) => dndIds.findIndex((x) => x === id);
 
@@ -381,8 +405,7 @@ export function ProfileImageReorder({
           );
 
         if (storageIds.length !== newOrdered.length) {
-          showErrorToast(
-            null,
+          showReorderWarning(
             "Cannot update order yet. Some images are still pending upload."
           );
           // Roll back optimistic update since we didn't persist
@@ -396,26 +419,27 @@ export function ProfileImageReorder({
         }
 
         const result = await updateImageOrder({ userId, imageIds: storageIds });
-        showSuccessToast("Photos reordered");
+        showReorderSuccess("Photos reordered");
         if (result?.correlationId) {
-          try {
-            (window as any).__lastImageOrderCid = result.correlationId;
-          } catch {}
+          storeLastImageOrderCorrelationId(result.correlationId);
         }
       } catch (err) {
         let errorMessage =
           err instanceof Error ? err.message : "Failed to update image order";
-        if (
-          err instanceof Error &&
-          ((err as any).code === "INVALID_IMAGE_IDS" ||
-            /Invalid image IDs|processing/.test(err.message))
-        ) {
+        if (hasInvalidImageIds(err)) {
           errorMessage =
             "Some photos are still uploading or failed to upload. Please wait for uploads to finish, then retry.";
         }
-        console.error("Error updating image order:", errorMessage, err);
         setError(errorMessage);
-        showErrorToast(null, errorMessage);
+        if (hasInvalidImageIds(err)) {
+          showReorderWarning(errorMessage);
+        } else {
+          handleError(
+            err,
+            { scope: "ProfileImageReorder", action: "reorder_images", userId },
+            { customUserMessage: errorMessage }
+          );
+        }
 
         // Revert optimistic update on error
         if (onReorder) {
@@ -436,6 +460,8 @@ export function ProfileImageReorder({
       preUpload,
       dndIds,
       modalState?.open,
+      showReorderSuccess,
+      showReorderWarning,
     ]
   );
 
@@ -537,8 +563,7 @@ export function ProfileImageReorder({
                                     typeof sid === "string" && sid.length > 0
                                 );
                               if (newOrderIds.length !== reordered.length) {
-                                showErrorToast(
-                                  null,
+                                showReorderWarning(
                                   "Cannot update order yet. Some images are still pending upload."
                                 );
                                 return;
@@ -547,29 +572,34 @@ export function ProfileImageReorder({
                                 userId,
                                 imageIds: newOrderIds,
                               });
-                              showSuccessToast("Main photo updated");
+                              showReorderSuccess("Main photo updated");
                               if (resp?.correlationId) {
-                                try {
-                                  (window as any).__lastImageOrderCid =
-                                    resp.correlationId;
-                                } catch {}
+                                storeLastImageOrderCorrelationId(
+                                  resp.correlationId
+                                );
                               }
                             } catch (e) {
                               let msg =
                                 e instanceof Error
                                   ? e.message
                                   : "Failed to set main";
-                              if (
-                                e instanceof Error &&
-                                ((e as any).code === "INVALID_IMAGE_IDS" ||
-                                  /Invalid image IDs|processing/.test(
-                                    e.message
-                                  ))
-                              ) {
+                              if (hasInvalidImageIds(e)) {
                                 msg =
                                   "Main photo not set yet—images still uploading. Try again after uploads complete.";
                               }
-                              showErrorToast(null, msg);
+                              if (hasInvalidImageIds(e)) {
+                                showReorderWarning(msg);
+                              } else {
+                                handleError(
+                                  e,
+                                  {
+                                    scope: "ProfileImageReorder",
+                                    action: "set_main_photo",
+                                    userId,
+                                  },
+                                  { customUserMessage: msg }
+                                );
+                              }
                               // rollback
                               if (onReorder) {
                                 onReorder(currentImages);

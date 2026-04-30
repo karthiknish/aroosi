@@ -11,6 +11,7 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    Linking,
 } from 'react-native';
 import { 
     colors, 
@@ -22,6 +23,7 @@ import {
     responsiveValues,
     responsiveFontSizes,
 } from '../../theme';
+import { API_BASE_URL } from '../../config';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import {
     getSubscription,
@@ -39,6 +41,7 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [startingCheckout, setStartingCheckout] = useState<string | null>(null);
     const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('yearly');
 
     // Load subscription data
@@ -72,6 +75,7 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
     // Handle subscribe
     const handleSubscribe = useCallback(async (planId: string) => {
         try {
+            setStartingCheckout(planId);
             const response = await createCheckoutSession(planId, selectedBilling === 'yearly');
 
             if (response.error) {
@@ -79,10 +83,21 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
                 return;
             }
 
-            // In a real app, this would open the App Store / Play Store subscription flow
-            Alert.alert('Coming Soon', 'In-app purchases will be available soon!');
+            if (response.data?.url) {
+                await Linking.openURL(response.data.url);
+                return;
+            }
+
+            const siteUrl = API_BASE_URL.replace(/\/api\/?$/, '');
+            const checkoutUrl = `${siteUrl}/plans?source=mobile&plan=${encodeURIComponent(planId)}&interval=${selectedBilling}`;
+            await Linking.openURL(checkoutUrl);
         } catch (err) {
-            Alert.alert('Error', 'Failed to start subscription');
+            Alert.alert(
+                'Error',
+                err instanceof Error ? err.message : 'Failed to start subscription'
+            );
+        } finally {
+            setStartingCheckout(null);
         }
     }, [selectedBilling]);
 
@@ -234,12 +249,13 @@ export default function SubscriptionScreen({ onBack }: SubscriptionScreenProps) 
                                         plan.popular && styles.subscribeButtonPopular
                                     ]}
                                     onPress={() => handleSubscribe(plan.id)}
+                                    disabled={startingCheckout !== null}
                                 >
                                     <Text style={[
                                         styles.subscribeButtonText,
                                         plan.popular && styles.subscribeButtonTextPopular
                                     ]}>
-                                        Get {plan.name}
+                                        {startingCheckout === plan.id ? 'Opening...' : `Get ${plan.name}`}
                                     </Text>
                                 </TouchableOpacity>
                             </View>

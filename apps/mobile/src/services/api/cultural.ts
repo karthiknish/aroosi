@@ -31,5 +31,5 @@ export async function getSupervisedConversationStatus(conversationId: string) {
  * Cultural Recommendations / Profile Compatibility
  */
 export async function getCulturalCompatibility(userId: string) {
-    return api.get(`/cultural/compatibility/${userId}`);
+    return api.get(`/compatibility/${userId}`);
 }

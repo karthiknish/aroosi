@@ -1,123 +1,14 @@
-/**
- * Preferences Screen - Partner preferences and discovery settings
- */
-
-import React, { useState, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
-    ScrollView,
-    TouchableOpacity,
-    Alert,
-} from 'react-native';
 import { router } from 'expo-router';
-import SegmentedControl from '@react-native-segmented-control/segmented-control';
-import Slider from '@react-native-community/slider';
-import { SymbolView } from 'expo-symbols';
+import PreferencesScreen from '@/src/screens/profile/PreferencesScreen';
 
-// Type workaround for Slider component
-const SliderComponent = Slider as unknown as React.ComponentType<any>;
-import {
-    colors,
-    spacing,
-    fontSize,
-    fontWeight,
-    borderRadius,
-    moderateScale,
-    responsiveValues,
-    responsiveFontSizes,
-} from '@/theme';
-import { useAuthStore } from '@/store';
-import Animated, {
-    FadeIn,
-    FadeInDown,
-} from 'react-native-reanimated';
-
-const AnimatedView = Animated.View;
-
-// Age range options for SegmentedControl
-const AGE_RANGES = ['18-25', '26-35', '36-45', '46+'];
-
-export default function PreferencesScreen() {
-    const { user } = useAuthStore();
-
-    // Discovery preferences
-    const [ageRangeIndex, setAgeRangeIndex] = useState(1); // Default to 26-35
-    const [minAge, setMinAge] = useState(26);
-    const [maxAge, setMaxAge] = useState(35);
-    const [maxDistance, setMaxDistance] = useState(50); // km
-
-    // Gender preference
-    const [genderPreference, setGenderPreference] = useState(0); // 0: Everyone, 1: Women, 2: Men
-
-    // Save preferences
-    const handleSave = useCallback(() => {
-        // TODO: Implement save to API
-        Alert.alert(
-            'Preferences Saved',
-            'Your discovery preferences have been updated.',
-            [
-                { text: 'OK', onPress: () => router.back() },
-            ]
-        );
-    }, []);
-
+export default function PreferencesRoute() {
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <AnimatedView
-                style={styles.header}
-                entering={FadeInDown.duration(400)}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <SymbolView
-                        name="chevron.left"
-                        weight="semibold"
-                        tintColor={colors.neutral[800]}
-                        size={24}
-                    />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Discovery Preferences</Text>
-                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-            </AnimatedView>
-
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Gender Preference */}
-                <AnimatedView
-                    style={styles.section}
-                    entering={FadeIn.duration(400).delay(100)}
-                >
-                    <Text style={styles.sectionTitle}>Interested In</Text>
-                    <Text style={styles.sectionDescription}>
-                        Who would you like to see?
-                    </Text>
-
-                    <View style={styles.segmentedContainer}>
-                        <SegmentedControl
-                            values={['Everyone', 'Women', 'Men']}
-                            selectedIndex={genderPreference}
-                            onChange={({ nativeEvent }) =>
-                                setGenderPreference(nativeEvent.selectedSegmentIndex)
-                            }
-                            style={styles.segmentedControl}
-                        />
-                    </View>
-                </AnimatedView>
-
-                {/* Age Range - Segmented Control */}
-                <AnimatedView
-                    style={styles.section}
-                    entering={FadeIn.duration(400).delay(150)}
-                >
-                    <Text style={styles.sectionTitle}>Age Range</Text>
+        <PreferencesScreen
+            onBack={() => router.back()}
+            onSave={() => router.back()}
+        />
+    );
+}
                     <Text style={styles.sectionDescription}>
                         Quick select or use slider for custom range
                     </Text>

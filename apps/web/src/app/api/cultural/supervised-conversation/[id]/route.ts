@@ -13,6 +13,48 @@ import type {
 import { NextRequest } from "next/server";
 import { supervisedConversationUpdateSchema } from "@/lib/validation/apiSchemas/supervisedConversation";
 
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const handler = createAuthenticatedHandler(
+    async (ctx: ApiContext) => {
+      const { id: conversationId } = await context.params;
+      const userId = (ctx.user as any).userId || (ctx.user as any).id;
+
+      try {
+        const conversationDoc = await db.collection("supervisedConversations").doc(conversationId).get();
+        if (!conversationDoc.exists) {
+          return errorResponse("Conversation not found", 404, { correlationId: ctx.correlationId });
+        }
+
+        const conversation = { _id: conversationDoc.id, ...conversationDoc.data() } as SupervisedConversation;
+
+        if (
+          conversation.requesterId !== userId &&
+          conversation.supervisorId !== userId &&
+          conversation.targetUserId !== userId
+        ) {
+          return errorResponse("You are not authorized to view this conversation", 403, {
+            correlationId: ctx.correlationId,
+          });
+        }
+
+        return successResponse({ conversation }, 200, ctx.correlationId);
+      } catch (error) {
+        console.error("cultural/supervised-conversation/[id] GET error", {
+          error,
+          correlationId: ctx.correlationId,
+        });
+        return errorResponse("Failed to fetch conversation", 500, {
+          correlationId: ctx.correlationId,
+        });
+      }
+    },
+    {
+      rateLimit: { identifier: "supervised_conv_get", maxRequests: 100 },
+    }
+  );
+  return handler(request);
+}
+
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const handler = createAuthenticatedHandler(
     async (ctx: ApiContext, body: import("zod").infer<typeof supervisedConversationUpdateSchema>) => {

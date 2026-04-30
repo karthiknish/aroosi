@@ -2,7 +2,11 @@
  * Comprehensive error handling utilities for the application
  */
 
-import { showErrorToast } from "@/lib/ui/toast";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showWarningToast,
+} from "@/lib/ui/toast";
 
 // Error types for better categorization
 export enum ErrorType {
@@ -35,8 +39,164 @@ export interface AppError {
   userMessage?: string;
 }
 
+export type ApiOutcomeLevel = "success" | "warning" | "error";
+
+export interface ApiOutcomePayload {
+  success?: boolean;
+  status?: number;
+  message?: string;
+  error?: string | { message?: string } | null;
+  warning?: string | string[] | null;
+  warnings?: string[] | null;
+  metadata?: Record<string, unknown>;
+}
+
+type ToastLevel = "warning" | "error";
+
+function extractOutcomeMessage(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "message" in value &&
+    typeof (value as { message?: unknown }).message === "string" &&
+    (value as { message: string }).message.trim()
+  ) {
+    return (value as { message: string }).message.trim();
+  }
+
+  if (Array.isArray(value)) {
+    const joined = value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .join(" ");
+    return joined || null;
+  }
+
+  return null;
+}
+
+function getToastLevelForErrorType(errorType: ErrorType): ToastLevel {
+  switch (errorType) {
+    case ErrorType.NETWORK:
+    case ErrorType.VALIDATION:
+    case ErrorType.NOT_FOUND:
+    case ErrorType.CLIENT:
+      return "warning";
+    default:
+      return "error";
+  }
+}
+
+function extractWarningMessage(result: ApiOutcomePayload): string | null {
+  const directWarning = extractOutcomeMessage(result.warning);
+  if (directWarning) {
+    return directWarning;
+  }
+
+  const warnings = extractOutcomeMessage(result.warnings);
+  if (warnings) {
+    return warnings;
+  }
+
+  const metadataWarning = extractOutcomeMessage(result.metadata?.warning);
+  if (metadataWarning) {
+    return metadataWarning;
+  }
+
+  const metadataWarnings = extractOutcomeMessage(result.metadata?.warnings);
+  if (metadataWarnings) {
+    return metadataWarnings;
+  }
+
+  if (result.status === 202) {
+    return result.message?.trim() || "Your request was accepted and is still processing.";
+  }
+
+  return null;
+}
+
+function classifyApiOutcome(
+  result: ApiOutcomePayload,
+  options?: {
+    successMessage?: string;
+    warningMessage?: string;
+    errorMessage?: string;
+  }
+): { level: ApiOutcomeLevel; message: string } | null {
+  if (result.success === false || result.error) {
+    return {
+      level: "error",
+      message:
+        extractOutcomeMessage(result.error) ||
+        options?.errorMessage ||
+        result.message ||
+        "Something went wrong. Please try again.",
+    };
+  }
+
+  const warningMessage = extractWarningMessage(result) || options?.warningMessage;
+  if (warningMessage) {
+    return {
+      level: "warning",
+      message: warningMessage,
+    };
+  }
+
+  if (result.success === true && (result.message || options?.successMessage)) {
+    return {
+      level: "success",
+      message: result.message?.trim() || options?.successMessage || "Request completed successfully.",
+    };
+  }
+
+  return null;
+}
+
+function getErrorStatus(error: unknown): number | null {
+  if (
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    typeof (error as { status?: unknown }).status === "number"
+  ) {
+    return (error as { status: number }).status;
+  }
+
+  return null;
+}
+
 // Error classification based on common patterns
 export function classifyError(error: unknown): ErrorType {
+  const status = getErrorStatus(error);
+  if (status !== null) {
+    if (status === 401) {
+      return ErrorType.AUTHENTICATION;
+    }
+
+    if (status === 400 || status === 409 || status === 422) {
+      return ErrorType.VALIDATION;
+    }
+
+    if (status === 403) {
+      return ErrorType.PERMISSION;
+    }
+
+    if (status === 404) {
+      return ErrorType.NOT_FOUND;
+    }
+
+    if (status >= 500) {
+      return ErrorType.SERVER;
+    }
+
+    if (status >= 400) {
+      return ErrorType.CLIENT;
+    }
+  }
+
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
 
@@ -204,10 +364,47 @@ export function handleError(
 
   // Show toast notification (default: true)
   if (options?.showToast !== false) {
-    showErrorToast(null, appError.userMessage);
+    const toastLevel = getToastLevelForErrorType(appError.type);
+    if (toastLevel === "warning") {
+      showWarningToast(appError.userMessage || "Something needs your attention.");
+    } else {
+      showErrorToast(null, appError.userMessage);
+    }
   }
 
   return appError;
+}
+
+export function handleApiOutcome(
+  result: ApiOutcomePayload,
+  options?: {
+    showToast?: boolean;
+    successMessage?: string;
+    warningMessage?: string;
+    errorMessage?: string;
+  }
+): { level: ApiOutcomeLevel; message: string } | null {
+  const outcome = classifyApiOutcome(result, options);
+
+  if (!outcome) {
+    return null;
+  }
+
+  if (options?.showToast !== false) {
+    switch (outcome.level) {
+      case "success":
+        showSuccessToast(outcome.message);
+        break;
+      case "warning":
+        showWarningToast(outcome.message);
+        break;
+      case "error":
+        showErrorToast(null, outcome.message);
+        break;
+    }
+  }
+
+  return outcome;
 }
 
 // Async error handler wrapper

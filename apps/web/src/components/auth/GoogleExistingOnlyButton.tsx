@@ -3,7 +3,7 @@ import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Chrome, Loader2 } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome } from "@/lib/utils/errorHandling";
 
 interface Props {
   text?: string;
@@ -34,10 +34,10 @@ export function GoogleExistingOnlyButton({
           const res = await signInWithGoogleExistingOnly();
           if (!res.success) {
             const msg = res.error || "No existing account for this Google email.";
-            showErrorToast(msg);
+            handleApiOutcome({ success: false, error: msg });
             onBlocked?.(msg);
           } else {
-            showSuccessToast("Signed in successfully");
+            handleApiOutcome({ success: true, message: "Signed in successfully" });
             if (typeof window !== "undefined") window.location.href = redirectUrl;
             onSuccess?.();
           }

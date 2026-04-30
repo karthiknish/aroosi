@@ -2,7 +2,7 @@
  * Settings Screen - App settings and account management
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -13,6 +13,7 @@ import {
     Alert,
     Switch,
     Linking,
+    ActivityIndicator,
 } from 'react-native';
 import { 
     colors, 
@@ -25,6 +26,13 @@ import {
     responsiveFontSizes,
 } from '../../theme';
 import { useAuthStore } from '../../store';
+import {
+    getNotificationSettings,
+    updateNotificationSettings,
+    registerPushToken,
+    unregisterPushToken,
+    type NotificationSettings,
+} from '../../services/api/notifications';
 
 interface SettingsScreenProps {
     onBack?: () => void;
@@ -33,16 +41,133 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     const { signOut } = useAuthStore();
 
-    // Notification settings
-    const [pushNotifications, setPushNotifications] = useState(true);
-    const [matchNotifications, setMatchNotifications] = useState(true);
-    const [messageNotifications, setMessageNotifications] = useState(true);
-    const [likeNotifications, setLikeNotifications] = useState(true);
+    const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+        matches: true,
+        messages: true,
+        likes: true,
+        superLikes: true,
+        dailyPicks: true,
+        promotions: false,
+    });
+    const [loadingSettings, setLoadingSettings] = useState(true);
+    const [savingSettingKey, setSavingSettingKey] = useState<string | null>(null);
 
     // Privacy settings
     const [showOnlineStatus, setShowOnlineStatus] = useState(true);
     const [showReadReceipts, setShowReadReceipts] = useState(true);
     const [showDistance, setShowDistance] = useState(true);
+
+    const pushNotifications = Object.values(notificationSettings).some(Boolean);
+    const matchNotifications = notificationSettings.matches;
+    const messageNotifications = notificationSettings.messages;
+    const likeNotifications = notificationSettings.likes;
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadSettings = async () => {
+            try {
+                setLoadingSettings(true);
+                const response = await getNotificationSettings();
+
+                if (!isMounted || !response.data) {
+                    return;
+                }
+
+                setNotificationSettings((current) => ({
+                    ...current,
+                    ...response.data,
+                }));
+            } catch {
+                if (isMounted) {
+                    Alert.alert('Error', 'Failed to load notification settings');
+                }
+            } finally {
+                if (isMounted) {
+                    setLoadingSettings(false);
+                }
+            }
+        };
+
+        void loadSettings();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const persistNotificationSettings = useCallback(
+        async (nextSettings: NotificationSettings, key: string, syncPushToken = false) => {
+            const previousSettings = notificationSettings;
+            setNotificationSettings(nextSettings);
+            setSavingSettingKey(key);
+
+            try {
+                const response = await updateNotificationSettings(nextSettings);
+                if (response.error) {
+                    throw new Error(response.error);
+                }
+
+                if (syncPushToken) {
+                    if (Object.values(nextSettings).some(Boolean)) {
+                        const registerResult = await registerPushToken();
+                        if (!registerResult.success) {
+                            throw new Error(registerResult.error || 'Failed to enable push notifications');
+                        }
+                    } else {
+                        await unregisterPushToken();
+                    }
+                }
+            } catch (error) {
+                setNotificationSettings(previousSettings);
+                Alert.alert(
+                    'Error',
+                    error instanceof Error ? error.message : 'Failed to update notification settings'
+                );
+            } finally {
+                setSavingSettingKey(null);
+            }
+        },
+        [notificationSettings]
+    );
+
+    const handleToggleAllNotifications = useCallback(
+        (enabled: boolean) => {
+            const nextSettings: NotificationSettings = enabled
+                ? {
+                    ...notificationSettings,
+                    matches: true,
+                    messages: true,
+                    likes: true,
+                    superLikes: notificationSettings.superLikes || true,
+                    dailyPicks: notificationSettings.dailyPicks || true,
+                }
+                : {
+                    ...notificationSettings,
+                    matches: false,
+                    messages: false,
+                    likes: false,
+                    superLikes: false,
+                    dailyPicks: false,
+                    promotions: false,
+                };
+
+            void persistNotificationSettings(nextSettings, 'pushNotifications', true);
+        },
+        [notificationSettings, persistNotificationSettings]
+    );
+
+    const handleToggleNotificationSetting = useCallback(
+        (key: keyof NotificationSettings, value: boolean) => {
+            const nextSettings: NotificationSettings = {
+                ...notificationSettings,
+                [key]: value,
+            };
+
+            void persistNotificationSettings(nextSettings, key);
+        },
+        [notificationSettings, persistNotificationSettings]
+    );
 
     // Handle delete account
     const handleDeleteAccount = useCallback(() => {
@@ -137,6 +262,13 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Notifications</Text>
 
+                    {loadingSettings && (
+                        <View style={styles.loadingRow}>
+                            <ActivityIndicator color={colors.primary.DEFAULT} />
+                            <Text style={styles.loadingText}>Loading your notification preferences...</Text>
+                        </View>
+                    )}
+
                     <View style={styles.settingRow}>
                         <View style={styles.settingInfo}>
                             <Text style={styles.settingTitle}>Push Notifications</Text>
@@ -146,9 +278,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         </View>
                         <Switch
                             value={pushNotifications}
-                            onValueChange={setPushNotifications}
+                            onValueChange={handleToggleAllNotifications}
                             trackColor={{ false: colors.neutral[200], true: colors.primary[200] }}
                             thumbColor={pushNotifications ? colors.primary.DEFAULT : colors.neutral[400]}
+                            disabled={loadingSettings || savingSettingKey === 'pushNotifications'}
                         />
                     </View>
 
@@ -161,10 +294,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         </View>
                         <Switch
                             value={matchNotifications}
-                            onValueChange={setMatchNotifications}
+                            onValueChange={(value) => handleToggleNotificationSetting('matches', value)}
                             trackColor={{ false: colors.neutral[200], true: colors.primary[200] }}
                             thumbColor={matchNotifications ? colors.primary.DEFAULT : colors.neutral[400]}
-                            disabled={!pushNotifications}
+                            disabled={!pushNotifications || loadingSettings || savingSettingKey !== null}
                         />
                     </View>
 
@@ -177,10 +310,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         </View>
                         <Switch
                             value={messageNotifications}
-                            onValueChange={setMessageNotifications}
+                            onValueChange={(value) => handleToggleNotificationSetting('messages', value)}
                             trackColor={{ false: colors.neutral[200], true: colors.primary[200] }}
                             thumbColor={messageNotifications ? colors.primary.DEFAULT : colors.neutral[400]}
-                            disabled={!pushNotifications}
+                            disabled={!pushNotifications || loadingSettings || savingSettingKey !== null}
                         />
                     </View>
 
@@ -193,10 +326,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         </View>
                         <Switch
                             value={likeNotifications}
-                            onValueChange={setLikeNotifications}
+                            onValueChange={(value) => handleToggleNotificationSetting('likes', value)}
                             trackColor={{ false: colors.neutral[200], true: colors.primary[200] }}
                             thumbColor={likeNotifications ? colors.primary.DEFAULT : colors.neutral[400]}
-                            disabled={!pushNotifications}
+                            disabled={!pushNotifications || loadingSettings || savingSettingKey !== null}
                         />
                     </View>
                 </View>
@@ -406,6 +539,16 @@ const styles = StyleSheet.create({
         marginBottom: moderateScale(4),
     },
     settingDescription: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[500],
+    },
+    loadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: moderateScale(12),
+    },
+    loadingText: {
+        marginLeft: moderateScale(8),
         fontSize: responsiveFontSizes.sm,
         color: colors.neutral[500],
     },

@@ -14,7 +14,8 @@ import { buildProfileImageUrl } from "@/lib/images/profileImageUtils";
 import { profileAPI } from "@/lib/api/profile";
 import { getJson } from "@/lib/http/client";
 import { unblockUserUtil, blockUserUtil } from "@/lib/chat/utils";
-import { showSuccessToast, showErrorToast, showUndoToast } from "@/lib/ui/toast";
+import { showUndoToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import type { Profile } from "@aroosi/shared/types";
 
 type UsageTrackEvent = Parameters<ReturnType<typeof useUsageTracking>["trackUsage"]>[0];
@@ -181,13 +182,25 @@ export function useProfileDetailLogic() {
         try {
           await blockUserUtil({ matchUserId: userId, setIsBlocked: () => {}, setShowReportModal });
           trackUsage({ feature: "user_block", metadata: { targetUserId: userId } });
-          showSuccessToast("User re-blocked");
-        } catch {
-          showErrorToast(null, "Failed to re-block user");
+          handleApiOutcome({ success: true, message: "User re-blocked" });
+        } catch (error) {
+          handleError(error, {
+            scope: "useProfileDetailLogic",
+            action: "undo_block_user",
+            userId,
+          }, {
+            customUserMessage: "Failed to re-block user",
+          });
         }
       });
-    } catch {
-      showErrorToast(null, "Failed to unblock user");
+    } catch (error) {
+      handleError(error, {
+        scope: "useProfileDetailLogic",
+        action: "unblock_user",
+        userId,
+      }, {
+        customUserMessage: "Failed to unblock user",
+      });
     }
   };
 

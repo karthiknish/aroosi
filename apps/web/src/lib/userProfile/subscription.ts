@@ -1,5 +1,4 @@
-import { db, COLLECTIONS } from '@/lib/userProfile';
-import type { UserProfile } from '@/lib/userProfile';
+import { db, COLLECTIONS, type UserProfile } from '@/lib/userProfile';
 
 // Utilities for subscription-related profile mutations
 export async function applySubscription(

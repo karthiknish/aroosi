@@ -2,11 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { subscriptionAPI } from "@/lib/api/subscription";
-import {
-  showErrorToast,
-  showWarningToast,
-  showInfoToast,
-} from "@/lib/ui/toast";
+import { showInfoToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 type Feature =
   | "message_sent"
@@ -65,14 +62,13 @@ export function useUsageTracking(): {
         usage.remainingQuota <= 5 &&
         usage.remainingQuota > 0
       ) {
-        showWarningToast(
-          `Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`,
-        );
+        handleApiOutcome({
+          warning: `Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`,
+        });
       } else if (!usage.isUnlimited && usage.remainingQuota === 0) {
-        showErrorToast(
-          null,
-          `Monthly limit reached for ${getFeatureName(usage.feature)}`,
-        );
+        handleApiOutcome({
+          error: `Monthly limit reached for ${getFeatureName(usage.feature)}`,
+        });
       }
     },
     onError: (error: Error) => {
@@ -88,12 +84,17 @@ export function useUsageTracking(): {
       }
 
       if (error.message.includes("limit reached")) {
-        showErrorToast(null, error.message);
+        handleApiOutcome({ error: error.message });
         showInfoToast(
           "Upgrade to Premium for higher limits. Visit pricing page.",
         );
       } else {
-        showErrorToast(null, error.message);
+        handleError(error, {
+          scope: "useUsageTracking",
+          action: "track_usage",
+        }, {
+          customUserMessage: error.message,
+        });
       }
     },
   });

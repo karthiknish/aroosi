@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { PostForm } from "@/components/admin/PostForm";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { adminBlogAPI } from "@/lib/api/admin/blog";
@@ -14,6 +13,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { useBlogAI } from "@/hooks/useBlogAI";
 import { FileQuestion } from "lucide-react";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 /**
  * Note: All admin blog routes now rely on cookie-based auth.
@@ -88,11 +88,18 @@ function AdminEditBlogPageInner() {
       return adminBlogAPI.update(blogPost._id, updates);
     },
     onSuccess: () => {
-      showSuccessToast("Blog post updated successfully!");
+      handleApiOutcome({
+        success: true,
+        message: "Blog post updated successfully!",
+      });
       router.push("/admin/blog");
     },
     onError: (err: Error) => {
-      showErrorToast(err, "Failed to update post");
+      handleError(
+        err,
+        { scope: "AdminEditBlogPage", action: "update_post", slug },
+        { customUserMessage: "Failed to update post" }
+      );
     },
   });
 

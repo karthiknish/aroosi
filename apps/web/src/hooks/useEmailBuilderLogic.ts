@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { 
+import type { 
   UISection, 
   BuilderSchema, 
   Section 
 } from "../app/(authenticated)/admin/marketing-email/builder/types";
 import { adminEmailAPI } from "@/lib/api/admin/email";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+import { renderBuiltTemplate } from "@/lib/templateBuilder";
 
 function uuid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -14,6 +15,12 @@ function uuid() {
 function toJson(schema: BuilderSchema) {
   return JSON.stringify(schema, null, 2);
 }
+
+type BuilderPreset = {
+  id: string;
+  name: string;
+  schema: BuilderSchema;
+};
 
 export function useEmailBuilderLogic() {
   const [subject, setSubject] = useState("My Builder Email");
@@ -36,9 +43,7 @@ export function useEmailBuilderLogic() {
   const [activeTab, setActiveTab] = useState<"design" | "json">("design");
   const [jsonText, setJsonText] = useState<string>("");
   const [previewHtml, setPreviewHtml] = useState<string>("");
-  const [presets, setPresets] = useState<
-    Array<{ id: string; name: string; schema: any }>
-  >([]);
+  const [presets, setPresets] = useState<BuilderPreset[]>([]);
   const [presetName, setPresetName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -55,8 +60,12 @@ export function useEmailBuilderLogic() {
 
   useEffect(() => {
     (async () => {
-      const presets = await adminEmailAPI.getBuilderPresets();
-      if (Array.isArray(presets)) setPresets(presets as any);
+      try {
+        const presets = await adminEmailAPI.getBuilderPresets();
+        if (Array.isArray(presets)) setPresets(presets as BuilderPreset[]);
+      } catch {
+        setPresets([]);
+      }
     })();
   }, []);
 
@@ -67,13 +76,24 @@ export function useEmailBuilderLogic() {
   const handlePreview = async () => {
     setIsPreviewLoading(true);
     try {
+      setPreviewHtml("");
+      const rendered = renderBuiltTemplate(schema);
       const res = await adminEmailAPI.previewMarketingEmail({
-        templateKey: "builder",
-        params: { schema } as any,
+        subject: rendered.subject,
+        body: rendered.html,
       });
-      if (res.success && (res.data as any)?.html) {
-        setPreviewHtml((res.data as any).html);
+      if (typeof res?.html === "string") {
+        setPreviewHtml(res.html);
+      } else {
+        throw new Error("Preview generation returned no HTML");
       }
+    } catch (error) {
+      handleError(error, {
+        scope: "useEmailBuilderLogic",
+        action: "preview_builder_email",
+      }, {
+        customUserMessage: "Failed to generate preview",
+      });
     } finally {
       setIsPreviewLoading(false);
     }
@@ -82,8 +102,15 @@ export function useEmailBuilderLogic() {
   const handleCopyJson = async () => {
     try {
       await navigator.clipboard.writeText(toJson(schema));
-      showSuccessToast("Copied JSON to clipboard");
-    } catch {}
+      handleApiOutcome({ success: true, message: "Copied JSON to clipboard" });
+    } catch (error) {
+      handleError(error, {
+        scope: "useEmailBuilderLogic",
+        action: "copy_builder_json",
+      }, {
+        customUserMessage: "Failed to copy JSON to clipboard",
+      });
+    }
   };
 
   const applyJsonToDesign = (saveToHistory: () => void) => {
@@ -94,14 +121,14 @@ export function useEmailBuilderLogic() {
       setPreheader(parsed.preheader || "");
       const ui = (parsed.sections || []).map((s) => ({
         _id: uuid(),
-        ...(s as Section),
+        ...s,
       }));
       setSections(ui);
-      showSuccessToast("Applied JSON to design");
+      handleApiOutcome({ success: true, message: "Applied JSON to design" });
       setActiveTab("design");
       saveToHistory();
     } catch {
-      showErrorToast("", "Invalid JSON");
+      handleApiOutcome({ warning: "Invalid JSON" });
     } finally {
       setIsLoading(false);
     }
@@ -115,34 +142,50 @@ export function useEmailBuilderLogic() {
         schema,
       });
       const list = await adminEmailAPI.getBuilderPresets();
-      if (Array.isArray(list)) setPresets(list as any);
+      if (Array.isArray(list)) setPresets(list);
       setPresetName("");
-      showSuccessToast("Preset saved");
+      handleApiOutcome({ success: true, message: "Preset saved" });
+    } catch (error) {
+      handleError(error, {
+        scope: "useEmailBuilderLogic",
+        action: "save_builder_preset",
+      }, {
+        customUserMessage: "Failed to save preset",
+      });
     } finally {
       setIsLoading(false);
     }
   }, [presetName, schema]);
 
-  const loadPreset = useCallback(async (p: { id: string; name: string; schema: any }, saveToHistory: () => void) => {
+  const loadPreset = useCallback(async (p: BuilderPreset, saveToHistory: () => void) => {
     setIsLoading(true);
     try {
-      const s = p.schema as BuilderSchema;
+      const s = p.schema;
       setSubject(s.subject || "");
       setPreheader(s.preheader || "");
       setSections(
-        (s.sections || []).map((sec) => ({ _id: uuid(), ...(sec as Section) }))
+        (s.sections || []).map((sec) => ({ _id: uuid(), ...sec }))
       );
       setActiveTab("design");
       saveToHistory();
-    } catch {
-      showErrorToast("", "Failed to load preset");
+    } catch (error) {
+      handleError(error, {
+        scope: "useEmailBuilderLogic",
+        action: "load_builder_preset",
+        presetId: p.id,
+      }, {
+        customUserMessage: "Failed to load preset",
+      });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const addSection = useCallback((type: Section["type"], saveToHistory: () => void) => {
-    const base: any = { _id: uuid(), type };
+    const base: Partial<UISection> & { _id: string; type: Section["type"] } = {
+      _id: uuid(),
+      type,
+    };
     if (type === "hero")
       Object.assign(base, {
         title: "Hero title",

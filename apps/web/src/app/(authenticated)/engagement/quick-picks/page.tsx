@@ -5,18 +5,26 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getQuickPicks,
   actOnQuickPick,
-  QuickPickProfile,
+  type QuickPickProfile,
   fetchIcebreakers,
   todayKey,
 } from "@/lib/engagementUtil";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageLoader } from "@/components/ui/PageLoader";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyIcon,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import Link from "next/link";
 import Image from "next/image";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
+import { Sparkles } from "lucide-react";
 
 // todayKey imported from engagementUtil instead of local duplicate
 
@@ -27,7 +35,7 @@ export default function QuickPicksPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const { data: subscription } = useSubscriptionStatus();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["quick-picks", { dayKey }],
     queryFn: () => getQuickPicks(dayKey),
   });
@@ -37,13 +45,22 @@ export default function QuickPicksPage() {
   });
 
   useEffect(() => {
-    if (isError) {
-      setLoadError("Failed to load quick picks. Please try again.");
-      showErrorToast("Failed to load quick picks. Please try again.");
-    } else {
+    if (!error) {
       setLoadError(null);
+      return;
     }
-  }, [isError]);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to load quick picks. Please try again.";
+    setLoadError(message);
+    handleError(
+      error,
+      { scope: "QuickPicksPage", action: "load_quick_picks" },
+      { customUserMessage: message }
+    );
+  }, [error]);
 
   const dailyLimit = useMemo(() => {
     const plan = subscription?.plan || "free";
@@ -52,12 +69,18 @@ export default function QuickPicksPage() {
 
   const ordered: QuickPickProfile[] = useMemo(() => {
     const profiles = data?.profiles || [];
-    const coalesceViews = (p: any) =>
+    const coalesceViews = (
+      profile: QuickPickProfile & {
+        viewsToday?: number;
+        profileViewsToday?: number;
+        views?: number | { today?: number };
+      }
+    ) =>
       Number(
-        p?.viewsToday ??
-          p?.profileViewsToday ??
-          p?.views?.today ??
-          p?.views ??
+        profile.viewsToday ??
+          profile.profileViewsToday ??
+          (typeof profile.views === "object" ? profile.views?.today : undefined) ??
+          profile.views ??
           0
       ) || 0;
     return [...profiles].sort((a, b) => coalesceViews(b) - coalesceViews(a));
@@ -85,13 +108,24 @@ export default function QuickPicksPage() {
       try {
         await actOnQuickPick(currentId, action);
         setIndex((i) => i + 1);
-        if (action === "like") showSuccessToast("Liked");
+        if (action === "like") {
+          handleApiOutcome({ success: true, message: "Liked" });
+        }
         trackUsage({
           feature: "profile_view",
           metadata: { targetUserId: currentId },
         });
-      } catch (e: any) {
-        showErrorToast(e?.message ?? "Failed to submit action");
+      } catch (error) {
+        handleError(
+          error,
+          { scope: "QuickPicksPage", action: `quick_pick_${action}` },
+          {
+            customUserMessage:
+              error instanceof Error
+                ? error.message
+                : "Failed to submit action",
+          }
+        );
       }
     },
     [index, userIds, trackUsage]
@@ -120,21 +154,16 @@ export default function QuickPicksPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Skeleton className="w-80 h-96" />
-      </div>
-    );
+    return <PageLoader message="Loading your quick picks..." fullScreen={false} />;
   }
   if (isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="space-y-3 text-center">
-          <div className="text-sm text-danger bg-danger/5 border border-danger/20 rounded-md px-3 py-2">
-            {loadError}
-          </div>
-          <Button onClick={() => refetch()}>Retry</Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <ErrorState
+          message={loadError || "Failed to load quick picks. Please try again."}
+          onRetry={() => void refetch()}
+          className="w-full max-w-md rounded-2xl border border-dashed border-neutral/20 bg-base p-6"
+        />
       </div>
     );
   }
@@ -154,9 +183,6 @@ export default function QuickPicksPage() {
             </div>
           )}
         </div>
-
-        {/* Swipe interaction container */}
-        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
         <div
           className="relative h-[420px] select-none"
           aria-label="Swipe card deck"
@@ -205,7 +231,7 @@ export default function QuickPicksPage() {
                       </Link>
                     </div>
                     <div className="text-xs text-neutral">
-                      {(p as any).city || ""}
+                      {p.city || ""}
                     </div>
                     {Array.isArray(iceQs) && iceQs.length > 0 && (
                       <div className="mt-2 flex gap-2 justify-center flex-wrap">
@@ -238,9 +264,16 @@ export default function QuickPicksPage() {
         </div>
 
         {userIds.length === 0 && (
-          <div className="text-sm text-neutral text-center mt-4">
-            You&apos;re all caught up!
-          </div>
+          <Empty className="mt-4 min-h-[260px] border-neutral/15 bg-base-light/70">
+            <EmptyIcon icon={Sparkles} />
+            <EmptyTitle>You&apos;re all caught up</EmptyTitle>
+            <EmptyDescription>
+              There are no more quick picks right now. Check back later or keep browsing profiles.
+            </EmptyDescription>
+            <Button asChild>
+              <Link href="/search">Browse Profiles</Link>
+            </Button>
+          </Empty>
         )}
       </div>
     </div>

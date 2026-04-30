@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdminInit";
 
 export type AuthPayload = {

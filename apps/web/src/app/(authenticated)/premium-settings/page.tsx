@@ -18,7 +18,7 @@ import {
   boostProfile,
   activateSpotlight,
 } from "@/lib/profile/userProfileApi";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   Eye,
@@ -36,7 +36,6 @@ import {
   CreditCard,
   ChevronRight,
 } from "lucide-react";
-import type { AppSubscriptionPlan as SubscriptionPlan } from "@aroosi/shared/types";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion } from "framer-motion";
 
@@ -124,15 +123,20 @@ export default function PremiumSettingsPage() {
         hideFromFreeUsers: hideProfile,
       });
       if (!result.success) {
-        throw new Error(
-          getErrorMessage(result.error) || "Failed to save settings"
-        );
+        handleApiOutcome({
+          success: false,
+          error: getErrorMessage(result.error) || "Failed to save settings",
+        });
+        return;
       }
       await refreshProfile();
-      showSuccessToast("Settings saved successfully");
-    } catch (err) {
-      console.error(err);
-      showErrorToast("Failed to save settings");
+      handleApiOutcome({ success: true, message: "Settings saved successfully" });
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "PremiumSettingsPage", action: "save_premium_settings" },
+        { customUserMessage: "Failed to save settings" }
+      );
     } finally {
       setSaving(false);
     }
@@ -150,44 +154,59 @@ export default function PremiumSettingsPage() {
             : (profile.boostsRemaining || 0) <= 0
               ? `No boosts left this month. ${nextResetLabel}`
               : "Boost failed");
-        showErrorToast(msg);
+        const normalizedMessage = msg.trim();
+        handleApiOutcome(
+          /requires premium plus|no boosts left/i.test(normalizedMessage)
+            ? { warning: normalizedMessage }
+            : { success: false, error: normalizedMessage }
+        );
       } else {
         const remaining =
           result.boostsRemaining ?? profile.boostsRemaining ?? 0;
-        showSuccessToast(
-          `Profile boosted for 24 hours! (${remaining} boosts left this month)`
-        );
+        handleApiOutcome({
+          success: true,
+          message: `Profile boosted for 24 hours! (${remaining} boosts left this month)`,
+        });
       }
       await refreshProfile();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Boost failed";
-      showErrorToast(msg);
+      handleError(
+        error,
+        { scope: "PremiumSettingsPage", action: "boost_profile" },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : "Boost failed",
+        }
+      );
     } finally {
       setBoostLoading(false);
     }
   }
 
+  async function handleActivateSpotlight() {
+    try {
+      const res = await activateSpotlight();
+      if (res.success) {
+        handleApiOutcome({ success: true, message: "Spotlight activated" });
+        await refreshProfile();
+        return;
+      }
+
+      handleApiOutcome({
+        success: false,
+        error: res.message || "Activation failed",
+      });
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "PremiumSettingsPage", action: "activate_spotlight" },
+        { customUserMessage: "Activation failed" }
+      );
+    }
+  }
+
   const handleNavigate = (path: string) => {
     router.push(path);
-  };
-
-  const getSubscriptionBadge = (plan: SubscriptionPlan) => {
-    switch (plan) {
-      case "premium":
-        return (
-          <Badge className="bg-gradient-to-r from-primary to-primary-dark text-base-light flex items-center">
-            <Crown className="w-3 h-3 mr-1" /> Premium
-          </Badge>
-        );
-      case "premiumPlus":
-        return (
-          <Badge className="bg-gradient-to-r from-accent to-accent-dark text-base-light flex items-center">
-            <Rocket className="w-3 h-3 mr-1" /> Premium Plus
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">Free</Badge>;
-    }
   };
 
   interface Feature {
@@ -273,19 +292,7 @@ export default function PremiumSettingsPage() {
       available: isPremiumPlus,
       action: profile.hasSpotlightBadge
         ? () => handleNavigate("/profile")
-        : async () => {
-            try {
-              const res = await activateSpotlight();
-              if (res.success) {
-                showSuccessToast("Spotlight activated");
-                await refreshProfile();
-              } else {
-                showErrorToast(res.message || "Activation failed");
-              }
-            } catch (e) {
-              showErrorToast("Activation failed");
-            }
-          },
+        : handleActivateSpotlight,
     },
   ];
 

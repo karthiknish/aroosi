@@ -1,6 +1,6 @@
-import { showErrorToast } from "@/lib/ui/toast";
 import { postJson, getJson } from "@/lib/http/client";
-import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
+import type { ApiResponse } from "@/lib/utils/apiResponse";
+import { handleError } from "@/lib/utils/errorHandling";
 
 export async function toggleReaction(
   messageId: string,
@@ -17,15 +17,20 @@ export async function toggleReaction(
     }
 
     return { success: true, data: { messageId, emoji } };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to toggle reaction";
-    showErrorToast(null, msg);
+  } catch (error) {
+    const msg =
+      error instanceof Error ? error.message : "Failed to toggle reaction";
+    handleError(
+      error,
+      { scope: "chat/reactions", action: "toggle_reaction", messageId, emoji },
+      { customUserMessage: msg }
+    );
     return {
       success: false,
       error: {
         code: "REACTION_ERROR",
         message: msg,
-        details: e,
+        details: error,
       },
     };
   }

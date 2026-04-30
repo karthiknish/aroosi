@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { interestsAPI } from "@/lib/api/interests";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { useQueryClient } from "@tanstack/react-query";
 
 // Duplicate interfaces to avoid circular deps or complex refactors for now
@@ -63,6 +63,11 @@ function ProfileCardComponent({
   const profileUrls = p.profileImageUrls;
   const matchImageUrl =
     profileUrls && profileUrls.length > 0 ? profileUrls[0] : null;
+  const profileHref = `/profile/${result.userId}`;
+
+  const openProfile = () => {
+    router.push(profileHref);
+  };
 
   const handleSendInterest = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -72,18 +77,29 @@ function ProfileCardComponent({
     try {
       await interestsAPI.send(result.userId);
       setSent(true);
-      showSuccessToast("Interest sent successfully!");
+      handleApiOutcome({ success: true, message: "Interest sent successfully!" });
       
       // Invalidate queries to update lists
       queryClient.invalidateQueries({ queryKey: ["sentInterests"] });
       queryClient.invalidateQueries({ queryKey: ["interestStatus", undefined, result.userId] });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If already sent (409), treat as success
-      if (error?.status === 409 || error?.message?.includes("409")) {
+      const errorStatus =
+        typeof error === "object" && error && "status" in error
+          ? (error as { status?: unknown }).status
+          : undefined;
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to send interest";
+
+      if (errorStatus === 409 || errorMessage.includes("409")) {
         setSent(true);
-        showSuccessToast("Interest sent successfully!");
+        handleApiOutcome({ success: true, message: "Interest sent successfully!" });
       } else {
-        showErrorToast(error?.message || "Failed to send interest");
+        handleError(
+          error,
+          { scope: "ProfileCard", action: "send_interest", userId: result.userId },
+          { customUserMessage: errorMessage }
+        );
       }
     } finally {
       setSending(false);
@@ -103,10 +119,19 @@ function ProfileCardComponent({
             : ""
         } hover:shadow-xl transition-all duration-300 border-0 bg-base-light/90 backdrop-blur-sm rounded-2xl overflow-hidden flex flex-col h-full`}
       >
-        <div 
+        <div
           className="relative cursor-pointer group"
-          onClick={() => router.push(`/profile/${result.userId}`)}
-          onMouseEnter={() => router.prefetch(`/profile/${result.userId}`)}
+          onClick={openProfile}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openProfile();
+            }
+          }}
+          onMouseEnter={() => router.prefetch(profileHref)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open ${typeof p.fullName === "string" ? p.fullName : "profile"}`}
         >
           {matchImageUrl ? (
             <div className="w-full aspect-square bg-neutral/10 flex items-center justify-center overflow-hidden relative">
@@ -159,7 +184,7 @@ function ProfileCardComponent({
               {isPremium(p.subscriptionPlan) &&
               p.hasSpotlightBadge &&
               p.spotlightBadgeExpiresAt &&
-              (p.spotlightBadgeExpiresAt as number) > Date.now() ? (
+              p.spotlightBadgeExpiresAt > Date.now() ? (
                 <SpotlightIcon className="w-4 h-4" />
               ) : null}
             </div>

@@ -19,6 +19,69 @@ export type {
     UserLocation 
 } from '@aroosi/shared';
 
+interface ProfileDetailResponse {
+    profileData?: UserProfile | null;
+    isBlocked?: boolean;
+    isMutualInterest?: boolean;
+}
+
+interface PublicProfileResponse extends Partial<UserProfile> {
+    userId?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    profileImageUrls?: string[];
+}
+
+function normalizeProfileDetail(
+    userId: string,
+    response: ApiResponse<ProfileDetailResponse>
+): ApiResponse<UserProfile> {
+    const profileData = response.data?.profileData;
+
+    if (!profileData) {
+        return {
+            ...response,
+            data: undefined,
+        };
+    }
+
+    return {
+        ...response,
+        data: {
+            ...profileData,
+            id: profileData.id || userId,
+            isBlocked: response.data?.isBlocked ?? profileData.isBlocked,
+            isMutualInterest: response.data?.isMutualInterest ?? profileData.isMutualInterest,
+        },
+    };
+}
+
+function normalizePublicProfile(
+    userId: string,
+    response: ApiResponse<PublicProfileResponse>
+): ApiResponse<Partial<UserProfile>> {
+    const profileData = response.data;
+
+    if (!profileData) {
+        return response;
+    }
+
+    return {
+        ...response,
+        data: {
+            ...profileData,
+            id: profileData.id || profileData.userId || userId,
+            location: profileData.location || {
+                city: profileData.city,
+                state: profileData.state,
+                country: profileData.country,
+            },
+            photos: profileData.photos || profileData.profileImageUrls,
+        },
+    };
+}
+
 /**
  * Get current user's profile
  */
@@ -37,14 +100,18 @@ export async function updateProfile(data: ProfileUpdateData): Promise<ApiRespons
  * Get another user's profile
  */
 export async function getProfileById(userId: string): Promise<ApiResponse<UserProfile>> {
-    return api.get<UserProfile>(`/profile-detail/${userId}`);
+    const response = await api.get<ProfileDetailResponse>(`/profile-detail/${userId}`);
+    return normalizeProfileDetail(userId, response);
 }
 
 /**
  * Get public profile (limited data)
  */
 export async function getPublicProfile(userId: string): Promise<ApiResponse<Partial<UserProfile>>> {
-    return api.get<Partial<UserProfile>>(`/public-profile/${userId}`);
+    const response = await api.get<PublicProfileResponse>(
+        `/public-profile?userId=${encodeURIComponent(userId)}`
+    );
+    return normalizePublicProfile(userId, response);
 }
 
 /**

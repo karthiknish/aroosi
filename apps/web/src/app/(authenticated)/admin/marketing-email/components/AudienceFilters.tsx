@@ -32,16 +32,16 @@ interface AudienceFiltersProps {
   setPage: (value: number) => void;
   pageSize: number;
   setPageSize: (value: number) => void;
-  lastActiveDays: number;
-  setLastActiveDays: (value: number) => void;
+  lastActiveDays: number | undefined;
+  setLastActiveDays: (value: number | undefined) => void;
   createdAtFrom: string;
   setCreatedAtFrom: (value: string) => void;
   createdAtTo: string;
   setCreatedAtTo: (value: string) => void;
-  completionMin: number;
-  setCompletionMin: (value: number) => void;
-  completionMax: number;
-  setCompletionMax: (value: number) => void;
+  completionMin: number | undefined;
+  setCompletionMin: (value: number | undefined) => void;
+  completionMax: number | undefined;
+  setCompletionMax: (value: number | undefined) => void;
   maxAudience: number;
   setMaxAudience: (value: number) => void;
   sendToAll: boolean;
@@ -242,7 +242,7 @@ export function AudienceFilters({
                       value={Number.isFinite(lastActiveDays) ? lastActiveDays : ""}
                       onChange={(e) => {
                         const v = parseInt(e.target.value || "", 10);
-                        setLastActiveDays(Number.isFinite(v) ? v : (NaN as any));
+                        setLastActiveDays(Number.isFinite(v) ? v : undefined);
                       }}
                       placeholder="e.g. 30"
                       className="h-9"
@@ -288,7 +288,7 @@ export function AudienceFilters({
                       value={Number.isFinite(completionMin) ? completionMin : ""}
                       onChange={(e) => {
                         const v = parseInt(e.target.value || "", 10);
-                        setCompletionMin(Number.isFinite(v) ? v : (NaN as any));
+                        setCompletionMin(Number.isFinite(v) ? v : undefined);
                       }}
                       className="h-9"
                     />
@@ -304,7 +304,7 @@ export function AudienceFilters({
                       value={Number.isFinite(completionMax) ? completionMax : ""}
                       onChange={(e) => {
                         const v = parseInt(e.target.value || "", 10);
-                        setCompletionMax(Number.isFinite(v) ? v : (NaN as any));
+                        setCompletionMax(Number.isFinite(v) ? v : undefined);
                       }}
                       className="h-9"
                     />

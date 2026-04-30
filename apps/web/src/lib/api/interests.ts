@@ -9,6 +9,18 @@ type ApiEnvelope<T> = {
   error?: string;
 };
 
+export class InterestsApiError extends Error {
+  status: number;
+  payload?: unknown;
+
+  constructor(message: string, status: number, payload?: unknown) {
+    super(message);
+    this.name = "InterestsApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
 class InterestsAPI {
   private async makeRequest<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
     const baseHeaders: Record<string, string> = {
@@ -17,7 +29,7 @@ class InterestsAPI {
     };
     const headers: Record<string, string> =
       options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
-        ? { ...baseHeaders, ...(options.headers as Record<string, string>) }
+        ? { ...baseHeaders, ...options.headers }
         : baseHeaders;
 
     const res = await fetch(endpoint, {
@@ -40,7 +52,7 @@ class InterestsAPI {
         payloadMessage ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      throw new InterestsApiError(String(msg), res.status, payload);
     }
 
     // Unwrap standardized { success, data } envelope from API handler
@@ -48,7 +60,11 @@ class InterestsAPI {
       const maybe = payload as ApiEnvelope<T>;
       if ("success" in maybe) {
         if (maybe.success === false) {
-          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+          throw new InterestsApiError(
+            String(maybe.message || maybe.error || "Request failed"),
+            res.status,
+            payload
+          );
         }
         if ("data" in maybe) {
           return maybe.data as T;

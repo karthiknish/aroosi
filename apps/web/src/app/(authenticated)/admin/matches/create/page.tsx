@@ -8,15 +8,26 @@ import type { Profile } from "@aroosi/shared/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import Link from "next/link";
 import { Search, Users, ArrowLeft, Heart, XCircle, CheckCircle2 } from "lucide-react";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 // Minimal subset of profile fields we display/select
 interface SearchResult extends Pick<Profile, "_id" | "fullName" | "email" | "city" | "dateOfBirth"> {
   userId?: string;
   imageUrl?: string | null;
 }
+
+type SearchableAdminProfile = Pick<
+  Profile,
+  "_id" | "fullName" | "email" | "city" | "dateOfBirth"
+> & {
+  userId?: string;
+};
+
+type AdminProfileImage = {
+  url?: string | null;
+};
 
 function ageFromDob(dob?: string) {
   if (!dob) return null;
@@ -27,6 +38,10 @@ function ageFromDob(dob?: string) {
   const m = now.getMonth() - d.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
   return a;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 export default function AdminCreateMatchPage() {
@@ -63,20 +78,23 @@ export default function AdminCreateMatchPage() {
           pageSize: 12,
         });
         // Client-side filter fallback (name/email/city contains q)
-        const filtered = (profiles || []).filter((p: any) => {
+        const filtered = (profiles || []).filter((p: SearchableAdminProfile) => {
           const hay = `${p.fullName || ""} ${p.email || ""} ${p.city || ""}`.toLowerCase();
             return hay.includes(q.toLowerCase());
         });
         const augmented: SearchResult[] = await Promise.all(
-          filtered.slice(0, 12).map(async (p: any) => {
+          filtered.slice(0, 12).map(async (p: SearchableAdminProfile) => {
             let imageUrl: string | null = null;
             try {
               const imgs = await adminProfilesAPI.getImages(p._id);
-              if (Array.isArray(imgs) && imgs.length) imageUrl = (imgs[0] as any).url as any;
+              const firstImage = Array.isArray(imgs)
+                ? (imgs[0] as AdminProfileImage | undefined)
+                : undefined;
+              if (firstImage?.url) imageUrl = firstImage.url;
             } catch {
               // ignore individual failures
             }
-            return {
+            const result: SearchResult = {
               _id: p._id,
               userId: p.userId || p._id,
               fullName: p.fullName,
@@ -84,12 +102,17 @@ export default function AdminCreateMatchPage() {
               city: p.city,
               dateOfBirth: p.dateOfBirth,
               imageUrl,
-            } as SearchResult;
+            };
+            return result;
           })
         );
         setResults(augmented);
       } catch (e) {
-        showErrorToast(null, (e as Error).message || "Search failed");
+        handleError(
+          e,
+          { scope: "AdminCreateMatchPage", action: "search_profiles", side },
+          { customUserMessage: getErrorMessage(e, "Search failed") }
+        );
       } finally {
         setLoading(false);
       }
@@ -114,15 +137,19 @@ export default function AdminCreateMatchPage() {
     !creating;
 
   const onCreate = async () => {
-    if (!canCreate) return;
+    if (!canCreate || !leftSelected || !rightSelected) return;
     setCreating(true);
     try {
-      const res = await adminMatchesAPI.create(leftSelected!._id, rightSelected!._id);
+      const res = await adminMatchesAPI.create(leftSelected._id, rightSelected._id);
       if (res?.success === false) throw new Error(res.error || "Failed to create match");
-      showSuccessToast("Match created successfully");
+      handleApiOutcome({ success: true, message: "Match created successfully" });
       setCreated(true);
     } catch (e) {
-      showErrorToast(null, (e as Error).message || "Failed to create match");
+      handleError(
+        e,
+        { scope: "AdminCreateMatchPage", action: "create_match" },
+        { customUserMessage: getErrorMessage(e, "Failed to create match") }
+      );
     } finally {
       setCreating(false);
     }
@@ -184,7 +211,7 @@ export default function AdminCreateMatchPage() {
             {!leftLoading && !leftSelected && leftResults.length > 0 && (
               <ul className="flex flex-col gap-2 max-h-64 overflow-auto pr-1">
                 {leftResults.map((p) => {
-                  const age = ageFromDob(p.dateOfBirth as any);
+                  const age = ageFromDob(p.dateOfBirth);
                   return (
                     <li key={p._id} className="list-none">
                       <button
@@ -264,7 +291,7 @@ export default function AdminCreateMatchPage() {
             {!rightLoading && !rightSelected && rightResults.length > 0 && (
               <ul className="flex flex-col gap-2 max-h-64 overflow-auto pr-1">
                 {rightResults.map((p) => {
-                  const age = ageFromDob(p.dateOfBirth as any);
+                  const age = ageFromDob(p.dateOfBirth);
                   return (
                     <li key={p._id} className="list-none">
                       <button

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { ProfileFormValues, ProfileImageInfo, Profile } from "@aroosi/shared/types";
 import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { adminMatchesAPI } from "@/lib/api/admin/matches";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import { COUNTRIES } from "@/lib/constants/countries";
 
 export const profileSchema = z.object({
@@ -80,9 +80,13 @@ export function useProfileEditFormLogic({
   initialValues,
   onSubmit,
   profileId,
-  images,
+  images: _images,
   setImages,
 }: UseProfileEditFormLogicProps) {
+  type ErrorWithMessage = Error & {
+    message: string;
+  };
+
   // Normalize incoming initial values
   const normalizedInitialValues = useMemo(() => {
     const iv = initialValues || {};
@@ -205,7 +209,7 @@ export function useProfileEditFormLogic({
             .map((img) => img.storageId)
             .filter((v): v is string => typeof v === "string" && v.length > 0)
         );
-      } catch (err: any) {
+      } catch {
         setImageError("Failed to update image order");
       }
     }
@@ -239,7 +243,10 @@ export function useProfileEditFormLogic({
   }, [manualMatchName]);
 
   const handleCreateMatch = async () => {
-    if (!profileId || (!manualMatchName.trim() && !selectedProfile)) return;
+    if (!profileId || (!manualMatchName.trim() && !selectedProfile)) {
+      handleApiOutcome({ warning: "Select or search for a profile to match." });
+      return;
+    }
     setCreatingMatch(true);
     setMatchError(null);
     try {
@@ -258,14 +265,25 @@ export function useProfileEditFormLogic({
 
       const res = await adminMatchesAPI.create(profileId, target._id);
       if (res?.success === false) throw new Error(res.error || "Failed to match");
-      showSuccessToast(`Matched with ${target.fullName}`);
+      handleApiOutcome({
+        success: true,
+        message: `Matched with ${target.fullName}`,
+      });
       setManualMatchName("");
       setSelectedProfile(null);
       setSuggestions([]);
-    } catch (err: any) {
-      const msg = err.message || "Failed to match";
+    } catch (error: unknown) {
+      const msg =
+        (error as ErrorWithMessage | null)?.message || "Failed to match";
       setMatchError(msg);
-      showErrorToast(null, msg);
+      handleError(error, {
+        scope: "useProfileEditFormLogic",
+        action: "create_manual_match",
+        profileId,
+        targetProfileId: selectedProfile?._id || null,
+      }, {
+        customUserMessage: msg,
+      });
     } finally {
       setCreatingMatch(false);
     }

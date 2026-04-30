@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
-import { showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome } from "@/lib/utils/errorHandling";
 import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
 
 interface ProtectedRouteProps {
@@ -23,16 +23,13 @@ export default function ProtectedRoute({
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
-  const lastToastRef =
-    typeof window !== "undefined"
-      ? { current: null as { msg: string; ts: number } | null }
-      : { current: null as { msg: string; ts: number } | null };
+  const lastToastRef = useRef<{ msg: string; ts: number } | null>(null);
 
   const notify = (message: string) => {
     const now = Date.now();
     const last = lastToastRef.current;
     if (!last || last.msg !== message || now - last.ts > 3000) {
-      showErrorToast(message);
+      handleApiOutcome({ warning: message });
       lastToastRef.current = { msg: message, ts: now };
     }
   };
@@ -78,6 +75,7 @@ export default function ProtectedRoute({
   }, [
     isLoading,
     isAuthenticated,
+    profile,
     user,
     pathname,
     router,

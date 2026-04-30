@@ -11,7 +11,7 @@ import {
   useSubscriptionGuard,
 } from "@/hooks/useSubscription";
 import { useRouter, useSearchParams } from "next/navigation";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import CancelSubscriptionButton from "@/components/subscription/CancelSubscriptionButton";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { subscriptionAPI } from "@/lib/api/subscription";
@@ -98,18 +98,33 @@ export default function SubscriptionPage() {
           cancelUrl: window.location.origin + "/subscription?checkout=cancel",
         });
         if (result.url) {
+          handleApiOutcome({ success: true, message: "Opening secure Stripe checkout" });
           window.location.href = result.url;
         } else {
-          showErrorToast(null, "Checkout failed. Please try again.");
+          handleApiOutcome({
+            success: false,
+            error: result.message || "Checkout failed. Please try again.",
+          });
         }
-      } catch (err) {
-        showErrorToast(err, "Checkout failed. Please try again.");
+      } catch (error) {
+        if (error instanceof Error && error.message === "already-subscribed") {
+          handleApiOutcome({
+            warning: "An active subscription already exists. Opening billing portal.",
+          });
+          return;
+        }
+
+        handleError(
+          error,
+          { scope: "SubscriptionPage", action: "start_subscription_checkout" },
+          { customUserMessage: "Checkout failed. Please try again." }
+        );
       }
     } else {
       // Prevent direct upgrade for paid plans; direct users to billing portal
-      showErrorToast(
-        "Please use the Billing Portal to manage your subscription."
-      );
+      handleApiOutcome({
+        warning: "Please use the Billing Portal to manage your subscription.",
+      });
       // Optional: automatically open billing portal
       // handleManageBilling();
     }
@@ -129,49 +144,23 @@ export default function SubscriptionPage() {
   };
 
   const handleRestore = () => {
-    restore(undefined, {
-      onSuccess: (data) => {
-        showSuccessToast(
-          data.message ||
-            "Restore requested. We’ll refresh your subscription shortly."
-        );
-      },
-      onError: (error) => {
-        showErrorToast(error, "Failed to restore purchases");
-      },
-    });
+    restore();
   };
 
   const handleManageBilling = async () => {
     try {
       await subscriptionAPI.openBillingPortal();
-    } catch (err) {
-      showErrorToast(err, "Failed to open billing portal");
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "SubscriptionPage", action: "open_billing_portal" },
+        { customUserMessage: "Failed to open billing portal" }
+      );
     }
   };
 
   const handleConfirmCancel = () => {
-    cancel(undefined, {
-      onSuccess: (data) => {
-        const end =
-          typeof data?.accessUntil === "number"
-            ? new Date(data.accessUntil)
-            : null;
-        const endStr = end ? end.toLocaleDateString() : null;
-        const baseMsg =
-          data.message ||
-          "Cancellation requested. Your plan will remain active until the end of the billing period.";
-        const msg = endStr ? `${baseMsg} Access ends on ${endStr}.` : baseMsg;
-        showSuccessToast(msg);
-        try {
-          // Nudge status refresh so badges reflect scheduled cancellation immediately
-          queryClient.invalidateQueries({ queryKey: ["subscription"] });
-        } catch {}
-      },
-      onError: (error) => {
-        showErrorToast(error, "Failed to request cancellation");
-      },
-    });
+    cancel();
   };
 
   return (

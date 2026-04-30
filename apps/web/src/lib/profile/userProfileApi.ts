@@ -2,12 +2,12 @@ import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
 import { doc, deleteDoc } from "firebase/firestore";
 // NOTE: Client-side usage tracking for boosts removed; server is authoritative now.
 import { db } from "@/lib/firebase";
-import { showErrorToast } from "@/lib/ui/toast";
 import { profileAPI } from "@/lib/api/profile";
+import { handleError } from "@/lib/utils/errorHandling";
 
 // Types for API responses
 // Import centralized types
-import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
+import type { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
 
 type ProfileResponse = ApiResponse<Profile | null>;
 
@@ -433,7 +433,11 @@ export async function fetchUserProfileImagesViaApi(
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch profile images";
-    showErrorToast(null, errorMessage);
+    handleError(
+      error,
+      { scope: "userProfileApi", action: "fetch_profile_images", userId },
+      { customUserMessage: errorMessage }
+    );
     return {
       success: false,
       error: { code: "API_ERROR", message: errorMessage },

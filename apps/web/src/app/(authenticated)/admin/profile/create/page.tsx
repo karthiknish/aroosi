@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import ProfileCreateWizard from "@/components/profile/ProfileCreateWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { adminProfilesAPI } from "@/lib/api/admin/profiles";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+import type { Profile, ProfileFormValues } from "@aroosi/shared/types";
 
 export default function AdminCreateProfilePage() {
   const router = useRouter();
@@ -61,9 +62,7 @@ export default function AdminCreateProfilePage() {
             setIsSubmitting(true);
             try {
               // Ensure dateOfBirth is a string
-              const submitValues: Partial<
-                import("@aroosi/shared/types").ProfileFormValues
-              > = {
+              const submitValues: Partial<ProfileFormValues> = {
                 ...values,
                 dateOfBirth: values.dateOfBirth,
                 partnerPreferenceCity: Array.isArray(
@@ -78,7 +77,7 @@ export default function AdminCreateProfilePage() {
                     : [],
               };
               const createdProfile = await adminProfilesAPI.create({
-                ...(submitValues as Partial<import("@aroosi/shared/types").Profile>),
+                ...(submitValues as Partial<Profile>),
                 userId:
                   typeof values.userId === "string" && values.userId.trim()
                     ? values.userId.trim()
@@ -86,14 +85,23 @@ export default function AdminCreateProfilePage() {
               });
 
               if (createdProfile?._id) {
-                showSuccessToast("Profile created successfully");
+                handleApiOutcome({
+                  success: true,
+                  message: "Profile created successfully",
+                });
                 router.push(`/admin/profile/${createdProfile._id}`);
               } else {
-                showErrorToast(null, "Profile was created but no profile ID was returned");
+                handleApiOutcome({
+                  success: false,
+                  error: "Profile was created but no profile ID was returned",
+                });
               }
             } catch (error) {
-              console.error("Profile creation error:", error);
-              showErrorToast(error, "Failed to create profile");
+              handleError(
+                error,
+                { scope: "AdminCreateProfilePage", action: "create_profile" },
+                { customUserMessage: "Failed to create profile" }
+              );
             } finally {
               setIsSubmitting(false);
             }

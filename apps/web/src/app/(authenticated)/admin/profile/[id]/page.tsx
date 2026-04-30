@@ -12,14 +12,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
+  Trash2,
+  Ban,
+  Users as UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +39,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
 import { Empty, EmptyIcon, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
-import { Ban, Users as UsersIcon } from "lucide-react";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 import type { ProfileImageInfo } from "@aroosi/shared/types";
 
@@ -238,15 +239,19 @@ export default function AdminProfileDetailPage() {
       await adminProfilesAPI.deleteImage(userId, storageId);
       sessionStorage.removeItem(`adminProfileImages_${userId}`);
       sessionStorage.removeItem(`adminProfileImages_${userId}_timestamp`);
-      showSuccessToast("Image deleted successfully");
+      handleApiOutcome({
+        success: true,
+        message: "Image deleted successfully",
+      });
       setImageToDelete(null);
       setIsDeleteModalOpen(false);
       void refetchImages();
       void refetchProfile();
     } catch (error) {
-      showErrorToast(
-        error instanceof Error ? error : null,
-        "Failed to delete image"
+      handleError(
+        error,
+        { scope: "AdminProfileDetailPage", action: "delete_profile_image", userId, storageId },
+        { customUserMessage: "Failed to delete image" }
       );
     } finally {
       setIsDeleting(false);
@@ -313,20 +318,25 @@ export default function AdminProfileDetailPage() {
         durationDays: 30,
       });
 
-      showSuccessToast(
-        profile.hasSpotlightBadge
+      handleApiOutcome({
+        success: true,
+        message: profile.hasSpotlightBadge
           ? "Spotlight badge removed."
-          : "Spotlight badge granted for 30 days."
-      );
+          : "Spotlight badge granted for 30 days.",
+      });
 
       // Refresh profile data
       void refetchProfile();
     } catch (error) {
-      showErrorToast(
-        null,
-        error instanceof Error
-          ? error.message
-          : "Failed to update spotlight badge"
+      handleError(
+        error,
+        { scope: "AdminProfileDetailPage", action: "toggle_spotlight_badge", profileId: id },
+        {
+          customUserMessage:
+            error instanceof Error
+              ? error.message
+              : "Failed to update spotlight badge",
+        }
       );
     }
   };

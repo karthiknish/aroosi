@@ -8,6 +8,7 @@ import type {
   ProfileSpotlightResponse,
   Profile,
 } from "@aroosi/shared/types";
+import { getResponseMessage, isApiEnvelope, isJsonObject, type JsonObject } from "@/lib/api/safeRequest";
 
 export interface ProfileViewResponse {
   viewers: Array<{
@@ -18,19 +19,38 @@ export interface ProfileViewResponse {
   total: number;
 }
 
+function readString(record: JsonObject, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function readNumber(record: JsonObject, key: string): number | undefined {
+  const value = record[key];
+  return typeof value === "number" ? value : undefined;
+}
+
+function readBoolean(record: JsonObject, key: string): boolean | undefined {
+  const value = record[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+type ProfileImagesResponse = {
+  userProfileImages?: Array<Record<string, unknown>>;
+};
+
 class ProfileAPI {
   private async makeRequest<T = unknown>(
     endpoint: string,
     options?: RequestInit
   ): Promise<T> {
-    const baseHeaders: Record<string, string> = {
+    const headers = new Headers({
       Accept: "application/json",
       "Content-Type": "application/json",
-    };
-    const headers: Record<string, string> =
-      options?.headers && !(options.headers instanceof Headers) && !Array.isArray(options.headers)
-        ? { ...baseHeaders, ...(options.headers as Record<string, string>) }
-        : baseHeaders;
+    });
+
+    if (options?.headers) {
+      new Headers(options.headers).forEach((value, key) => headers.set(key, value));
+    }
 
     const res = await fetch(endpoint, {
       method: options?.method || "GET",
@@ -41,25 +61,21 @@ class ProfileAPI {
 
     const ct = res.headers.get("content-type") || "";
     const isJson = ct.toLowerCase().includes("application/json");
-    const payload = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
+    const payload: unknown = isJson
+      ? await res.json().catch(() => ({}))
+      : await res.text().catch(() => "");
 
     if (!res.ok) {
-      const msg =
-        (isJson && payload && ((payload as any).message || (payload as any).error)) ||
-        (typeof payload === "string" && payload) ||
-        `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      throw new Error(getResponseMessage(payload) ?? `HTTP ${res.status}`);
     }
 
-    if (isJson && payload && typeof payload === "object") {
-      const maybe = payload as any;
-      if ("success" in maybe) {
-        if (maybe.success === false) {
-          throw new Error(String(maybe.message || maybe.error || "Request failed"));
-        }
-        if ("data" in maybe) {
-          return maybe.data as T;
-        }
+    if (isApiEnvelope<T>(payload)) {
+      if (payload.success === false) {
+        throw new Error(getResponseMessage(payload) ?? "Request failed");
+      }
+
+      if ("data" in payload) {
+        return payload.data as T;
       }
     }
 
@@ -147,7 +163,7 @@ class ProfileAPI {
     offset?: number;
     filter?: string;
     mode?: "count" | "list";
-  } = {}): Promise<any> {
+  } = {}): Promise<ProfileViewResponse | { count: number }> {
     const params = new URLSearchParams();
     if (options.profileId) params.set("profileId", options.profileId);
     if (options.limit !== undefined) params.set("limit", String(options.limit));
@@ -183,26 +199,27 @@ class ProfileAPI {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    const json = (await res.json().catch(() => ({}))) as any;
+    const payload: unknown = await res.json().catch(() => ({}));
+    const json = isJsonObject(payload) ? payload : {};
     if (!res.ok) {
       return {
         success: false,
-        code: json?.code,
-        message: json?.message || json?.error || `HTTP ${res.status}`,
-        boostsRemaining: json?.boostsRemaining,
-        boostedUntil: json?.boostedUntil,
-        unlimited: json?.unlimited,
-        correlationId: json?.correlationId,
+        code: readString(json, "code"),
+        message: readString(json, "message") || readString(json, "error") || `HTTP ${res.status}`,
+        boostsRemaining: readNumber(json, "boostsRemaining"),
+        boostedUntil: readNumber(json, "boostedUntil"),
+        unlimited: readBoolean(json, "unlimited"),
+        correlationId: readString(json, "correlationId"),
       };
     }
     return {
-      success: json?.success !== false,
-      code: json?.code,
-      message: json?.message,
-      boostsRemaining: json?.boostsRemaining,
-      boostedUntil: json?.boostedUntil,
-      unlimited: json?.unlimited,
-      correlationId: json?.correlationId,
+      success: json.success !== false,
+      code: readString(json, "code"),
+      message: readString(json, "message"),
+      boostsRemaining: readNumber(json, "boostsRemaining"),
+      boostedUntil: readNumber(json, "boostedUntil"),
+      unlimited: readBoolean(json, "unlimited"),
+      correlationId: readString(json, "correlationId"),
     };
   }
 
@@ -215,26 +232,27 @@ class ProfileAPI {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    const json = (await res.json().catch(() => ({}))) as any;
+    const payload: unknown = await res.json().catch(() => ({}));
+    const json = isJsonObject(payload) ? payload : {};
     if (!res.ok) {
       return {
         success: false,
-        code: json?.code,
-        message: json?.message || json?.error || `HTTP ${res.status}`,
-        hasSpotlightBadge: json?.hasSpotlightBadge,
-        spotlightBadgeExpiresAt: json?.spotlightBadgeExpiresAt,
-        unlimited: json?.unlimited,
-        correlationId: json?.correlationId,
+        code: readString(json, "code"),
+        message: readString(json, "message") || readString(json, "error") || `HTTP ${res.status}`,
+        hasSpotlightBadge: readBoolean(json, "hasSpotlightBadge"),
+        spotlightBadgeExpiresAt: readNumber(json, "spotlightBadgeExpiresAt"),
+        unlimited: readBoolean(json, "unlimited"),
+        correlationId: readString(json, "correlationId"),
       };
     }
     return {
-      success: json?.success !== false,
-      code: json?.code,
-      message: json?.message,
-      hasSpotlightBadge: json?.hasSpotlightBadge,
-      spotlightBadgeExpiresAt: json?.spotlightBadgeExpiresAt,
-      unlimited: json?.unlimited,
-      correlationId: json?.correlationId,
+      success: json.success !== false,
+      code: readString(json, "code"),
+      message: readString(json, "message"),
+      hasSpotlightBadge: readBoolean(json, "hasSpotlightBadge"),
+      spotlightBadgeExpiresAt: readNumber(json, "spotlightBadgeExpiresAt"),
+      unlimited: readBoolean(json, "unlimited"),
+      correlationId: readString(json, "correlationId"),
     };
   }
 
@@ -250,18 +268,29 @@ class ProfileAPI {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    const json = (await res.json().catch(() => ({}))) as any;
+    const payload: unknown = await res.json().catch(() => ({}));
+    const json = isJsonObject(payload) ? payload : {};
     if (res.status === 404) return [];
-    if (!res.ok || json?.success === false) {
-      throw new Error(String(json?.message || json?.error || `HTTP ${res.status}`));
+    if (!res.ok || json.success === false) {
+      throw new Error(getResponseMessage(json) ?? `HTTP ${res.status}`);
     }
-    const raw = Array.isArray(json?.userProfileImages)
-      ? (json.userProfileImages as any[])
+
+    const response = json as ProfileImagesResponse;
+    const raw = Array.isArray(response.userProfileImages)
+      ? response.userProfileImages
       : [];
+
     return raw
       .map((img) => ({
-        url: String(img?.url || ""),
-        storageId: String(img?.storageId || img?.id || img?._id || ""),
+        url: isJsonObject(img) && typeof img.url === "string" ? img.url : "",
+        storageId:
+          isJsonObject(img) && typeof img.storageId === "string"
+            ? img.storageId
+            : isJsonObject(img) && typeof img.id === "string"
+            ? img.id
+            : isJsonObject(img) && typeof img._id === "string"
+            ? img._id
+            : "",
       }))
       .filter((img) => img.url.length > 0);
   }

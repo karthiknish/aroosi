@@ -11,8 +11,8 @@ import {
   useRef,
 } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { showInfoToast, showErrorToast } from "@/lib/ui/toast";
 import { isOnboardingEssentialComplete } from "@/lib/userProfile/calculations";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -107,17 +107,19 @@ function ProtectedRouteInner({
           const last = lastToastRef.current;
           // Increased debounce time to 3 seconds to better prevent duplicates
           if (!last || last.msg !== message || now - last.ts > 3000) {
-            if (severity === "error") {
-              showErrorToast(null, message);
-            } else {
-              showInfoToast(message);
-            }
+            handleApiOutcome({
+              [severity === "error" ? "error" : "warning"]: message,
+            });
             lastToastRef.current = { msg: message, ts: now };
           }
         }
         void router.replace(to);
-      } catch {
-        showErrorToast("Navigation failed. Please refresh and try again.");
+      } catch (error) {
+        handleError(
+          error,
+          { scope: "ProtectedRoute", action: "navigate_protected_route", to },
+          { customUserMessage: "Navigation failed. Please refresh and try again." }
+        );
       }
     },
     [router]
@@ -151,7 +153,6 @@ function ProtectedRouteInner({
         await refreshUser?.();
       } catch (e) {
         if (process.env.NODE_ENV !== "production") {
-          // eslint-disable-next-line no-console
           console.warn("[ProtectedRoute] refreshUser failed", e);
         }
       }
@@ -226,6 +227,7 @@ function ProtectedRouteInner({
     authDisabled,
     isLoaded,
     isSignedIn,
+    profile,
     pathname,
     searchParams,
     isPublicRoute,

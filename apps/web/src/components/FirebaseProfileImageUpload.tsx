@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import Image from "next/image";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Upload, X } from "lucide-react";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 interface FirebaseProfileImageUploadProps {
   onImageUpload?: (imageData: { url: string; storageId: string }) => void;
@@ -13,7 +14,7 @@ interface FirebaseProfileImageUploadProps {
 
 export function FirebaseProfileImageUpload({ 
   onImageUpload,
-  maxImages = 3 
+  maxImages: _maxImages = 3 
 }: FirebaseProfileImageUploadProps) {
   const { user } = useFirebaseAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -22,7 +23,7 @@ export function FirebaseProfileImageUpload({
 
   const { uploadFile, isUploading, progress, error } = useFileUpload({
     onUploadComplete: (result) => {
-      showSuccessToast("Image uploaded successfully!");
+      handleApiOutcome({ success: true, message: "Image uploaded successfully!" });
       onImageUpload?.(result);
       // Reset the form
       setSelectedFile(null);
@@ -32,7 +33,7 @@ export function FirebaseProfileImageUpload({
       }
     },
     onUploadError: (errorMsg) => {
-      showErrorToast(errorMsg);
+      handleApiOutcome({ success: false, error: errorMsg });
     }
   });
 
@@ -42,13 +43,13 @@ export function FirebaseProfileImageUpload({
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      showErrorToast("Please select an image file");
+      handleApiOutcome({ warning: "Please select an image file" });
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      showErrorToast("File size must be less than 5MB");
+      handleApiOutcome({ warning: "File size must be less than 5MB" });
       return;
     }
 
@@ -68,7 +69,11 @@ export function FirebaseProfileImageUpload({
     try {
       await uploadFile(selectedFile, "profileImage");
     } catch (error) {
-      console.error("Upload failed:", error);
+      handleError(
+        error,
+        { scope: "FirebaseProfileImageUpload", action: "upload_profile_image" },
+        { customUserMessage: "Upload failed" }
+      );
     }
   }, [selectedFile, user, uploadFile]);
 
@@ -114,9 +119,11 @@ export function FirebaseProfileImageUpload({
 
           {previewUrl && (
             <div className="relative">
-              <img 
+              <Image
                 src={previewUrl} 
                 alt="Preview" 
+                width={1024}
+                height={1024}
                 className="w-full h-64 object-cover rounded-lg"
               />
               <Button

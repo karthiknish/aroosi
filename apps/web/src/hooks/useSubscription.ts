@@ -3,14 +3,40 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionAPI } from "@/lib/api/subscription";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { SubscriptionErrorHandler } from "@/lib/utils/subscriptionErrorHandler";
-import { handleError } from "@/lib/utils/errorHandling";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+
+type SubscriptionActionError = Error & {
+  type?: string;
+  code?: string;
+};
+
+type SubscriptionProfile = {
+  subscriptionPlan?: string;
+} | null | undefined;
+
+function getSubscriptionActionErrorMessage(
+  error: unknown,
+  fallbackMessage: string
+): string {
+  const typedError = error as SubscriptionActionError;
+  const normalized =
+    typedError && typeof typedError.type === "string"
+      ? typedError
+      : {
+          type: SubscriptionErrorHandler.parseErrorCode(typedError?.code),
+          message: typedError?.message || fallbackMessage,
+        };
+
+  return SubscriptionErrorHandler.toUserMessage(normalized);
+}
 
 export const useSubscriptionStatus = () => {
   // Access auth context for profile + refresh capability (cookie-based auth; no token required)
   const { profile, refreshProfile } = useAuthContext();
+  const profilePlan =
+    (profile as SubscriptionProfile)?.subscriptionPlan || "free";
 
   // Detect success redirect params to temporarily lower stale time & add polling
   let quickRefresh = false;
@@ -38,7 +64,6 @@ export const useSubscriptionStatus = () => {
   const lastSyncedPlanRef = useRef<string | null>(null);
   useEffect(() => {
     const statusPlan = query.data?.plan;
-    const profilePlan = (profile as any)?.subscriptionPlan || "free";
     if (
       statusPlan &&
       statusPlan !== profilePlan &&
@@ -51,7 +76,7 @@ export const useSubscriptionStatus = () => {
         handleError(e, { scope: "useSubscriptionStatus", action: "refresh_profile_sync" }, { showToast: false });
       }
     }
-  }, [query.data?.plan, profile?.subscriptionPlan, refreshProfile]);
+  }, [query.data?.plan, profilePlan, refreshProfile]);
 
   /**
    * Additional upgrade reconciliation & success UX
@@ -64,6 +89,11 @@ export const useSubscriptionStatus = () => {
   const pollingAttemptsRef = useRef(0);
   const lastToastPlanRef = useRef<string | null>(null);
   const lastStatusPlanRef = useRef<string | null>(null);
+  const profilePlanRef = useRef(profilePlan);
+
+  useEffect(() => {
+    profilePlanRef.current = profilePlan;
+  }, [profilePlan]);
 
   // Rank helper for upward comparison
   const planRank = useCallback((p: string) => {
@@ -80,7 +110,6 @@ export const useSubscriptionStatus = () => {
 
   useEffect(() => {
     const statusPlan = query.data?.plan || "free";
-    const profilePlan = (profile as any)?.subscriptionPlan || "free";
 
     // Detect new status plan change
     if (statusPlan !== lastStatusPlanRef.current) {
@@ -95,11 +124,13 @@ export const useSubscriptionStatus = () => {
       statusPlan !== "free" &&
       lastToastPlanRef.current !== statusPlan
     ) {
-      showSuccessToast(
-        statusPlan === "premiumPlus"
-          ? "Your Premium Plus subscription is active. Enjoy all features!"
-          : "Your Premium subscription is active. Enjoy your new features!"
-      );
+      handleApiOutcome({
+        success: true,
+        message:
+          statusPlan === "premiumPlus"
+            ? "Your Premium Plus subscription is active. Enjoy all features!"
+            : "Your Premium subscription is active. Enjoy your new features!",
+      });
       lastToastPlanRef.current = statusPlan;
     }
 
@@ -117,18 +148,20 @@ export const useSubscriptionStatus = () => {
           handleError(err, { scope: "useSubscriptionStatus", action: "refresh_profile_poll" }, { showToast: false, logError: false });
         }
 
-        const latestProfilePlan = ((profile as any)?.subscriptionPlan || "free") as string;
+        const latestProfilePlan = profilePlanRef.current;
         if (latestProfilePlan === statusPlan) {
           // Success: stop polling & toast if not already
           if (
             lastToastPlanRef.current !== statusPlan &&
             statusPlan !== "free"
           ) {
-            showSuccessToast(
-              statusPlan === "premiumPlus"
-                ? "Your Premium Plus subscription is active. Enjoy all features!"
-                : "Your Premium subscription is active. Enjoy your new features!"
-            );
+            handleApiOutcome({
+              success: true,
+              message:
+                statusPlan === "premiumPlus"
+                  ? "Your Premium Plus subscription is active. Enjoy all features!"
+                  : "Your Premium subscription is active. Enjoy your new features!",
+            });
             lastToastPlanRef.current = statusPlan;
           }
           if (pollingRef.current) {
@@ -170,10 +203,9 @@ export const useSubscriptionStatus = () => {
   }, [
     quickRefresh,
     query.data?.plan,
-    profile?.subscriptionPlan,
+    profilePlan,
     planRank,
     refreshProfile,
-    profile,
   ]);
 
   return query;
@@ -194,33 +226,32 @@ export const useSubscriptionActions = () => {
     mutationFn: () => subscriptionAPI.cancel(),
     onSuccess: (data) => {
       const end =
-        typeof (data as any)?.accessUntil === "number"
-          ? new Date((data as any).accessUntil)
+        typeof data.accessUntil === "number"
+          ? new Date(data.accessUntil)
           : null;
       const endStr = end ? end.toLocaleDateString() : null;
       const baseMsg =
         data.message ||
         "Cancellation requested. Your plan will remain active until the end of the billing period.";
       const msg = endStr ? `${baseMsg} Access ends on ${endStr}.` : baseMsg;
-      showSuccessToast(msg);
+      handleApiOutcome({
+        success: true,
+        message: msg,
+        warning:
+          data.scheduled && /already scheduled/i.test(data.message)
+            ? msg
+            : null,
+      });
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
-    onError: (error: Error) => {
-      // Normalize arbitrary thrown error into a SubscriptionError
-      const normalized =
-        error && typeof (error as any).type === "string"
-          ? (error as any)
-          : {
-              type: SubscriptionErrorHandler.parseErrorCode(
-                (error as any)?.code || undefined
-              ),
-              message:
-                (error as any)?.message ||
-                "Subscription action failed. Please try again.",
-            };
-      showErrorToast(
-        SubscriptionErrorHandler.toUserMessage(normalized)
-      );
+    onError: (error) => {
+      handleApiOutcome({
+        success: false,
+        error: getSubscriptionActionErrorMessage(
+          error,
+          "Subscription action failed. Please try again."
+        ),
+      });
     },
   });
 
@@ -228,48 +259,42 @@ export const useSubscriptionActions = () => {
     mutationFn: (tier: "premium" | "premiumPlus") =>
       subscriptionAPI.upgrade(tier),
     onSuccess: (data) => {
-      showSuccessToast(data.message);
+      handleApiOutcome(data, {
+        successMessage: "Subscription upgrade started successfully.",
+      });
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
-    onError: (error: Error) => {
-      const normalized =
-        error && typeof (error as any).type === "string"
-          ? (error as any)
-          : {
-              type: SubscriptionErrorHandler.parseErrorCode(
-                (error as any)?.code || undefined
-              ),
-              message:
-                (error as any)?.message ||
-                "Subscription upgrade failed. Please try again.",
-            };
-      showErrorToast(
-        SubscriptionErrorHandler.toUserMessage(normalized)
-      );
+    onError: (error) => {
+      handleApiOutcome({
+        success: false,
+        error: getSubscriptionActionErrorMessage(
+          error,
+          "Subscription upgrade failed. Please try again."
+        ),
+      });
     },
   });
 
   const restoreMutation = useMutation({
     mutationFn: () => subscriptionAPI.restorePurchases(),
     onSuccess: (data) => {
-      showSuccessToast(data.message);
+      handleApiOutcome({
+        ...data,
+        warning:
+          /no active subscriptions found/i.test(data.message)
+            ? data.message
+            : null,
+      });
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
-    onError: (error: Error) => {
-      const normalized =
-        error && typeof (error as any).type === "string"
-          ? (error as any)
-          : {
-              type: SubscriptionErrorHandler.parseErrorCode(
-                (error as any)?.code || undefined
-              ),
-              message:
-                (error as any)?.message ||
-                "Restore purchases failed. Please try again.",
-            };
-      showErrorToast(
-        SubscriptionErrorHandler.toUserMessage(normalized)
-      );
+    onError: (error) => {
+      handleApiOutcome({
+        success: false,
+        error: getSubscriptionActionErrorMessage(
+          error,
+          "Restore purchases failed. Please try again."
+        ),
+      });
     },
   });
 

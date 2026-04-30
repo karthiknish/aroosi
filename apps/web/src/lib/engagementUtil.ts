@@ -20,8 +20,16 @@ export type ShortlistEntry = {
 };
 
 type NoteResponse = { note?: string; updatedAt?: number };
+type NoteMutationResponse = {
+  created?: boolean;
+  updated?: boolean;
+};
 type QuickPicksResponse = { userIds?: string[]; profiles?: EnrichedProfile[] };
 type IcebreakersResponse = { success?: boolean; data?: Icebreaker[] };
+
+type EngagementApiError = Error & {
+  status?: number;
+};
 
 export async function fetchShortlists(): Promise<ShortlistEntry[]> {
   const res = await getJson<{ success?: boolean; data?: ShortlistEntry[] }>(
@@ -37,12 +45,32 @@ export async function fetchShortlists(): Promise<ShortlistEntry[]> {
 export async function toggleShortlist(
   toUserId: string
 ): Promise<{ success: boolean; added?: boolean; removed?: boolean }> {
-  try {
-    return await postJson("/api/engagement/shortlist", { toUserId });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Failed to update shortlist";
-    throw new Error(msg);
+  const res = await fetch("/api/engagement/shortlist", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ toUserId }),
+  });
+
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok || (payload && typeof payload === "object" && "success" in payload && payload.success === false)) {
+    const message =
+      payload && typeof payload === "object"
+        ? String(
+            (payload as { error?: unknown; message?: unknown }).error ||
+              (payload as { error?: unknown; message?: unknown }).message ||
+              `HTTP ${res.status}`
+          )
+        : `HTTP ${res.status}`;
+    const error = new Error(message) as EngagementApiError;
+    error.status = res.status;
+    throw error;
   }
+
+  return payload as { success: boolean; added?: boolean; removed?: boolean };
 }
 
 export async function enrichProfiles(
@@ -91,12 +119,15 @@ export async function setNote(
   toUserId: string,
   note: string
 ): Promise<boolean> {
-  try {
-    const res = await postJson<Envelope<unknown>>("/api/engagement/notes", { toUserId, note });
-    return !!res?.success;
-  } catch {
-    return false;
+  const res = await postJson<
+    Envelope<NoteMutationResponse> & { message?: string; error?: string }
+  >("/api/engagement/notes", { toUserId, note });
+
+  if (res?.success === false) {
+    throw new Error(res.error || res.message || "Failed to save note");
   }
+
+  return Boolean(res?.success);
 }
 
 export type QuickPickProfile = {
@@ -160,8 +191,8 @@ export type Icebreaker = {
 export async function fetchIcebreakers(): Promise<Icebreaker[]> {
   const res = await getJson<IcebreakersResponse | Icebreaker[]>("/api/icebreakers");
   // Support both enveloped and plain array responses
-  if (res && typeof res === "object" && !Array.isArray(res) && Array.isArray((res as IcebreakersResponse).data)) {
-    return (res as IcebreakersResponse).data as Icebreaker[];
+  if (res && typeof res === "object" && !Array.isArray(res) && Array.isArray(res.data)) {
+    return res.data;
   }
   if (Array.isArray(res)) return res as unknown as Icebreaker[];
   return [];
@@ -171,12 +202,17 @@ export async function answerIcebreaker(
   questionId: string,
   answer: string
 ): Promise<{ success: boolean }> {
-  const res = await postJson<{ success: boolean; data?: Record<string, unknown> }>(
+  const res = await postJson<{
+    success?: boolean;
+    data?: Record<string, unknown>;
+    error?: string;
+    message?: string;
+  }>(
     "/api/icebreakers/answer",
     { questionId, answer }
   );
   if (res.success) return { success: true };
-  return { success: false };
+  throw new Error(res.error || res.message || "Failed to save answer");
 }
 
 

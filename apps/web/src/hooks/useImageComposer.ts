@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { uploadMessageImage } from "@/lib/api/messages";
 import { validateFileSize, compressImage } from "@/lib/utils/imageProcessing";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 interface UseImageComposerProps {
   conversationId?: string;
@@ -40,7 +40,7 @@ export function useImageComposer({
     const sizeValidation = validateFileSize(file);
     if (!sizeValidation.valid) {
       setError(sizeValidation.message!);
-      showErrorToast(null, sizeValidation.message!);
+      handleApiOutcome({ warning: sizeValidation.message! });
       return;
     }
 
@@ -50,18 +50,35 @@ export function useImageComposer({
     if (isHeicLike) {
       try {
         setIsConverting(true);
-        showSuccessToast("Converting image…");
-        const mod: any = await import("heic2any");
-        const convertedBlob: Blob = await mod.default({
+        handleApiOutcome({ success: true, message: "Converting image..." });
+        const mod = await import("heic2any");
+        const convertHeic = mod.default as (options: {
+          blob: Blob;
+          toType: string;
+          quality: number;
+        }) => Promise<Blob | Blob[]>;
+        const converted = await convertHeic({
           blob: file,
           toType: "image/jpeg",
           quality: 0.85,
         });
+        const convertedBlob = Array.isArray(converted)
+          ? converted[0]
+          : converted;
         file = new File([convertedBlob], (file.name || "image").replace(/\.(heic|heif)$/i, ".jpg"), {
           type: "image/jpeg",
         });
       } catch (convErr) {
         setError("Couldn't convert HEIC image");
+        handleError(convErr, {
+          scope: "useImageComposer",
+          action: "convert_heic_image",
+          conversationId,
+          fromUserId,
+          toUserId,
+        }, {
+          customUserMessage: "Couldn't convert HEIC image",
+        });
         return;
       } finally {
         setIsConverting(false);
@@ -72,7 +89,7 @@ export function useImageComposer({
       try {
         setIsCompressing(true);
         file = await compressImage(file, setCompressionProgress);
-      } catch (compErr) {
+      } catch {
         // Continue with original
       } finally {
         setIsCompressing(false);
@@ -85,6 +102,7 @@ export function useImageComposer({
 
     if (!conversationId || !toUserId || !fromUserId) {
       setError("Missing conversation context");
+      handleApiOutcome({ warning: "Missing conversation context" });
       return;
     }
 
@@ -102,19 +120,31 @@ export function useImageComposer({
       );
       if (!resp.success) throw new Error(resp.error || "Upload failed");
       
-      showSuccessToast("Image sent");
+      handleApiOutcome({ success: true, message: "Image sent" });
       setPreviewUrl(null);
       setFileName(null);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { name?: string; message?: string };
       if (err?.name !== "AbortError") {
-        setError(err.message || "Failed to send image");
+        const message = err?.message || "Failed to send image";
+        setError(message);
+        handleError(error, {
+          scope: "useImageComposer",
+          action: "upload_message_image",
+          conversationId,
+          fromUserId,
+          toUserId,
+          fileName: file.name,
+        }, {
+          customUserMessage: message,
+        });
       }
     } finally {
       setIsUploading(false);
       abortControllerRef.current = null;
       if (inputRef.current) inputRef.current.value = "";
     }
-  }, [conversationId, fromUserId, toUserId, previewUrl]);
+  }, [conversationId, fromUserId, toUserId]);
 
   const cancelUpload = useCallback(() => {
     abortControllerRef.current?.abort();

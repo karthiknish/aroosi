@@ -13,7 +13,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 // Source of truth: fetch normalized plans from server only (no client constants)
 import { subscriptionAPI, type NormalizedPlan } from "@/lib/api/subscription";
 import { DEFAULT_PLANS } from "@/lib/constants/plans";
@@ -32,8 +32,9 @@ export default function ManagePlansPage() {
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-  const currentPlan = ((profile as { subscriptionPlan?: string })
-    ?.subscriptionPlan || "free") as PlanId;
+  const currentPlan =
+    (profile as { subscriptionPlan?: string } | null)?.subscriptionPlan ||
+    "free";
   // If redirected back from checkout success, proactively refresh profile
   useEffect(() => {
     try {
@@ -51,7 +52,10 @@ export default function ManagePlansPage() {
         queryClient
           .invalidateQueries({ queryKey: ["subscription", "usage"] })
           .catch(() => {});
-        showSuccessToast("Subscription upgraded successfully!");
+        handleApiOutcome({
+          success: true,
+          message: "Subscription upgraded successfully!",
+        });
         // Strip the query param without a navigation
         url.searchParams.delete("checkout");
         window.history.replaceState(
@@ -106,19 +110,24 @@ export default function ManagePlansPage() {
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) {
-      showInfoToast("You&apos;re already on this plan!");
+      handleApiOutcome({ warning: "You're already on this plan!" });
       return;
     }
 
     if (planId === "free") {
-      showInfoToast("To downgrade to free plan, please contact support.");
+      handleApiOutcome({
+        warning: "To downgrade to free plan, please contact support.",
+      });
       return;
     }
 
     setLoading(planId);
     try {
       // Cookie-auth: backend will read HttpOnly cookies; no token required
-      showInfoToast("Redirecting to secure checkout...");
+      handleApiOutcome({
+        success: true,
+        message: "Redirecting to secure checkout...",
+      });
 
       const result = await subscriptionAPI.upgrade(planId, {
         // Redirect back to plans page using the param the page already watches (checkout=success)
@@ -130,11 +139,25 @@ export default function ManagePlansPage() {
       if (!result.url) {
         throw new Error("No checkout URL returned");
       }
-      showSuccessToast("Opening secure Stripe checkout");
+      handleApiOutcome({
+        success: true,
+        message: "Opening secure Stripe checkout",
+      });
 
       window.location.href = result.url;
-    } catch (err) {
-      showErrorToast(err as Error, "Failed to start checkout");
+    } catch (error) {
+      if (error instanceof Error && error.message === "already-subscribed") {
+        handleApiOutcome({
+          warning: "An active subscription already exists. Opening billing portal.",
+        });
+        return;
+      }
+
+      handleError(
+        error,
+        { scope: "ManagePlansPage", action: "start_subscription_checkout" },
+        { customUserMessage: "Failed to start checkout" }
+      );
     } finally {
       setLoading(null);
     }
@@ -322,8 +345,8 @@ export default function ManagePlansPage() {
                             ? "Free"
                             : new Intl.NumberFormat(undefined, {
                                 style: "currency",
-                                currency: (plan as any).currency || "GBP",
-                              }).format(Number((plan as any).price || 0) / 100)}
+                                currency: plan.currency || "GBP",
+                              }).format(Number(plan.price || 0) / 100)}
                         </span>
                         <span className="text-neutral-500 ml-1">/ month</span>
                       </div>
@@ -426,9 +449,14 @@ export default function ManagePlansPage() {
                 onClick={async () => {
                   try {
                     await subscriptionAPI.openBillingPortal();
-                  } catch (e: any) {
-                    showErrorToast(
-                      e?.message || "Unable to open billing portal"
+                  } catch (error) {
+                    handleError(
+                      error,
+                      {
+                        scope: "ManagePlansPage",
+                        action: "open_billing_portal",
+                      },
+                      { customUserMessage: "Unable to open billing portal" }
                     );
                   }
                 }}

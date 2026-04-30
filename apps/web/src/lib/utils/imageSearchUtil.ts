@@ -1,9 +1,6 @@
 /**
  * Image search utilities for Pexels and other image services
  */
-
-import { showErrorToast } from "@/lib/ui/toast";
-
 export interface PexelsImage {
   id: number;
   url: string;
@@ -35,6 +32,17 @@ export interface ImageSearchResponse {
   rateLimited?: boolean;
   timedOut?: boolean;
 }
+
+type ImageSearchPayload = {
+  data?: ImageSearchPayload;
+  error?: string;
+  message?: string;
+  images?: PexelsImage[];
+  photos?: PexelsImage[];
+  totalResults?: number;
+  page?: number;
+  perPage?: number;
+};
 
 /**
  * Search for images using the Pexels API via our backend
@@ -81,9 +89,9 @@ export async function searchImages(
       clearTimeout(timeout);
     }
 
-    let payload: any = null;
+    let payload: ImageSearchPayload | null = null;
     try {
-      const json = await response.json();
+      const json: unknown = await response.json();
       payload =
         json && typeof json === "object" && "data" in json ? json.data : json;
     } catch {
@@ -100,11 +108,10 @@ export async function searchImages(
         page,
         perPage,
       };
-      if (!rateLimited) showErrorToast(errMsg);
       return res;
     }
 
-    const images = (payload?.images || payload?.photos || []) as PexelsImage[];
+    const images = payload?.images || payload?.photos || [];
     const totalResults: number | undefined =
       typeof payload?.totalResults === "number" && payload.totalResults >= 0
         ? payload.totalResults
@@ -125,14 +132,18 @@ export async function searchImages(
       }
     }
     return result;
-  } catch (error: any) {
-    const aborted = error?.name === "AbortError";
+  } catch (error: unknown) {
+    const aborted =
+      error instanceof DOMException
+        ? error.name === "AbortError"
+        : typeof error === "object" && error !== null && "name" in error
+          ? (error as { name?: unknown }).name === "AbortError"
+          : false;
     const errorMessage = aborted
       ? "Image search timed out"
       : error instanceof Error
         ? error.message
         : "Failed to search images";
-    if (!aborted) showErrorToast(errorMessage);
     return {
       success: false,
       error: errorMessage,

@@ -2,13 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchShortlists, toggleShortlist, fetchNote, setNote, ShortlistEntry } from "@/lib/engagementUtil";
+import {
+  fetchShortlists,
+  toggleShortlist,
+  fetchNote,
+  setNote,
+  type ShortlistEntry,
+} from "@/lib/engagementUtil";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageLoader } from "@/components/ui/PageLoader";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyIcon,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Bookmark } from "lucide-react";
 
 export default function MyShortlistsPage() {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -21,8 +36,9 @@ export default function MyShortlistsPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      const shortlistEntries = data || [];
       const updates: Record<string, string> = {};
-      for (const e of entries) {
+      for (const e of shortlistEntries) {
         try {
           const n = await fetchNote(e.userId);
           if (n?.note) updates[e.userId] = n.note;
@@ -33,17 +49,24 @@ export default function MyShortlistsPage() {
     return () => {
       mounted = false;
     };
-  }, [entries.length]);
+  }, [data]);
 
   const onRemove = async (userId: string) => {
     try {
       const res = await toggleShortlist(userId);
       if (res.removed) {
-        showSuccessToast("Removed from shortlist");
+        handleApiOutcome({ success: true, message: "Removed from shortlist" });
         void refetch();
       }
-    } catch (e: any) {
-      showErrorToast(e?.message ?? "Failed to remove");
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "MyShortlistsPage", action: "remove_from_shortlist" },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : "Failed to remove",
+        }
+      );
     }
   };
 
@@ -51,23 +74,35 @@ export default function MyShortlistsPage() {
     try {
       const text = notes[userId] || "";
       const ok = await setNote(userId, text);
-      if (ok) showSuccessToast("Note saved");
-    } catch (e: any) {
-      showErrorToast(e?.message ?? "Failed to save note");
+      if (ok) {
+        handleApiOutcome({ success: true, message: "Note saved" });
+        return;
+      }
+
+      handleApiOutcome({ success: false, error: "Failed to save note" });
+    } catch (error) {
+      handleError(
+        error,
+        { scope: "MyShortlistsPage", action: "save_shortlist_note" },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : "Failed to save note",
+        }
+      );
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading…
-      </div>
-    );
+    return <PageLoader message="Loading your shortlists..." fullScreen={false} />;
   }
   if (isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Button onClick={() => refetch()}>Retry</Button>
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <ErrorState
+          message="Failed to load your shortlists. Please try again."
+          onRetry={() => void refetch()}
+          className="w-full max-w-md rounded-2xl border border-dashed border-neutral/20 bg-base p-6"
+        />
       </div>
     );
   }
@@ -84,7 +119,16 @@ export default function MyShortlistsPage() {
         <CardContent className="p-4">
           <h1 className="text-xl font-semibold mb-4">My Shortlists</h1>
           {entries.length === 0 ? (
-            <div className="text-sm text-neutral">No shortlists yet.</div>
+            <Empty className="min-h-[280px] border-neutral/15 bg-base-light/70">
+              <EmptyIcon icon={Bookmark} />
+              <EmptyTitle>No shortlists yet</EmptyTitle>
+              <EmptyDescription>
+                Save profiles here so you can compare them later and keep private notes.
+              </EmptyDescription>
+              <Button asChild>
+                <Link href="/search">Find Profiles</Link>
+              </Button>
+            </Empty>
           ) : (
             <ul className="space-y-4">
               {entries.map((e) => (
@@ -95,7 +139,7 @@ export default function MyShortlistsPage() {
                         {Array.isArray(e.profileImageUrls) &&
                         e.profileImageUrls[0] ? (
                           <Image
-                            src={e.profileImageUrls[0] as string}
+                            src={e.profileImageUrls[0]}
                             alt="avatar"
                             width={40}
                             height={40}

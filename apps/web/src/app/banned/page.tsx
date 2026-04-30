@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { contactAPI } from "@/lib/api/contact";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 export default function BannedPage() {
   const { user } = useAuthContext();
@@ -18,16 +18,35 @@ export default function BannedPage() {
   const submitAppeal = async () => {
     setSubmitting(true);
     try {
-      await contactAPI.submitAppeal({
+      const result = await contactAPI.submitAppeal({
         email: user?.email || "",
         reason,
         details,
       });
-      showSuccessToast("Appeal submitted. We'll review and email you.");
+
+      const outcome = handleApiOutcome(
+        {
+          success: result.success,
+          message: result.message,
+          error: result.success ? null : result.message || "Failed to submit appeal",
+        },
+        {
+          successMessage: "Appeal submitted. We'll review and email you.",
+          errorMessage: "Failed to submit appeal",
+        }
+      );
+
+      if (outcome?.level === "error") {
+        return;
+      }
+
       setReason("");
       setDetails("");
     } catch (e) {
-      showErrorToast(null, e instanceof Error ? e.message : "Failed to submit appeal");
+      handleError(e, { scope: "BannedPage", action: "submitAppeal" }, {
+        customUserMessage:
+          e instanceof Error ? e.message : "Failed to submit appeal",
+      });
     } finally {
       setSubmitting(false);
     }

@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 // Local-only upload now handled inside ImageUploader; old helpers removed
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
@@ -17,8 +17,10 @@ import type { ProfileImageInfo } from "@aroosi/shared/types";
 import { adminProfilesAPI } from "@/lib/api/admin/profiles";
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
 import { useProfileImages } from "@/hooks/useProfileImages";
-import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
-import type { NormalizedProfileImage } from "@/lib/images/profileImageUtils";
+import {
+  normalizeProfileImages,
+  type NormalizedProfileImage,
+} from "@/lib/images/profileImageUtils";
 
 // Types
 // Note: Upload responses are handled internally by ImageUploader and utilities
@@ -115,9 +117,14 @@ export function ProfileImageUpload({
         });
       }
       await refreshProfile();
+      return true;
     } catch (error) {
-      console.error("Failed to refetch images:", error);
-      showErrorToast(null, "Failed to refresh images");
+      handleError(
+        error,
+        { scope: "ProfileImageUpload", action: "refetch_images", userId },
+        { customUserMessage: "Failed to refresh images" }
+      );
+      return false;
     }
   }, [adminImagesQuery, refreshProfile, queryClient, userId, authIsAdmin]);
 
@@ -185,7 +192,6 @@ export function ProfileImageUpload({
         isUploadingFile &&
         memoizedOrderedImages.length > prevImageCount.current
       ) {
-        showSuccessToast("Image uploaded successfully");
         // Explicitly refetch images so parent components get latest list immediately
         if (mode === "edit") {
           refetchImages().catch((err) => {
@@ -238,7 +244,6 @@ export function ProfileImageUpload({
     if (!profileId)
       throw new Error("Profile ID not available for admin upload.");
     await adminProfilesAPI.uploadImage(profileId, file);
-    showSuccessToast("Image uploaded successfully");
     await refetchImages();
   };
 
@@ -280,20 +285,26 @@ export function ProfileImageUpload({
     },
     onSuccess: async () => {
       // After delete, fetch the new images and send them to reorder
-      try {
-        if (mode === "edit") {
-          await refetchImages();
-        }
-        showSuccessToast("Image deleted successfully");
-      } catch {
-        showErrorToast(null, "Failed to update image order after delete");
+      const refreshed =
+        mode === "edit" ? await refetchImages() : true;
+      if (refreshed) {
+        handleApiOutcome({ success: true, message: "Image deleted successfully" });
+      } else {
+        handleApiOutcome({
+          success: false,
+          error: "Failed to update image order after delete",
+        });
       }
       setIsUploading(false);
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
     },
     onError: (error) => {
-      showErrorToast(error, "Failed to delete image");
+      handleError(
+        error,
+        { scope: "ProfileImageUpload", action: "delete_image", imageId: pendingDeleteId },
+        { customUserMessage: "Failed to delete image" }
+      );
       setIsUploading(false);
       setDeleteModalOpen(false);
       setPendingDeleteId(null);

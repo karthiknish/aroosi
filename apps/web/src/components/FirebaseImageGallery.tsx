@@ -5,8 +5,8 @@ import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Trash2, Eye, Grid, LayoutPanelLeft } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { fetchProfileImages, deleteImageById } from "@/lib/utils/imageUtil";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import {
   Carousel,
   CarouselContent,
@@ -26,12 +26,16 @@ interface FirebaseImageGalleryProps {
   userId?: string;
   onImageDelete?: (storageId: string) => void;
   isAdmin?: boolean;
+  refreshToken?: number;
+  onLoadComplete?: () => void;
 }
 
 export function FirebaseImageGallery({
   userId: propUserId,
   onImageDelete,
   isAdmin = false,
+  refreshToken = 0,
+  onLoadComplete,
 }: FirebaseImageGalleryProps) {
   const { user } = useFirebaseAuth();
   const [images, setImages] = useState<FirebaseImage[]>([]);
@@ -42,8 +46,8 @@ export function FirebaseImageGallery({
   const targetUserId = propUserId || user?.uid;
 
   // Fetch images from Firebase Storage
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["firebase-images", targetUserId],
+  const { data, isLoading } = useQuery({
+    queryKey: ["firebase-images", targetUserId, refreshToken],
     queryFn: async () => {
       if (!targetUserId) return [];
 
@@ -60,6 +64,12 @@ export function FirebaseImageGallery({
     }
   }, [data]);
 
+  useEffect(() => {
+    if (!isLoading) {
+      onLoadComplete?.();
+    }
+  }, [isLoading, onLoadComplete]);
+
   // Delete an image
   const handleDelete = async (storageId: string) => {
     if (!targetUserId) return;
@@ -71,12 +81,16 @@ export function FirebaseImageGallery({
 
       // Remove the image from state
       setImages((prev) => prev.filter((img) => img.storageId !== storageId));
-      showSuccessToast("Image deleted successfully");
+      handleApiOutcome({ success: true, message: "Image deleted successfully" });
       onImageDelete?.(storageId);
     } catch (error) {
-      console.error("Delete failed:", error);
-      showErrorToast(
-        error instanceof Error ? error.message : "Failed to delete image"
+      handleError(
+        error,
+        { scope: "FirebaseImageGallery", action: "delete_image", storageId },
+        {
+          customUserMessage:
+            error instanceof Error ? error.message : "Failed to delete image",
+        }
       );
     } finally {
       setDeletingId(null);

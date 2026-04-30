@@ -19,6 +19,10 @@ export interface PushTemplate {
   data?: Record<string, any>;
 }
 
+type AdminPushApiError = Error & {
+  status?: number;
+};
+
 class AdminPushAPI {
   private async makeRequest(endpoint: string, options?: RequestInit): Promise<any> {
     const baseHeaders: Record<string, string> = {
@@ -46,7 +50,9 @@ class AdminPushAPI {
         (isJson && payload && (payload as any).error) ||
         (typeof payload === "string" && payload) ||
         `HTTP ${res.status}`;
-      throw new Error(String(msg));
+      const error = new Error(String(msg)) as AdminPushApiError;
+      error.status = res.status;
+      throw error;
     }
 
     // Unwrap standardized { success, data } envelope from API handler
@@ -54,7 +60,11 @@ class AdminPushAPI {
       const maybe = payload as any;
       if ("success" in maybe) {
         if (maybe.success === false) {
-          throw new Error(String(maybe.message || maybe.error || "Request failed"));
+          const error = new Error(
+            String(maybe.message || maybe.error || "Request failed")
+          ) as AdminPushApiError;
+          error.status = res.status;
+          throw error;
         }
         if ("data" in maybe) {
           return maybe.data;

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CardHeader, CardDescription } from "@/components/ui/card";
 import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 import { boostProfile } from "@/lib/profile/userProfileApi";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 import type { Profile } from "@aroosi/shared/types";
 
 interface ProfileHeaderProps {
@@ -43,34 +44,32 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               onClick={async () => {
                 try {
                   const boosted =
-                    !!profileData.boostedUntil &&
-                    (profileData.boostedUntil as number) > Date.now();
+                    !!profileData.boostedUntil && profileData.boostedUntil > Date.now();
                   if (boosted) {
                     router.push("/premium-settings");
                     return;
                   }
                   const result = await boostProfile(currentUserId);
-                  try {
-                    const { showSuccessToast, showErrorToast } =
-                      await import("@/lib/ui/toast");
-                    if (result.success) {
-                      showSuccessToast(
-                        `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
-                      );
-                    } else {
-                      showErrorToast(result.message, "Boost failed");
-                    }
-                  } catch {}
-                  router.refresh?.();
-                } catch (e) {
-                  try {
-                    const { showErrorToast } = await import(
-                      "@/lib/ui/toast"
+                  if (result.success) {
+                    handleApiOutcome({
+                      success: true,
+                      message: `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`,
+                    });
+                  } else {
+                    const message = result.message || "Boost failed";
+                    handleApiOutcome(
+                      /requires premium plus|no boosts/i.test(message)
+                        ? { warning: message }
+                        : { success: false, error: message }
                     );
-                    showErrorToast(e as Error, "Boost failed");
-                  } catch {
-                    console.warn("Boost failed", e);
                   }
+                  router.refresh?.();
+                } catch (error) {
+                  handleError(
+                    error,
+                    { scope: "ProfileHeader", action: "boost_profile" },
+                    { customUserMessage: "Boost failed" }
+                  );
                   router.push("/premium-settings");
                 }
               }}

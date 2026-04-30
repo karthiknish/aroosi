@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome } from "@/lib/utils/errorHandling";
 import {
   getAuth,
   confirmPasswordReset,
@@ -19,9 +19,6 @@ function ResetPasswordInner() {
   const params = useSearchParams();
   const router = useRouter();
   const oobCode = useMemo(() => params.get("oobCode") || "", [params]);
-  // Email is optional in query; not strictly needed for Firebase password reset but can be shown.
-  const emailFromQuery = useMemo(() => params.get("email") || "", [params]);
-  const [email] = useState<string>(emailFromQuery);
   const [code, setCode] = useState<string>(oobCode);
   const [password, setPassword] = useState<string>("");
   const [confirm, setConfirm] = useState<string>("");
@@ -37,7 +34,6 @@ function ResetPasswordInner() {
       setError(null);
       setSuccess(null);
 
-      const safeEmail = String(email || "").trim();
       const otp = String(code || "").trim();
       const pwd = String(password || "");
       const conf = String(confirm || "");
@@ -74,7 +70,7 @@ function ResetPasswordInner() {
         const msg = "Password reset successfully. Redirecting to sign-in...";
         setSuccess(msg);
         setSubmitting(true); // Keep loader visible during redirect
-        showSuccessToast(msg);
+        handleApiOutcome({ success: true, message: msg });
         setTimeout(() => router.push("/sign-in"), 900);
       } catch (err: unknown) {
         const msg =
@@ -84,12 +80,12 @@ function ResetPasswordInner() {
             ? "Too many requests. Please try again later."
             : msg;
         setError(finalMsg);
-        showErrorToast(finalMsg);
+        handleApiOutcome({ success: false, error: finalMsg });
       } finally {
         setSubmitting(false);
       }
     },
-    [code, password, confirm, router]
+    [code, confirm, password, router]
   );
 
   return (

@@ -46,19 +46,21 @@ export async function answerIcebreaker(questionId: string, answer: string) {
  * Get a user's icebreaker answers
  */
 export async function getUserIcebreakerAnswers(userId: string) {
-    return api.get<IcebreakerAnswer[]>(`/icebreakers/answers/${userId}`);
+    return api.get<IcebreakerAnswer[]>(
+        `/icebreakers?answersOnly=true&userId=${encodeURIComponent(userId)}`
+    );
 }
 
 /**
  * Get current user's icebreaker answers
  */
 export async function getMyIcebreakerAnswers() {
-    return api.get<IcebreakerAnswer[]>('/icebreakers/my-answers');
+    return api.get<IcebreakerAnswer[]>('/icebreakers?answersOnly=true');
 }
 
 /**
  * Delete an icebreaker answer
  */
 export async function deleteIcebreakerAnswer(questionId: string) {
-    return api.delete(`/icebreakers/answer/${questionId}`);
+    return api.delete('/icebreakers/answer', { questionId });
 }

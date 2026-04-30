@@ -44,9 +44,15 @@ export const DisplaySection: React.FC<DisplaySectionProps> = ({
   </div>
 );
 
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 // Removed Convex Id import; use string for user ids post-migration
 export type UserId = string;
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return typeof error === "object" && error && "message" in error
+    ? String((error as { message?: unknown }).message)
+    : fallback;
+}
 
 export async function handleExpressInterest({
   setInterestError,
@@ -68,14 +74,15 @@ export async function handleExpressInterest({
   try {
     await sendInterestMutation({ fromUserId: currentUserId, toUserId: id });
     setInterestSent(true);
-    showSuccessToast("Interest sent!");
-  } catch (err: unknown) {
-    const message =
-      typeof err === "object" && err && "message" in err
-        ? String((err as { message?: unknown }).message)
-        : "Could not send interest.";
+    handleApiOutcome({ success: true, message: "Interest sent!" });
+  } catch (error) {
+    const message = getErrorMessage(error, "Could not send interest.");
     setInterestError(message);
-    showErrorToast(message);
+    handleError(
+      error,
+      { scope: "ProfileDetailHelpers", action: "express_interest" },
+      { customUserMessage: message }
+    );
   }
 }
 
@@ -99,13 +106,14 @@ export async function handleBlock({
       blockerUserId: currentUserId,
       blockedUserId: id,
     });
-    showSuccessToast("User blocked successfully");
-  } catch (err: unknown) {
-    const message =
-      typeof err === "object" && err && "message" in err
-        ? String((err as { message?: unknown }).message)
-        : "Failed to block user";
-    showErrorToast(message);
+    handleApiOutcome({ success: true, message: "User blocked successfully" });
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to block user");
+    handleError(
+      error,
+      { scope: "ProfileDetailHelpers", action: "block_user" },
+      { customUserMessage: message }
+    );
   } finally {
     setBlockLoading(false);
   }
@@ -131,13 +139,14 @@ export async function handleUnblock({
       blockerUserId: currentUserId,
       blockedUserId: id,
     });
-    showSuccessToast("User unblocked.");
-  } catch (err: unknown) {
-    const message =
-      typeof err === "object" && err && "message" in err
-        ? String((err as { message?: unknown }).message)
-        : "Could not unblock user.";
-    showErrorToast(message);
+    handleApiOutcome({ success: true, message: "User unblocked." });
+  } catch (error) {
+    const message = getErrorMessage(error, "Could not unblock user.");
+    handleError(
+      error,
+      { scope: "ProfileDetailHelpers", action: "unblock_user" },
+      { customUserMessage: message }
+    );
   } finally {
     setBlockLoading(false);
   }
@@ -163,13 +172,14 @@ export async function handleRemoveInterest({
   try {
     await removeInterestMutation({ fromUserId: currentUserId, toUserId: id });
     setInterestSent(false);
-    showSuccessToast("Interest removed.");
-  } catch (err: unknown) {
-    const message =
-      typeof err === "object" && err && "message" in err
-        ? String((err as { message?: unknown }).message)
-        : "Could not remove interest.";
+    handleApiOutcome({ success: true, message: "Interest removed." });
+  } catch (error) {
+    const message = getErrorMessage(error, "Could not remove interest.");
     setInterestError(message);
-    showErrorToast(message);
+    handleError(
+      error,
+      { scope: "ProfileDetailHelpers", action: "remove_interest" },
+      { customUserMessage: message }
+    );
   }
 }

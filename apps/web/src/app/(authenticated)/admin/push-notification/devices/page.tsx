@@ -5,10 +5,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { getErrorMessage } from "@/lib/utils/apiResponse";
 import { adminEmailAPI } from "@/lib/api/admin/email";
 import { adminPushAPI } from "@/lib/api/admin/push";
+import { handleApiOutcome, handleError } from "@/lib/utils/errorHandling";
 
 interface DeviceRow {
   userId: string;
@@ -19,6 +19,19 @@ interface DeviceRow {
   registeredAt?: number;
   isActive?: boolean;
 }
+
+type DeviceListResponse = {
+  devices?: DeviceRow[];
+  total?: number;
+};
+
+type EmailTemplateRow = {
+  key?: string;
+  id?: string;
+  name?: string;
+  label?: string;
+  category?: string;
+};
 
 export default function AdminDevicesPage() {
   const [search, setSearch] = useState("");
@@ -49,7 +62,8 @@ export default function AdminDevicesPage() {
         pageSize: ps,
       });
       
-      setRows((data as any)?.devices ?? []);
+      const deviceData = data as DeviceListResponse;
+      setRows(deviceData.devices ?? []);
       setTotal(data?.total ?? 0);
     } catch (e) {
       console.error(e);
@@ -66,11 +80,11 @@ export default function AdminDevicesPage() {
   useEffect(() => {
     (async () => {
       const t = await adminEmailAPI.listTemplates();
-      const mapped = (Array.isArray(t) ? t : []).map((x: any) => ({
+      const mapped = (Array.isArray(t) ? t : []).map((x: EmailTemplateRow) => ({
         key: String(x?.key ?? x?.id ?? ""),
         label: String(x?.name ?? x?.label ?? x?.key ?? x?.id ?? "Template"),
         category: String(x?.category ?? "default"),
-      })).filter((x: any) => x.key);
+      })).filter((x) => x.key);
       setTemplates(mapped);
       if (mapped[0]) setSelectedTemplate(mapped[0].key);
     })();
@@ -92,10 +106,16 @@ export default function AdminDevicesPage() {
         params: {},
       });
       if (!res.success) throw new Error(getErrorMessage(res.error) || "Failed");
-      showSuccessToast("Email preview queued (dry run)");
+      handleApiOutcome({
+        success: true,
+        message: "Email preview queued (dry run)",
+      });
     } catch (e) {
-      console.error("test email failed", e);
-      showErrorToast(null, "Failed to preview email");
+      handleError(
+        e,
+        { scope: "AdminDevicesPage", action: "preview_marketing_email", email },
+        { customUserMessage: "Failed to preview email" }
+      );
     }
   };
 

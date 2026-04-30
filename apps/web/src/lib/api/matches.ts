@@ -19,6 +19,15 @@ type UnreadCountsResponse = {
   counts?: UnreadCounts;
 };
 
+type UnmatchResponse = {
+  ok?: boolean;
+  alreadyUnmatched?: boolean;
+};
+
+type MatchesApiError = Error & {
+  status?: number;
+};
+
 export interface MatchListItem extends Match {
   user1Id: string | null;
   user2Id: string | null;
@@ -98,10 +107,37 @@ class MatchesAPI {
   /**
    * Unmatch with a user
    */
-  async unmatch(matchId: string): Promise<void> {
-    await this.makeRequest(`/api/matches/${encodeURIComponent(matchId)}`, {
+  async unmatch(matchId: string): Promise<UnmatchResponse> {
+    const res = await fetch(`/api/matches/${encodeURIComponent(matchId)}`, {
       method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
     });
+
+    const payload: unknown = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const message =
+        payload && typeof payload === "object"
+          ? String(
+              (payload as { error?: unknown; message?: unknown }).error ||
+                (payload as { error?: unknown; message?: unknown }).message ||
+                `HTTP ${res.status}`
+            )
+          : `HTTP ${res.status}`;
+      const error = new Error(message) as MatchesApiError;
+      error.status = res.status;
+      throw error;
+    }
+
+    if (payload && typeof payload === "object" && "data" in payload) {
+      return (payload as { data?: UnmatchResponse }).data || {};
+    }
+
+    return payload && typeof payload === "object" ? payload as UnmatchResponse : {};
   }
 }
 
