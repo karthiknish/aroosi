@@ -225,6 +225,15 @@ export default function OnboardingScreen() {
         }
     };
 
+    const handleBackNavigation = () => {
+        if (step === 'profileFor') {
+            router.back();
+            return;
+        }
+
+        prevStep();
+    };
+
     const handlePhotoUpload = async () => {
         setUploadingPhotos(true);
         try {
@@ -797,15 +806,13 @@ export default function OnboardingScreen() {
 
             {/* Navigation */}
             <View style={styles.navigation}>
-                {step !== 'profileFor' && (
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={prevStep}
-                        disabled={isLoading}
-                    >
-                        <Text style={styles.backButtonText}>Back</Text>
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleBackNavigation}
+                    disabled={isLoading}
+                >
+                    <Text style={styles.backButtonText}>Back</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.nextButton, isLoading && styles.nextButtonDisabled]}
                     onPress={nextStep}

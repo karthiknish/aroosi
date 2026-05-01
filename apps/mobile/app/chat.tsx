@@ -34,6 +34,7 @@ import {
     responsiveFontSizes,
     isSmallDevice,
 } from '@/theme';
+import { EmptyState } from '@/components/EmptyState';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuthStore } from '@/store';
 import { useRealTimeMessages, type MessageData } from '@/hooks/useRealTimeMessages';
@@ -76,6 +77,11 @@ export default function ChatScreen() {
     const displayName = String(recipientName || 'Member');
     const recipientImage = typeof recipientPhoto === 'string' ? recipientPhoto : undefined;
     const recipientId = conversationId.split('_').find((id) => id !== user?.id) || conversationId;
+    const hasValidConversationId = conversationId.trim().length > 0;
+
+    const handleBack = useCallback(() => {
+        router.back();
+    }, []);
 
     const actions = useAsyncActions(
         {
@@ -153,10 +159,6 @@ export default function ChatScreen() {
         };
     }, [messages, conversationId, user?.id]);
 
-    const handleBack = useCallback(() => {
-        router.back();
-    }, []);
-
     const handleSend = useCallback(() => {
         const retrySend = () => {
             void actions.execute.sendMessage();
@@ -229,6 +231,20 @@ export default function ChatScreen() {
         );
     }, [hasMore]);
 
+    if (!hasValidConversationId) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <EmptyState
+                    emoji="💬"
+                    title="Chat unavailable"
+                    message="This conversation could not be opened because the chat link is missing required details."
+                    actionLabel="Go Back"
+                    onAction={handleBack}
+                />
+            </SafeAreaView>
+        );
+    }
+
     if (!isConnected && !chatError && messages.length === 0) {
         return <LoadingSpinner message="Connecting..." />;
     }
@@ -265,7 +281,7 @@ export default function ChatScreen() {
                 )}
                 <View style={styles.headerInfo}>
                     <Text style={styles.headerName}>{displayName}</Text>
-                    <Text style={styles.headerStatus}>
+                    <Text style={[styles.headerStatus, !isConnected && styles.headerStatusOffline]}>
                         {isConnected ? 'Online' : 'Reconnecting...'}
                     </Text>
                 </View>
@@ -273,6 +289,17 @@ export default function ChatScreen() {
                     <Text style={styles.moreIcon}>⋯</Text>
                 </TouchableOpacity>
             </AnimatedView>
+
+            {!isConnected && messages.length > 0 && (
+                <View style={styles.connectionBanner}>
+                    <Text style={styles.connectionBannerText}>
+                        {chatError || 'Trying to reconnect. New messages may be delayed until the connection returns.'}
+                    </Text>
+                    <Pressable onPress={retryConnection}>
+                        <Text style={styles.connectionBannerAction}>Retry</Text>
+                    </Pressable>
+                </View>
+            )}
 
             <FlatList
                 ref={flatListRef}
@@ -284,9 +311,11 @@ export default function ChatScreen() {
                 onEndReachedThreshold={0.1}
                 ListHeaderComponent={renderListHeader}
                 ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>Say hi to {displayName}! 👋</Text>
-                    </View>
+                    <EmptyState
+                        emoji="👋"
+                        title={`Say hi to ${displayName}`}
+                        message="Start the conversation with your first message."
+                    />
                 }
                 showsVerticalScrollIndicator={false}
             />
@@ -438,6 +467,9 @@ const styles = StyleSheet.create({
         fontSize: responsiveFontSizes.xs,
         color: colors.success,
     },
+    headerStatusOffline: {
+        color: colors.warning ?? colors.neutral[500],
+    },
     moreButton: {
         width: moderateScale(40),
         height: moderateScale(40),
@@ -498,15 +530,30 @@ const styles = StyleSheet.create({
         padding: moderateScale(8),
         alignItems: 'center',
     },
-    emptyContainer: {
-        flex: 1,
+    connectionBanner: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: moderateScale(40),
+        justifyContent: 'space-between',
+        marginHorizontal: responsiveValues.screenPadding,
+        marginTop: moderateScale(8),
+        marginBottom: moderateScale(4),
+        paddingHorizontal: moderateScale(12),
+        paddingVertical: moderateScale(10),
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.warning?.light ?? '#FEF3C7',
+        borderWidth: 1,
+        borderColor: colors.warning?.DEFAULT ?? '#F59E0B',
+        gap: moderateScale(12),
     },
-    emptyText: {
-        fontSize: responsiveFontSizes.base,
-        color: colors.neutral[400],
+    connectionBannerText: {
+        flex: 1,
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[800],
+    },
+    connectionBannerAction: {
+        fontSize: responsiveFontSizes.sm,
+        fontWeight: fontWeight.semibold,
+        color: colors.primary.DEFAULT,
     },
     inlineErrorCard: {
         flexDirection: 'row',

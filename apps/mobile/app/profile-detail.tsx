@@ -43,6 +43,7 @@ const SUPER_LIKE_SIZE = isSmallDevice ? 44 : 56;
 
 export default function ProfileDetailScreen() {
     const { userId } = useLocalSearchParams<{ userId: string }>();
+    const hasValidUserId = typeof userId === 'string' && userId.trim().length > 0;
 
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -136,8 +137,9 @@ export default function ProfileDetailScreen() {
     }, { errorMode: 'silent', networkAware: true });
 
     useEffect(() => {
+        if (!hasValidUserId) return;
         loadAction.execute();
-    }, [userId]);
+    }, [hasValidUserId, userId]);
 
     const handleBack = useCallback(() => {
         router.back();
@@ -158,6 +160,25 @@ export default function ProfileDetailScreen() {
             setCurrentPhotoIndex(currentPhotoIndex - 1);
         }
     }, [currentPhotoIndex]);
+
+    if (!hasValidUserId) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                        <Text style={styles.backButtonText}>←</Text>
+                    </TouchableOpacity>
+                </View>
+                <EmptyState
+                    emoji="😕"
+                    title="Invalid profile"
+                    message="This profile link is missing the user details needed to load the profile."
+                    actionLabel="Go Back"
+                    onAction={handleBack}
+                />
+            </SafeAreaView>
+        );
+    }
 
     if (loadAction.loading) {
         return (
@@ -188,6 +209,8 @@ export default function ProfileDetailScreen() {
 
     const currentPhoto = profile.photos?.[currentPhotoIndex] || profile.photoURL;
     const totalPhotos = (profile.photos?.length || 0) + (profile.photoURL ? 1 : 0);
+    const decisionActionLoading =
+        actions.loading.pass || actions.loading.superLike || actions.loading.like;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -253,13 +276,20 @@ export default function ProfileDetailScreen() {
 
                     {/* Shortlist Button */}
                     <TouchableOpacity
-                        style={styles.shortlistButton}
+                        style={[
+                            styles.shortlistButton,
+                            actions.loading.shortlist && styles.actionButtonDisabled,
+                        ]}
                         onPress={() => actions.execute.shortlist()}
-                        disabled={actions.loading.shortlist}
+                        disabled={actions.loading.shortlist || decisionActionLoading}
                     >
-                        <Text style={styles.shortlistIcon}>
-                            {isShortlisted ? '⭐' : '☆'}
-                        </Text>
+                        {actions.loading.shortlist ? (
+                            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                        ) : (
+                            <Text style={styles.shortlistIcon}>
+                                {isShortlisted ? '⭐' : '☆'}
+                            </Text>
+                        )}
                     </TouchableOpacity>
                 </View>
 
@@ -322,27 +352,48 @@ export default function ProfileDetailScreen() {
             {/* Action Buttons */}
             <View style={styles.actionsContainer}>
                 <TouchableOpacity
-                    style={styles.passButton}
+                    style={[
+                        styles.passButton,
+                        actions.loading.pass && styles.actionButtonDisabled,
+                    ]}
                     onPress={() => actions.execute.pass()}
-                    disabled={actions.loading.pass}
+                    disabled={decisionActionLoading || actions.loading.shortlist}
                 >
-                    <Text style={styles.passButtonText}>✕</Text>
+                    {actions.loading.pass ? (
+                        <ActivityIndicator size="small" color={colors.neutral[500]} />
+                    ) : (
+                        <Text style={styles.passButtonText}>✕</Text>
+                    )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={styles.superLikeButton}
+                    style={[
+                        styles.superLikeButton,
+                        actions.loading.superLike && styles.actionButtonDisabled,
+                    ]}
                     onPress={() => actions.execute.superLike()}
-                    disabled={actions.loading.superLike}
+                    disabled={decisionActionLoading || actions.loading.shortlist}
                 >
-                    <Text style={styles.superLikeButtonText}>⭐</Text>
+                    {actions.loading.superLike ? (
+                        <ActivityIndicator size="small" color={colors.warning} />
+                    ) : (
+                        <Text style={styles.superLikeButtonText}>⭐</Text>
+                    )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={styles.likeButton}
+                    style={[
+                        styles.likeButton,
+                        actions.loading.like && styles.actionButtonDisabled,
+                    ]}
                     onPress={() => actions.execute.like()}
-                    disabled={actions.loading.like}
+                    disabled={decisionActionLoading || actions.loading.shortlist}
                 >
-                    <Text style={styles.likeButtonText}>💖</Text>
+                    {actions.loading.like ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                        <Text style={styles.likeButtonText}>💖</Text>
+                    )}
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -559,5 +610,8 @@ const styles = StyleSheet.create({
     },
     likeButtonText: {
         fontSize: moderateScale(28),
+    },
+    actionButtonDisabled: {
+        opacity: 0.55,
     },
 });

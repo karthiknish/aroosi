@@ -23,6 +23,7 @@ import {
     responsiveFontSizes,
 } from '@/theme';
 import { BlurView } from 'expo-blur';
+import { EmptyState } from '@/components/EmptyState';
 import Animated, {
     FadeIn,
     FadeInUp,
@@ -74,6 +75,7 @@ export default function ReportScreen() {
         userName?: string;
         userId?: string;
     }>();
+    const hasValidUserId = typeof userId === 'string' && userId.trim().length > 0;
 
     const [selectedReason, setSelectedReason] = useState<string | null>(null);
     const [description, setDescription] = useState('');
@@ -93,6 +95,25 @@ export default function ReportScreen() {
             ]
         );
     }, [selectedReason, description]);
+
+    if (!hasValidUserId) {
+        return (
+            <View style={styles.container}>
+                <BlurView
+                    tint="systemMaterial"
+                    intensity={100}
+                    style={StyleSheet.absoluteFill}
+                />
+                <EmptyState
+                    emoji="🚩"
+                    title="Report unavailable"
+                    message="This report form is missing the user details needed to submit a safe report."
+                    actionLabel="Go Back"
+                    onAction={() => router.back()}
+                />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>

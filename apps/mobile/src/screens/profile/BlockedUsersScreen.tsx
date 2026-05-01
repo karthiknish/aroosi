@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     RefreshControl,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -168,9 +169,11 @@ export default function BlockedUsersScreen() {
                             onPress={() => handleUnblock(item.blockedUserId)}
                             disabled={isUnblocking}
                         >
-                            <Text style={styles.unblockButtonText}>
-                                {isUnblocking ? '...' : 'Unblock'}
-                            </Text>
+                            {isUnblocking ? (
+                                <ActivityIndicator size="small" color={colors.neutral[700]} />
+                            ) : (
+                                <Text style={styles.unblockButtonText}>Unblock</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>

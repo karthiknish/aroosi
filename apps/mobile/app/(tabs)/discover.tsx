@@ -3,7 +3,7 @@
  * iOS-only Stack.Toolbar with native iOS search and filter buttons
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -28,6 +28,7 @@ import {
 import { ProfileGridItem } from '@/components/ProfileGridItem';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
+import { storage } from '@/utils/storage';
 import {
     getRecommendations,
     type RecommendedProfile,
@@ -101,12 +102,95 @@ const FILTER_OPTIONS = {
     ],
 };
 
+type DiscoverFilters = SearchFilters & {
+    language?: string;
+};
+
+const DISCOVER_FILTERS_STORAGE_KEY = 'aroosi-discover-filters';
+
+const sanitizeFilters = (filters: DiscoverFilters): DiscoverFilters => {
+    const normalizedFilters = Object.entries(filters).reduce<DiscoverFilters>((nextFilters, [key, value]) => {
+        if (value === undefined || value === null || value === '' || value === false) {
+            return nextFilters;
+        }
+
+        if (Array.isArray(value) && value.length === 0) {
+            return nextFilters;
+        }
+
+        if (key === 'ageRange') {
+            const ageRange = value as DiscoverFilters['ageRange'];
+            if (!ageRange?.min || !ageRange?.max) {
+                return nextFilters;
+            }
+        }
+
+        return {
+            ...nextFilters,
+            [key]: value,
+        };
+    }, {});
+
+    return normalizedFilters;
+};
+
+const getOptionLabel = (
+    options: Array<{ label: string; value?: string | number }>,
+    value: string | number | undefined
+) => options.find((option) => option.value === value)?.label;
+
+const getActiveFilterLabels = (filters: DiscoverFilters): string[] => {
+    const labels: string[] = [];
+
+    if (filters.ageRange) {
+        labels.push(`Age ${filters.ageRange.min}-${filters.ageRange.max}`);
+    }
+
+    if (filters.distance) {
+        labels.push(`${filters.distance} km`);
+    }
+
+    if (filters.verified) {
+        labels.push('Verified only');
+    }
+
+    const ethnicityLabel = getOptionLabel(FILTER_OPTIONS.ethnicities, filters.ethnicity);
+    if (ethnicityLabel && ethnicityLabel !== 'Any') {
+        labels.push(`Ethnicity: ${ethnicityLabel}`);
+    }
+
+    const motherTongueLabel = getOptionLabel(FILTER_OPTIONS.motherTongues, filters.motherTongue);
+    if (motherTongueLabel && motherTongueLabel !== 'Any') {
+        labels.push(`Mother Tongue: ${motherTongueLabel}`);
+    }
+
+    const languageLabel = getOptionLabel(FILTER_OPTIONS.languages, filters.language);
+    if (languageLabel && languageLabel !== 'Any') {
+        labels.push(`Language: ${languageLabel}`);
+    }
+
+    const religionLabel = getOptionLabel(FILTER_OPTIONS.religions, filters.religion);
+    if (religionLabel && religionLabel !== 'Any') {
+        labels.push(`Religion: ${religionLabel}`);
+    }
+
+    const maritalStatusLabel = getOptionLabel(FILTER_OPTIONS.maritalStatuses, filters.maritalStatus);
+    if (maritalStatusLabel && maritalStatusLabel !== 'Any') {
+        labels.push(`Marital Status: ${maritalStatusLabel}`);
+    }
+
+    return labels;
+};
+
 export default function DiscoverScreen() {
     const [profiles, setProfiles] = useState<RecommendedProfile[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
-    const [filters, setFilters] = useState<SearchFilters>({});
+    const [filters, setFilters] = useState<DiscoverFilters>(() =>
+        sanitizeFilters(storage.get<DiscoverFilters>(DISCOVER_FILTERS_STORAGE_KEY, {}))
+    );
     const [isPremium, setIsPremium] = useState(false);
+    const activeFilterLabels = useMemo(() => getActiveFilterLabels(filters), [filters]);
 
     const { checkNetworkOrAlert } = useOffline();
 
@@ -158,6 +242,19 @@ export default function DiscoverScreen() {
     useEffect(() => {
         loadAction.execute();
     }, [filters]);
+
+    useEffect(() => {
+        if (Object.keys(filters).length === 0) {
+            storage.remove(DISCOVER_FILTERS_STORAGE_KEY);
+            return;
+        }
+
+        storage.set(DISCOVER_FILTERS_STORAGE_KEY, filters);
+    }, [filters]);
+
+    const updateFilters = useCallback((updater: (prev: DiscoverFilters) => DiscoverFilters) => {
+        setFilters((prev) => sanitizeFilters(updater(prev)));
+    }, []);
 
     // Handle search
     const handleSearch = useCallback(() => {
@@ -234,34 +331,29 @@ export default function DiscoverScreen() {
             </Stack.Toolbar>
 
             {/* Active Filters */}
-            {Object.keys(filters).length > 0 && (
+            {activeFilterLabels.length > 0 && (
                 <View style={styles.activeFilters}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {filters.ageRange && (
-                            <View style={styles.filterTag}>
-                                <Text style={styles.filterTagText}>
-                                    Age: {filters.ageRange.min}-{filters.ageRange.max}
-                                </Text>
-                            </View>
-                        )}
-                        {filters.distance && (
-                            <View style={styles.filterTag}>
-                                <Text style={styles.filterTagText}>
-                                    {filters.distance} km
-                                </Text>
-                            </View>
-                        )}
-                        {filters.verified && (
-                            <View style={styles.filterTag}>
-                                <Text style={styles.filterTagText}>Verified only</Text>
-                            </View>
-                        )}
+                    <View style={styles.activeFiltersHeader}>
+                        <Text style={styles.activeFiltersTitle}>
+                            {activeFilterLabels.length} active {activeFilterLabels.length === 1 ? 'filter' : 'filters'}
+                        </Text>
                         <TouchableOpacity
                             style={styles.clearFiltersButton}
                             onPress={clearFilters}
                         >
                             <Text style={styles.clearFiltersText}>Clear</Text>
                         </TouchableOpacity>
+                    </View>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.activeFiltersScrollContent}
+                    >
+                        {activeFilterLabels.map((label) => (
+                            <View key={label} style={styles.filterTag}>
+                                <Text style={styles.filterTagText}>{label}</Text>
+                            </View>
+                        ))}
                     </ScrollView>
                 </View>
             )}
@@ -344,7 +436,7 @@ export default function DiscoverScreen() {
                                         filters.ageRange?.min === option.min &&
                                         styles.filterOptionActive
                                     ]}
-                                    onPress={() => setFilters(prev => ({
+                                    onPress={() => updateFilters(prev => ({
                                         ...prev,
                                         ageRange: { min: option.min, max: option.max }
                                     }))}
@@ -373,7 +465,7 @@ export default function DiscoverScreen() {
                                         filters.distance === option.value &&
                                         styles.filterOptionActive
                                     ]}
-                                    onPress={() => setFilters(prev => ({
+                                    onPress={() => updateFilters(prev => ({
                                         ...prev,
                                         distance: option.value
                                     }))}
@@ -394,7 +486,7 @@ export default function DiscoverScreen() {
                     <View style={styles.filterSection}>
                         <TouchableOpacity
                             style={styles.toggleRow}
-                            onPress={() => setFilters(prev => ({
+                            onPress={() => updateFilters(prev => ({
                                 ...prev,
                                 verified: !prev.verified
                             }))}
@@ -441,10 +533,10 @@ export default function DiscoverScreen() {
                                             ]}
                                             onPress={() => {
                                                 if (isPremium) {
-                                                    setFilters(prev => ({
+                                                    updateFilters(prev => ({
                                                         ...prev,
                                                         ethnicity: option.value
-                                                    } as SearchFilters));
+                                                    }));
                                                 }
                                             }}
                                             disabled={!isPremium}
@@ -480,10 +572,10 @@ export default function DiscoverScreen() {
                                             ]}
                                             onPress={() => {
                                                 if (isPremium) {
-                                                    setFilters(prev => ({
+                                                    updateFilters(prev => ({
                                                         ...prev,
                                                         motherTongue: option.value
-                                                    } as SearchFilters));
+                                                    }));
                                                 }
                                             }}
                                             disabled={!isPremium}
@@ -519,10 +611,10 @@ export default function DiscoverScreen() {
                                             ]}
                                             onPress={() => {
                                                 if (isPremium) {
-                                                    setFilters(prev => ({
+                                                    updateFilters(prev => ({
                                                         ...prev,
                                                         language: option.value
-                                                    } as SearchFilters));
+                                                    }));
                                                 }
                                             }}
                                             disabled={!isPremium}
@@ -558,10 +650,10 @@ export default function DiscoverScreen() {
                                             ]}
                                             onPress={() => {
                                                 if (isPremium) {
-                                                    setFilters(prev => ({
+                                                    updateFilters(prev => ({
                                                         ...prev,
                                                         religion: option.value
-                                                    } as SearchFilters));
+                                                    }));
                                                 }
                                             }}
                                             disabled={!isPremium}
@@ -597,10 +689,10 @@ export default function DiscoverScreen() {
                                             ]}
                                             onPress={() => {
                                                 if (isPremium) {
-                                                    setFilters(prev => ({
+                                                    updateFilters(prev => ({
                                                         ...prev,
                                                         maritalStatus: option.value
-                                                    } as SearchFilters));
+                                                    }));
                                                 }
                                             }}
                                             disabled={!isPremium}
@@ -643,6 +735,20 @@ const styles = StyleSheet.create({
         paddingVertical: moderateScale(12),
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light,
+    },
+    activeFiltersHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: moderateScale(8),
+    },
+    activeFiltersTitle: {
+        fontSize: responsiveFontSizes.sm,
+        fontWeight: fontWeight.semibold,
+        color: colors.neutral[700],
+    },
+    activeFiltersScrollContent: {
+        paddingRight: moderateScale(8),
     },
     filterTag: {
         backgroundColor: colors.primary[100],

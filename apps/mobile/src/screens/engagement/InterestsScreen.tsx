@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     RefreshControl,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +44,7 @@ import {
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'Interests'>;
 type TabType = 'received' | 'sent';
+type InterestAction = 'accept' | 'decline';
 
 export default function InterestsScreen() {
     const navigation = useNavigation<Navigation>();
@@ -51,7 +53,10 @@ export default function InterestsScreen() {
     const [sentInterests, setSentInterests] = useState<Interest[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState<{
+        interestId: string;
+        action: InterestAction;
+    } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Get current user ID
@@ -100,7 +105,7 @@ export default function InterestsScreen() {
     // Handle accept interest
     const handleAccept = useCallback(async (interestId: string) => {
         try {
-            setActionLoading(interestId);
+            setActionLoading({ interestId, action: 'accept' });
             const response = await acceptInterest(interestId);
 
             if (response.data?.success) {
@@ -137,7 +142,7 @@ export default function InterestsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            setActionLoading(interestId);
+                            setActionLoading({ interestId, action: 'decline' });
                             const response = await declineInterest(interestId);
 
                             if (response.data?.success) {
@@ -185,7 +190,10 @@ export default function InterestsScreen() {
     const renderItem = useCallback(
         ({ item }: { item: Interest }) => {
             const user = item.user;
-            const isLoading = actionLoading === item.id;
+            const avatarUrl = getMainProfileImage({ profileImageUrls: user?.profileImageUrls });
+            const isActionLoading = actionLoading?.interestId === item.id;
+            const isAccepting = isActionLoading && actionLoading?.action === 'accept';
+            const isDeclining = isActionLoading && actionLoading?.action === 'decline';
             const statusBadge = getStatusBadge(item.status);
             const isPending = item.status === 'pending';
             const isReceived = activeTab === 'received';
@@ -195,11 +203,19 @@ export default function InterestsScreen() {
                     <View style={styles.itemContent}>
                         {/* Avatar */}
                         <View style={styles.avatarContainer}>
-                            <Image
-                                source={getMainProfileImage({ profileImageUrls: user?.profileImageUrls })}
-                                style={styles.avatar}
-                                contentFit="cover"
-                            />
+                            {avatarUrl ? (
+                                <Image
+                                    source={avatarUrl}
+                                    style={styles.avatar}
+                                    contentFit="cover"
+                                />
+                            ) : (
+                                <View style={styles.avatarPlaceholder}>
+                                    <Text style={styles.avatarText}>
+                                        {user?.fullName?.charAt(0) || 'M'}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
 
                         {/* Info */}
@@ -239,22 +255,34 @@ export default function InterestsScreen() {
                     {isPending && isReceived && (
                         <View style={styles.actionButtons}>
                             <TouchableOpacity
-                                style={[styles.actionButton, styles.declineButton]}
+                                style={[
+                                    styles.actionButton,
+                                    styles.declineButton,
+                                    isActionLoading && styles.actionButtonDisabled,
+                                ]}
                                 onPress={() => handleDecline(item.id)}
-                                disabled={isLoading}
+                                disabled={isActionLoading}
                             >
-                                <Text style={styles.declineButtonText}>
-                                    {isLoading ? '...' : 'Decline'}
-                                </Text>
+                                {isDeclining ? (
+                                    <ActivityIndicator size="small" color={colors.neutral[600]} />
+                                ) : (
+                                    <Text style={styles.declineButtonText}>Decline</Text>
+                                )}
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.actionButton, styles.acceptButton]}
+                                style={[
+                                    styles.actionButton,
+                                    styles.acceptButton,
+                                    isActionLoading && styles.actionButtonDisabled,
+                                ]}
                                 onPress={() => handleAccept(item.id)}
-                                disabled={isLoading}
+                                disabled={isActionLoading}
                             >
-                                <Text style={styles.acceptButtonText}>
-                                    {isLoading ? '...' : 'Accept'}
-                                </Text>
+                                {isAccepting ? (
+                                    <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                                ) : (
+                                    <Text style={styles.acceptButtonText}>Accept</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     )}
@@ -540,6 +568,9 @@ const styles = StyleSheet.create({
         paddingVertical: moderateScale(12),
         alignItems: 'center',
         minHeight: moderateScale(44),
+    },
+    actionButtonDisabled: {
+        opacity: 0.65,
     },
     declineButton: {
         borderRightWidth: 1,

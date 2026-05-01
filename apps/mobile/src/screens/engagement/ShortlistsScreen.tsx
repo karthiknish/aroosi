@@ -15,6 +15,7 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
@@ -52,6 +53,7 @@ export default function ShortlistsScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [savingNote, setSavingNote] = useState(false);
+    const [removingId, setRemovingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Load shortlists
@@ -120,14 +122,17 @@ export default function ShortlistsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            setRemovingId(userId);
                             const response = await toggleShortlist(userId);
                             if (response.data?.removed) {
                                 setShortlists((prev) =>
                                     prev.filter((entry) => entry.userId !== userId)
                                 );
                             }
-                        } catch (err) {
+                        } catch {
                             Alert.alert('Error', 'Failed to remove from shortlist');
+                        } finally {
+                            setRemovingId(null);
                         }
                     },
                 },
@@ -177,12 +182,17 @@ export default function ShortlistsScreen() {
         ({ item }: { item: ShortlistEntry }) => {
             const isExpanded = expandedId === item.userId;
             const note = notes[item.userId];
+            const isRemoving = removingId === item.userId;
 
             return (
                 <View style={styles.itemContainer}>
                     <TouchableOpacity
-                        style={styles.itemContent}
+                        style={[
+                            styles.itemContent,
+                            isRemoving && styles.itemContentDisabled,
+                        ]}
                         onPress={() => handleExpand(item.userId)}
+                        disabled={isRemoving}
                         activeOpacity={0.7}
                     >
                         {/* Avatar */}
@@ -220,10 +230,18 @@ export default function ShortlistsScreen() {
                         {/* Actions */}
                         <View style={styles.itemActions}>
                             <TouchableOpacity
-                                style={styles.removeButton}
+                                style={[
+                                    styles.removeButton,
+                                    isRemoving && styles.removeButtonDisabled,
+                                ]}
                                 onPress={() => handleRemove(item.userId)}
+                                disabled={isRemoving}
                             >
-                                <Text style={styles.removeButtonText}>✕</Text>
+                                {isRemoving ? (
+                                    <ActivityIndicator size="small" color={colors.error} />
+                                ) : (
+                                    <Text style={styles.removeButtonText}>✕</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </TouchableOpacity>
@@ -270,7 +288,7 @@ export default function ShortlistsScreen() {
                 </View>
             );
         },
-        [expandedId, notes, editingNote, savingNote, handleExpand, handleRemove, handleSaveNote]
+        [expandedId, notes, removingId, editingNote, savingNote, handleExpand, handleRemove, handleSaveNote]
     );
 
     if (loading) {
@@ -407,6 +425,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: responsiveValues.cardPadding,
     },
+    itemContentDisabled: {
+        opacity: 0.65,
+    },
     avatarContainer: {
         marginRight: moderateScale(12),
     },
@@ -458,6 +479,9 @@ const styles = StyleSheet.create({
         backgroundColor: colors.error + '15',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    removeButtonDisabled: {
+        opacity: 0.6,
     },
     removeButtonText: {
         fontSize: responsiveFontSizes.base,

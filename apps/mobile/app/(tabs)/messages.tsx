@@ -85,6 +85,16 @@ export default function MessagesScreen() {
         )
         : activeConversations;
 
+    const handleClearSearch = useCallback(() => {
+        setSearchQuery('');
+    }, []);
+
+    const handleStartFirstConversation = useCallback(() => {
+        if (newMatches.length > 0) {
+            handleMatchPress(newMatches[0]);
+        }
+    }, [handleMatchPress, newMatches]);
+
     // Render match item (horizontal scroll)
     const renderMatchItem = ({ item }: { item: any }) => (
         <TouchableOpacity
@@ -217,6 +227,16 @@ export default function MessagesScreen() {
                             emoji="🔍"
                             title="No results"
                             message={`No conversations found for "${searchQuery}"`}
+                            actionLabel="Clear Search"
+                            onAction={handleClearSearch}
+                        />
+                    ) : newMatches.length > 0 ? (
+                        <EmptyState
+                            emoji="👋"
+                            title="Your matches are waiting"
+                            message="Start a conversation with one of your new matches above to see your chats here."
+                            actionLabel="Say Hello"
+                            onAction={handleStartFirstConversation}
                         />
                     ) : null
                 }

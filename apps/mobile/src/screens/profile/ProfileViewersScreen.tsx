@@ -196,6 +196,9 @@ export default function ProfileViewersScreen() {
         ({ item, index }: { item: ProfileViewer; index: number }) => {
             const isBlurred = !isPremium && index >= 3;
             const viewerId = item.userId || (item as any).viewerId;
+            const avatarUrl = getMainProfileImage({
+                profileImageUrls: isBlurred ? undefined : item.profileImageUrls,
+            });
 
             return (
                 <TouchableOpacity
@@ -226,12 +229,20 @@ export default function ProfileViewersScreen() {
 
                         {/* Avatar */}
                         <View style={styles.avatarContainer}>
-                            <Image
-                                source={getMainProfileImage({ profileImageUrls: isBlurred ? undefined : item.profileImageUrls })}
-                                style={styles.avatar}
-                                contentFit="cover"
-                                blurRadius={isBlurred ? 20 : 0}
-                            />
+                            {avatarUrl ? (
+                                <Image
+                                    source={avatarUrl}
+                                    style={styles.avatar}
+                                    contentFit="cover"
+                                    blurRadius={isBlurred ? 20 : 0}
+                                />
+                            ) : (
+                                <View style={styles.avatarPlaceholder}>
+                                    <Text style={styles.avatarText}>
+                                        {isBlurred ? '•' : item.fullName?.charAt(0) || 'M'}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
 
                         {/* Info */}
@@ -272,12 +283,39 @@ export default function ProfileViewersScreen() {
 
     // Render footer for loading more
     const renderFooter = () => {
-        if (!loadingMore) return null;
-        return (
-            <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-            </View>
-        );
+        if (loadingMore) {
+            return (
+                <View style={styles.footerLoader}>
+                    <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                </View>
+            );
+        }
+
+        if (viewers.length === 0) return null;
+
+        if (!isPremium && total > 3) {
+            return (
+                <View style={styles.footerState}>
+                    <Text style={styles.footerStateText}>
+                        Showing a preview of recent viewers. Upgrade to see everyone who viewed your profile.
+                    </Text>
+                </View>
+            );
+        }
+
+        if (!hasMore) {
+            return (
+                <View style={styles.footerState}>
+                    <Text style={styles.footerStateText}>
+                        {activeFilter === 'all'
+                            ? "You're all caught up on profile views."
+                            : 'No more viewers match this filter right now.'}
+                    </Text>
+                </View>
+            );
+        }
+
+        return null;
     };
 
     if (loading) {
@@ -383,6 +421,8 @@ export default function ProfileViewersScreen() {
                 <FlatList
                     data={[]}
                     renderItem={null}
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.3}
                     ListHeaderComponent={
                         <>
                             {renderSectionHeader('Today', groupedViewers.today.length)}
@@ -411,6 +451,7 @@ export default function ProfileViewersScreen() {
                             ))}
                         </>
                     }
+                    ListFooterComponent={renderFooter}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
                         <RefreshControl
@@ -713,6 +754,17 @@ const styles = StyleSheet.create({
     footerLoader: {
         paddingVertical: moderateScale(16),
         alignItems: 'center',
+    },
+    footerState: {
+        paddingTop: moderateScale(8),
+        paddingBottom: moderateScale(24),
+        paddingHorizontal: responsiveValues.screenPadding,
+        alignItems: 'center',
+    },
+    footerStateText: {
+        fontSize: responsiveFontSizes.sm,
+        color: colors.neutral[500],
+        textAlign: 'center',
     },
 });
 
